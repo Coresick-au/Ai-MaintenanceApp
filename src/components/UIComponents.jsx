@@ -87,7 +87,9 @@ import {
   Rocket,
   Undo,
   Maximize,
-  Minimize
+  Minimize,
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 
 export const Icons = {
@@ -141,6 +143,8 @@ export const Icons = {
   Rocket: (props) => <Rocket size={18} {...props} />,
   Maximize: (props) => <Maximize size={18} {...props} />,
   Minimize: (props) => <Minimize size={18} {...props} />,
+  Maximize2: (props) => <Maximize2 size={18} {...props} />,
+  Minimize2: (props) => <Minimize2 size={18} {...props} />,
 };
 
 // ==========================================
@@ -176,6 +180,78 @@ export const Button = ({ children, onClick, disabled, className = "", variant = 
   if (disabled) baseStyle += "opacity-50 cursor-not-allowed grayscale ";
 
   return <button type={type} onClick={onClick} disabled={disabled} className={`${baseStyle} ${className}`}>{children}</button>;
+};
+
+// FullScreenContainer Component
+export const FullScreenContainer = ({ children, className = "", title, onClose }) => {
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleEsc = (e) => {
+      if (e.key === 'Escape') {
+        setIsFullScreen(false);
+        if (onClose) onClose();
+      }
+    };
+    if (isFullScreen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isFullScreen, onClose]);
+
+  const toggleFullScreen = (e) => {
+    e.stopPropagation();
+    if (isFullScreen && onClose) {
+      onClose();
+    }
+    setIsFullScreen(!isFullScreen);
+  };
+
+  const content = (
+    <>
+      {/* Header for Full Screen Mode */}
+      {isFullScreen && title && (
+        <div className="mb-4 pb-4 border-b border-slate-700 flex justify-between items-center shrink-0">
+          <h2 className="text-2xl font-bold text-slate-100">{title}</h2>
+        </div>
+      )}
+
+      {/* Toggle Button */}
+      <button
+        onClick={toggleFullScreen}
+        className={`
+            absolute top-2 right-2 z-50 p-2 rounded-lg shadow-lg transition-all duration-200 border
+            ${isFullScreen
+            ? 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600'
+            : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/50 opacity-0 group-hover:opacity-100 hover:bg-cyan-500 hover:text-white hover:shadow-[0_0_15px_rgba(6,182,212,0.5)]'
+          }
+            `}
+        title={isFullScreen ? "Exit Full Screen (Esc)" : "Expand View"}
+      >
+        {isFullScreen ? <Icons.Minimize2 size={20} /> : <Icons.Maximize2 size={20} />}
+      </button>
+
+      {/* Content Content - ensures children take remaining space in FS mode */}
+      <div className="flex-1 min-h-0 w-full relative flex flex-col">
+        {children}
+      </div>
+    </>
+  );
+
+  if (isFullScreen) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black/80 backdrop-blur-sm flex items-center justify-center p-0">
+        <div className="w-[90%] h-[90%] bg-slate-900 rounded-xl shadow-2xl border border-slate-700 flex flex-col overflow-hidden relative p-6">
+          {content}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`transition-all duration-300 ease-in-out group relative flex flex-col ${className}`}>
+      {content}
+    </div>
+  );
 };
 
 export const LongPressButton = ({ onLongPress, duration = 3000, children, className = "" }) => {

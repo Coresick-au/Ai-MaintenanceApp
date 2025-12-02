@@ -18,7 +18,8 @@ import {
   Modal,
   EditableCell,
   LongPressButton,
-  formatDate
+  formatDate,
+  FullScreenContainer
 } from './components/UIComponents';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal } from './components/AssetModals';
@@ -37,14 +38,15 @@ import { CustomerReportModal } from './components/CustomerReportModal';
 export default function App() {
   // Force HMR update
   const {
-    sites, selectedSiteId, setSelectedSiteId, selectedSite,
+    sites, setSites, selectedSiteId, setSelectedSiteId, selectedSite,
     currentServiceData, currentRollerData, currentSpecData,
     updateSiteData,
     handleAddSite, handleGenerateSample, handleDeleteSite, handleUpdateSiteInfo, toggleSiteStatus,
     handleAddIssue, handleToggleIssueStatus, handleUpdateIssue, handleCopyIssue,
     handleAddAsset, handleDeleteAsset, handleSaveEditedAsset, handleSaveEditedSpecs, handleInlineUpdate,
     handleAddSpecNote, handleDeleteSpecNote, saveEditedNote,
-    handleSaveReport, handleDeleteReport, handleFileChange
+
+    handleFileChange, uploadServiceReport, deleteServiceReport
   } = useSiteContext();
 
   const {
@@ -101,6 +103,31 @@ export default function App() {
 
   // --- RESET APP HISTORY STATE ---
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  // FIX: Local handleSaveReport to prevent race conditions
+  // FIX: Local handleSaveReport to prevent race conditions AND use Context
+  const handleSaveReport = (assetId, reportData) => {
+    // 1. Call Context Method (Persistence)
+    uploadServiceReport(assetId, reportData);
+
+    // 2. Update Local State (Immediate UI Feedback)
+    if (viewAnalyticsAsset && viewAnalyticsAsset.id === assetId) {
+      setViewAnalyticsAsset(prev => ({
+        ...prev,
+        reports: [...(prev.reports || []), reportData]
+      }));
+    }
+  };
+
+  const handleDeleteReportWrapper = (assetId, reportId) => {
+    // 1. Call Context Method
+    deleteServiceReport(assetId, reportId);
+
+    // 2. Update Local State
+    if (viewAnalyticsAsset && viewAnalyticsAsset.id === assetId) {
+      setViewAnalyticsAsset(prev => ({ ...prev, reports: (prev.reports || []).filter(r => r.id !== reportId) }));
+    }
+  };
 
   // --- CUSTOMER REPORT MODAL STATE ---
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
@@ -453,6 +480,7 @@ export default function App() {
                 <option value="risk">Sort: Risk</option>
                 <option value="name">Sort: Name</option>
                 <option value="customer">Sort: Customer</option>
+                <option value="type">Sort: Type</option>
               </select>
 
               <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg px-3 h-12 border border-slate-300 dark:border-slate-700 shadow-sm transition-colors">
@@ -903,7 +931,7 @@ export default function App() {
                   <span className={`text-2xl font-bold ${filterStatus === 'overdue' ? 'text-white' : 'text-slate-200'}`}>{stats.overdue}</span>
                 </div>
                 <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'overdue' ? 'text-red-100' : 'text-slate-400'}`}>
-                  Critical
+                  Critical (Overdue)
                 </div>
               </div>
 
@@ -943,21 +971,13 @@ export default function App() {
             </div>
 
             {/* Service Schedule Table */}
-            <div className={`bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1 ${expandedSection === 'schedule' ? 'fixed inset-4 z-50' : ''}`} id="print-section-schedule">
+            <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1" id="print-section-schedule">
               <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
                   <span className="text-xs text-slate-500 font-normal ml-2 hidden sm:inline">({filteredData.length} items)</span>
                 </div>
-                <div className="flex gap-2 items-center no-print">
-                  <button
-                    type="button"
-                    onClick={() => setExpandedSection(expandedSection === 'schedule' ? null : 'schedule')}
-                    className="text-slate-400 hover:text-cyan-400 p-1 rounded transition-colors"
-                    title={expandedSection === 'schedule' ? 'Minimize' : 'Maximize'}
-                  >
-                    {expandedSection === 'schedule' ? <Icons.Minimize size={18} /> : <Icons.Maximize size={18} />}
-                  </button>
+                <div className="flex gap-2 items-center no-print pr-10">
                   <div className="flex items-center mr-2">
                     <input
                       type="checkbox"
@@ -972,9 +992,9 @@ export default function App() {
                   <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 border border-cyan-500/50"><Icons.Plus size={16} /> Add Asset</button>
                 </div>
               </div>
-              <div className="overflow-x-auto max-h-[600px]">
+              <div className="overflow-x-auto h-full">
                 <table className="w-full text-left text-sm text-slate-300">
-                  <thead className="bg-slate-900 text-slate-400 sticky top-[57px] z-20">
+                  <thead className="bg-slate-900 text-slate-400 z-20">
                     <tr>
                       <th className="px-4 py-2 w-8 text-center no-print">
                         <input
@@ -1044,58 +1064,75 @@ export default function App() {
                   <button onClick={() => setSelectedRowIds(new Set())} className="text-xs text-slate-400 hover:text-white">Clear</button>
                 </div>
               )}
-            </div>
+            </FullScreenContainer>
           </div>
 
           {/* CENTER COLUMN: Chart + Calendar */}
           <div className="lg:col-span-5 flex flex-col gap-4">
-            {/* Remaining Days Chart */}
-            <div className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print">
+            {/* Remaining Days Chart - WRAPPED IN FULLSCREEN */}
+            <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col" title="Asset Health Overview">
               <h3 className="font-semibold text-lg text-slate-200 mb-4 flex items-center gap-2">
                 <Icons.Activity className="text-cyan-400" />
                 Remaining Days
               </h3>
-              <SimpleBarChart data={filteredData} onBarClick={(data) => {
-                // Filter table based on clicked bar
-                if (data.remaining < 0) setFilterStatus('overdue');
-                else if (data.remaining < 30) setFilterStatus('dueSoon');
-                else setFilterStatus('healthy');
-              }} />
-            </div>
+              <div className="flex-1 min-h-0">
+                <SimpleBarChart data={filteredData} onBarClick={(data) => {
+                  // Filter table based on clicked bar
+                  if (data.remaining < 0) setFilterStatus('overdue');
+                  else if (data.remaining < 30) setFilterStatus('dueSoon');
+                  else setFilterStatus('healthy');
+                }} />
+              </div>
+            </FullScreenContainer>
 
             {/* Maintenance Calendar */}
-            <div className={`${expandedSection === 'calendar' ? 'fixed inset-4 z-50 bg-slate-900 p-4 rounded-xl overflow-auto' : ''}`}>
-              <div className={`${expandedSection === 'calendar' ? 'flex justify-between items-center mb-4' : 'hidden'}`}>
-                <h3 className="font-bold text-lg text-slate-200">Maintenance Calendar</h3>
-                <button
-                  type="button"
-                  onClick={() => setExpandedSection(null)}
-                  className="text-slate-400 hover:text-cyan-400 p-2 rounded transition-colors"
-                  title="Minimize"
-                >
-                  <Icons.Minimize size={20} />
-                </button>
+            {/* Maintenance Calendar */}
+            {expandedSection === 'calendar' ? (
+              <FullScreenContainer title="Maintenance Calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
+                <CalendarWidget
+                  assets={filteredData}
+                  selectedAssetId={selectedAssetId}
+                  onAssetSelect={setSelectedAssetId}
+                  expandedSection={expandedSection}
+                  setExpandedSection={setExpandedSection}
+                />
+              </FullScreenContainer>
+            ) : (
+              <div>
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="font-bold text-lg text-slate-200">Maintenance Calendar</h3>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedSection('calendar')}
+                    className="text-slate-400 hover:text-cyan-400 p-2 rounded transition-colors"
+                    title="Maximize"
+                  >
+                    <Icons.Maximize size={20} />
+                  </button>
+                </div>
+                <CalendarWidget
+                  assets={filteredData}
+                  selectedAssetId={selectedAssetId}
+                  onAssetSelect={setSelectedAssetId}
+                  expandedSection={expandedSection}
+                  setExpandedSection={setExpandedSection}
+                />
               </div>
-              <CalendarWidget
-                assets={filteredData}
-                selectedAssetId={selectedAssetId}
-                onAssetSelect={setSelectedAssetId}
-                expandedSection={expandedSection}
-                setExpandedSection={setExpandedSection}
-              />
-            </div>
+            )}
           </div>
+
 
           {/* RIGHT COLUMN: Equipment Details (Sticky) */}
           <div className="lg:col-span-3" id="print-section-specs">
-            <div className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 h-full flex flex-col sticky top-6">
+            <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 h-full flex flex-col sticky top-6" title="Equipment Specification">
               <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-between items-center">
                 <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
                 {selectedAsset && (
-                  <div className="no-print">
+                  <div className="no-print mr-8">
                     <Button
                       variant={activeTab === 'service' ? 'secondary' : 'orange'}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.stopPropagation();
                         setEditingAsset({ ...selectedAsset });
                         const specs = currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
                         setEditingSpecs(specs || null);
@@ -1110,11 +1147,12 @@ export default function App() {
               <div className="flex-1 p-6 text-slate-300 overflow-y-auto">
                 {specsPanelContent}
               </div>
-            </div>
+            </FullScreenContainer>
           </div>
-        </div>
+        </div >
       )
       }
+
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {activeTab === 'issues' ? (
@@ -1130,8 +1168,11 @@ export default function App() {
             />
           </div>
         ) : localViewMode === 'timeline' ? (
-          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px] mt-6">
-            <AssetTimeline assets={filteredData} mode={activeTab} />
+          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px]">
+            {/* WRAPPED: Asset Timeline with Full Screen */}
+            <FullScreenContainer className="h-full w-full bg-slate-900 rounded-xl border border-slate-800" title="Maintenance Timeline">
+              <AssetTimeline assets={filteredData} mode={activeTab} />
+            </FullScreenContainer>
           </div>
         ) : null}
       </div >
@@ -1186,7 +1227,7 @@ export default function App() {
         asset={viewAnalyticsAsset}
         siteLocation={selectedSite?.location}
         onSaveReport={handleSaveReport}
-        onDeleteReport={handleDeleteReport}
+        onDeleteReport={handleDeleteReportWrapper}
       />
 
       <AppHistoryModal
@@ -1225,25 +1266,27 @@ export default function App() {
       }
 
       {/* RESET CONFIRMATION MODAL */}
-      {isResetConfirmOpen && (
-        <Modal title="⚠️ Confirm Factory Reset" onClose={() => setIsResetConfirmOpen(false)}>
-          <div className="space-y-4">
-            <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg flex gap-3">
-              <Icons.AlertTriangle className="text-red-500 shrink-0" size={24} />
-              <div>
-                <h4 className="font-bold text-red-400">Are you absolutely sure?</h4>
-                <p className="text-red-200/80 text-sm mt-1">
-                  This action will permanently delete all data stored on this device. This cannot be undone.
-                </p>
+      {
+        isResetConfirmOpen && (
+          <Modal title="⚠️ Confirm Factory Reset" onClose={() => setIsResetConfirmOpen(false)}>
+            <div className="space-y-4">
+              <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg flex gap-3">
+                <Icons.AlertTriangle className="text-red-500 shrink-0" size={24} />
+                <div>
+                  <h4 className="font-bold text-red-400">Are you absolutely sure?</h4>
+                  <p className="text-red-200/80 text-sm mt-1">
+                    This action will permanently delete all data stored on this device. This cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="secondary" onClick={() => setIsResetConfirmOpen(false)}>Cancel</Button>
+                <Button variant="danger" onClick={handleResetConfirm}>Yes, Delete Everything</Button>
               </div>
             </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="secondary" onClick={() => setIsResetConfirmOpen(false)}>Cancel</Button>
-              <Button variant="danger" onClick={handleResetConfirm}>Yes, Delete Everything</Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        )
+      }
 
       {/* CUSTOMER REPORT MODAL */}
       <CustomerReportModal

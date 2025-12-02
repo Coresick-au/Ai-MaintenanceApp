@@ -31,6 +31,8 @@ export const FilterProvider = ({ children }) => {
             result.sort((a, b) => a.name.localeCompare(b.name));
         } else if (siteSortOption === 'customer') {
             result.sort((a, b) => (a.customer || '').localeCompare(b.customer || ''));
+        } else if (siteSortOption === 'type') {
+            result.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
         } else {
             result.sort((a, b) => {
                 const countCritical = (site) => {

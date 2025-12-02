@@ -107,6 +107,8 @@ export const SiteProvider = ({ children }) => {
             active: true,
             notes: initialNotes,
             logo: siteForm.logo,
+            type: siteForm.type || 'Mine',
+            typeDetail: siteForm.typeDetail || '',
             serviceData: [],
             rollerData: [],
             specData: []
@@ -151,8 +153,11 @@ export const SiteProvider = ({ children }) => {
             contactPosition: siteForm.contactPosition,
             contactPhone1: siteForm.contactPhone1,
             contactPhone2: siteForm.contactPhone2,
+
             notes: siteForm.notes,
-            logo: siteForm.logo
+            logo: siteForm.logo,
+            type: siteForm.type,
+            typeDetail: siteForm.typeDetail
         }, 'Update Site Info');
     };
 
@@ -399,25 +404,30 @@ export const SiteProvider = ({ children }) => {
         updateSiteData(selectedSiteId, { specData: currentSpecData.map(s => s.id === selectedSpecs.id ? updatedSpec : s) });
     };
 
-    const handleSaveReport = (assetId, reportData, viewAnalyticsAsset, setViewAnalyticsAsset) => {
-        const updateList = (list) => list.map(a => {
-            if (a.id === assetId) {
-                return { ...a, reports: [...(a.reports || []), reportData] };
-            }
-            return a;
-        });
+    const uploadServiceReport = (assetId, reportData) => {
+        // Use functional state update to prevent stale data issues during rapid uploads
+        setSites(prevSites => {
+            return prevSites.map(site => {
+                if (site.id !== selectedSiteId) return site; // Only update selected site
 
-        updateSiteData(selectedSiteId, {
-            serviceData: updateList(currentServiceData),
-            rollerData: updateList(currentRollerData)
-        });
+                // Helper to update specific asset list (service or roller)
+                const updateList = (list) => list.map(asset => {
+                    if (asset.id === assetId) {
+                        return { ...asset, reports: [...(asset.reports || []), reportData] };
+                    }
+                    return asset;
+                });
 
-        if (viewAnalyticsAsset && viewAnalyticsAsset.id === assetId) {
-            setViewAnalyticsAsset(prev => ({ ...prev, reports: [...(prev.reports || []), reportData] }));
-        }
+                return {
+                    ...site,
+                    serviceData: updateList(site.serviceData || []),
+                    rollerData: updateList(site.rollerData || [])
+                };
+            });
+        });
     };
 
-    const handleDeleteReport = (assetId, reportId, viewAnalyticsAsset, setViewAnalyticsAsset) => {
+    const deleteServiceReport = (assetId, reportId) => {
         const updateList = (list) => list.map(a => {
             if (a.id === assetId) {
                 return { ...a, reports: (a.reports || []).filter(r => r.id !== reportId) };
@@ -428,11 +438,7 @@ export const SiteProvider = ({ children }) => {
         updateSiteData(selectedSiteId, {
             serviceData: updateList(currentServiceData),
             rollerData: updateList(currentRollerData)
-        });
-
-        if (viewAnalyticsAsset && viewAnalyticsAsset.id === assetId) {
-            setViewAnalyticsAsset(prev => ({ ...prev, reports: (prev.reports || []).filter(r => r.id !== reportId) }));
-        }
+        }, 'Delete Service Report');
     };
 
     const handleFileChange = (e) => {
@@ -476,8 +482,10 @@ export const SiteProvider = ({ children }) => {
             handleAddSpecNote,
             handleDeleteSpecNote,
             saveEditedNote,
-            handleSaveReport,
-            handleDeleteReport,
+            handleSaveReport: uploadServiceReport, // Alias for backward compatibility if needed, or just replace usage
+            handleDeleteReport: deleteServiceReport, // Alias
+            uploadServiceReport,
+            deleteServiceReport,
             handleFileChange
         }}>
             {children}

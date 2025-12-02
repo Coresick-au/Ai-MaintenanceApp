@@ -616,11 +616,21 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
 ---
 
 ## 🤖 SYSTEM PROMPT (Copy this to AI)
-You are a Senior Reliability Engineer. Analyze the dataset below for this Conveyor Belt Scale.
-1. **Identify Seasonality**: Look at the dates. This asset is in ${siteLocation}. Does the calibration drift (Tare/Span) correlate with seasonal temperature changes?
-2. **Assess Sensor Health**: Look at Zero/Span mV signals. Are they drifting linearly (aging) or erratic (moisture/mechanical)?
-3. **Analyze Comments**: Summarize the technical history. Are we fixing the same thing repeatedly?
-4. **Predictive Advice**: Based on the last 3 services, what should the technician bring to the next job?
+You are a Senior Reliability Engineer & Data Scientist. Your task is to perform a deep-dive analysis on the Conveyor Belt Scale asset data provided below.
+
+### 1. DATA ANALYSIS
+- **Drift Correlation**: Analyze 'Tare Change' vs 'Span Change'. Do they move together? What are the implications of the movement? 
+- **Signal Health**: Look at Zero/Span mV. Are there sudden jumps > 0.5mV, or a steady linear drift that indicates sensor degradation?
+- **Comment Trend**: Summarize recurring issues from the technician comments.
+
+### 2. VISUALIZATION & CORRELATION REQUEST (Important)
+Please generate visual representations and correlation analysis in your response:
+- **Trend Chart**: Create a detailed ASCII or Mermaid chart showing the trend of **'Tare Change'** and **'Span Change'** over all reported services. Label axes clearly.
+- **Weather Overlay**: This asset is in **${siteLocation}**. Research the typical weather for the dates of the service reports. Overlay this information (e.g., Max Temp) with the mV/V readings (Zero/Span). Provide a written analysis on whether calibration drift or mV signals show a correlation with temperature/seasonality.
+
+### 3. PREDICTIVE ACTION
+- **Prediction**: Based on the linear slope of the drift data, predict when this asset will next exceed an acceptable calibration tolerance (e.g., Tare Change > 0.5% or Span Change > 0.3%).
+- **Next Service Kit**: Based on the "Comments" history, recommend the top three specific parts (e.g., 'Load cell cable', 'Idler rollers') the technician should bring to the next job.
 
 ---
 
