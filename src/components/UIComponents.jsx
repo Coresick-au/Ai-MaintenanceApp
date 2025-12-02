@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Component } from 'react';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import {
@@ -596,7 +596,7 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
 // ==========================================
 // ERROR BOUNDARY
 // ==========================================
-export class ErrorBoundary extends Component {
+export class ErrorBoundary extends React.Component {
   constructor(props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };

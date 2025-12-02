@@ -2,7 +2,7 @@ import React, { createContext, useState, useEffect, useMemo, useContext } from '
 import { useUndo } from './UndoContext';
 import { recalculateRow, generateSampleSite } from '../data/mockData';
 
-const SiteContext = createContext();
+export const SiteContext = createContext();
 
 export const useSiteContext = () => useContext(SiteContext);
 

@@ -69,6 +69,7 @@ export default function App() {
     noteInput, setNoteInput,
     newAsset, setNewAsset,
     specNoteInput, setSpecNoteInput,
+    theme, setTheme,
     isPrintMenuOpen, setIsPrintMenuOpen
   } = useUIContext();
 
