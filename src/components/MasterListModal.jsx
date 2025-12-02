@@ -2,13 +2,13 @@
 import React, { useState } from 'react';
 import { Icons, formatDate } from './UIComponents';
 
-export const MasterListModal = ({ 
-  isOpen, 
-  onClose, 
-  onPrint, 
-  serviceData, 
-  rollerData, 
-  specData, 
+export const MasterListModal = ({
+  isOpen,
+  onClose,
+  onPrint,
+  serviceData,
+  rollerData,
+  specData,
   showArchived,
   customerName,
   siteName,
@@ -37,7 +37,7 @@ export const MasterListModal = ({
     .filter(asset => {
       const searchLower = searchTerm.toLowerCase();
       const spec = specData.find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
-      
+
       if (!showArchived && asset.active === false) return false;
 
       return (
@@ -51,12 +51,12 @@ export const MasterListModal = ({
       if (sortConfig.key) {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
-        
+
         if (sortConfig.key === 'dueDate' || sortConfig.key === 'lastCal') {
-            aVal = new Date(aVal).getTime();
-            bVal = new Date(bVal).getTime();
+          aVal = new Date(aVal).getTime();
+          bVal = new Date(bVal).getTime();
         }
-        
+
         if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
         return 0;
@@ -67,7 +67,7 @@ export const MasterListModal = ({
   return (
     <div id="master-list-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm">
       <div className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} rounded-lg shadow-2xl border w-full max-w-[95vw] h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200 transition-colors`}>
-        
+
         {/* HEADER */}
         <div className={`flex justify-between items-center p-4 border-b rounded-t-lg transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-gray-50'}`}>
           <div className="flex items-center gap-4">
@@ -80,24 +80,24 @@ export const MasterListModal = ({
             </div>
           </div>
           <div className="flex gap-2 items-center">
-            <button 
-                type="button" 
-                onClick={() => setIsDarkMode(!isDarkMode)} 
-                className={`p-2 rounded-full transition-colors ${isDarkMode ? 'text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-200'}`} 
-                title={isDarkMode ? "Switch to Day Mode" : "Switch to Night Mode"}
+            <button
+              type="button"
+              onClick={() => setIsDarkMode(!isDarkMode)}
+              className={`p-2 rounded-full transition-colors ${isDarkMode ? 'text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-200'}`}
+              title={isDarkMode ? "Switch to Day Mode" : "Switch to Night Mode"}
             >
-                {isDarkMode ? '☀️' : '🌙'}
+              {isDarkMode ? '☀️' : '🌙'}
             </button>
             <button type="button" onClick={() => onPrint('master')} className={`${isDarkMode ? 'text-slate-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'} mr-2`} title="Print Master List"><span className="text-xl"><Icons.Printer /></span></button>
             <div className="relative">
-                <span className={`absolute left-2 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}><Icons.Search /></span>
-                <input 
-                    type="text" 
-                    placeholder="Filter master list..." 
-                    className={`pl-8 pr-4 py-1 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-64 ${isDarkMode ? 'border-slate-700 bg-slate-900 text-white' : 'border-gray-300 bg-white text-gray-800'}`}
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                />
+              <span className={`absolute left-2 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}><Icons.Search /></span>
+              <input
+                type="text"
+                placeholder="Filter master list..."
+                className={`pl-8 pr-4 py-1 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-64 ${isDarkMode ? 'border-slate-700 bg-slate-900 text-white' : 'border-gray-300 bg-white text-gray-800'}`}
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
             <button type="button" onClick={onClose} className={`${isDarkMode ? 'text-slate-400 hover:text-white' : 'text-gray-400 hover:text-gray-800'}`}><span className="text-2xl"><Icons.X /></span></button>
           </div>
@@ -106,7 +106,7 @@ export const MasterListModal = ({
         {/* TABLE */}
         <div className="flex-1 overflow-auto p-4">
           <table className="w-full text-left text-xs border-collapse">
-            <thead className={`${isDarkMode ? 'bg-slate-900/50 text-slate-400' : 'bg-gray-50 text-gray-600'} sticky top-0 z-10 shadow-sm`}>
+            <thead className={`${isDarkMode ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-600'} sticky top-0 z-10 shadow-sm`}>
               <tr>
                 <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-100'}`} onClick={() => handleSort('name')}>Asset Name {getSortIcon('name')}</th>
                 <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-100'}`} onClick={() => handleSort('code')}>Code {getSortIcon('code')}</th>
@@ -125,14 +125,14 @@ export const MasterListModal = ({
             <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700' : 'divide-gray-200'}`}>
               {processedData.map(asset => {
                 const spec = specData.find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
-                const typeLabel = asset.id.startsWith('s-') ? 'Service' : 'Roller'; 
-                const typeColor = asset.id.startsWith('s-') 
-                    ? (isDarkMode ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-800')
-                    : (isDarkMode ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-800');
-                
-                const rowClass = asset.active === false 
-                    ? (isDarkMode ? 'bg-slate-800/50 text-slate-500' : 'bg-gray-100 text-gray-400')
-                    : (isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-50');
+                const typeLabel = asset.id.startsWith('s-') ? 'Service' : 'Roller';
+                const typeColor = asset.id.startsWith('s-')
+                  ? (isDarkMode ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-800')
+                  : (isDarkMode ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-800');
+
+                const rowClass = asset.active === false
+                  ? (isDarkMode ? 'bg-slate-800/50 text-slate-500' : 'bg-gray-100 text-gray-400')
+                  : (isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-50');
 
                 const textClass = isDarkMode ? 'text-slate-400' : 'text-gray-600';
                 const mainTextClass = isDarkMode ? 'text-slate-200' : 'text-gray-800';
@@ -149,9 +149,9 @@ export const MasterListModal = ({
                     <td className={`p-2 ${textClass}`}>{spec?.speedSensor || '-'}</td>
                     <td className={`p-2 ${textClass}`}>{spec?.loadCell || '-'}</td>
                     <td className={`p-2 ${textClass}`}>
-                        {spec?.billetType && <div>{spec.billetType}</div>}
-                        {spec?.billetWeight && <div className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{spec.billetWeight}kg</div>}
-                        {!spec?.billetType && !spec?.billetWeight && '-'}
+                      {spec?.billetType && <div>{spec.billetType}</div>}
+                      {spec?.billetWeight && <div className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{spec.billetWeight}kg</div>}
+                      {!spec?.billetType && !spec?.billetWeight && '-'}
                     </td>
                     <td className={`p-2 font-mono ${textClass} border-l ${isDarkMode ? 'border-slate-700 bg-orange-900/10' : 'border-gray-200 bg-orange-50'}`}>{spec?.rollDims || '-'}</td>
                     <td className={`p-2 ${textClass} ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>{spec?.adjustmentType || '-'}</td>

@@ -85,7 +85,9 @@ import {
   Cpu,
   Orbit,
   Rocket,
-  Undo
+  Undo,
+  Maximize,
+  Minimize
 } from 'lucide-react';
 
 export const Icons = {
@@ -137,6 +139,8 @@ export const Icons = {
   Cpu: (props) => <Cpu size={18} {...props} />,
   Orbit: (props) => <Orbit size={18} {...props} />,
   Rocket: (props) => <Rocket size={18} {...props} />,
+  Maximize: (props) => <Maximize size={18} {...props} />,
+  Minimize: (props) => <Minimize size={18} {...props} />,
 };
 
 // ==========================================
@@ -320,7 +324,7 @@ export const SimpleBarChart = ({ data, onBarClick }) => {
   );
 };
 
-export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect }) => {
+export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect, expandedSection, setExpandedSection }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState('quarter');
 
@@ -425,6 +429,16 @@ export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect }) => {
           <h3 className="font-bold text-slate-200">Maintenance Calendar</h3>
         </div>
         <div className="flex items-center gap-4">
+          {setExpandedSection && (
+            <button
+              type="button"
+              onClick={() => setExpandedSection(expandedSection === 'calendar' ? null : 'calendar')}
+              className="text-slate-400 hover:text-cyan-400 p-1 rounded transition-colors"
+              title={expandedSection === 'calendar' ? 'Minimize' : 'Maximize'}
+            >
+              {expandedSection === 'calendar' ? <Icons.Minimize size={18} /> : <Icons.Maximize size={18} />}
+            </button>
+          )}
           <div className="flex bg-slate-700 rounded p-1">
             {['month', 'quarter', 'year'].map(v => (
               <button

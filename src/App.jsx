@@ -28,6 +28,7 @@ import { AppHistoryModal } from './components/AppHistoryModal';
 import { IssueTracker } from './components/IssueTracker';
 import AssetTimeline from './components/AssetTimeline';
 import { SiteDropdown } from './components/SiteDropdown';
+import { CustomerReportModal } from './components/CustomerReportModal';
 
 // ==========================================
 // MAIN APP COMPONENT
@@ -100,6 +101,12 @@ export default function App() {
 
   // --- RESET APP HISTORY STATE ---
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
+
+  // --- CUSTOMER REPORT MODAL STATE ---
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // --- MAXIMIZE FEATURE STATE ---
+  const [expandedSection, setExpandedSection] = useState(null);
 
   const handleResetConfirm = () => {
     localStorage.clear();
@@ -759,6 +766,7 @@ export default function App() {
                     <button onClick={() => handlePrint('full')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
                     <button onClick={() => handlePrint('schedule')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📅</span> Schedule & Chart Only</button>
                     <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`px-4 py-3 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-500 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700'}`}><span>📋</span> Asset Specs Only <span className="text-[10px] ml-auto text-slate-500">{!selectedAsset ? '(Select Asset)' : ''}</span></button>
+                    <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); }} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📄</span> Customer Report (PDF)</button>
                   </div>
                 </div>
               )}
@@ -818,6 +826,7 @@ export default function App() {
               onClick={() => {
                 setActiveTab('issues');
                 setSelectedAssetId(null);
+                setLocalViewMode('list');
               }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'issues'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -934,13 +943,21 @@ export default function App() {
             </div>
 
             {/* Service Schedule Table */}
-            <div className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1" id="print-section-schedule">
+            <div className={`bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1 ${expandedSection === 'schedule' ? 'fixed inset-4 z-50' : ''}`} id="print-section-schedule">
               <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
                   <span className="text-xs text-slate-500 font-normal ml-2 hidden sm:inline">({filteredData.length} items)</span>
                 </div>
                 <div className="flex gap-2 items-center no-print">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedSection(expandedSection === 'schedule' ? null : 'schedule')}
+                    className="text-slate-400 hover:text-cyan-400 p-1 rounded transition-colors"
+                    title={expandedSection === 'schedule' ? 'Minimize' : 'Maximize'}
+                  >
+                    {expandedSection === 'schedule' ? <Icons.Minimize size={18} /> : <Icons.Maximize size={18} />}
+                  </button>
                   <div className="flex items-center mr-2">
                     <input
                       type="checkbox"
@@ -952,12 +969,12 @@ export default function App() {
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white px-2 py-1 rounded hover:bg-cyan-500">➕</button>
+                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 border border-cyan-500/50"><Icons.Plus size={16} /> Add Asset</button>
                 </div>
               </div>
               <div className="overflow-x-auto max-h-[600px]">
                 <table className="w-full text-left text-sm text-slate-300">
-                  <thead className="bg-slate-900 text-slate-400 sticky top-[57px] z-10">
+                  <thead className="bg-slate-900 text-slate-400 sticky top-[57px] z-20">
                     <tr>
                       <th className="px-4 py-2 w-8 text-center no-print">
                         <input
@@ -1047,7 +1064,26 @@ export default function App() {
             </div>
 
             {/* Maintenance Calendar */}
-            <CalendarWidget assets={filteredData} selectedAssetId={selectedAssetId} onAssetSelect={setSelectedAssetId} />
+            <div className={`${expandedSection === 'calendar' ? 'fixed inset-4 z-50 bg-slate-900 p-4 rounded-xl overflow-auto' : ''}`}>
+              <div className={`${expandedSection === 'calendar' ? 'flex justify-between items-center mb-4' : 'hidden'}`}>
+                <h3 className="font-bold text-lg text-slate-200">Maintenance Calendar</h3>
+                <button
+                  type="button"
+                  onClick={() => setExpandedSection(null)}
+                  className="text-slate-400 hover:text-cyan-400 p-2 rounded transition-colors"
+                  title="Minimize"
+                >
+                  <Icons.Minimize size={20} />
+                </button>
+              </div>
+              <CalendarWidget
+                assets={filteredData}
+                selectedAssetId={selectedAssetId}
+                onAssetSelect={setSelectedAssetId}
+                expandedSection={expandedSection}
+                setExpandedSection={setExpandedSection}
+              />
+            </div>
           </div>
 
           {/* RIGHT COLUMN: Equipment Details (Sticky) */}
@@ -1094,7 +1130,7 @@ export default function App() {
             />
           </div>
         ) : localViewMode === 'timeline' ? (
-          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px]">
+          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px] mt-6">
             <AssetTimeline assets={filteredData} mode={activeTab} />
           </div>
         ) : null}
@@ -1208,6 +1244,16 @@ export default function App() {
           </div>
         </Modal>
       )}
+
+      {/* CUSTOMER REPORT MODAL */}
+      <CustomerReportModal
+        isOpen={isReportModalOpen}
+        onClose={() => setIsReportModalOpen(false)}
+        site={selectedSite}
+        serviceData={currentServiceData}
+        rollerData={currentRollerData}
+        specData={currentSpecData}
+      />
 
     </div >
   );
