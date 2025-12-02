@@ -69,9 +69,7 @@ export default function App() {
     noteInput, setNoteInput,
     newAsset, setNewAsset,
     specNoteInput, setSpecNoteInput,
-    theme, setTheme,
-    isPrintMenuOpen, setIsPrintMenuOpen,
-    viewMode, setViewMode // Add viewMode to context or local state? Wait, context doesn't have it. I should add it to local state here.
+    isPrintMenuOpen, setIsPrintMenuOpen
   } = useUIContext();
 
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
@@ -134,6 +132,8 @@ export default function App() {
 
   // --- MAXIMIZE FEATURE STATE ---
   const [expandedSection, setExpandedSection] = useState(null);
+
+  const closeFullscreen = () => setExpandedSection(null);
 
   const handleResetConfirm = () => {
     localStorage.clear();
@@ -1030,13 +1030,14 @@ export default function App() {
                         <td className="px-4 py-2 text-slate-400 font-medium">{formatDate(item.dueDate)}</td>
                         <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
                         <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="text-slate-500 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
+                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); }} className="text-slate-500 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); }} className="text-slate-500 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              closeFullscreen();
                               setEditingAsset({ ...item });
                               const specs = currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
                               setEditingSpecs(specs || null);
@@ -1088,7 +1089,7 @@ export default function App() {
             {/* Maintenance Calendar */}
             {/* Maintenance Calendar */}
             {expandedSection === 'calendar' ? (
-              <FullScreenContainer title="Maintenance Calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
+              <FullScreenContainer title="Maintenance Calendar" id="calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
                 <CalendarWidget
                   assets={filteredData}
                   selectedAssetId={selectedAssetId}

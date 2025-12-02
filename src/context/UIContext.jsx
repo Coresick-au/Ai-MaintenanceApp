@@ -35,6 +35,9 @@ export const UIProvider = ({ children }) => {
     // --- THEME & MENUS ---
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
     const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
+    const [expandedSection, setExpandedSection] = useState(null);
+
+    const closeFullscreen = () => setExpandedSection(null);
 
     useEffect(() => {
         if (theme === 'dark') {
@@ -67,7 +70,9 @@ export const UIProvider = ({ children }) => {
             newAsset, setNewAsset,
             specNoteInput, setSpecNoteInput,
             theme, setTheme,
-            isPrintMenuOpen, setIsPrintMenuOpen
+            isPrintMenuOpen, setIsPrintMenuOpen,
+            expandedSection, setExpandedSection,
+            closeFullscreen
         }}>
             {children}
         </UIContext.Provider>
