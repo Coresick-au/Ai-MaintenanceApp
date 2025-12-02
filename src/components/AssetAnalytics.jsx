@@ -590,6 +590,57 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
         return 0;
     });
 
+    // --- NEW: Function to generate the AI Context Dump ---
+    const handleExportAIContext = () => {
+        if (!asset || !reports.length) return;
+
+        // 1. Prepare the Data
+        const cleanReports = reports.map(r => ({
+            date: r.date,
+            technician: r.technician,
+            tareChange: `${r.tareChange}%`,
+            spanChange: `${r.spanChange}%`,
+            zeroSignal: `${r.zeroMV} mV/V`,
+            spanSignal: `${r.spanMV} mV/V`,
+            beltSpeed: `${r.speed} m/s`,
+            comments: r.comments ? r.comments.map(c => c.text).join(' | ') : ''
+        }));
+
+        // 2. Build the Content (Markdown Format)
+        const fileContent = `
+# AI Maintenance Analysis Context
+**Generated on:** ${new Date().toISOString().split('T')[0]}
+**Asset:** ${asset.name} (${asset.code})
+**Location:** ${siteLocation || 'Unknown'}
+
+---
+
+## 🤖 SYSTEM PROMPT (Copy this to AI)
+You are a Senior Reliability Engineer. Analyze the dataset below for this Conveyor Belt Scale.
+1. **Identify Seasonality**: Look at the dates. This asset is in ${siteLocation}. Does the calibration drift (Tare/Span) correlate with seasonal temperature changes?
+2. **Assess Sensor Health**: Look at Zero/Span mV signals. Are they drifting linearly (aging) or erratic (moisture/mechanical)?
+3. **Analyze Comments**: Summarize the technical history. Are we fixing the same thing repeatedly?
+4. **Predictive Advice**: Based on the last 3 services, what should the technician bring to the next job?
+
+---
+
+## 📊 DATASET (JSON Format)
+\`\`\`json
+${JSON.stringify(cleanReports, null, 2)}
+\`\`\`
+        `;
+
+        // 3. Trigger Download
+        const blob = new Blob([fileContent], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `AI_Analysis_${asset.code}_${new Date().toISOString().split('T')[0]}.md`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
 
     return (
         <>
@@ -601,6 +652,14 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
                         <Button onClick={() => setShowAddReport(true)} className="flex-1">
                             <Icons.Plus /> Add Report
                         </Button>
+                        {/* NEW: AI Export Button */}
+                        <button
+                            onClick={handleExportAIContext}
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded font-medium shadow-lg shadow-purple-900/20 transition-all border border-purple-400/30"
+                            title="Download context file for AI Analysis"
+                        >
+                            <span>🤖</span> Generate AI Insight
+                        </button>
                     </div>
 
                     {/* TOP ROW: DRIFT - Tare Change */}
