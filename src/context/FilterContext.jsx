@@ -118,6 +118,18 @@ export const FilterProvider = ({ children }) => {
         }
     };
 
+    // --- REPORT SELECTION STATE ---
+    const [selectedReportIds, setSelectedReportIds] = useState(new Set());
+
+    const toggleReportSelection = (id) => {
+        const newSelection = new Set(selectedReportIds);
+        if (newSelection.has(id)) newSelection.delete(id);
+        else newSelection.add(id);
+        setSelectedReportIds(newSelection);
+    };
+
+    const clearReportSelections = () => setSelectedReportIds(new Set());
+
     return (
         <FilterContext.Provider value={{
             activeTab, setActiveTab,
@@ -135,7 +147,9 @@ export const FilterProvider = ({ children }) => {
             stats,
             handleSort,
             toggleRow,
-            toggleSelectAll
+            toggleSelectAll,
+            selectedReportIds, setSelectedReportIds,
+            toggleReportSelection, clearReportSelections
         }}>
             {children}
         </FilterContext.Provider>

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, Icons, formatDate } from './UIComponents';
 import { parseServiceReport } from '../utils/pdfParser';
+import { useFilterContext } from '../context/FilterContext';
 
 // --- REPORT DETAILS MODAL ---
 const ReportDetailsModal = ({ report, onClose, onDelete, siteLocation }) => {
@@ -512,6 +513,7 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
     const [isProcessingPDF, setIsProcessingPDF] = useState(false);
     const [pdfError, setPdfError] = useState('');
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: '' });
+    const { selectedReportIds, toggleReportSelection, clearReportSelections } = useFilterContext();
 
     const mountedRef = useRef(true); // NEW: To track if component is mounted
 
@@ -594,8 +596,12 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
     const handleExportAIContext = () => {
         if (!asset || !reports.length) return;
 
-        // 1. Prepare the Data
-        const cleanReports = reports.map(r => ({
+        // 1. Prepare the Data (Filter if selection exists)
+        const reportsToAnalyze = selectedReportIds.size > 0
+            ? reports.filter(r => selectedReportIds.has(r.id))
+            : reports;
+
+        const cleanReports = reportsToAnalyze.map(r => ({
             date: r.date,
             technician: r.technician,
             tareChange: `${r.tareChange}%`,
@@ -618,8 +624,12 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
 ## 🤖 SYSTEM PROMPT (Copy this to AI)
 You are now a **Senior Field Service Engineer** and **Technical Specialist** for a leading **Weighing Equipment Original Equipment Manufacturer (OEM)**.
 
-### Primary Directive
-Your primary directive is to provide code changes and technical support for the *AI Maintenance Application* that is used by field technicians and non-technical management.
+### Primary Directive: Data Analysis and Diagnostic Output
+Your primary directive is to provide code changes and technical support, with a critical focus on deep, actionable data analysis, especially concerning service reports.
+
+1.  **Service Report Analysis:** When generating a service report summary, you MUST analyze the full report history for the site.
+2.  **Weather Correlation:** When analyzing reports, you MUST perform a Google search for the **historical weather data** (Temperature, precipitation, and general conditions) for the site's location, covering the entire date range of the reports (e.g., "historical weather data for ${siteLocation || 'Unknown'} from [First Report Date] to [Last Report Date]").
+3.  **Diagnostic Charting:** Generate a chart that visually correlates **maintenance events/faults** with the **weather conditions** at the time of the report. This is critical for diagnosing environment-related failures.
 
 ### Personality & Output Rules
 * **Tone:** Your communication must be professional, practical, and focused on maximizing **uptime and reliability**. You prioritize clear, working solutions that prevent costly service calls.
@@ -629,18 +639,21 @@ Your primary directive is to provide code changes and technical support for the 
 Whenever a task involves analyzing or outputting data for visualization (charts, graphs, metrics) from the Asset Analytics or other sections, you MUST adhere to the following output format:
 
 1.  **Present the Data:** Render the raw, underlying chart data as a simple markdown table with clear column headers. The data must be structured as if it were to be pasted directly into an Excel spreadsheet (one column for the X-axis/Category, one or more columns for the Y-axis/Values).
+2.  **DELETE RULE:** You must **NOT** repeat the "How to Create a Chart in Microsoft Excel" steps in your final response. The user has confirmed they have these instructions.
 
-2.  **Provide Excel Steps:** Immediately after the data table, include the following step-by-step guide for the non-technical user.
+### Post-Analysis Follow-up
+All analytical write-ups (especially service reports) MUST conclude with a set of user-friendly technical questions to guide the next phase of work.
 
-**How to Create a Chart in Microsoft Excel:**
-To view this data as a chart, copy the table above and follow these steps:
-1.  **Copy the Data:** Highlight the entire table (including the header row) and copy it (\`Ctrl+C\` or \`Cmd+C\`).
-2.  **Open Excel:** Open a new, blank workbook in Microsoft Excel.
-3.  **Paste:** Click on the cell \`A1\` and paste the data (\`Ctrl+V\` or \`Cmd+V\`). The data should neatly fill the columns.
-4.  **Select:** Highlight all the pasted data in the Excel sheet (including the column headers).
-5.  **Insert Chart:** Go to the **Insert** tab on the Excel ribbon.
-6.  **Choose Chart Type:** In the Charts section, select the type of chart you need (e.g., **Column Chart** for comparisons, **Line Chart** for trends, or **Pie Chart** for proportions).
-7.  **Customize:** Excel will automatically generate the chart. You can then use the design tools (Chart Design and Format tabs) to add titles, labels, and customize colors.
+1.  **Question Count:** Generate exactly **five (5)** distinct technical questions.
+2.  **Format:** The questions must be actionable, user-friendly, and presented as a list, allowing the user to easily respond with a number to direct the next step.
+
+**Example Question Format:**
+"Do you want me to proceed with a deep dive on:
+1. ...
+2. ...
+3. ...
+4. ...
+5. ..."
 
 ---
 
@@ -779,7 +792,17 @@ ${JSON.stringify(cleanReports, null, 2)}
                     {/* REPORTS TABLE */}
                     <div className="border-t border-slate-700 pt-4">
                         <div className="flex justify-between items-center mb-3">
-                            <h3 className="text-lg font-bold text-slate-100">Service Reports</h3>
+                            <div className="flex items-center gap-4">
+                                <h3 className="text-lg font-bold text-slate-100">Service Reports</h3>
+                                {selectedReportIds.size > 0 && (
+                                    <button
+                                        onClick={() => { handleExportAIContext(); clearReportSelections(); }}
+                                        className="bg-[var(--accent-primary)] hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded flex items-center gap-2 animate-pulse"
+                                    >
+                                        <Icons.Cpu className="w-3 h-3" /> Analyze Selected ({selectedReportIds.size})
+                                    </button>
+                                )}
+                            </div>
                             <div className="bg-gradient-to-br from-blue-900/30 to-blue-700/30 rounded-lg p-2 border border-blue-700">
                                 <div className="text-xs text-blue-300 uppercase font-bold mb-1">Total Reports</div>
                                 <div className="text-xl font-bold text-white text-center">{reports.length}</div>
@@ -790,6 +813,9 @@ ${JSON.stringify(cleanReports, null, 2)}
                             <table className="w-full text-left text-xs text-slate-400">
                                 <thead className="bg-slate-800 text-slate-200 uppercase font-bold">
                                     <tr>
+                                        <th className="p-3 w-8">
+                                            {/* Header Checkbox could go here if we wanted 'Select All' */}
+                                        </th>
                                         <th className="p-3 cursor-pointer hover:text-white" onClick={() => handleSort('date')}>
                                             Date {sortColumn === 'date' && (sortDirection === 'asc' ? '▲' : '▼')}
                                         </th>
@@ -809,6 +835,14 @@ ${JSON.stringify(cleanReports, null, 2)}
                                             className="hover:bg-slate-800 cursor-pointer"
                                             onClick={() => setSelectedReport(r)}
                                         >
+                                            <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                                                <input
+                                                    type="checkbox"
+                                                    checked={selectedReportIds.has(r.id)}
+                                                    onChange={() => toggleReportSelection(r.id)}
+                                                    className="rounded border-slate-600 bg-slate-800 text-[var(--accent-primary)] focus:ring-0 focus:ring-offset-0"
+                                                />
+                                            </td>
                                             <td className="p-3">{formatDate(r.date)}</td>
                                             <td className="p-3 text-blue-400 flex items-center gap-1"><Icons.FileText /> {r.fileName}</td>
                                             <td className="p-3">{r.technician || '-'}</td>
