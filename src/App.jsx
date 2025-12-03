@@ -22,7 +22,7 @@ import {
   FullScreenContainer
 } from './components/UIComponents';
 import { MasterListModal } from './components/MasterListModal';
-import { AddAssetModal, EditAssetModal } from './components/AssetModals';
+import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
 import { AddSiteModal, EditSiteModal, ContactModal } from './components/SiteModals';
 import { AssetAnalyticsModal } from './components/AssetAnalytics';
 import { AppHistoryModal } from './components/AppHistoryModal';
@@ -131,6 +131,10 @@ export default function App() {
   // --- CUSTOMER REPORT MODAL STATE ---
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
+  // --- OPERATIONAL STATUS MODAL STATE ---
+  const [opStatusAsset, setOpStatusAsset] = useState(null);
+  const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
+
   // --- MAXIMIZE FEATURE STATE ---
   const [expandedSection, setExpandedSection] = useState(null);
 
@@ -191,6 +195,35 @@ export default function App() {
 
   // Clear selection on tab/site change
   useEffect(() => { setSelectedRowIds(new Set()); }, [activeTab, selectedSiteId, setSelectedRowIds]);
+
+  const handleSaveOpStatus = (statusData) => {
+    if (!opStatusAsset) return;
+
+    const updateAssetStatus = (list) => list.map(item => {
+      if (item.id === opStatusAsset.id) {
+        return {
+          ...item,
+          opStatus: statusData.opStatus,
+          opNote: statusData.opNote,
+          opNoteTimestamp: statusData.opNoteTimestamp,
+          history: [...(item.history || []), {
+            date: new Date().toISOString(),
+            action: `Operational Status changed to ${statusData.opStatus}`,
+            user: 'User'
+          }]
+        };
+      }
+      return item;
+    });
+
+    updateSiteData(selectedSiteId, {
+      serviceData: updateAssetStatus(currentServiceData),
+      rollerData: updateAssetStatus(currentRollerData)
+    }, 'Update Operational Status');
+
+    setIsOpStatusModalOpen(false);
+    setOpStatusAsset(null);
+  };
 
   const handleDownloadData = () => {
     const now = new Date();
@@ -976,7 +1009,7 @@ export default function App() {
               <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
-                  <span className="text-xs text-slate-500 font-normal ml-2 hidden sm:inline">({filteredData.length} items)</span>
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
                 </div>
                 <div className="flex gap-2 items-center no-print pr-10">
                   <div className="flex items-center mr-2">
@@ -1012,7 +1045,8 @@ export default function App() {
                       <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => handleSort('lastCal')}>Last Cal {getSortIcon('lastCal')}</th>
                       <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => handleSort('dueDate')}>Cal Due {getSortIcon('dueDate')}</th>
                       <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => handleSort('remaining')}>Days {getSortIcon('remaining')}</th>
-                      <th className="px-4 py-2 text-center min-w-[100px]">Status</th>
+                      <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
+                      <th className="px-4 py-2 text-center min-w-[100px]">Op Status</th>
                       <th className="px-3 py-2 text-center no-print text-xs">Analytics</th>
                       <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
                       <th className="px-3 py-2 text-center no-print text-xs">Edit</th>
@@ -1031,6 +1065,25 @@ export default function App() {
                         <td className="px-4 py-2 text-slate-400 font-medium">{formatDate(item.dueDate)}</td>
                         <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
                         <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>
+                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setOpStatusAsset(item);
+                              setIsOpStatusModalOpen(true);
+                            }}
+                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${item.opStatus === 'Warning'
+                              ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                              : item.opStatus === 'Down'
+                                ? 'bg-red-600 text-white hover:bg-red-700'
+                                : 'bg-green-600 text-white hover:bg-green-700'
+                              }`}
+                            title={item.opNote || 'Click to update operational status'}
+                          >
+                            {item.opStatus || 'Operational'}
+                          </button>
+                        </td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); }} className="text-slate-500 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); }} className="text-slate-500 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
@@ -1101,17 +1154,6 @@ export default function App() {
               </FullScreenContainer>
             ) : (
               <div>
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="font-bold text-lg text-slate-200">Maintenance Calendar</h3>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedSection('calendar')}
-                    className="text-slate-400 hover:text-cyan-400 p-2 rounded transition-colors"
-                    title="Maximize"
-                  >
-                    <Icons.Maximize size={20} />
-                  </button>
-                </div>
                 <CalendarWidget
                   assets={filteredData}
                   selectedAssetId={selectedAssetId}
@@ -1170,7 +1212,7 @@ export default function App() {
             />
           </div>
         ) : localViewMode === 'timeline' ? (
-          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px]">
+          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px] mt-6">
             {/* WRAPPED: Asset Timeline with Full Screen */}
             <FullScreenContainer className="h-full w-full bg-slate-900 rounded-xl border border-slate-800" title="Maintenance Timeline">
               <AssetTimeline assets={filteredData} mode={activeTab} />
@@ -1298,6 +1340,17 @@ export default function App() {
         serviceData={currentServiceData}
         rollerData={currentRollerData}
         specData={currentSpecData}
+      />
+
+      {/* OPERATIONAL STATUS MODAL */}
+      <OperationalStatusModal
+        isOpen={isOpStatusModalOpen}
+        onClose={() => {
+          setIsOpStatusModalOpen(false);
+          setOpStatusAsset(null);
+        }}
+        onSave={handleSaveOpStatus}
+        asset={opStatusAsset}
       />
 
     </div >

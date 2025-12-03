@@ -25,17 +25,17 @@ export const CustomerReportModal = ({
     const sortedService = [...serviceData].filter(a => a.active !== false).sort(sortByDue);
     const sortedRoller = [...rollerData].filter(a => a.active !== false).sort(sortByDue);
 
-    // Helper for status text
-    const getStatusText = (days) => {
-        if (days < 0) return 'OVERDUE';
-        if (days < 30) return 'DUE SOON';
-        return 'OK';
+    // Helper for operational status text
+    const getStatusText = (opStatus) => {
+        if (opStatus === 'Down') return 'DOWN/CRITICAL';
+        if (opStatus === 'Warning') return 'WARNING';
+        return 'OPERATIONAL';
     };
 
-    // Helper for status color (print friendly borders)
-    const getStatusStyle = (days) => {
-        if (days < 0) return 'border-l-4 border-red-600 bg-red-50 text-red-900';
-        if (days < 30) return 'border-l-4 border-amber-500 bg-amber-50 text-amber-900';
+    // Helper for operational status color (print friendly borders)
+    const getStatusStyle = (opStatus) => {
+        if (opStatus === 'Down') return 'border-l-4 border-red-600 bg-red-50 text-red-900';
+        if (opStatus === 'Warning') return 'border-l-4 border-amber-500 bg-amber-50 text-amber-900';
         return 'border-l-4 border-green-600 text-slate-900';
     };
 
@@ -117,20 +117,32 @@ export const CustomerReportModal = ({
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
                                     {sortedService.map((item) => (
-                                        <tr key={item.id} className={`break-inside-avoid ${getStatusStyle(item.remaining).replace('border-l-4', 'border-l-0')} print:border-b print:border-slate-100`}>
-                                            <td className="py-3 font-semibold text-slate-900">{item.name}</td>
-                                            <td className="py-3 font-mono text-slate-600 text-xs">{item.code}</td>
-                                            <td className="py-3 text-slate-600">{formatDate(item.lastCal)}</td>
-                                            <td className="py-3 text-slate-900 font-medium">{formatDate(item.dueDate)}</td>
-                                            <td className="py-3 text-right">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold border ${item.remaining < 0 ? 'border-red-200 bg-red-100 text-red-800' :
-                                                        item.remaining < 30 ? 'border-amber-200 bg-amber-100 text-amber-800' :
-                                                            'border-slate-200 bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    {getStatusText(item.remaining)}
-                                                </span>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={item.id}>
+                                            <tr className={`break-inside-avoid ${getStatusStyle(item.opStatus).replace('border-l-4', 'border-l-0')} print:border-b print:border-slate-100`}>
+                                                <td className="py-3 font-semibold text-slate-900">{item.name}</td>
+                                                <td className="py-3 font-mono text-slate-600 text-xs">{item.code}</td>
+                                                <td className="py-3 text-slate-600">{formatDate(item.lastCal)}</td>
+                                                <td className="py-3 text-slate-900 font-medium">{formatDate(item.dueDate)}</td>
+                                                <td className="py-3 text-right">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold border ${item.opStatus === 'Down' ? 'border-red-200 bg-red-100 text-red-800' :
+                                                            item.opStatus === 'Warning' ? 'border-amber-200 bg-amber-100 text-amber-800' :
+                                                                'border-green-200 bg-green-100 text-green-800'
+                                                        }`}>
+                                                        {getStatusText(item.opStatus)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {(item.opStatus === 'Warning' || item.opStatus === 'Down') && item.opNote && (
+                                                <tr className="break-inside-avoid bg-slate-50">
+                                                    <td colSpan={5} className="py-2 px-4 text-xs italic text-slate-600 border-l-4 border-slate-300">
+                                                        <strong className="font-bold text-slate-700 not-italic">Note:</strong> {item.opNote}
+                                                        {item.opNoteTimestamp && (
+                                                            <span className="ml-2 text-slate-500">({formatDate(item.opNoteTimestamp, true)})</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>
@@ -156,20 +168,32 @@ export const CustomerReportModal = ({
                                 </thead>
                                 <tbody className="divide-y divide-slate-200">
                                     {sortedRoller.map((item) => (
-                                        <tr key={item.id} className="break-inside-avoid">
-                                            <td className="py-3 font-semibold text-slate-900">{item.name}</td>
-                                            <td className="py-3 font-mono text-slate-600 text-xs">{item.code}</td>
-                                            <td className="py-3 text-slate-600">{formatDate(item.lastCal)}</td>
-                                            <td className="py-3 text-slate-900 font-medium">{formatDate(item.dueDate)}</td>
-                                            <td className="py-3 text-right">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold border ${item.remaining < 0 ? 'border-red-200 bg-red-100 text-red-800' :
-                                                        item.remaining < 30 ? 'border-amber-200 bg-amber-100 text-amber-800' :
-                                                            'border-slate-200 bg-slate-100 text-slate-600'
-                                                    }`}>
-                                                    {getStatusText(item.remaining)}
-                                                </span>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={item.id}>
+                                            <tr className="break-inside-avoid">
+                                                <td className="py-3 font-semibold text-slate-900">{item.name}</td>
+                                                <td className="py-3 font-mono text-slate-600 text-xs">{item.code}</td>
+                                                <td className="py-3 text-slate-600">{formatDate(item.lastCal)}</td>
+                                                <td className="py-3 text-slate-900 font-medium">{formatDate(item.dueDate)}</td>
+                                                <td className="py-3 text-right">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold border ${item.opStatus === 'Down' ? 'border-red-200 bg-red-100 text-red-800' :
+                                                            item.opStatus === 'Warning' ? 'border-amber-200 bg-amber-100 text-amber-800' :
+                                                                'border-green-200 bg-green-100 text-green-800'
+                                                        }`}>
+                                                        {getStatusText(item.opStatus)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {(item.opStatus === 'Warning' || item.opStatus === 'Down') && item.opNote && (
+                                                <tr className="break-inside-avoid bg-slate-50">
+                                                    <td colSpan={5} className="py-2 px-4 text-xs italic text-slate-600 border-l-4 border-slate-300">
+                                                        <strong className="font-bold text-slate-700 not-italic">Note:</strong> {item.opNote}
+                                                        {item.opNoteTimestamp && (
+                                                            <span className="ml-2 text-slate-500">({formatDate(item.opNoteTimestamp, true)})</span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>

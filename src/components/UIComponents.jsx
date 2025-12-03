@@ -247,7 +247,7 @@ export const FullScreenContainer = ({ children, className = "", title, onClose }
   }
 
   return (
-    <div className={`transition-all duration-300 ease-in-out group relative flex flex-col ${className}`}>
+    <div className={`transition-all duration-300 ease-in-out group relative flex flex-col overflow-visible ${className}`}>
       {content}
     </div>
   );
@@ -497,7 +497,7 @@ export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect, expande
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-4 mt-6 no-print">
+    <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-4 no-print">
       <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
         <div className="flex items-center gap-2">
           <span className="text-lg text-cyan-400 bg-cyan-900/30 p-1 rounded"><Icons.Calendar /></span>
