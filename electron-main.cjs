@@ -5,6 +5,20 @@ const url = require('url');
 // Check if we're in development mode
 const isDev = process.env.IS_DEV === 'true';
 
+// Enable auto-reload for main process files in development
+if (isDev) {
+  try {
+    require('electron-reload')(__dirname, {
+      electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
+      hardResetMethod: 'exit',
+      // Watch main process files
+      ignored: /node_modules|[\/\\]\.|dist|build/
+    });
+  } catch (err) {
+    console.log('electron-reload not available');
+  }
+}
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,

@@ -56,27 +56,39 @@ export const Button = ({ children, onClick, disabled, className = "", variant = 
 };
 
 // FullScreenContainer Component
-export const FullScreenContainer = ({ children, className = "", title, onClose }) => {
-  const [isFullScreen, setIsFullScreen] = useState(false);
+export const FullScreenContainer = ({ children, className = "", title, onClose, isOpen, onToggle }) => {
+  const [internalFullScreen, setInternalFullScreen] = useState(false);
+
+  // Use controlled state if isOpen is provided, otherwise use internal state
+  const isFullScreen = isOpen !== undefined ? isOpen : internalFullScreen;
 
   // Close on Escape key
   useEffect(() => {
     const handleEsc = (e) => {
       if (e.key === 'Escape') {
-        setIsFullScreen(false);
+        if (isOpen !== undefined) {
+          if (onToggle) onToggle(false);
+        } else {
+          setInternalFullScreen(false);
+        }
         if (onClose) onClose();
       }
     };
     if (isFullScreen) window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
-  }, [isFullScreen, onClose]);
+  }, [isFullScreen, onClose, isOpen, onToggle]);
 
-  const toggleFullScreen = (e) => {
+  const handleToggle = (e) => {
     e.stopPropagation();
     if (isFullScreen && onClose) {
       onClose();
     }
-    setIsFullScreen(!isFullScreen);
+
+    if (onToggle) {
+      onToggle(!isFullScreen);
+    } else {
+      setInternalFullScreen(!isFullScreen);
+    }
   };
 
   const content = (
@@ -90,7 +102,7 @@ export const FullScreenContainer = ({ children, className = "", title, onClose }
 
       {/* Toggle Button */}
       <button
-        onClick={toggleFullScreen}
+        onClick={handleToggle}
         className={`
             absolute top-2 right-2 z-50 p-2 rounded-lg shadow-lg transition-all duration-200 border
             ${isFullScreen
@@ -442,7 +454,10 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
           onBlur={handleBlur}
           onClickOutside={handleBlur}
           dateFormat="dd-MM-yyyy"
-          className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`}
+          showYearDropdown
+          showMonthDropdown
+          dropdownMode="select"
+          className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ring-offset-0 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`}
           calendarClassName="react-datepicker-custom-calendar"
           popperPlacement="auto"
           autoFocus
@@ -450,7 +465,7 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
         />
       );
     }
-    return <input autoFocus type={type} value={tempValue || ''} onChange={(e) => setTempValue(e.target.value)} onBlur={handleBlur} onKeyDown={(e) => e.key === 'Enter' && handleBlur()} onClick={(e) => e.stopPropagation()} className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`} />;
+    return <input autoFocus type={type} value={tempValue || ''} onChange={(e) => setTempValue(e.target.value)} onBlur={handleBlur} onKeyDown={(e) => e.key === 'Enter' && handleBlur()} onClick={(e) => e.stopPropagation()} className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ring-offset-0 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`} />;
   }
 
   const displayValue = type === 'date' && value ? formatDate(value) : (value || '');

@@ -125,8 +125,8 @@ export const CustomerReportModal = ({
                                                 <td className="py-3 text-slate-100 font-medium">{formatDate(item.dueDate)}</td>
                                                 <td className="py-3 text-right">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold border ${item.opStatus === 'Down' ? 'border-red-200 bg-red-100 text-red-800' :
-                                                            item.opStatus === 'Warning' ? 'border-amber-200 bg-amber-100 text-amber-800' :
-                                                                'border-green-200 bg-green-100 text-green-800'
+                                                        item.opStatus === 'Warning' ? 'border-amber-200 bg-amber-100 text-amber-800' :
+                                                            'border-green-200 bg-green-100 text-green-800'
                                                         }`}>
                                                         {getStatusText(item.opStatus)}
                                                     </span>
@@ -176,8 +176,8 @@ export const CustomerReportModal = ({
                                                 <td className="py-3 text-slate-100 font-medium">{formatDate(item.dueDate)}</td>
                                                 <td className="py-3 text-right">
                                                     <span className={`px-2 py-1 rounded text-xs font-bold border ${item.opStatus === 'Down' ? 'border-red-200 bg-red-100 text-red-800' :
-                                                            item.opStatus === 'Warning' ? 'border-amber-200 bg-amber-100 text-amber-800' :
-                                                                'border-green-200 bg-green-100 text-green-800'
+                                                        item.opStatus === 'Warning' ? 'border-amber-200 bg-amber-100 text-amber-800' :
+                                                            'border-green-200 bg-green-100 text-green-800'
                                                         }`}>
                                                         {getStatusText(item.opStatus)}
                                                     </span>
@@ -216,20 +216,24 @@ export const CustomerReportModal = ({
                                         </div>
                                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
                                             <div>
-                                                <span className="block text-slate-400 uppercase font-bold text-[10px]">Scale</span>
-                                                <span className="font-medium text-slate-200">{spec.scale || '-'}</span>
+                                                <span className="block text-slate-400 uppercase font-bold text-[10px]">Scale Type</span>
+                                                <span className="font-medium text-slate-200">{spec.scaleType || '-'}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-slate-400 uppercase font-bold text-[10px]">Integrator</span>
-                                                <span className="font-medium text-slate-200">{spec.integrator || '-'}</span>
+                                                <span className="font-medium text-slate-200">{spec.integratorController || '-'}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-slate-400 uppercase font-bold text-[10px]">Speed Sensor</span>
-                                                <span className="font-medium text-slate-200">{spec.speedSensor || '-'}</span>
+                                                <span className="font-medium text-slate-200">{spec.speedSensorType || '-'}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-slate-400 uppercase font-bold text-[10px]">Load Cell</span>
-                                                <span className="font-medium text-slate-200">{spec.loadCell || '-'}</span>
+                                                <span className="font-medium text-slate-200">{spec.loadCellBrand || '-'} ({spec.numberOfLoadCells || '0'}x)</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-slate-400 uppercase font-bold text-[10px]">LC Specs</span>
+                                                <span className="font-medium text-slate-200">{spec.loadCellSize || '-'} / {spec.loadCellSensitivity || '-'}</span>
                                             </div>
                                             <div>
                                                 <span className="block text-slate-400 uppercase font-bold text-[10px]">Roller Dims</span>
@@ -237,7 +241,11 @@ export const CustomerReportModal = ({
                                             </div>
                                             <div>
                                                 <span className="block text-slate-400 uppercase font-bold text-[10px]">Billet</span>
-                                                <span className="font-medium text-slate-200">{spec.billetType || '-'} ({spec.billetWeight}kg)</span>
+                                                <span className="font-medium text-slate-200">{spec.billetWeightType || '-'}</span>
+                                            </div>
+                                            <div>
+                                                <span className="block text-slate-400 uppercase font-bold text-[10px]">Billet Size</span>
+                                                <span className="font-medium text-slate-200">{spec.billetWeightSize || '-'}</span>
                                             </div>
                                         </div>
                                     </div>

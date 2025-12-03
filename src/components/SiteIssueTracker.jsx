@@ -3,7 +3,7 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 import { Button, Icons, formatDate, Modal } from './UIComponents';
 
-export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onToggleIssueStatus, onCopyIssue, assets }) => {
+export const SiteIssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onToggleIssueStatus, onCopyIssue, assets }) => {
   const [newIssueDescription, setNewIssueDescription] = useState('');
   const [newIssueAssignedTo, setNewIssueAssignedTo] = useState('');
   const [newIssueImportance, setNewIssueImportance] = useState('Medium');
@@ -99,7 +99,7 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
     <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200">
-          <Icons.AlertTriangle /> Issue Tracker <span className="text-slate-400 text-sm">({issues.length} total, {issues.filter(issue => issue.status === 'Completed').length} completed)</span>
+          <Icons.AlertTriangle /> Site Issue Tracker <span className="text-slate-400 text-sm">({issues.length} total, {issues.filter(issue => issue.status === 'Completed').length} completed)</span>
         </h2>
         <div className="flex items-center gap-2">
           <label htmlFor="show-completed" className="text-sm text-slate-400 flex items-center gap-1 cursor-pointer">
@@ -153,11 +153,11 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
                 : bImportance - aImportance;
             }
             if (sortIssuesConfig.key === 'dueDate') {
-                const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
-                const bDate = b.dueDate ? new Date(b.dueDate).getTime() : 0;
-                return sortIssuesConfig.direction === 'ascending'
-                    ? aDate - bDate
-                    : bDate - aDate;
+              const aDate = a.dueDate ? new Date(a.dueDate).getTime() : 0;
+              const bDate = b.dueDate ? new Date(b.dueDate).getTime() : 0;
+              return sortIssuesConfig.direction === 'ascending'
+                ? aDate - bDate
+                : bDate - aDate;
             }
             return 0;
           }).map((issue) => (
@@ -239,6 +239,9 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
               onChange={(date) => setNewIssueDueDate(date)}
               placeholderText="Select Due Date (Optional)"
               dateFormat="dd-MM-yyyy"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
               className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
             />
             <div className="flex gap-2 mt-4">
@@ -295,6 +298,9 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
               onChange={(date) => setEditIssueDueDate(date)}
               placeholderText="Select Due Date (Optional)"
               dateFormat="dd-MM-yyyy"
+              showYearDropdown
+              showMonthDropdown
+              dropdownMode="select"
               className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
             />
             <div className="flex gap-2 mt-4">

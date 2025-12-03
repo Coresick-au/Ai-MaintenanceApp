@@ -5,19 +5,19 @@
 // ==========================================
 export const recalculateRow = (row) => {
   if (!row.lastCal || !row.frequency) return row;
-  
+
   const lastCalDate = new Date(row.lastCal);
   const dueDate = new Date(lastCalDate);
   dueDate.setMonth(dueDate.getMonth() + parseInt(row.frequency));
-  
+
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = new Date(dueDate);
   due.setHours(0, 0, 0, 0);
-  
+
   const diffTime = due - today;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
+
   return {
     ...row,
     dueDate: dueDate.toISOString().split('T')[0],
@@ -31,16 +31,16 @@ export const recalculateRow = (row) => {
 const generateSampleReports = (startDate, numReports = 4) => {
   const reports = [];
   const monthsBack = [9, 6, 3, 0]; // Last 4 quarters by default
-  
+
   for (let i = 0; i < numReports; i++) {
     const monthOffset = monthsBack[i] || (numReports - i - 1) * 3;
     const date = new Date(startDate.getFullYear(), startDate.getMonth() - monthOffset, Math.floor(Math.random() * 28) + 1);
-    
+
     // 1. Calibration Drift (Tare/Span %)
     // Realistic drift: usually small, occasionally larger
-    const tareDrift = (Math.random() * 1.5 - 0.5).toFixed(2); 
-    const spanDrift = (Math.random() * 1.0 - 0.4).toFixed(2); 
-    
+    const tareDrift = (Math.random() * 1.5 - 0.5).toFixed(2);
+    const spanDrift = (Math.random() * 1.0 - 0.4).toFixed(2);
+
     // 2. Signal Health (mV/V)
     // Zero usually around 8-9mV, Span around 12-13mV
     const zeroMV = (8.3 + Math.random() * 0.4).toFixed(2);
@@ -63,11 +63,11 @@ const generateSampleReports = (startDate, numReports = 4) => {
       "Span adjustment required due to material density change.",
       "Junction box moisture detected, sealed and dried."
     ];
-    
+
     const shouldHaveComment = Math.random() > 0.6; // 40% chance of comment
     const comments = shouldHaveComment ? [
-      { 
-        id: 1, 
+      {
+        id: 1,
         text: commentOptions[Math.floor(Math.random() * commentOptions.length)],
         status: Math.random() > 0.5 ? "Open" : "Resolved"
       }
@@ -90,7 +90,7 @@ const generateSampleReports = (startDate, numReports = 4) => {
       comments: comments
     });
   }
-  
+
   return reports.sort((a, b) => new Date(a.date) - new Date(b.date));
 };
 
@@ -100,17 +100,17 @@ const generateSampleReports = (startDate, numReports = 4) => {
 export const generateTestAssets = (count, prefix, daysAgoBase, baseName, baseCode) => {
   const assets = [];
   const now = new Date();
-  
+
   for (let i = 0; i < count; i++) {
     const daysAgo = daysAgoBase + (i * 30) + Math.floor(Math.random() * 20);
     const lastCalDate = new Date(now);
     lastCalDate.setDate(lastCalDate.getDate() - daysAgo);
-    
+
     const frequency = prefix === 's' ? 3 : 12; // 3 months for service, 12 for rollers
-    
+
     // Generate random number of reports (2-6)
     const numReports = Math.floor(Math.random() * 5) + 2;
-    
+
     const asset = {
       id: `${prefix}-${Math.random().toString(36).substr(2, 9)}`,
       name: `${baseName} ${i + 1}`,
@@ -128,10 +128,10 @@ export const generateTestAssets = (count, prefix, daysAgoBase, baseName, baseCod
       ],
       reports: generateSampleReports(lastCalDate, numReports)
     };
-    
+
     assets.push(recalculateRow(asset));
   }
-  
+
   return assets;
 };
 
@@ -144,14 +144,17 @@ export const generateTestSpecs = (assets) => {
     weigher: asset.weigher,
     altCode: asset.code,
     description: asset.name,
-    scale: ['Schenck VEG20600', 'Ramsey Micro-Tech', 'Thayer Scale', 'Siemens Milltronics', 'Hardy HI-6600'][i % 5],
-    integrator: ['Siemens S7-1200', 'Allen Bradley CompactLogix', 'Schneider M340', 'Mitsubishi FX5U', 'Omron NX'][i % 5],
-    speedSensor: ['Proximity Sensor 24VDC', 'Encoder 1024 PPR', 'Tachometer', 'Radar Speed Sensor', 'Optical Encoder'][i % 5],
+    scaleType: ['Schenck VEG20600', 'Ramsey Micro-Tech', 'Thayer Scale', 'Siemens Milltronics', 'Hardy HI-6600'][i % 5],
+    integratorController: ['Siemens S7-1200', 'Allen Bradley CompactLogix', 'Schneider M340', 'Mitsubishi FX5U', 'Omron NX'][i % 5],
+    speedSensorType: ['Proximity Sensor 24VDC', 'Encoder 1024 PPR', 'Tachometer', 'Radar Speed Sensor', 'Optical Encoder'][i % 5],
     rollDims: `${100 + i * 10}mm x ${50 + i * 5}mm`,
     adjustmentType: ['Manual Screw', 'Pneumatic', 'Hydraulic', 'Electric Motor', 'Spring Loaded'][i % 5],
-    loadCell: ['Vishay Nobel KIS-2', 'HBM RTN', 'Scaime F60', 'Mettler Toledo SLC', 'Flintec RC3'][i % 5],
-    billetType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
-    billetWeight: (500 + i * 50).toString(),
+    loadCellBrand: ['Vishay Nobel', 'HBM', 'Scaime', 'Mettler Toledo', 'Flintec'][i % 5],
+    loadCellSize: ['50 kg', '100 kg', '250 kg', '500 kg', '1000 kg'][i % 5],
+    loadCellSensitivity: ['2.0 mV/V', '3.0 mV/V', '1.5 mV/V', '2.0 mV/V', '2.5 mV/V'][i % 5],
+    numberOfLoadCells: [2, 4, 4, 6, 4][i % 5],
+    billetWeightType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
+    billetWeightSize: `${500 + i * 50}mm`,
     notes: [],
     history: [
       {
@@ -169,29 +172,29 @@ export const generateTestSpecs = (assets) => {
 export const generateSampleSite = () => {
   const id = Math.random().toString(36).substr(2, 9);
   const now = new Date();
-  
+
   // Random number of assets between 10 and 18 for comprehensive demo
   const numAssets = Math.floor(Math.random() * 9) + 10;
-  
+
   // Generate assets with SHARED base IDs so service and roller data stay synced
   const baseIds = Array.from({ length: numAssets }, () => Math.random().toString(36).substr(2, 9));
-  
+
   const serviceData = [];
   const rollerData = [];
-  
+
   baseIds.forEach((baseId, i) => {
     const daysAgo = 90 + (i * 30) + Math.floor(Math.random() * 20);
     const lastCalDate = new Date(now);
     lastCalDate.setDate(lastCalDate.getDate() - daysAgo);
-    
+
     const assetName = `Sample Asset ${i + 1}`;
     const assetCode = `SAMPLE-${String(i + 1).padStart(3, '0')}`;
     const weigher = `W${i + 1}`;
-    
+
     // Generate random number of reports (3-7)
     const numReports = Math.floor(Math.random() * 5) + 3;
     const reports = generateSampleReports(lastCalDate, numReports);
-    
+
     // Service asset
     serviceData.push(recalculateRow({
       id: `s-${baseId}`,
@@ -210,7 +213,7 @@ export const generateSampleSite = () => {
       ],
       reports: JSON.parse(JSON.stringify(reports)) // Deep clone
     }));
-    
+
     // Roller asset (same base data, different ID prefix)
     rollerData.push(recalculateRow({
       id: `r-${baseId}`,
@@ -230,7 +233,7 @@ export const generateSampleSite = () => {
       reports: JSON.parse(JSON.stringify(reports)) // Deep clone
     }));
   });
-  
+
   const specData = [...generateTestSpecs(serviceData)];
 
   const customerNames = ['Acme Mining Corp', 'TechCo Industries', 'MegaMine Resources Ltd', 'Global Bulk Materials', 'Peak Coal Resources', 'Summit Mining', 'Horizon Materials', 'Continental Mining Co'];
@@ -239,35 +242,35 @@ export const generateSampleSite = () => {
   const positions = ['Maintenance Supervisor', 'Plant Manager', 'Chief Engineer', 'Maintenance Coordinator', 'Operations Manager', 'Technical Lead'];
   const firstNames = ['John', 'Sarah', 'Michael', 'Emma', 'David', 'Lisa', 'James', 'Rachel', 'Chris', 'Amy'];
   const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Moore', 'Taylor'];
-  
+
   const customer = customerNames[Math.floor(Math.random() * customerNames.length)];
   const siteName = siteNames[Math.floor(Math.random() * siteNames.length)];
   const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
   const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
   const position = positions[Math.floor(Math.random() * positions.length)];
-  
+
   // Generate multiple notes for more realistic demo
   const notes = [
-    { 
-      id: `n-${id}-1`, 
-      content: `Auto-generated demo site with ${numAssets} assets. Contains comprehensive service schedules, roller replacement data, specifications, and historical reports.`, 
-      author: 'System', 
+    {
+      id: `n-${id}-1`,
+      content: `Auto-generated demo site with ${numAssets} assets. Contains comprehensive service schedules, roller replacement data, specifications, and historical reports.`,
+      author: 'System',
       timestamp: new Date(now - 86400000 * 7).toISOString() // 7 days ago
     },
-    { 
-      id: `n-${id}-2`, 
-      content: 'Initial site setup completed. All conveyor belt scales configured and calibrated.', 
-      author: firstName.charAt(0) + lastName.charAt(0), 
+    {
+      id: `n-${id}-2`,
+      content: 'Initial site setup completed. All conveyor belt scales configured and calibrated.',
+      author: firstName.charAt(0) + lastName.charAt(0),
       timestamp: new Date(now - 86400000 * 5).toISOString() // 5 days ago
     },
-    { 
-      id: `n-${id}-3`, 
-      content: 'Quarterly maintenance review scheduled. All systems operational.', 
-      author: firstName.charAt(0) + lastName.charAt(0), 
+    {
+      id: `n-${id}-3`,
+      content: 'Quarterly maintenance review scheduled. All systems operational.',
+      author: firstName.charAt(0) + lastName.charAt(0),
       timestamp: new Date(now - 86400000 * 2).toISOString() // 2 days ago
     }
   ];
-  
+
   return {
     id: `site-sample-${id}`,
     name: `${customer} - ${siteName}`,
@@ -294,23 +297,23 @@ const generatePairedAssets = (count, daysAgoBase, baseName, baseCode) => {
   const serviceData = [];
   const rollerData = [];
   const now = new Date();
-  
+
   // Generate shared base IDs for pairing
   const baseIds = Array.from({ length: count }, () => Math.random().toString(36).substr(2, 9));
-  
+
   baseIds.forEach((baseId, i) => {
     const daysAgo = daysAgoBase + (i * 30) + Math.floor(Math.random() * 20);
     const lastCalDate = new Date(now);
     lastCalDate.setDate(lastCalDate.getDate() - daysAgo);
-    
+
     const assetName = `${baseName} ${i + 1}`;
     const assetCode = `${baseCode}-${String(i + 1).padStart(3, '0')}`;
     const weigher = `W${i + 1}`;
-    
+
     // Generate random number of reports (2-6)
     const numReports = Math.floor(Math.random() * 5) + 2;
     const reports = generateSampleReports(lastCalDate, numReports);
-    
+
     // Service asset (3 month frequency)
     serviceData.push(recalculateRow({
       id: `s-${baseId}`,
@@ -329,7 +332,7 @@ const generatePairedAssets = (count, daysAgoBase, baseName, baseCode) => {
       ],
       reports: JSON.parse(JSON.stringify(reports)) // Deep clone
     }));
-    
+
     // Roller asset (12 month frequency) - SAME NAME, WEIGHER, CODE
     rollerData.push(recalculateRow({
       id: `r-${baseId}`,
@@ -349,7 +352,7 @@ const generatePairedAssets = (count, daysAgoBase, baseName, baseCode) => {
       reports: JSON.parse(JSON.stringify(reports)) // Deep clone
     }));
   });
-  
+
   return { serviceData, rollerData };
 };
 

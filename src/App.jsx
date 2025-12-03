@@ -26,7 +26,7 @@ import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './compone
 import { AddSiteModal, EditSiteModal, ContactModal } from './components/SiteModals';
 import { AssetAnalyticsModal } from './components/AssetAnalytics';
 import { AppHistoryModal } from './components/AppHistoryModal';
-import { IssueTracker } from './components/IssueTracker';
+import { SiteIssueTracker } from './components/SiteIssueTracker';
 import AssetTimeline from './components/AssetTimeline';
 import { SiteDropdown } from './components/SiteDropdown';
 import { CustomerReportModal } from './components/CustomerReportModal';
@@ -70,7 +70,9 @@ export default function App() {
     newAsset, setNewAsset,
     specNoteInput, setSpecNoteInput,
     theme, setTheme,
-    isPrintMenuOpen, setIsPrintMenuOpen
+    isPrintMenuOpen, setIsPrintMenuOpen,
+    expandedSection, setExpandedSection,
+    closeFullscreen
   } = useUIContext();
 
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
@@ -136,12 +138,30 @@ export default function App() {
   const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
 
   // --- HUMOROUS LIGHT MODE MESSAGE STATE ---
+  // --- HUMOROUS LIGHT MODE MESSAGE STATE ---
   const [lightModeMessage, setLightModeMessage] = useState("Light mode users be like: \"I love squinting. It builds character.\"");
+  const [showLightModeMessage, setShowLightModeMessage] = useState(false);
+  const messageTimerRef = useRef(null);
 
-  // --- MAXIMIZE FEATURE STATE ---
-  const [expandedSection, setExpandedSection] = useState(null);
+  const handleLightModeClick = () => {
+    const messages = [
+      "Light mode users be like: \"I love squinting. It builds character.\"",
+      "Light mode: for people who think their screen should double as a flashlight.",
+      "You know, pressing it more doesn’t make it work faster"
+    ];
+    let currentIndex = messages.indexOf(lightModeMessage);
+    if (currentIndex === -1) currentIndex = 0;
 
-  const closeFullscreen = () => setExpandedSection(null);
+    const nextIndex = (currentIndex + 1) % messages.length;
+    setLightModeMessage(messages[nextIndex]);
+
+    setShowLightModeMessage(true);
+
+    if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
+    messageTimerRef.current = setTimeout(() => {
+      setShowLightModeMessage(false);
+    }, 3000);
+  };
 
   const handleResetConfirm = () => {
     localStorage.clear();
@@ -482,21 +502,12 @@ export default function App() {
         {/* Humorous "Light Mode" Button - Top Right */}
         <div className="absolute top-4 right-4 no-print">
           <button
-            onClick={() => {
-              const messages = [
-                "Light mode users be like: \"I love squinting. It builds character.\"",
-                "Light mode: for people who think their screen should double as a flashlight."
-              ];
-              const currentIndex = messages.indexOf(lightModeMessage);
-              const nextIndex = (currentIndex + 1) % messages.length;
-              setLightModeMessage(messages[nextIndex]);
-            }}
+            onClick={handleLightModeClick}
             className="p-2 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors relative group"
-            title={lightModeMessage}
           >
             ☀️
             {/* Tooltip with message */}
-            <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800 text-white text-xs p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-slate-600">
+            <div className={`absolute right-0 top-full mt-2 w-64 bg-slate-800 text-white text-xs p-3 rounded-lg shadow-xl transition-opacity duration-300 pointer-events-none z-50 border border-slate-600 ${showLightModeMessage ? 'opacity-100' : 'opacity-0'}`}>
               {lightModeMessage}
             </div>
           </button>
@@ -869,6 +880,7 @@ export default function App() {
                 setSelectedAssetId(null);
                 setIsRollerOnlyMode(false);
                 setLocalViewMode('list');
+                setExpandedSection(null);
               }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'service' && localViewMode === 'list'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -887,6 +899,7 @@ export default function App() {
                 setSelectedAssetId(null);
                 setIsRollerOnlyMode(true);
                 setLocalViewMode('list');
+                setExpandedSection(null);
               }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'roller' && localViewMode === 'list'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -904,6 +917,7 @@ export default function App() {
                 setActiveTab('issues');
                 setSelectedAssetId(null);
                 setLocalViewMode('list');
+                setExpandedSection(null);
               }}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'issues'
                 ? 'bg-cyan-600 text-white shadow-md'
@@ -911,7 +925,7 @@ export default function App() {
                 }`}
             >
               <Icons.AlertTriangle size={16} />
-              <span>Issue Tracker</span>
+              <span>Site Issue Tracker</span>
             </button>
 
             {/* Timeline */}
@@ -1020,8 +1034,13 @@ export default function App() {
             </div>
 
             {/* Service Schedule Table */}
-            <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1" id="print-section-schedule">
-              <div className="p-4 border-b border-slate-700 flex justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
+            <FullScreenContainer
+              className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1"
+              id="print-section-schedule"
+              isOpen={expandedSection === 'schedule'}
+              onToggle={(val) => setExpandedSection(val ? 'schedule' : null)}
+            >
+              <div className="p-4 border-b border-slate-700 flex flex-wrap gap-4 justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
                   <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
@@ -1038,7 +1057,7 @@ export default function App() {
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white hover:bg-cyan-700 px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-md"><Icons.Plus size={16} /> Add Asset</button>
+                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white hover:bg-cyan-700 px-4 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center gap-2 shadow-md"><Icons.Plus size={16} /> Add Asset</button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">
@@ -1069,7 +1088,7 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-700">
                     {filteredData.map(item => (
-                      <tr key={item.id} data-asset-id={item.id} onClick={() => setSelectedAssetId(item.id)} className={`cursor-pointer transition-all duration-200 ease-in-out ${selectedAssetId === item.id ? 'bg-cyan-900/40 ring-1 ring-cyan-500 shadow-sm z-10 relative' : selectedRowIds.has(item.id) ? 'bg-cyan-900/20' : (item.active === false ? 'bg-slate-900 opacity-50' : 'hover:bg-slate-700 border-b border-slate-700 border-l-4 border-l-transparent hover:border-l-cyan-500')}`}>
+                      <tr key={item.id} data-asset-id={item.id} onClick={() => setSelectedAssetId(item.id)} className={`cursor-pointer transition-all duration-200 ease-in-out ${selectedAssetId === item.id ? 'bg-cyan-900/40 ring-1 ring-cyan-500 ring-offset-0 shadow-sm z-10 relative' : selectedRowIds.has(item.id) ? 'bg-cyan-900/20' : (item.active === false ? 'bg-slate-900 opacity-50' : 'hover:bg-slate-700 border-b border-slate-700 border-l-4 border-l-transparent hover:border-l-cyan-500')}`}>
                         <td className="px-4 py-2 text-center no-print" onClick={(e) => { e.stopPropagation(); toggleRow(item.id); }}>
                           <input type="checkbox" checked={selectedRowIds.has(item.id)} onChange={() => { }} className="rounded border-slate-500 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600" />
                         </td>
@@ -1140,7 +1159,12 @@ export default function App() {
           {/* CENTER COLUMN: Chart + Calendar */}
           <div className="lg:col-span-5 flex flex-col gap-4">
             {/* Remaining Days Chart - WRAPPED IN FULLSCREEN */}
-            <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col" title="Asset Health Overview">
+            <FullScreenContainer
+              className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col"
+              title="Asset Health Overview"
+              isOpen={expandedSection === 'chart'}
+              onToggle={(val) => setExpandedSection(val ? 'chart' : null)}
+            >
               <h3 className="font-semibold text-lg text-slate-200 mb-4 flex items-center gap-2">
                 <Icons.Activity className="text-cyan-400" />
                 Remaining Days
@@ -1216,7 +1240,7 @@ export default function App() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {activeTab === 'issues' ? (
           <div className="lg:col-span-12 flex flex-col gap-6"> {/* Full width for issues tab */}
-            <IssueTracker
+            <SiteIssueTracker
               siteId={selectedSiteId}
               issues={selectedSite?.issues || []}
               onAddIssue={handleAddIssue}
@@ -1229,7 +1253,12 @@ export default function App() {
         ) : localViewMode === 'timeline' ? (
           <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px] mt-6">
             {/* WRAPPED: Asset Timeline with Full Screen */}
-            <FullScreenContainer className="h-full w-full bg-slate-900 rounded-xl border border-slate-800" title="Maintenance Timeline">
+            <FullScreenContainer
+              className="h-full w-full bg-slate-900 rounded-xl border border-slate-800"
+              title="Maintenance Timeline"
+              isOpen={expandedSection === 'timeline'}
+              onToggle={(val) => setExpandedSection(val ? 'timeline' : null)}
+            >
               <AssetTimeline assets={filteredData} mode={activeTab} />
             </FullScreenContainer>
           </div>

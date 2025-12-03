@@ -43,8 +43,8 @@ export const MasterListModal = ({
       return (
         (asset.name || '').toLowerCase().includes(searchLower) ||
         (asset.code || '').toLowerCase().includes(searchLower) ||
-        (spec?.scale || '').toLowerCase().includes(searchLower) ||
-        (spec?.integrator || '').toLowerCase().includes(searchLower)
+        (spec?.scaleType || '').toLowerCase().includes(searchLower) ||
+        (spec?.integratorController || '').toLowerCase().includes(searchLower)
       );
     })
     .sort((a, b) => {
@@ -113,11 +113,11 @@ export const MasterListModal = ({
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-700'}`}>Type</th>
                 <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('lastCal')}>Last Cal {getSortIcon('lastCal')}</th>
                 <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('dueDate')}>Cal Due {getSortIcon('dueDate')}</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Scale Model</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Integrator Type</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Speed Sensor Type</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Load Cell & Capacity</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Billet Information</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Scale Type</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Integrator</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Speed Sensor</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Load Cell</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Billet Info</th>
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Roller Dimensions</th>
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Adjustment Type</th>
               </tr>
@@ -144,14 +144,14 @@ export const MasterListModal = ({
                     <td className="p-2"><span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${typeColor}`}>{typeLabel}</span></td>
                     <td className={`p-2 ${textClass}`}>{formatDate(asset.lastCal)}</td>
                     <td className={`p-2 font-medium ${textClass}`}>{formatDate(asset.dueDate)}</td>
-                    <td className={`p-2 ${textClass} border-l ${isDarkMode ? 'border-slate-700' : 'border-slate-700'}`}>{spec?.scale || '-'}</td>
-                    <td className={`p-2 ${textClass}`}>{spec?.integrator || '-'}</td>
-                    <td className={`p-2 ${textClass}`}>{spec?.speedSensor || '-'}</td>
-                    <td className={`p-2 ${textClass}`}>{spec?.loadCell || '-'}</td>
+                    <td className={`p-2 ${textClass} border-l ${isDarkMode ? 'border-slate-700' : 'border-slate-700'}`}>{spec?.scaleType || '-'}</td>
+                    <td className={`p-2 ${textClass}`}>{spec?.integratorController || '-'}</td>
+                    <td className={`p-2 ${textClass}`}>{spec?.speedSensorType || '-'}</td>
+                    <td className={`p-2 ${textClass}`}>{spec?.loadCellBrand || '-'}</td>
                     <td className={`p-2 ${textClass}`}>
-                      {spec?.billetType && <div>{spec.billetType}</div>}
-                      {spec?.billetWeight && <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>{spec.billetWeight}kg</div>}
-                      {!spec?.billetType && !spec?.billetWeight && '-'}
+                      {spec?.billetWeightType && <div>{spec.billetWeightType}</div>}
+                      {spec?.billetWeightSize && <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>{spec.billetWeightSize}</div>}
+                      {!spec?.billetWeightType && !spec?.billetWeightSize && '-'}
                     </td>
                     <td className={`p-2 font-mono ${textClass} border-l ${isDarkMode ? 'border-slate-700 bg-orange-900/10' : 'border-slate-700 bg-orange-50'}`}>{spec?.rollDims || '-'}</td>
                     <td className={`p-2 ${textClass} ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>{spec?.adjustmentType || '-'}</td>

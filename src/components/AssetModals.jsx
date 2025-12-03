@@ -191,14 +191,17 @@ export const EditAssetModal = ({
                     weigher: editingAsset.weigher || '',
                     altCode: editingAsset.code || '',
                     description: editingAsset.name || '',
-                    scale: '',
-                    integrator: '',
-                    speedSensor: '',
+                    scaleType: '',
+                    integratorController: '',
+                    speedSensorType: '',
                     rollDims: '',
                     adjustmentType: '',
-                    loadCell: '',
-                    billetType: '',
-                    billetWeight: '',
+                    loadCellBrand: '',
+                    loadCellSize: '',
+                    loadCellSensitivity: '',
+                    numberOfLoadCells: '',
+                    billetWeightType: '',
+                    billetWeightSize: '',
                     notes: []
                   });
                 }}
@@ -243,35 +246,60 @@ export const EditAssetModal = ({
                 <h4 className="text-blue-400 text-sm font-bold uppercase mb-3">Scale Details</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Scale Model</label>
+                    <label className="text-[10px] text-slate-400 block">Scale Type</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.scale}
-                      onChange={e => setSpecs({ ...specs, scale: e.target.value })}
+                      value={specs.scaleType}
+                      onChange={e => setSpecs({ ...specs, scaleType: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Integrator</label>
+                    <label className="text-[10px] text-slate-400 block">Integrator / Controller</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.integrator}
-                      onChange={e => setSpecs({ ...specs, integrator: e.target.value })}
+                      value={specs.integratorController}
+                      onChange={e => setSpecs({ ...specs, integratorController: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Speed Sensor</label>
+                    <label className="text-[10px] text-slate-400 block">Speed Sensor Type</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.speedSensor}
-                      onChange={e => setSpecs({ ...specs, speedSensor: e.target.value })}
+                      value={specs.speedSensorType}
+                      onChange={e => setSpecs({ ...specs, speedSensorType: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Load Cell</label>
+                    <label className="text-[10px] text-slate-400 block">Load Cell Brand</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.loadCell}
-                      onChange={e => setSpecs({ ...specs, loadCell: e.target.value })}
+                      value={specs.loadCellBrand}
+                      onChange={e => setSpecs({ ...specs, loadCellBrand: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Load Cell Size (e.g. 50kg)</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.loadCellSize}
+                      onChange={e => setSpecs({ ...specs, loadCellSize: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">LC Sensitivity (mV/V)</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.loadCellSensitivity}
+                      onChange={e => setSpecs({ ...specs, loadCellSensitivity: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-slate-400 block">Number of Load Cells</label>
+                    <input
+                      type="number"
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.numberOfLoadCells}
+                      onChange={e => setSpecs({ ...specs, numberOfLoadCells: e.target.value })}
                     />
                   </div>
                 </div>
@@ -298,20 +326,19 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Billet Type</label>
+                    <label className="text-[10px] text-slate-400 block">Billet Weight Type</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.billetType}
-                      onChange={e => setSpecs({ ...specs, billetType: e.target.value })}
+                      value={specs.billetWeightType}
+                      onChange={e => setSpecs({ ...specs, billetWeightType: e.target.value })}
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Billet Weight (kg)</label>
+                    <label className="text-[10px] text-slate-400 block">Billet Weight Size</label>
                     <input
-                      type="number"
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.billetWeight}
-                      onChange={e => setSpecs({ ...specs, billetWeight: e.target.value })}
+                      value={specs.billetWeightSize}
+                      onChange={e => setSpecs({ ...specs, billetWeightSize: e.target.value })}
                     />
                   </div>
                 </div>
