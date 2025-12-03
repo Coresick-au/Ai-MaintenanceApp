@@ -11,8 +11,9 @@ function createWindow() {
     height: 800,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
-      nodeIntegration: true,
-      contextIsolation: false, // For simplicity in this example
+      nodeIntegration: false,        // Disabled for security
+      contextIsolation: true,         // Enabled for security
+      sandbox: true,                  // Additional security layer
     },
   });
 
