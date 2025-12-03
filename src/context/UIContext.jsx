@@ -13,6 +13,7 @@ export const UIProvider = ({ children }) => {
     const [isMasterListOpen, setIsMasterListOpen] = useState(false);
     const [isAppHistoryOpen, setIsAppHistoryOpen] = useState(false);
     const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+    const [isAppMapOpen, setIsAppMapOpen] = useState(false);
 
     // --- SELECTION & EDITING ---
     const [selectedAssetId, setSelectedAssetId] = useState(null);
@@ -112,6 +113,7 @@ export const UIProvider = ({ children }) => {
             isMasterListOpen, setIsMasterListOpen,
             isAppHistoryOpen, setIsAppHistoryOpen,
             isHelpModalOpen, setIsHelpModalOpen,
+            isAppMapOpen, setIsAppMapOpen,
             selectedAssetId, setSelectedAssetId,
             editingAsset, setEditingAsset,
             editingSpecs, setEditingSpecs,

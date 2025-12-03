@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { Modal, Icons, formatDate } from './UIComponents';
+import { Icons, Modal } from './UIComponents';
+import { formatDate } from '../utils/helpers';
+import { useSiteContext } from '../context/SiteContext';
 
-export const AppHistoryModal = ({ isOpen, onClose, sites, asset }) => {
-
-
-  const [searchQuery, setSearchQuery] = useState('');
+export const AppHistoryModal = ({ isOpen, onClose, asset, searchQuery: initialSearchQuery }) => {
+  const { sites } = useSiteContext();
+  const [searchQuery, setSearchQuery] = useState(initialSearchQuery || '');
   const [filterType, setFilterType] = useState('all');
   const [sortOrder, setSortOrder] = useState('desc');
 

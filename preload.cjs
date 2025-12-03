@@ -35,6 +35,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   //     ipcRenderer.on(channel, (event, ...args) => func(...args));
   //   }
   // },
+
+  // Synchronous close prompt
+  promptClose: (isDirty) => ipcRenderer.sendSync('check-unsaved-changes', isDirty),
+
+  // App Close Coordination
+  onAppCloseRequest: (callback) => ipcRenderer.on('app-close-request', (event, ...args) => callback(...args)),
+  sendAppCloseApproved: () => ipcRenderer.send('app-close-approved'),
 });
 
 // DOM Content Loaded handler (optional - for displaying version info)

@@ -1,6 +1,6 @@
-// src/components/MasterListModal.jsx
 import React, { useState } from 'react';
-import { Icons, formatDate } from './UIComponents';
+import { Icons } from './UIComponents';
+import { formatDate } from '../utils/helpers';
 
 export const MasterListModal = ({
   isOpen,

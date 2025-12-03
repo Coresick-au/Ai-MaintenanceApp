@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Button, Icons, formatDate, UniversalDatePicker } from './UIComponents';
-import { parseServiceReport } from '../utils/pdfParser';
+import { Button, Modal, Icons } from './UIComponents';
+import { formatDate } from '../utils/helpers';
 import { useFilterContext } from '../context/FilterContext';
+import { parseServiceReport } from '../utils/pdfParser';
 
 // --- REPORT DETAILS MODAL ---
-const ReportDetailsModal = ({ report, onClose, onDelete, siteLocation }) => {
+const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
     const [showWeatherTip, setShowWeatherTip] = useState(false);
     const [weather, setWeather] = useState(null);
     const [loadingWeather, setLoadingWeather] = useState(false);
@@ -524,7 +525,7 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
         };
     }, []);
 
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState(() => ({
         date: new Date().toISOString().split('T')[0],
         technician: '',
         fileName: '', // Added fileName to formData initialization
@@ -535,7 +536,7 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
         speed: '',
         throughput: '',
         comments: ''
-    });
+    }));
 
     const [sortColumn, setSortColumn] = useState('date');
     const [sortDirection, setSortDirection] = useState('desc');

@@ -28,6 +28,7 @@ import {
     ArrowUpDown,
     History,
     Undo,
+    Redo,
     Briefcase,
     Phone,
     Mail,
@@ -49,7 +50,8 @@ import {
     Maximize,
     Minimize,
     Maximize2,
-    Minimize2
+    Minimize2,
+    Map
 } from 'lucide-react';
 
 // ==========================================
@@ -84,6 +86,7 @@ export const Icons = {
     Sort: (props) => <ArrowUpDown size={18} className="mr-1" {...props} />,
     History: (props) => <History size={18} className="mr-1" {...props} />,
     Undo: (props) => <Undo size={18} {...props} />,
+    Redo: (props) => <Redo size={18} {...props} />,
     Briefcase: (props) => <Briefcase size={18} className="mr-1" {...props} />,
     Phone: (props) => <Phone size={18} className="mr-1" {...props} />,
     Mail: (props) => <Mail size={18} className="mr-1" {...props} />,
@@ -108,4 +111,5 @@ export const Icons = {
     Minimize: (props) => <Minimize size={18} {...props} />,
     Maximize2: (props) => <Maximize2 size={18} {...props} />,
     Minimize2: (props) => <Minimize2 size={18} {...props} />,
+    Map: (props) => <Map size={18} {...props} />,
 };

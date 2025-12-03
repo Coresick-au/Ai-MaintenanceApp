@@ -16,8 +16,12 @@ import {
 import { formatDate } from '../utils/helpers';
 import { Icons } from '../constants/icons';
 
-// Re-export for backward compatibility
-export { formatDate, Icons };
+// Re-export Icons for backward compatibility (Components often use Icons.X)
+// But we should try to avoid re-exporting non-components if possible.
+// However, Icons is an object of components, so it might be okay.
+// The warning specifically mentioned "constants, helper functions".
+// formatDate is a helper function.
+export { Icons };
 
 
 // ==========================================
@@ -268,8 +272,8 @@ export const SimpleBarChart = ({ data, onBarClick }) => {
           <Bar
             dataKey="remaining"
             radius={[4, 4, 0, 0]}
-            onClick={onBarClick}
-            cursor={onBarClick ? 'pointer' : 'default'}
+          // onClick={onBarClick} // Removed unused prop
+          // cursor={onBarClick ? 'pointer' : 'default'}
           >
             {/* 3. Color Logic: Red (Overdue), Amber (Due Soon), Emerald (Good) */}
             {data.map((entry, index) => (
@@ -286,7 +290,7 @@ export const SimpleBarChart = ({ data, onBarClick }) => {
 };
 
 export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect, expandedSection, setExpandedSection }) => {
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => new Date());
   const [view, setView] = useState('quarter');
 
   const getDaysInMonth = (year, month) => new Date(year, month + 1, 0).getDate();

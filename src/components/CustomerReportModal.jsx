@@ -1,5 +1,6 @@
 import React from 'react';
-import { Icons, formatDate, SecureDeleteButton, Button } from './UIComponents';
+import { Icons, Modal, Button } from './UIComponents';
+import { formatDate } from '../utils/helpers';
 
 export const CustomerReportModal = ({
     isOpen,
@@ -70,7 +71,11 @@ export const CustomerReportModal = ({
                             <div>
                                 <h1 className="text-3xl font-black uppercase tracking-wider text-slate-100 mb-1">Maintenance Report</h1>
                                 <div className="text-slate-400 font-medium">{site.customer} | {site.name}</div>
-                                <div className="text-sm text-slate-400 mt-1"><Icons.MapPin size={12} className="inline mr-1" />{site.location}</div>
+                                <div className="text-sm text-slate-400 mt-1">
+                                    <span className="print:hidden"><Icons.MapPin size={12} className="inline mr-1" /></span>
+                                    <span className="hidden print:inline">📍 </span>
+                                    {site.location}
+                                </div>
                             </div>
                             <div className="text-right">
                                 <div className="text-sm font-bold text-slate-400 uppercase">Generated</div>

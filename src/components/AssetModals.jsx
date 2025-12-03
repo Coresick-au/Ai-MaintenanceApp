@@ -145,27 +145,52 @@ export const EditAssetModal = ({
             </div>
           </div>
 
-          {/* Status Toggle */}
+          {/* Status Display */}
           <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded border border-slate-600">
             <div>
               <div className="text-sm font-bold text-slate-300">Asset Status</div>
               <div className="text-xs text-slate-400">
-                {editingAsset.active !== false ? 'Currently Active' : 'Currently Decommissioned'}
+                {editingAsset.active !== false ? 'Currently Active' : 'Currently Archived'}
               </div>
             </div>
-            <SecureDeleteButton
-              onComplete={() => {
-                const isActivating = editingAsset.active === false;
-                setEditingAsset({ ...editingAsset, active: isActivating });
-              }}
-              label={editingAsset.active !== false ? 'Hold to Archive' : 'Hold to Re-activate'}
-              className={`px-3 py-1 text-xs font-bold rounded border ${editingAsset.active !== false ? 'bg-slate-800 text-orange-400 border-orange-900 hover:bg-orange-900/20' : 'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/50'}`}
-            />
+            <div className={`px-3 py-1 text-xs font-bold rounded border ${editingAsset.active !== false ? 'bg-green-900/30 text-green-400 border-green-800' : 'bg-orange-900/30 text-orange-400 border-orange-900'}`}>
+              {editingAsset.active !== false ? '✓ Active' : '📦 Archived'}
+            </div>
           </div>
 
+          {/* Action Buttons: Update → Archive → Delete */}
           <div className="flex gap-2 pt-2">
-            <SecureDeleteButton onComplete={onDelete} className="flex-1" />
-            <Button onClick={() => onSave(editingAsset, activeTab)} className="flex-[2] justify-center">Update Asset</Button>
+            {/* Update Button */}
+            <Button
+              onClick={() => onSave(editingAsset, activeTab)}
+              className="flex-[2] justify-center"
+            >
+              Update Asset
+            </Button>
+
+            {/* Archive/Reactivate Button */}
+            <Button
+              onClick={() => {
+                const isArchiving = editingAsset.active !== false;
+                const message = isArchiving
+                  ? 'Are you sure you want to archive this asset? It will be hidden from active lists but can be reactivated later.'
+                  : 'Are you sure you want to reactivate this asset?';
+
+                if (window.confirm(message)) {
+                  setEditingAsset({ ...editingAsset, active: !isArchiving });
+                }
+              }}
+              className={`flex-1 justify-center ${editingAsset.active !== false ? 'bg-orange-600 hover:bg-orange-500' : 'bg-green-600 hover:bg-green-500'}`}
+            >
+              {editingAsset.active !== false ? '📦 Archive' : '✅ Reactivate'}
+            </Button>
+
+            {/* Permanent Delete Button */}
+            <SecureDeleteButton
+              onComplete={onDelete}
+              className="flex-1"
+              label="Hold to Delete"
+            />
           </div>
         </div>
       )}
@@ -297,8 +322,11 @@ export const EditAssetModal = ({
                 </div>
               </div>
 
+              {/* Roller Details Section */}
               <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
-                <h4 className="text-orange-400 text-sm font-bold uppercase mb-3">Roller & Billet</h4>
+                <h4 className="text-orange-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
+                  <span>🔧</span> Roller Details
+                </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
                     <label className="text-[10px] text-slate-400 block">Roller Dimensions</label>
@@ -309,7 +337,7 @@ export const EditAssetModal = ({
                       placeholder="e.g. 100mm x 50mm"
                     />
                   </div>
-                  <div>
+                  <div className="col-span-2">
                     <label className="text-[10px] text-slate-400 block">Adjustment Type</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
@@ -317,6 +345,15 @@ export const EditAssetModal = ({
                       onChange={e => setSpecs({ ...specs, adjustmentType: e.target.value })}
                     />
                   </div>
+                </div>
+              </div>
+
+              {/* Billet Details Section */}
+              <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
+                <h4 className="text-purple-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
+                  <span>⚖️</span> Billet Details
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] text-slate-400 block">Billet Weight Type</label>
                     <input
@@ -336,7 +373,7 @@ export const EditAssetModal = ({
                 </div>
               </div>
 
-              <Button onClick={onSaveSpecs} className="w-full justify-center">
+              <Button onClick={() => onSaveSpecs(specs)} className="w-full justify-center">
                 Save Specifications
               </Button>
             </>

@@ -32,7 +32,7 @@ const safelyLoadData = (data) => {
 };
 
 export const SiteProvider = ({ children }) => {
-    const { addUndoAction } = useUndo();
+    const { addUndoAction, clearDirty } = useUndo();
     const [sites, setSites] = useState([]);
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -58,8 +58,9 @@ export const SiteProvider = ({ children }) => {
     useEffect(() => {
         if (isDataLoaded) {
             localStorage.setItem('app_data', JSON.stringify(sites));
+            clearDirty();
         }
-    }, [sites, isDataLoaded]);
+    }, [sites, isDataLoaded, clearDirty]);
 
     useEffect(() => {
         // Save Selected Site ID when it changes
@@ -82,10 +83,13 @@ export const SiteProvider = ({ children }) => {
             return;
         }
 
+        const newSiteState = { ...site, ...updates };
+
         if (site) {
             addUndoAction({
                 description: description,
-                undo: () => setSites(current => current.map(s => s.id === siteId ? site : s))
+                undo: () => setSites(current => current.map(s => s.id === siteId ? site : s)),
+                redo: () => setSites(current => current.map(s => s.id === siteId ? newSiteState : s))
             });
         }
         setSites(prev => prev.map(s => s.id === siteId ? { ...s, ...updates } : s));
@@ -116,7 +120,8 @@ export const SiteProvider = ({ children }) => {
 
         addUndoAction({
             description: `Add Site: ${newSite.name}`,
-            undo: () => setSites(prev => prev.filter(s => s.id !== newSite.id))
+            undo: () => setSites(prev => prev.filter(s => s.id !== newSite.id)),
+            redo: () => setSites(prev => [...prev, newSite])
         });
 
         setSites([...sites, newSite]);

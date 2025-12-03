@@ -173,3 +173,162 @@ h3 {
 .glow-blue {
   box-shadow: 0 0 10px rgba(14, 165, 233, 0.3);
 }
+
+/* =========================================
+   PRINT STYLES - Override Dark Mode
+   ========================================= */
+
+@media print {
+
+  /* Override body and main container backgrounds */
+  body,
+  .bg-slate-800,
+  .bg-slate-900,
+  .bg-slate-700 {
+    background-color: white !important;
+    background-image: none !important;
+  }
+
+  /* Default text to black, but allow specific color classes */
+  body {
+    color: black !important;
+  }
+
+  /* Preserve heading and important text */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: black !important;
+  }
+
+  /* Preserve table text */
+  table,
+  th,
+  td {
+    color: black !important;
+  }
+
+  /* Preserve status badge backgrounds and text colors */
+  .bg-red-100 {
+    background-color: #fee2e2 !important;
+  }
+
+  .bg-amber-100 {
+    background-color: #fef3c7 !important;
+  }
+
+  .bg-green-100 {
+    background-color: #d1fae5 !important;
+  }
+
+  .bg-blue-100 {
+    background-color: #dbeafe !important;
+  }
+
+  /* Preserve status text colors */
+  .text-red-800,
+  .text-red-900 {
+    color: #991b1b !important;
+  }
+
+  .text-amber-800,
+  .text-amber-900 {
+    color: #92400e !important;
+  }
+
+  .text-green-800,
+  .text-green-900 {
+    color: #065f46 !important;
+  }
+
+  .text-blue-600 {
+    color: #2563eb !important;
+  }
+
+  /* Borders should be visible */
+  .border,
+  .border-t,
+  .border-b,
+  .border-l,
+  .border-r {
+    border-color: #d1d5db !important;
+  }
+
+  .border-red-200 {
+    border-color: #fecaca !important;
+  }
+
+  .border-amber-200 {
+    border-color: #fde68a !important;
+  }
+
+  .border-green-200 {
+    border-color: #a7f3d0 !important;
+  }
+
+  /* Hide non-printable elements */
+  .no-print,
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Remove shadows */
+  * {
+    box-shadow: none !important;
+  }
+
+  /* Ensure proper page breaks */
+  .break-inside-avoid {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Tables should print correctly */
+  table {
+    border-collapse: collapse !important;
+  }
+
+  th,
+  td {
+    border: 1px solid #d1d5db !important;
+    padding: 0.5rem !important;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Remove rounded corners */
+  .rounded,
+  .rounded-lg,
+  .rounded-xl {
+    border-radius: 0 !important;
+  }
+
+  /* Ensure text is readable */
+  body {
+    font-size: 12pt;
+    line-height: 1.5;
+  }
+
+  h1 {
+    font-size: 24pt;
+  }
+
+  h2 {
+    font-size: 18pt;
+  }
+
+  h3 {
+    font-size: 14pt;
+  }
+
+  /* Ensure links are visible */
+  a {
+    text-decoration: underline;
+    color: black !important;
+  }
+}

@@ -18,9 +18,9 @@ import {
   Modal,
   EditableCell,
   SecureDeleteButton,
-  formatDate,
   FullScreenContainer
 } from './components/UIComponents';
+import { formatDate } from './utils/helpers';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
 import { AddSiteModal, EditSiteModal, ContactModal } from './components/SiteModals';
@@ -30,6 +30,7 @@ import { SiteIssueTracker } from './components/SiteIssueTracker';
 import AssetTimeline from './components/AssetTimeline';
 import { SiteDropdown } from './components/SiteDropdown';
 import { CustomerReportModal } from './components/CustomerReportModal';
+import { AppMapModal } from './components/AppMapModal';
 
 // ==========================================
 // MAIN APP COMPONENT
@@ -57,6 +58,7 @@ export default function App() {
     isMasterListOpen, setIsMasterListOpen,
     isAppHistoryOpen, setIsAppHistoryOpen,
     isHelpModalOpen, setIsHelpModalOpen,
+    isAppMapOpen, setIsAppMapOpen,
     selectedAssetId, setSelectedAssetId,
     editingAsset, setEditingAsset,
     editingSpecs, setEditingSpecs,
@@ -102,21 +104,31 @@ export default function App() {
     toggleSelectAll
   } = useFilterContext();
 
-  const { canUndo, performUndo, lastActionDescription } = useUndo();
+  const { canUndo, performUndo, lastActionDescription, isDirty, canRedo, performRedo, lastRedoActionDescription } = useUndo();
 
   // --- APP EXIT CONFIRMATION ---
-  // --- APP EXIT CONFIRMATION ---
+  // We need a ref to access the latest isDirty inside the event handler
+  const isDirtyRef = useRef(isDirty);
   useEffect(() => {
-    if (!canUndo) return;
+    isDirtyRef.current = isDirty;
+  }, [isDirty]);
 
-    const handleBeforeUnload = (e) => {
-      e.preventDefault();
-      e.returnValue = 'You have unsaved changes. Are you sure you want to exit?';
+  useEffect(() => {
+    const handleCloseRequest = () => {
+      const hasUnsavedChanges = isDirtyRef.current;
+
+      if (!hasUnsavedChanges) {
+        window.electronAPI?.sendAppCloseApproved();
+      } else {
+        const shouldClose = window.electronAPI?.promptClose(true);
+        if (shouldClose) {
+          window.electronAPI?.sendAppCloseApproved();
+        }
+      }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [canUndo]);
+    window.electronAPI?.onAppCloseRequest(handleCloseRequest);
+  }, []);
 
   const printMenuRef = useRef(null);
 
@@ -162,14 +174,21 @@ export default function App() {
     window.location.reload();
   };
 
-  // Keyboard shortcut for Undo (Ctrl+Z)
+  // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
-        // Prevent default only if we're not in an input/textarea
-        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-          return;
-        }
+      // Prevent shortcuts if we're in an input/textarea
+      if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+        return;
+      }
+
+      // Redo: Ctrl+Y or Ctrl+Shift+Z
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) {
+        e.preventDefault();
+        performRedo();
+      }
+      // Undo: Ctrl+Z (without Shift)
+      else if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         performUndo();
       }
@@ -177,7 +196,7 @@ export default function App() {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [performUndo]);
+  }, [performUndo, performRedo]);
 
   // --- DERIVED STATE ---
   const selectedAsset = React.useMemo(() => (filteredData || []).find(i => i.id === selectedAssetId), [filteredData, selectedAssetId]);
@@ -817,6 +836,16 @@ export default function App() {
               <span>Help</span>
             </button>
 
+            {/* App Map Button */}
+            <button
+              type="button"
+              onClick={() => { setIsAppMapOpen(true); setSelectedRowIds(new Set()); }}
+              className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
+            >
+              <Icons.Map size={16} />
+              <span>Map</span>
+            </button>
+
             {/* Undo Button */}
             <button
               type="button"
@@ -830,6 +859,21 @@ export default function App() {
             >
               <Icons.Undo size={16} />
               <span>Undo</span>
+            </button>
+
+            {/* Redo Button */}
+            <button
+              type="button"
+              onClick={performRedo}
+              disabled={!canRedo}
+              title={canRedo ? `Redo: ${lastRedoActionDescription}` : 'Nothing to redo'}
+              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${canRedo
+                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
+                : 'text-slate-400 cursor-not-allowed'
+                }`}
+            >
+              <Icons.Redo size={16} />
+              <span>Redo</span>
             </button>
 
             {/* Export/Print Dropdown */}
@@ -1055,7 +1099,7 @@ export default function App() {
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
-                  <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 sm:w-auto sm:h-auto p-0 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden sm:inline">Add Asset</span></button>
+                  <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">
@@ -1254,7 +1298,7 @@ export default function App() {
               issues={selectedSite?.issues || []}
               onAddIssue={handleAddIssue}
               onUpdateIssue={handleUpdateIssue} // Pass the new update handler
-              onToggleIssueStatus={handleToggleIssueStatus}
+              onToggleStatus={handleToggleIssueStatus}
               onCopyIssue={handleCopyIssue}
               assets={[...(selectedSite?.serviceData || []), ...(selectedSite?.rollerData || [])].filter(asset => asset.active !== false)}
             />
@@ -1273,6 +1317,39 @@ export default function App() {
           </div>
         ) : null}
       </div >
+
+      <AddSiteModal
+        isOpen={isAddSiteModalOpen}
+        onClose={() => setIsAddSiteModalOpen(false)}
+        onSave={(form, note) => {
+          handleAddSite(form, note);
+          setIsAddSiteModalOpen(false);
+          setSiteForm({});
+          setNoteInput({ author: '', content: '' });
+        }}
+        siteForm={siteForm}
+        setSiteForm={setSiteForm}
+        noteInput={noteInput}
+        setNoteInput={setNoteInput}
+        onLogoUpload={handleFileChange}
+      />
+
+      <EditSiteModal
+        isOpen={isEditSiteModalOpen}
+        onClose={() => setIsEditSiteModalOpen(false)}
+        onSave={(form) => {
+          handleUpdateSiteInfo(form);
+          setIsEditSiteModalOpen(false);
+        }}
+        onDelete={handleDeleteSite}
+        onToggleStatus={toggleSiteStatus}
+        siteForm={siteForm}
+        setSiteForm={setSiteForm}
+        noteInput={noteInput}
+        setNoteInput={setNoteInput}
+        onLogoUpload={handleFileChange}
+        onAddNote={saveEditedNote}
+      />
 
       <AddAssetModal
         isOpen={isAssetModalOpen}
@@ -1395,6 +1472,11 @@ export default function App() {
         specData={currentSpecData}
       />
 
+      <AppMapModal
+        isOpen={isAppMapOpen}
+        onClose={() => setIsAppMapOpen(false)}
+      />
+
       {/* OPERATIONAL STATUS MODAL */}
       <OperationalStatusModal
         isOpen={isOpStatusModalOpen}
@@ -1411,7 +1493,7 @@ export default function App() {
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 animate-in fade-in duration-300 cursor-pointer" onClick={() => setIsCooked(false)}>
           <div className="text-center">
             <h1 className="text-6xl md:text-8xl font-black text-red-600 uppercase tracking-widest animate-bounce mb-4">COOKED</h1>
-            <p className="text-2xl text-red-400 font-mono">You're absolutely cooked.</p>
+            <p className="text-2xl text-red-400 font-mono">stop pushing things so many times! insanity.</p>
           </div>
         </div>
       )}

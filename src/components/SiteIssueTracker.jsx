@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Button, Icons, formatDate, Modal, UniversalDatePicker } from './UIComponents';
+import { Icons, Button, Modal, StatusBadge, UniversalDatePicker } from './UIComponents';
+import { formatDate } from '../utils/helpers';
 
-export const SiteIssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onToggleIssueStatus, onCopyIssue, assets }) => {
+export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onToggleStatus, onUpdateIssue, onCopyIssue }) => {
   const [newIssueDescription, setNewIssueDescription] = useState('');
   const [newIssueAssignedTo, setNewIssueAssignedTo] = useState('');
   const [newIssueImportance, setNewIssueImportance] = useState('Medium');

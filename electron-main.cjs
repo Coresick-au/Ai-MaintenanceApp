@@ -1,4 +1,4 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const url = require('url');
 
@@ -47,6 +47,14 @@ function createWindow() {
     });
     mainWindow.loadURL(startUrl);
   }
+
+  mainWindow.on('close', (e) => {
+    if (isQuitting) {
+      return;
+    }
+    e.preventDefault();
+    mainWindow.webContents.send('app-close-request');
+  });
 }
 
 app.whenReady().then(() => {
@@ -57,6 +65,33 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// IPC Handler for checking unsaved changes synchronously
+ipcMain.on('check-unsaved-changes', (event, isDirty) => {
+  if (!isDirty) {
+    event.returnValue = true; // Allow close
+    return;
+  }
+
+  const choice = dialog.showMessageBoxSync({
+    type: 'question',
+    buttons: ['Cancel', 'Exit without Saving'],
+    title: 'Unsaved Changes',
+    message: 'You have unsaved changes. Are you sure you want to exit?',
+    defaultId: 0,
+    cancelId: 0
+  });
+
+  // choice 0 is Cancel, choice 1 is Exit
+  event.returnValue = choice === 1;
+});
+
+let isQuitting = false;
+
+ipcMain.on('app-close-approved', () => {
+  isQuitting = true;
+  app.quit();
 });
 
 app.on('window-all-closed', () => {

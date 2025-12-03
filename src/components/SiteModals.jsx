@@ -1,10 +1,7 @@
-import React, { useState } from 'react';
-import { Modal, Button, SecureDeleteButton, Icons, formatDate } from './UIComponents';
 
-// Reusable Input Class
-const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors";
-const labelClass = "block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider";
-const sectionClass = "p-4 bg-slate-700/30 rounded border border-slate-600 space-y-3";
+import React, { useState } from 'react';
+import { Modal, Button, Icons, UniversalDatePicker } from './UIComponents';
+import { formatDate } from '../utils/helpers';
 
 const TypeSelect = ({ value, onChange }) => (
   <div>
