@@ -40,16 +40,42 @@ export const UIProvider = ({ children }) => {
     // --- EASTER EGG ---
     const [lightModeCount, setLightModeCount] = useState(0);
     const [isCooked, setIsCooked] = useState(false);
+    const [lightModeMessage, setLightModeMessage] = useState("Light mode users be like: \"I love squinting. It builds character.\"");
+    const [showLightModeMessage, setShowLightModeMessage] = useState(false);
+    // We don't need a ref for the timer in context, we can just use setTimeout directly or a simple state reset
+    // But to avoid clearing issues, let's just use a simple timeout.
 
     const handleLightModeClick = () => {
-        const newCount = lightModeCount + 1;
-        setLightModeCount(newCount);
+        // 1. Increment Counter (Functional Update for Reliability)
+        setLightModeCount(prev => {
+            const newCount = prev + 1;
+            if (newCount >= 10) {
+                setIsCooked(true);
+                setTimeout(() => setIsCooked(false), 5000); // Reset after 5 seconds
+                return 0;
+            }
+            return newCount;
+        });
 
-        if (newCount >= 10) {
-            setIsCooked(true);
-            setLightModeCount(0);
-            setTimeout(() => setIsCooked(false), 5000); // Reset after 5 seconds
-        }
+        // 2. Cycle Messages
+        const messages = [
+            "Light mode users be like: \"I love squinting. It builds character.\"",
+            "Light mode: for people who think their screen should double as a flashlight.",
+            "You know, pressing it more doesn’t make it work faster",
+            "Are you trying to blind yourself?",
+            "Stop it. Get some help.",
+            "Dark mode is superior. Accept it."
+        ];
+
+        setLightModeMessage(prevMsg => {
+            let currentIndex = messages.indexOf(prevMsg);
+            if (currentIndex === -1) currentIndex = 0;
+            const nextIndex = (currentIndex + 1) % messages.length;
+            return messages[nextIndex];
+        });
+
+        setShowLightModeMessage(true);
+        setTimeout(() => setShowLightModeMessage(false), 3000);
     };
 
     const closeFullscreen = () => setExpandedSection(null);
@@ -89,7 +115,9 @@ export const UIProvider = ({ children }) => {
             isPrintMenuOpen, setIsPrintMenuOpen,
             expandedSection, setExpandedSection,
             closeFullscreen,
-            handleLightModeClick, isCooked, setIsCooked
+            closeFullscreen,
+            handleLightModeClick, isCooked, setIsCooked,
+            lightModeMessage, showLightModeMessage
         }}>
             {children}
         </UIContext.Provider>

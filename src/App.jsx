@@ -72,7 +72,9 @@ export default function App() {
     theme, setTheme,
     isPrintMenuOpen, setIsPrintMenuOpen,
     expandedSection, setExpandedSection,
-    closeFullscreen
+    closeFullscreen,
+    handleLightModeClick, isCooked, setIsCooked,
+    lightModeMessage, showLightModeMessage
   } = useUIContext();
 
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
@@ -137,31 +139,7 @@ export default function App() {
   const [opStatusAsset, setOpStatusAsset] = useState(null);
   const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
 
-  // --- HUMOROUS LIGHT MODE MESSAGE STATE ---
-  // --- HUMOROUS LIGHT MODE MESSAGE STATE ---
-  const [lightModeMessage, setLightModeMessage] = useState("Light mode users be like: \"I love squinting. It builds character.\"");
-  const [showLightModeMessage, setShowLightModeMessage] = useState(false);
-  const messageTimerRef = useRef(null);
 
-  const handleLightModeClick = () => {
-    const messages = [
-      "Light mode users be like: \"I love squinting. It builds character.\"",
-      "Light mode: for people who think their screen should double as a flashlight.",
-      "You know, pressing it more doesn’t make it work faster"
-    ];
-    let currentIndex = messages.indexOf(lightModeMessage);
-    if (currentIndex === -1) currentIndex = 0;
-
-    const nextIndex = (currentIndex + 1) % messages.length;
-    setLightModeMessage(messages[nextIndex]);
-
-    setShowLightModeMessage(true);
-
-    if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
-    messageTimerRef.current = setTimeout(() => {
-      setShowLightModeMessage(false);
-    }, 3000);
-  };
 
   const handleResetConfirm = () => {
     localStorage.clear();
@@ -1399,6 +1377,16 @@ export default function App() {
         onSave={handleSaveOpStatus}
         asset={opStatusAsset}
       />
+
+      {/* EASTER EGG OVERLAY */}
+      {isCooked && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 animate-in fade-in duration-300 cursor-pointer" onClick={() => setIsCooked(false)}>
+          <div className="text-center">
+            <h1 className="text-6xl md:text-8xl font-black text-red-600 uppercase tracking-widest animate-bounce mb-4">COOKED</h1>
+            <p className="text-2xl text-red-400 font-mono">You're absolutely cooked.</p>
+          </div>
+        </div>
+      )}
 
     </div >
   );
