@@ -33,7 +33,7 @@
 }
 
 .react-datepicker__day--outside-month {
-  @apply text-slate-500 opacity-50;
+  @apply text-slate-400 opacity-50;
 }
 
 .react-datepicker__day--weekend {
@@ -41,7 +41,7 @@
 }
 
 .react-datepicker__day--disabled {
-  @apply text-slate-600 cursor-not-allowed;
+  @apply text-slate-400 cursor-not-allowed;
 }
 
 .react-datepicker__week-number {
@@ -49,7 +49,7 @@
 }
 
 .react-datepicker__input-container input {
-  @apply bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-white border-slate-300 dark:border-slate-600;
+  @apply bg-slate-900 text-slate-100 text-white border-slate-600;
   /* Ensure input field itself matches EditableCell styling */
 }
 

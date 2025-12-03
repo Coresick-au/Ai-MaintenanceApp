@@ -326,7 +326,7 @@ export const AppHistoryModal = ({ isOpen, onClose, sites, asset }) => {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2 mb-1">
                         <div className="font-semibold text-slate-200">{entry.action}</div>
-                        <div className="text-xs text-slate-500 whitespace-nowrap">
+                        <div className="text-xs text-slate-400 whitespace-nowrap">
                           {formatDate(entry.timestamp, true)}
                         </div>
                       </div>
@@ -338,14 +338,14 @@ export const AppHistoryModal = ({ isOpen, onClose, sites, asset }) => {
                             {' → '}
                             <span className="font-medium text-slate-300">{entry.assetName}</span>
                             {entry.assetCode && (
-                              <span className="text-slate-500 ml-1">({entry.assetCode})</span>
+                              <span className="text-slate-400 ml-1">({entry.assetCode})</span>
                             )}
                           </>
                         )}
                       </div>
 
                       {entry.details && (
-                        <div className="text-sm text-slate-500 line-clamp-2">
+                        <div className="text-sm text-slate-400 line-clamp-2">
                           {entry.details}
                         </div>
                       )}
@@ -364,7 +364,7 @@ export const AppHistoryModal = ({ isOpen, onClose, sites, asset }) => {
         </div>
 
         {/* Footer Info */}
-        <div className="text-xs text-slate-500 text-center">
+        <div className="text-xs text-slate-400 text-center">
           Showing {filteredHistory.length} of {allHistory.length} events
         </div>
       </div>

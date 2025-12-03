@@ -66,10 +66,10 @@ export const MasterListModal = ({
 
   return (
     <div id="master-list-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm">
-      <div className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'} rounded-lg shadow-2xl border w-full max-w-[95vw] h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200 transition-colors`}>
+      <div className={`${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-slate-800 border-slate-700'} rounded-lg shadow-2xl border w-full max-w-[95vw] h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200 transition-colors`}>
 
         {/* HEADER */}
-        <div className={`flex justify-between items-center p-4 border-b rounded-t-lg transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900' : 'border-gray-200 bg-gray-50'}`}>
+        <div className={`flex justify-between items-center p-4 border-b rounded-t-lg transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-700 bg-gray-50'}`}>
           <div className="flex items-center gap-4">
             <img src="/logos/ai-logo.png" alt="Accurate Industries Logo" className="h-10" />
             <div>
@@ -83,7 +83,7 @@ export const MasterListModal = ({
             <button
               type="button"
               onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-full transition-colors ${isDarkMode ? 'text-yellow-400 hover:bg-slate-800' : 'text-slate-600 hover:bg-gray-200'}`}
+              className={`p-2 rounded-full transition-colors ${isDarkMode ? 'text-yellow-400 hover:bg-slate-800' : 'text-slate-400 hover:bg-gray-200'}`}
               title={isDarkMode ? "Switch to Day Mode" : "Switch to Night Mode"}
             >
               {isDarkMode ? '☀️' : '🌙'}
@@ -94,7 +94,7 @@ export const MasterListModal = ({
               <input
                 type="text"
                 placeholder="Filter master list..."
-                className={`pl-8 pr-4 py-1 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-64 ${isDarkMode ? 'border-slate-700 bg-slate-900 text-white' : 'border-gray-300 bg-white text-gray-800'}`}
+                className={`pl-8 pr-4 py-1 border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 w-64 ${isDarkMode ? 'border-slate-700 bg-slate-900 text-white' : 'border-slate-600 bg-slate-800 text-gray-800'}`}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -108,18 +108,18 @@ export const MasterListModal = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead className={`${isDarkMode ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-600'} sticky top-0 z-10 shadow-sm`}>
               <tr>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-100'}`} onClick={() => handleSort('name')}>Asset Name {getSortIcon('name')}</th>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-100'}`} onClick={() => handleSort('code')}>Code {getSortIcon('code')}</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>Type</th>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-100'}`} onClick={() => handleSort('lastCal')}>Last Cal {getSortIcon('lastCal')}</th>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-gray-200 hover:bg-gray-100'}`} onClick={() => handleSort('dueDate')}>Cal Due {getSortIcon('dueDate')}</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-gray-200 bg-blue-50'}`}>Scale Model</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-gray-200 bg-blue-50'}`}>Integrator Type</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-gray-200 bg-blue-50'}`}>Speed Sensor Type</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-gray-200 bg-blue-50'}`}>Load Cell & Capacity</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-gray-200 bg-blue-50'}`}>Billet Information</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-gray-200 bg-orange-50'}`}>Roller Dimensions</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-gray-200 bg-orange-50'}`}>Adjustment Type</th>
+                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('name')}>Asset Name {getSortIcon('name')}</th>
+                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('code')}>Code {getSortIcon('code')}</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-700'}`}>Type</th>
+                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('lastCal')}>Last Cal {getSortIcon('lastCal')}</th>
+                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('dueDate')}>Cal Due {getSortIcon('dueDate')}</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Scale Model</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Integrator Type</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Speed Sensor Type</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Load Cell & Capacity</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Billet Information</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Roller Dimensions</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Adjustment Type</th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700' : 'divide-gray-200'}`}>
@@ -131,7 +131,7 @@ export const MasterListModal = ({
                   : (isDarkMode ? 'bg-orange-900/30 text-orange-300' : 'bg-orange-100 text-orange-800');
 
                 const rowClass = asset.active === false
-                  ? (isDarkMode ? 'bg-slate-800/50 text-slate-500' : 'bg-gray-100 text-gray-400')
+                  ? (isDarkMode ? 'bg-slate-800/50 text-slate-400' : 'bg-gray-100 text-gray-400')
                   : (isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-50');
 
                 const textClass = isDarkMode ? 'text-slate-400' : 'text-gray-600';
@@ -144,16 +144,16 @@ export const MasterListModal = ({
                     <td className="p-2"><span className={`px-2 py-0.5 rounded-full text-[10px] uppercase font-bold ${typeColor}`}>{typeLabel}</span></td>
                     <td className={`p-2 ${textClass}`}>{formatDate(asset.lastCal)}</td>
                     <td className={`p-2 font-medium ${textClass}`}>{formatDate(asset.dueDate)}</td>
-                    <td className={`p-2 ${textClass} border-l ${isDarkMode ? 'border-slate-700' : 'border-gray-200'}`}>{spec?.scale || '-'}</td>
+                    <td className={`p-2 ${textClass} border-l ${isDarkMode ? 'border-slate-700' : 'border-slate-700'}`}>{spec?.scale || '-'}</td>
                     <td className={`p-2 ${textClass}`}>{spec?.integrator || '-'}</td>
                     <td className={`p-2 ${textClass}`}>{spec?.speedSensor || '-'}</td>
                     <td className={`p-2 ${textClass}`}>{spec?.loadCell || '-'}</td>
                     <td className={`p-2 ${textClass}`}>
                       {spec?.billetType && <div>{spec.billetType}</div>}
-                      {spec?.billetWeight && <div className={`text-[10px] ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>{spec.billetWeight}kg</div>}
+                      {spec?.billetWeight && <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>{spec.billetWeight}kg</div>}
                       {!spec?.billetType && !spec?.billetWeight && '-'}
                     </td>
-                    <td className={`p-2 font-mono ${textClass} border-l ${isDarkMode ? 'border-slate-700 bg-orange-900/10' : 'border-gray-200 bg-orange-50'}`}>{spec?.rollDims || '-'}</td>
+                    <td className={`p-2 font-mono ${textClass} border-l ${isDarkMode ? 'border-slate-700 bg-orange-900/10' : 'border-slate-700 bg-orange-50'}`}>{spec?.rollDims || '-'}</td>
                     <td className={`p-2 ${textClass} ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>{spec?.adjustmentType || '-'}</td>
                   </tr>
                 );

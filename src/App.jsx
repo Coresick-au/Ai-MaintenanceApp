@@ -135,6 +135,9 @@ export default function App() {
   const [opStatusAsset, setOpStatusAsset] = useState(null);
   const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
 
+  // --- HUMOROUS LIGHT MODE MESSAGE STATE ---
+  const [lightModeMessage, setLightModeMessage] = useState("Light mode users be like: \"I love squinting. It builds character.\"");
+
   // --- MAXIMIZE FEATURE STATE ---
   const [expandedSection, setExpandedSection] = useState(null);
 
@@ -367,7 +370,7 @@ export default function App() {
   const specsPanelContent = useMemo(() => {
     if (!selectedAsset) {
       return (
-        <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
+        <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
           <div className="text-4xl opacity-20"><Icons.Scale /></div>
           <p>Select an asset to view details.</p>
         </div>
@@ -375,7 +378,7 @@ export default function App() {
     }
     if (!selectedSpecs) {
       return (
-        <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-4">
+        <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
           <p>Specs Not Found for <strong className="text-slate-300">{selectedAsset.code}</strong></p>
         </div>
       );
@@ -414,7 +417,7 @@ export default function App() {
             title="Click to copy"
           >
             {selectedSpecs.rollDims || "N/A"}
-            {selectedSpecs.rollDims && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity"><Icons.CheckSquare /></span>}
+            {selectedSpecs.rollDims && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"><Icons.CheckSquare /></span>}
           </div>
           <div className="text-sm space-y-1">
             <div className="flex justify-between"><span>Adjustment Type:</span><span className="font-medium text-slate-200">{selectedSpecs.adjustmentType || '-'}</span></div>
@@ -423,7 +426,7 @@ export default function App() {
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-slate-700">
-          <h4 className="text-xs font-bold uppercase text-slate-500 mb-2 flex items-center gap-2"><Icons.MessageCircle /> Comments</h4>
+          <h4 className="text-xs font-bold uppercase text-slate-400 mb-2 flex items-center gap-2"><Icons.MessageCircle /> Comments</h4>
           <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
             {(selectedSpecs.notes || []).map(n => (
               <div key={n.id} className="p-2 bg-slate-900/50 border border-slate-700 rounded text-xs group hover:bg-slate-800 hover:border-blue-500/50 transition-all relative">
@@ -442,7 +445,7 @@ export default function App() {
                     <div className="flex justify-between items-start mb-1">
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-slate-300 bg-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">{n.author || 'UNK'}</span>
-                        <span className="text-[10px] text-slate-500 flex items-center gap-1"><Icons.Clock /> {formatDate(n.timestamp, true)}</span>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1"><Icons.Clock /> {formatDate(n.timestamp, true)}</span>
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 bg-slate-800 rounded shadow-sm border border-slate-600 p-0.5">
                         <button onClick={(e) => { e.stopPropagation(); startEditingNote(n); }} className="hover:bg-slate-700 p-1 rounded text-blue-400" title="Edit Note"><Icons.Edit /></button>
@@ -454,12 +457,12 @@ export default function App() {
                 )}
               </div>
             ))}
-            {(!selectedSpecs.notes || selectedSpecs.notes.length === 0) && <p className="text-slate-500 text-xs italic text-center py-2">No comments yet.</p>}
+            {(!selectedSpecs.notes || selectedSpecs.notes.length === 0) && <p className="text-slate-400 text-xs italic text-center py-2">No comments yet.</p>}
           </div>
           <div className="p-3 bg-slate-900/50 border border-slate-700 rounded border-dashed mt-3 hover:border-blue-500/50 transition-colors">
             <div className="flex gap-2 mb-2">
               <input className="w-24 text-xs border border-slate-600 rounded p-2 bg-slate-800 focus:bg-slate-900 text-white transition-colors" placeholder="Initials / Name" value={specNoteInput.author || ''} onChange={e => setSpecNoteInput({ ...specNoteInput, author: e.target.value })} />
-              <div className="flex-1 text-[10px] text-slate-500 flex items-center justify-end italic">{formatDate(new Date(), false)}</div>
+              <div className="flex-1 text-[10px] text-slate-400 flex items-center justify-end italic">{formatDate(new Date(), false)}</div>
             </div>
             <textarea className="w-full text-xs border border-slate-600 rounded p-2 mb-2 bg-slate-800 focus:bg-slate-900 text-white transition-colors focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Add a comment..." rows="2" value={specNoteInput.content || ''} onChange={e => setSpecNoteInput({ ...specNoteInput, content: e.target.value })} />
             <button type="button" onClick={handleAddSpecNote} disabled={!specNoteInput.content} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-blue-400 text-xs py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><Icons.Plus /> Add Comment</button>
@@ -473,17 +476,29 @@ export default function App() {
   if (!selectedSite) {
     // --- SITE SELECTION VIEW (DARK MODE) ---
     return (
-      <div className="min-h-screen bg-slate-100 dark:bg-slate-900 font-sans text-slate-900 dark:text-slate-100 p-8 transition-colors duration-200">
+      <div className="min-h-screen bg-slate-800 bg-slate-900 font-sans text-slate-100 p-8 transition-colors duration-200">
         <style>{`@media print { .no-print { display: none !important; } }`}</style>
 
-        {/* Theme Toggle - Top Right */}
+        {/* Humorous "Light Mode" Button - Top Right */}
         <div className="absolute top-4 right-4 no-print">
           <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors"
-            title={`Switch to ${theme === 'dark' ? 'Light' : 'Dark'} Mode`}
+            onClick={() => {
+              const messages = [
+                "Light mode users be like: \"I love squinting. It builds character.\"",
+                "Light mode: for people who think their screen should double as a flashlight."
+              ];
+              const currentIndex = messages.indexOf(lightModeMessage);
+              const nextIndex = (currentIndex + 1) % messages.length;
+              setLightModeMessage(messages[nextIndex]);
+            }}
+            className="p-2 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors relative group"
+            title={lightModeMessage}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            ☀️
+            {/* Tooltip with message */}
+            <div className="absolute right-0 top-full mt-2 w-64 bg-slate-800 text-white text-xs p-3 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 border border-slate-600">
+              {lightModeMessage}
+            </div>
           </button>
         </div>
 
@@ -491,7 +506,7 @@ export default function App() {
           <header className="flex flex-col items-center gap-6 mb-10 text-center">
             <div className="flex-shrink-0 flex flex-col items-center gap-4 max-w-xs"> {/* Added max-w-xs here */}
               <img src="logos/ai-logo.png" alt="Accurate Industries" className="w-full h-auto mb-2" /> {/* Changed w-auto to w-full, h-16 to h-auto */}
-              <h1 className="text-4xl font-black italic uppercase tracking-wider text-slate-800 dark:text-slate-100 leading-tight" style={{ fontWeight: 800, letterSpacing: '0.15em' }}>Maintenance Tracker</h1>
+              <h1 className="text-4xl font-black italic uppercase tracking-wider text-slate-200 text-slate-100 leading-tight" style={{ fontWeight: 800, letterSpacing: '0.15em' }}>Maintenance Tracker</h1>
             </div>
 
             <div className="flex-1 w-full min-w-[300px] max-w-2xl relative mt-4">
@@ -499,7 +514,7 @@ export default function App() {
               <input
                 type="text"
                 placeholder="Search sites..."
-                className="w-full pl-12 pr-4 py-3 border border-slate-300 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-md text-base h-12 transition-colors"
+                className="w-full pl-12 pr-4 py-3 border border-slate-600 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-slate-100 text-white shadow-md text-base h-12 transition-colors"
                 value={siteSearchQuery}
                 onChange={(e) => setSiteSearchQuery(e.target.value)}
               />
@@ -509,7 +524,7 @@ export default function App() {
               <select
                 value={siteSortOption}
                 onChange={(e) => setSiteSortOption(e.target.value)}
-                className="w-36 h-12 border border-slate-300 dark:border-slate-700 rounded-lg px-2 text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-800 shadow-sm cursor-pointer transition-colors"
+                className="w-36 h-12 border border-slate-600 border-slate-700 rounded-lg px-2 text-sm font-medium text-slate-300 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 shadow-sm cursor-pointer transition-colors"
               >
                 <option value="risk">Sort: Risk</option>
                 <option value="name">Sort: Name</option>
@@ -517,7 +532,7 @@ export default function App() {
                 <option value="type">Sort: Type</option>
               </select>
 
-              <div className="flex items-center bg-white dark:bg-slate-800 rounded-lg px-3 h-12 border border-slate-300 dark:border-slate-700 shadow-sm transition-colors">
+              <div className="flex items-center bg-slate-800 rounded-lg px-3 h-12 border border-slate-600 border-slate-700 shadow-sm transition-colors">
                 <input
                   type="checkbox"
                   id="show-archived-sites"
@@ -531,13 +546,13 @@ export default function App() {
               <Button className="w-36 h-12" onClick={() => { setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); }}> <Icons.Plus /> Add Site</Button>
 
               <Button className="w-36 h-12" onClick={handleDownloadData} variant="secondary"><Icons.Download /> Backup</Button>
-              <label className="cursor-pointer bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 border border-slate-300 dark:border-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 w-36 h-12">
+              <label className="cursor-pointer bg-slate-800 text-slate-300 text-slate-200 hover:bg-slate-700 border border-slate-600 border-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 w-36 h-12">
                 <Icons.UploadCloud /> Restore <input type="file" className="hidden" accept=".json" onChange={handleFileChange} />
               </label>
             </div>
           </header>
 
-          <p className="text-slate-500 dark:text-slate-400 text-lg mb-4 no-print italic border-b border-slate-300 dark:border-slate-700 pb-4 text-center">Select a site to view its maintenance dashboard.</p>
+          <p className="text-slate-400 text-lg mb-4 no-print italic border-b border-slate-600 border-slate-700 pb-4 text-center">Select a site to view its maintenance dashboard.</p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredSites.map(site => {
@@ -559,23 +574,23 @@ export default function App() {
               const cardOpacity = site.active === false ? 'opacity-60 grayscale' : '';
 
               return (
-                <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className={`bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-200 dark:border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-50 dark:hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
+                <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className={`bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); }} className="p-2 bg-slate-100 dark:bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setViewContactSite(site); }} className="p-2 bg-slate-100 dark:bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setViewContactSite(site); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
                   </div>
 
                   <div className="mb-5 flex items-center justify-start h-16">
-                    {site.logo ? <img src={site.logo} alt="Logo" className="h-full w-auto object-contain max-w-[150px] drop-shadow" /> : <div className="h-12 w-12 bg-slate-100 dark:bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-2xl shadow-inner"><Icons.Building /></div>}
+                    {site.logo ? <img src={site.logo} alt="Logo" className="h-full w-auto object-contain max-w-[150px] drop-shadow" /> : <div className="h-12 w-12 bg-slate-800 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-2xl shadow-inner"><Icons.Building /></div>}
                   </div>
-                  {site.customer && <div className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase mb-1 tracking-widest">{site.customer}</div>}
-                  <h2 className="2xl font-bold text-slate-800 dark:text-slate-100 mb-2 leading-tight">
-                    {site.name} {site.active === false && <span className="text-sm font-normal text-slate-500">(Archived)</span>}
+                  {site.customer && <div className="text-xs font-bold text-blue-600 text-blue-400 uppercase mb-1 tracking-widest">{site.customer}</div>}
+                  <h2 className="2xl font-bold text-slate-200 text-slate-100 mb-2 leading-tight">
+                    {site.name} {site.active === false && <span className="text-sm font-normal text-slate-400">(Archived)</span>}
                   </h2>
-                  <div className="flex items-center text-slate-500 dark:text-slate-400 text-sm mb-5"><span className="mr-1"><Icons.MapPin /></span> {site.location || 'No location'}</div>
+                  <div className="flex items-center text-slate-400 text-sm mb-5"><span className="mr-1"><Icons.MapPin /></span> {site.location || 'No location'}</div>
 
-                  <div className="mb-4 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wide">Service Assets</div>
+                  <div className="mb-4 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Service Assets</div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-red-900/40 p-2 rounded text-center border border-red-900/60">
                         <div className="text-lg font-bold text-red-400">{serviceStats.critical}</div>
@@ -592,8 +607,8 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="mb-6 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div className="text-[10px] font-bold text-slate-500 uppercase mb-2 tracking-wide">Roller Assets</div>
+                  <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Roller Assets</div>
                     <div className="grid grid-cols-3 gap-2">
                       <div className="bg-red-900/40 p-2 rounded text-center border border-red-900/60">
                         <div className="text-lg font-bold text-red-400">{rollerStats.critical}</div>
@@ -610,14 +625,14 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="mb-6 p-3 bg-slate-50 dark:bg-slate-900/40 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-500 dark:text-slate-400 uppercase flex items-center gap-2"><Icons.AlertTriangle /> Active Issues</span>
-                    <span className="text-2xl font-bold text-red-500 dark:text-red-400">{activeIssuesCount}</span>
+                  <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700 flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2"><Icons.AlertTriangle /> Active Issues</span>
+                    <span className="text-2xl font-bold text-red-500 text-red-400">{activeIssuesCount}</span>
                   </div>
 
-                  <div className="flex flex-col gap-1 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-slate-200 dark:border-slate-700 min-h-[90px] mt-auto">
-                    <div className="text-xs text-slate-500 dark:text-slate-400 font-medium uppercase tracking-wider mb-1 flex items-center gap-1"><Icons.FileText /> Latest Note</div>
-                    {site.notes && site.notes.length > 0 ? <><p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">{site.notes[site.notes.length - 1].content}</p><div className="mt-auto pt-2 text-[10px] text-slate-400 dark:text-slate-500 text-right">{formatDate(site.notes[site.notes.length - 1].timestamp, true)}</div></> : <p className="text-sm text-slate-400 dark:text-slate-500 italic">No notes.</p>}
+                  <div className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto">
+                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1 flex items-center gap-1"><Icons.FileText /> Latest Note</div>
+                    {site.notes && site.notes.length > 0 ? <><p className="text-sm text-slate-400 text-slate-300 line-clamp-2">{site.notes[site.notes.length - 1].content}</p><div className="mt-auto pt-2 text-[10px] text-slate-400 text-slate-400 text-right">{formatDate(site.notes[site.notes.length - 1].timestamp, true)}</div></> : <p className="text-sm text-slate-400 text-slate-400 italic">No notes.</p>}
                   </div>
                 </div>
               );
@@ -630,20 +645,20 @@ export default function App() {
 
 
 
-          <div className="mt-12 p-6 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-xl no-print">
-            <h3 className="text-lg font-bold text-blue-700 dark:text-blue-200 mb-2 flex items-center gap-2">
+          <div className="mt-12 p-6 bg-blue-50 bg-blue-900/20 border border-blue-200 border-blue-800/50 rounded-xl no-print">
+            <h3 className="text-lg font-bold text-blue-700 text-blue-200 mb-2 flex items-center gap-2">
               <span className="text-xl">⚠️</span> Important: Data Persistence Guide
             </h3>
-            <p className="text-blue-600 dark:text-blue-300 mb-4 text-sm">
+            <p className="text-blue-600 text-blue-300 mb-4 text-sm">
               This application is currently running in a temporary environment. Your data is <strong>not automatically saved</strong> to a cloud server.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                <strong className="text-blue-600 dark:text-blue-300 block mb-1">How to Save:</strong>
+              <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <strong className="text-blue-600 text-blue-300 block mb-1">How to Save:</strong>
                 Use the <strong>Backup</strong> button at the top right to download a <code>.json</code> file of your current data.
               </div>
-              <div className="bg-white dark:bg-slate-800 p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                <strong className="text-blue-600 dark:text-blue-300 block mb-1">How to Load:</strong>
+              <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                <strong className="text-blue-600 text-blue-300 block mb-1">How to Load:</strong>
                 Use the <strong>Restore</strong> button to upload a previously saved <code>.json</code> file to continue your work.
               </div>
             </div>
@@ -693,7 +708,7 @@ export default function App() {
             .no-print { display: none !important; }
             body, .min-h-screen { background-color: white !important; height: auto !important; padding: 0 !important; }
             .shadow, .shadow-sm { box-shadow: none !important; border: none !important; }
-            .bg-white { background-color: white !important; }
+            .bg-slate-800 { background-color: white !important; }
             .print-hide-chart { display: none !important; }
             table { width: 100% !important; color: black !important; }
             th, td { color: black !important; border-color: #e2e8f0 !important; }
@@ -767,7 +782,7 @@ export default function App() {
               />
 
               {/* Location - subtle, secondary */}
-              <div className="flex items-center gap-2 text-xs text-slate-500 mt-1">
+              <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
                 <Icons.MapPin size={12} />
                 <span>{selectedSite.location}</span>
               </div>
@@ -804,7 +819,7 @@ export default function App() {
               title={canUndo ? `Undo: ${lastActionDescription}` : 'Nothing to undo'}
               className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${canUndo
                 ? 'text-slate-300 hover:text-white hover:bg-slate-800'
-                : 'text-slate-600 cursor-not-allowed'
+                : 'text-slate-400 cursor-not-allowed'
                 }`}
             >
               <Icons.Undo size={16} />
@@ -827,7 +842,7 @@ export default function App() {
                   <div className="flex flex-col">
                     <button onClick={() => handlePrint('full')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
                     <button onClick={() => handlePrint('schedule')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📅</span> Schedule & Chart Only</button>
-                    <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`px-4 py-3 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-500 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700'}`}><span>📋</span> Asset Specs Only <span className="text-[10px] ml-auto text-slate-500">{!selectedAsset ? '(Select Asset)' : ''}</span></button>
+                    <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`px-4 py-3 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-400 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700'}`}><span>📋</span> Asset Specs Only <span className="text-[10px] ml-auto text-slate-400">{!selectedAsset ? '(Select Asset)' : ''}</span></button>
                     <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); }} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📄</span> Customer Report (PDF)</button>
                   </div>
                 </div>
@@ -1058,7 +1073,7 @@ export default function App() {
                         <td className="px-4 py-2 text-center no-print" onClick={(e) => { e.stopPropagation(); toggleRow(item.id); }}>
                           <input type="checkbox" checked={selectedRowIds.has(item.id)} onChange={() => { }} className="rounded border-slate-500 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600" />
                         </td>
-                        <td className="px-4 py-2 font-medium text-slate-200">{item.name} {item.active === false && <span className="text-[10px] text-slate-500">(Archived)</span>}</td>
+                        <td className="px-4 py-2 font-medium text-slate-200">{item.name} {item.active === false && <span className="text-[10px] text-slate-400">(Archived)</span>}</td>
                         <td className="px-4 py-2 font-mono text-xs text-slate-400">{item.code}</td>
                         <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
                         <td className="px-4 py-2"><EditableCell value={item.lastCal} type="date" onSave={(val) => handleInlineUpdate(item.id, 'lastCal', val)} className="bg-slate-800 text-white border-slate-600" /></td>
@@ -1084,8 +1099,8 @@ export default function App() {
                             {item.opStatus || 'Operational'}
                           </button>
                         </td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); }} className="text-slate-500 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); }} className="text-slate-500 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
+                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
+                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); }} className="text-slate-400 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
@@ -1097,7 +1112,7 @@ export default function App() {
                               setEditingSpecs(specs || null);
                               setIsAssetEditModalOpen(true);
                             }}
-                            className="text-slate-500 hover:text-cyan-400 p-2 rounded"
+                            className="text-slate-400 hover:text-cyan-400 p-2 rounded"
                             title="Edit Asset Details & Specs"
                           >
                             <Icons.Edit />

@@ -166,11 +166,11 @@ export const EditSiteModal = ({
               <div className="max-h-40 overflow-y-auto space-y-2 border border-slate-600 p-2 rounded bg-slate-900/50">
                 {(siteForm.notes || []).map(note => (
                   <div key={note.id} className="p-2 border border-slate-700 rounded text-sm bg-slate-800">
-                    <div className="flex justify-between"><span className="font-bold text-xs text-slate-300">👤 {note.author}</span><span className="text-[10px] text-slate-500">{formatDate(note.timestamp, true)}</span></div>
+                    <div className="flex justify-between"><span className="font-bold text-xs text-slate-300">👤 {note.author}</span><span className="text-[10px] text-slate-400">{formatDate(note.timestamp, true)}</span></div>
                     <p className="text-slate-300 mt-1">{note.content}</p>
                   </div>
                 ))}
-                {(!siteForm.notes || siteForm.notes.length === 0) && <p className="text-slate-500 text-xs italic text-center">No notes found.</p>}
+                {(!siteForm.notes || siteForm.notes.length === 0) && <p className="text-slate-400 text-xs italic text-center">No notes found.</p>}
               </div>
               <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
                 <input className={`${inputClass} mb-2 text-xs`} placeholder="New Note Author" value={noteInput.author || ''} onChange={e => setNoteInput({ ...noteInput, author: e.target.value })} />
@@ -188,7 +188,7 @@ export const EditSiteModal = ({
           <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded border border-slate-600">
             <div>
               <div className="text-sm font-bold text-slate-300">Customer Status</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400">
                 {siteForm.active !== false ? 'Currently Active' : 'Currently Archived'}
               </div>
             </div>
@@ -226,7 +226,7 @@ export const ContactModal = ({ site, onClose }) => {
           <div className="flex items-center gap-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
             <div className="bg-slate-800 p-2 rounded-full shadow-sm text-blue-400"><Icons.Mail /></div>
             <div>
-              <div className="text-xs text-slate-500 uppercase font-bold">Email</div>
+              <div className="text-xs text-slate-400 uppercase font-bold">Email</div>
               <div className="text-slate-200 font-medium">{site.contactEmail || 'N/A'}</div>
             </div>
           </div>
@@ -234,7 +234,7 @@ export const ContactModal = ({ site, onClose }) => {
           <div className="flex items-center gap-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
             <div className="bg-slate-800 p-2 rounded-full shadow-sm text-green-400"><Icons.Phone /></div>
             <div>
-              <div className="text-xs text-slate-500 uppercase font-bold">Phone 1</div>
+              <div className="text-xs text-slate-400 uppercase font-bold">Phone 1</div>
               <div className="text-slate-200 font-medium">{site.contactPhone1 || 'N/A'}</div>
             </div>
           </div>
@@ -243,7 +243,7 @@ export const ContactModal = ({ site, onClose }) => {
             <div className="flex items-center gap-4 p-3 bg-slate-700/50 rounded-lg border border-slate-600">
               <div className="bg-slate-800 p-2 rounded-full shadow-sm text-green-400"><Icons.Phone /></div>
               <div>
-                <div className="text-xs text-slate-500 uppercase font-bold">Phone 2</div>
+                <div className="text-xs text-slate-400 uppercase font-bold">Phone 2</div>
                 <div className="text-slate-200 font-medium">{site.contactPhone2}</div>
               </div>
             </div>

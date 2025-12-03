@@ -33,7 +33,20 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Phase 1: Update agent context by running the agent script
    - Re-evaluate Constitution Check post-design
 
-4. **Stop and report**: Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generated artifacts.
+4. **"Unknown Unknowns" Analysis**: Analyze the user's requested stack/workflow against current 2024/2025 industry standards.
+   
+   **Check for:**
+   - **Better Tooling**: Are there newer tools that solve this faster? (e.g., Biome vs ESLint, Vitest vs Jest)
+   - **Testing Gaps**: Did the user forget E2E testing? Visual regression?
+   - **DX Improvements**: Can we automate something the user plans to do manually?
+   
+   **If improvements are found**, list them in a "Suggested Upgrades" section at the top of the plan with:
+   - Current approach vs. recommended approach
+   - Benefits of the upgrade
+   - Migration effort estimate (Low/Medium/High)
+   - Ask user if they want to incorporate these improvements
+
+5. **Stop and report**: Command ends after Phase 2 planning. Report branch, IMPL_PLAN path, and generated artifacts.
 
 ## Phases
 

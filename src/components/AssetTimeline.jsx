@@ -225,7 +225,7 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                 <div className="flex items-center gap-3 w-full md:w-auto">
                     {/* Search */}
                     <div className="relative group">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-blue-400" size={16} />
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-400" size={16} />
                         <input
                             type="text"
                             placeholder="Filter assets..."
@@ -259,7 +259,7 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
 
                 {/* Left Sidebar: Asset List */}
                 <div className="w-64 bg-slate-800 border-r border-slate-700 flex-shrink-0 z-10 shadow-lg flex flex-col">
-                    <div className="h-12 border-b border-slate-700 bg-slate-900/50 flex items-center px-4 font-semibold text-xs text-slate-500 uppercase tracking-wider">
+                    <div className="h-12 border-b border-slate-700 bg-slate-900/50 flex items-center px-4 font-semibold text-xs text-slate-400 uppercase tracking-wider">
                         Asset Name
                     </div>
                     <div className="overflow-y-hidden flex-1">
@@ -291,7 +291,7 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                             );
                         })}
                         {filteredAssets.length === 0 && (
-                            <div className="p-8 text-center text-slate-500 text-sm">
+                            <div className="p-8 text-center text-slate-400 text-sm">
                                 No assets found matching "{searchQuery}"
                             </div>
                         )}
@@ -372,7 +372,7 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                                     return (
                                         <div
                                             key={i}
-                                            className={`flex-shrink-0 border-r border-slate-700/30 flex items-center justify-center text-[10px] select-none ${isMonthStart ? 'font-bold text-slate-300 border-l border-l-slate-600' : 'text-slate-500'} ${isToday ? 'bg-blue-900/20 text-blue-200 font-bold' : ''}`}
+                                            className={`flex-shrink-0 border-r border-slate-700/30 flex items-center justify-center text-[10px] select-none ${isMonthStart ? 'font-bold text-slate-300 border-l border-l-slate-600' : 'text-slate-400'} ${isToday ? 'bg-blue-900/20 text-blue-200 font-bold' : ''}`}
                                             style={{ width: `${zoomLevel}px` }}
                                         >
                                             {format(dayDate, 'd')}
@@ -436,7 +436,7 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                                         {/* Due Date Marker (Vertical Line) */}
                                         {asset.dueDate && (
                                             <div
-                                                className="absolute top-2 bottom-2 w-0.5 bg-white/50 z-0"
+                                                className="absolute top-2 bottom-2 w-0.5 bg-slate-800/50 z-0"
                                                 style={{ left: `${differenceInDays(parseISO(asset.dueDate), TIMELINE_START) * zoomLevel}px` }}
                                                 title={`Due: ${format(parseISO(asset.dueDate), 'dd MMM yyyy')}`}
                                             />

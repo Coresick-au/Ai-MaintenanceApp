@@ -63,7 +63,7 @@ export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
                                             ? 'bg-cyan-600 text-white font-semibold'
                                             : isActive
                                                 ? 'text-slate-200 hover:bg-cyan-600 hover:text-white'
-                                                : 'text-slate-500 cursor-not-allowed opacity-50'
+                                                : 'text-slate-400 cursor-not-allowed opacity-50'
                                         }`}
                                 >
                                     <div className="flex flex-col">

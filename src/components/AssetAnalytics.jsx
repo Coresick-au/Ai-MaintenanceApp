@@ -105,13 +105,13 @@ const ReportDetailsModal = ({ report, onClose, onDelete, siteLocation }) => {
                     {/* Header Info */}
                     <div className="grid grid-cols-2 gap-4">
                         <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                            <div className="text-xs text-slate-500 uppercase font-bold mb-1">Service Date</div>
+                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Service Date</div>
                             <div className="text-2xl font-bold text-white">{reportDate}</div>
 
                             {/* Weather Section */}
                             {siteLocation && (
                                 <div className="mt-3 pt-3 border-t border-slate-800">
-                                    <div className="text-[10px] text-slate-500 uppercase font-bold mb-1 flex items-center gap-1">
+                                    <div className="text-[10px] text-slate-400 uppercase font-bold mb-1 flex items-center gap-1">
                                         Weather in {siteLocation}
                                     </div>
                                     {loadingWeather ? (
@@ -128,13 +128,13 @@ const ReportDetailsModal = ({ report, onClose, onDelete, siteLocation }) => {
                                             </div>
                                         )
                                     ) : (
-                                        <div className="text-xs text-slate-500">No data available</div>
+                                        <div className="text-xs text-slate-400">No data available</div>
                                     )}
                                 </div>
                             )}
                         </div>
                         <div className="bg-slate-900 rounded-lg p-4 border border-slate-700">
-                            <div className="text-xs text-slate-500 uppercase font-bold mb-1">Technician</div>
+                            <div className="text-xs text-slate-400 uppercase font-bold mb-1">Technician</div>
                             <div className="text-2xl font-bold text-white">{technician}</div>
                         </div>
                     </div>
@@ -182,7 +182,7 @@ const ReportDetailsModal = ({ report, onClose, onDelete, siteLocation }) => {
                                 <div key={idx} className="bg-slate-900/50 rounded p-3 mb-2 last:mb-0">
                                     <div className="text-sm text-slate-200 whitespace-pre-wrap">{comment.text}</div>
                                     {comment.status && (
-                                        <div className="text-xs text-slate-500 mt-1">Status: {comment.status}</div>
+                                        <div className="text-xs text-slate-400 mt-1">Status: {comment.status}</div>
                                     )}
                                 </div>
                             ))}
@@ -231,7 +231,7 @@ const ExpandedChartModal = ({ title, description, children, onClose }) => (
 const MiniLineChart = ({ data, dataKeys, colors, min, max, unit, isExpanded = false, showTrendLine = false }) => {
     // If there's no data or only one point, show a message.
     // However, if there's exactly one point, we still want to render it as a dot.
-    if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-slate-500 text-xs italic">No data available</div>;
+    if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-slate-400 text-xs italic">No data available</div>;
 
     const height = isExpanded ? 'h-[400px]' : 'h-32'; // Fixed height for expanded chart
     const fontSize = isExpanded ? 'text-sm' : 'text-[9px]';
@@ -295,9 +295,9 @@ const MiniLineChart = ({ data, dataKeys, colors, min, max, unit, isExpanded = fa
     return (
         <div className={`${height} w-full relative mt-4`}>
             {/* Y-axis labels */}
-            <div className={`absolute left-0 top-0 ${fontSize} text-slate-500 font-mono text-right w-10`}>{dataMax.toFixed(2)}</div>
-            <div className={`absolute left-0 top-1/2 -translate-y-1/2 ${fontSize} text-slate-500 font-mono text-right w-10`}>{((dataMax + dataMin) / 2).toFixed(2)}</div>
-            <div className={`absolute left-0 bottom-8 ${fontSize} text-slate-500 font-mono text-right w-10`}>{dataMin.toFixed(2)}</div>
+            <div className={`absolute left-0 top-0 ${fontSize} text-slate-400 font-mono text-right w-10`}>{dataMax.toFixed(2)}</div>
+            <div className={`absolute left-0 top-1/2 -translate-y-1/2 ${fontSize} text-slate-400 font-mono text-right w-10`}>{((dataMax + dataMin) / 2).toFixed(2)}</div>
+            <div className={`absolute left-0 bottom-8 ${fontSize} text-slate-400 font-mono text-right w-10`}>{dataMin.toFixed(2)}</div>
 
             {/* Scrollable container for chart content and X-axis labels */}
             <div className={`absolute left-12 right-4 top-4 bottom-8 ${showScrollableXAxis ? 'overflow-x-auto' : ''}`}>
@@ -380,7 +380,7 @@ const MiniLineChart = ({ data, dataKeys, colors, min, max, unit, isExpanded = fa
                     })}
 
                     {/* X-axis labels */}
-                    <div className={`absolute bottom-0 left-0 right-0 ${fontSize} text-slate-500 font-mono whitespace-nowrap flex justify-between`}> {/* Reverted bottom positioning */}
+                    <div className={`absolute bottom-0 left-0 right-0 ${fontSize} text-slate-400 font-mono whitespace-nowrap flex justify-between`}> {/* Reverted bottom positioning */}
                         {data.map((d, i) => (
                             <span
                                 key={i}
@@ -402,7 +402,7 @@ const MiniLineChart = ({ data, dataKeys, colors, min, max, unit, isExpanded = fa
 
 // --- ENHANCED BAR CHART (much thicker and clickable with proper scaling) ---
 const MiniBarChart = ({ data, dataKey, color, isExpanded = false }) => {
-    if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-slate-500 text-xs italic">No data</div>;
+    if (!data || data.length === 0) return <div className="h-32 flex items-center justify-center text-slate-400 text-xs italic">No data</div>;
 
     // Filter out non-numeric or NaN values from allValues
     const allValues = data.map(d => parseFloat(d[dataKey])).filter(v => typeof v === 'number' && !isNaN(v));
@@ -411,10 +411,10 @@ const MiniBarChart = ({ data, dataKey, color, isExpanded = false }) => {
     if (!hasValidData) {
         return (
             <div className={isExpanded ? 'h-full' : 'h-32'}> {/* Adjusted to h-full for expanded mode */}
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
                     <span className="text-2xl mb-2">📊</span>
                     <span className="italic">No throughput data recorded</span>
-                    <span className="text-[10px] text-slate-600 mt-1">Values will appear after service reports are logged</span>
+                    <span className="text-[10px] text-slate-400 mt-1">Values will appear after service reports are logged</span>
                 </div>
             </div>
         );
@@ -441,11 +441,11 @@ const MiniBarChart = ({ data, dataKey, color, isExpanded = false }) => {
     return (
         <div className={`${height} w-full flex items-end ${gapSize} pl-12 pr-4 mt-4 relative`}>
             {/* Y-axis labels */}
-            <div className={`absolute left-0 top-0 ${fontSize} text-slate-500 font-mono text-right w-10`}>{maxVal.toLocaleString()}t</div>
-            <div className={`absolute left-0 top-1/2 -translate-y-1/2 ${fontSize} text-slate-500 font-mono text-right w-10`}>
+            <div className={`absolute left-0 top-0 ${fontSize} text-slate-400 font-mono text-right w-10`}>{maxVal.toLocaleString()}t</div>
+            <div className={`absolute left-0 top-1/2 -translate-y-1/2 ${fontSize} text-slate-400 font-mono text-right w-10`}>
                 {useSimpleScaling ? (maxVal / 2).toLocaleString() : ((maxVal + minVal) / 2).toLocaleString()}t
             </div>
-            <div className={`absolute left-0 bottom-8 ${fontSize} text-slate-500 font-mono text-right w-10`}>
+            <div className={`absolute left-0 bottom-8 ${fontSize} text-slate-400 font-mono text-right w-10`}>
                 {useSimpleScaling ? '0' : minVal.toLocaleString()}t
             </div>
 
@@ -489,7 +489,7 @@ const MiniBarChart = ({ data, dataKey, color, isExpanded = false }) => {
                                 </div>
                                 <div
                                     className={`
-                                        ${fontSize} text-slate-500 text-center mt-2 font-mono 
+                                        ${fontSize} text-slate-400 text-center mt-2 font-mono 
                                         ${isExpanded ? 'transform rotate-90 origin-bottom' : 'truncate'}
                                     `}
                                     style={isExpanded ? { position: 'absolute', left: `calc(${i} * (100% / ${data.length}))`, width: `calc(100% / ${data.length})`, bottom: '0' } : {}}
@@ -704,7 +704,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                             <div className="flex items-center justify-between mb-2">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-200">Tare Change Analysis</h4>
-                                    <p className="text-xs text-slate-500">Tracking percentage change in Tare over time.</p>
+                                    <p className="text-xs text-slate-400">Tracking percentage change in Tare over time.</p>
                                 </div>
                                 <span className="text-blue-400 text-xl">🔍</span>
                             </div>
@@ -728,7 +728,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                             <div className="flex items-center justify-between mb-2">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-200">Span Change Analysis</h4>
-                                    <p className="text-xs text-slate-500">Tracking percentage change in Span over time.</p>
+                                    <p className="text-xs text-slate-400">Tracking percentage change in Span over time.</p>
                                 </div>
                                 <span className="text-orange-500 text-xl">🔍</span>
                             </div>
@@ -753,7 +753,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                             <div className="flex items-center justify-between mb-2">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-200">Load Cell Signal Health (mV/V)</h4>
-                                    <p className="text-xs text-slate-500">Raw signal voltage drift indicates load cell degradation.</p>
+                                    <p className="text-xs text-slate-400">Raw signal voltage drift indicates load cell degradation.</p>
                                 </div>
                                 <span className="text-purple-400 text-xl">🔍</span>
                             </div>
@@ -776,7 +776,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                             <div className="flex items-center justify-between mb-2">
                                 <div>
                                     <h4 className="text-sm font-bold text-slate-200">Belt Speed Stability</h4>
-                                    <p className="text-xs text-slate-500">Tracking belt speed consistency over service intervals.</p>
+                                    <p className="text-xs text-slate-400">Tracking belt speed consistency over service intervals.</p>
                                 </div>
                                 <span className="text-green-400 text-xl">🔍</span>
                             </div>
@@ -854,7 +854,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                                                         e.stopPropagation();
                                                         onDeleteReport(asset.id, r.id);
                                                     }}
-                                                    className="text-slate-500 hover:text-red-500 transition-colors"
+                                                    className="text-slate-400 hover:text-red-500 transition-colors"
                                                     title="Delete Report"
                                                 >
                                                     <Icons.Trash />
@@ -914,7 +914,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                                         <div className="flex flex-col items-center gap-2">
                                             <Icons.UploadCloud className="text-3xl text-blue-400" />
                                             <span className="text-sm text-slate-300">Click to select PDF files</span>
-                                            <span className="text-xs text-slate-500">or drag and drop (multiple files supported)</span>
+                                            <span className="text-xs text-slate-400">or drag and drop (multiple files supported)</span>
                                         </div>
                                     )}
                                 </div>
@@ -992,22 +992,22 @@ ${JSON.stringify(cleanReports, null, 2)}
                                 <div className="w-full border-t border-slate-700"></div>
                             </div>
                             <div className="relative flex justify-center text-xs">
-                                <span className="px-2 bg-slate-800 text-slate-500">OR ENTER MANUALLY</span>
+                                <span className="px-2 bg-slate-800 text-slate-400">OR ENTER MANUALLY</span>
                             </div>
                         </div>
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Service Date</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Service Date</label>
                                 <input type="date" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="Select date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Technician Name</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Technician Name</label>
                                 <input className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="e.g. J. Smith" value={formData.technician} onChange={e => setFormData({ ...formData, technician: e.target.value })} />
                             </div>
                         </div>
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">File Name</label>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">File Name</label>
                             <input className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="e.g. Report-2023-01-01.pdf" value={formData.fileName} onChange={e => setFormData({ ...formData, fileName: e.target.value })} />
                         </div>
 
@@ -1037,17 +1037,17 @@ ${JSON.stringify(cleanReports, null, 2)}
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Belt Speed (m/s)</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Belt Speed (m/s)</label>
                                 <input type="number" step="0.01" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="0.00" value={formData.speed} onChange={e => setFormData({ ...formData, speed: e.target.value })} />
                             </div>
                             <div>
-                                <label className="block text-xs font-bold text-slate-500 mb-1">Throughput (Tonnes)</label>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Throughput (Tonnes)</label>
                                 <input type="number" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="0" value={formData.throughput} onChange={e => setFormData({ ...formData, throughput: e.target.value })} />
                             </div>
                         </div>
 
                         <div>
-                            <label className="block text-xs font-bold text-slate-500 mb-1">Comments & Action Items</label>
+                            <label className="block text-xs font-bold text-slate-400 mb-1">Comments & Action Items</label>
                             <textarea className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" rows="3" placeholder="Notes on condition..." value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} />
                         </div>
 

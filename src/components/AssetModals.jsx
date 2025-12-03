@@ -149,7 +149,7 @@ export const EditAssetModal = ({
           <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded border border-slate-600">
             <div>
               <div className="text-sm font-bold text-slate-300">Asset Status</div>
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-400">
                 {editingAsset.active !== false ? 'Currently Active' : 'Currently Decommissioned'}
               </div>
             </div>
@@ -243,7 +243,7 @@ export const EditAssetModal = ({
                 <h4 className="text-blue-400 text-sm font-bold uppercase mb-3">Scale Details</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Scale Model</label>
+                    <label className="text-[10px] text-slate-400 block">Scale Model</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.scale}
@@ -251,7 +251,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Integrator</label>
+                    <label className="text-[10px] text-slate-400 block">Integrator</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.integrator}
@@ -259,7 +259,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Speed Sensor</label>
+                    <label className="text-[10px] text-slate-400 block">Speed Sensor</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.speedSensor}
@@ -267,7 +267,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Load Cell</label>
+                    <label className="text-[10px] text-slate-400 block">Load Cell</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.loadCell}
@@ -281,7 +281,7 @@ export const EditAssetModal = ({
                 <h4 className="text-orange-400 text-sm font-bold uppercase mb-3">Roller & Billet</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className="text-[10px] text-slate-500 block">Roller Dimensions</label>
+                    <label className="text-[10px] text-slate-400 block">Roller Dimensions</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.rollDims}
@@ -290,7 +290,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Adjustment Type</label>
+                    <label className="text-[10px] text-slate-400 block">Adjustment Type</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.adjustmentType}
@@ -298,7 +298,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Billet Type</label>
+                    <label className="text-[10px] text-slate-400 block">Billet Type</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.billetType}
@@ -306,7 +306,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-500 block">Billet Weight (kg)</label>
+                    <label className="text-[10px] text-slate-400 block">Billet Weight (kg)</label>
                     <input
                       type="number"
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
@@ -367,7 +367,7 @@ export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
                   }`}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-4 h-4 rounded-full ${opStatus === option.value ? 'bg-white' : option.color}`}></div>
+                  <div className={`w-4 h-4 rounded-full ${opStatus === option.value ? 'bg-slate-800' : option.color}`}></div>
                   <span className="font-bold">{option.label}</span>
                 </div>
               </button>
@@ -385,7 +385,7 @@ export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
             onChange={e => setOpNote(e.target.value)}
           />
           {asset.opNoteTimestamp && (
-            <div className="text-xs text-slate-500 mt-1">
+            <div className="text-xs text-slate-400 mt-1">
               Last updated: {new Date(asset.opNoteTimestamp).toLocaleString()}
             </div>
           )}

@@ -99,7 +99,7 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
     <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-4">
       <div className="flex justify-between items-center mb-4">
         <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200">
-          <Icons.AlertTriangle /> Issue Tracker <span className="text-slate-500 text-sm">({issues.length} total, {issues.filter(issue => issue.status === 'Completed').length} completed)</span>
+          <Icons.AlertTriangle /> Issue Tracker <span className="text-slate-400 text-sm">({issues.length} total, {issues.filter(issue => issue.status === 'Completed').length} completed)</span>
         </h2>
         <div className="flex items-center gap-2">
           <label htmlFor="show-completed" className="text-sm text-slate-400 flex items-center gap-1 cursor-pointer">
@@ -136,7 +136,7 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
 
       <div className="space-y-3 mb-4">
         {filteredIssues.length === 0 ? (
-          <div className="text-center text-slate-500 py-4 italic">No issues logged for this site.</div>
+          <div className="text-center text-slate-400 py-4 italic">No issues logged for this site.</div>
         ) : (
           filteredIssues.sort((a, b) => {
             if (sortIssuesConfig.key === 'createdAt') {
@@ -170,7 +170,7 @@ export const IssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onTogg
                     onChange={() => onToggleIssueStatus(siteId, issue.id)}
                     className="rounded text-green-600 focus:ring-green-500 accent-green-600 cursor-pointer"
                   />
-                  <span className={`text-sm ${issue.status === 'Completed' ? 'line-through text-slate-500' : 'text-slate-200'}`}>
+                  <span className={`text-sm ${issue.status === 'Completed' ? 'line-through text-slate-400' : 'text-slate-200'}`}>
                     {issue.description}
                   </span>
                 </div>

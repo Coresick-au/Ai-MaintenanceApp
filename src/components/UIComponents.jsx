@@ -48,7 +48,7 @@ export const Button = ({ children, onClick, disabled, className = "", variant = 
 
   // 5. Risk Levels
   else if (variant === "risk-active") baseStyle += "bg-red-900/20 text-red-400 border border-red-500/30 shadow-[inset_0_0_10px_rgba(239,68,68,0.2)] ";
-  else if (variant === "risk-inactive") baseStyle += "bg-slate-800/30 text-slate-500 border border-slate-800 ";
+  else if (variant === "risk-inactive") baseStyle += "bg-slate-800/30 text-slate-400 border border-slate-800 ";
 
   if (disabled) baseStyle += "opacity-50 cursor-not-allowed grayscale ";
 
@@ -180,7 +180,7 @@ export const LongPressButton = ({ onLongPress, duration = 3000, children, classN
               stroke="currentColor"
               strokeWidth="4"
               fill="transparent"
-              className="text-slate-500/50"
+              className="text-slate-400/50"
             />
             <circle
               cx="16"
@@ -213,7 +213,7 @@ export const SimpleBarChart = ({ data, onBarClick }) => {
   // 1. Handle empty data
   if (!data || data.length === 0) {
     return (
-      <div className="h-64 w-full flex flex-col items-center justify-center text-slate-500 border-2 border-dashed border-slate-700 rounded-lg">
+      <div className="h-64 w-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-700 rounded-lg">
         <Icons.Scale className="h-8 w-8 mb-2 opacity-50" />
         <span className="text-sm">No data available for chart</span>
       </div>
@@ -330,7 +330,7 @@ export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect, expande
       <div className={`bg-slate-800 border border-slate-700 rounded-lg p-2 ${mini ? 'text-[10px]' : ''}`}>
         <div className="text-center font-bold text-slate-300 mb-2 text-xs uppercase tracking-wider">{monthName} {mini ? '' : year}</div>
         <div className="grid grid-cols-7 gap-1 text-center mb-1">
-          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className="text-[9px] text-slate-500 font-bold">{d}</span>)}
+          {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((d, i) => <span key={i} className="text-[9px] text-slate-400 font-bold">{d}</span>)}
         </div>
         <div className="grid grid-cols-7 gap-1">
           {days}
@@ -407,12 +407,12 @@ export const Modal = ({ title, onClose, children, size = "md" }) => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm">
-      <div className={`bg-white dark:bg-slate-800 rounded-lg shadow-2xl border border-slate-200 dark:border-slate-700 w-full ${maxWidth} max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200`}>
-        <div className="flex justify-between items-center p-4 border-b border-slate-200 dark:border-slate-700">
-          <h3 className="font-semibold text-lg text-slate-800 dark:text-slate-100">{title}</h3>
-          <button type="button" onClick={onClose} className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"><Icons.X /></button>
+      <div className={`bg-slate-800 rounded-lg shadow-2xl border border-slate-700 w-full ${maxWidth} max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200`}>
+        <div className="flex justify-between items-center p-4 border-b border-slate-700">
+          <h3 className="font-semibold text-lg text-slate-200 text-slate-100">{title}</h3>
+          <button type="button" onClick={onClose} className="text-slate-400 hover:text-slate-100 hover:text-white"><Icons.X /></button>
         </div>
-        <div className="p-4 text-slate-700 dark:text-slate-300">
+        <div className="p-4 text-slate-300">
           <ErrorBoundary>
             {children}
           </ErrorBoundary>
@@ -442,7 +442,7 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
           onBlur={handleBlur}
           onClickOutside={handleBlur}
           dateFormat="dd-MM-yyyy"
-          className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white z-20 relative ${className}`}
+          className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`}
           calendarClassName="react-datepicker-custom-calendar"
           popperPlacement="auto"
           autoFocus
@@ -450,11 +450,11 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
         />
       );
     }
-    return <input autoFocus type={type} value={tempValue || ''} onChange={(e) => setTempValue(e.target.value)} onBlur={handleBlur} onKeyDown={(e) => e.key === 'Enter' && handleBlur()} onClick={(e) => e.stopPropagation()} className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-white dark:bg-slate-900 text-slate-900 dark:text-white z-20 relative ${className}`} />;
+    return <input autoFocus type={type} value={tempValue || ''} onChange={(e) => setTempValue(e.target.value)} onBlur={handleBlur} onKeyDown={(e) => e.key === 'Enter' && handleBlur()} onClick={(e) => e.stopPropagation()} className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`} />;
   }
 
   const displayValue = type === 'date' && value ? formatDate(value) : (value || '');
-  return <div onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className={`cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 hover:ring-1 hover:ring-slate-400 dark:hover:ring-slate-500 rounded px-1 -mx-1 relative group flex items-center gap-1 min-h-[24px] ${className}`}>{displayValue} <span className="opacity-0 group-hover:opacity-100 text-slate-400 dark:text-slate-500 ml-1 text-xs no-print"><Icons.Edit /></span></div>;
+  return <div onClick={(e) => { e.stopPropagation(); setIsEditing(true); }} className={`cursor-pointer hover:bg-slate-700 hover:ring-1 hover:ring-slate-500 rounded px-1 -mx-1 relative group flex items-center gap-1 min-h-[24px] ${className}`}>{displayValue} <span className="opacity-0 group-hover:opacity-100 text-slate-400 text-slate-400 ml-1 text-xs no-print"><Icons.Edit /></span></div>;
 };
 
 // ==========================================
