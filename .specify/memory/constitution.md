@@ -33,10 +33,11 @@
 2. **Suggest**: Briefly propose the "Modern/Best Practice" alternative (e.g., "I recommend using Vitest over Jest for this Vite app because...").
 3. **Ask**: "Would you like to proceed with your original request, or switch to this better approach?"
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. UI Compliance Directive
+
+**Rule**: New UI elements, modals, and components must automatically inherit or be manually configured to comply with the existing dark/light mode aesthetic of the application.
+
+**Rationale**: To maintain a cohesive and professional user experience, all interface elements must respect the user's theme preference without exception.
 
 ## [SECTION_2_NAME]
 <!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->

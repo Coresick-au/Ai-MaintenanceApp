@@ -81,7 +81,7 @@ export const AddSiteModal = ({
           <input className={`${inputClass} mb-2`} placeholder="Author" value={noteInput.author || ''} onChange={e => setNoteInput({ ...noteInput, author: e.target.value })} />
           <textarea className={inputClass} rows="2" placeholder="Content" value={noteInput.content || ''} onChange={e => setNoteInput({ ...noteInput, content: e.target.value })} />
         </div>
-        <Button onClick={onSave} className="w-full justify-center">Create Site</Button>
+        <Button onClick={() => onSave(siteForm, noteInput)} className="w-full justify-center">Create Site</Button>
       </div>
     </Modal>
   );
@@ -202,7 +202,7 @@ export const EditSiteModal = ({
 
           <div className="flex gap-2">
             <LongPressButton onComplete={onDelete} label="Hold to Delete Site" />
-            <Button onClick={onSave} className="flex-[2] justify-center">Save Changes</Button>
+            <Button onClick={() => onSave(siteForm)} className="flex-[2] justify-center">Save Changes</Button>
           </div>
         </div>
       </div>

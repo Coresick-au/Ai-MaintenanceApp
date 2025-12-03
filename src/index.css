@@ -53,6 +53,29 @@
   /* Ensure input field itself matches EditableCell styling */
 }
 
+/* Dropdown Styles for Year/Month */
+.react-datepicker__header__dropdown select {
+  @apply bg-slate-700 text-white border border-slate-600 rounded p-1;
+}
+
+.react-datepicker__year-dropdown,
+.react-datepicker__month-dropdown,
+.react-datepicker__month-year-dropdown {
+  @apply bg-slate-800 border border-slate-700 text-white;
+}
+
+.react-datepicker__year-option,
+.react-datepicker__month-option,
+.react-datepicker__month-year-option {
+  @apply hover:bg-slate-700;
+}
+
+.react-datepicker__year-option--selected,
+.react-datepicker__month-option--selected,
+.react-datepicker__month-year-option--selected {
+  @apply bg-blue-600 font-bold;
+}
+
 /* Standard Date Input Calendar Icon Styling */
 input[type="date"]::-webkit-calendar-picker-indicator {
   cursor: pointer;
@@ -79,12 +102,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   --bg-primary: #0a1628;
   --bg-secondary: #0f172a;
   --bg-tertiary: #1e293b;
-  
+
   /* Engineering Blues/Teals */
   --accent-primary: #0ea5e9;
   --accent-secondary: #06b6d4;
   --accent-hover: #38bdf8;
-  
+
   /* Status Colors - Softer */
   --success: #10b981;
   --success-dark: #059669;
@@ -92,7 +115,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   --warning-dark: #d97706;
   --danger: #dc2626;
   --danger-dark: #b91c1c;
-  
+
   /* Neutrals */
   --slate-50: #f8fafc;
   --slate-100: #f1f5f9;

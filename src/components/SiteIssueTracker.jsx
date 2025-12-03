@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
-import { Button, Icons, formatDate, Modal } from './UIComponents';
+import { Button, Icons, formatDate, Modal, UniversalDatePicker } from './UIComponents';
 
 export const SiteIssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, onToggleIssueStatus, onCopyIssue, assets }) => {
   const [newIssueDescription, setNewIssueDescription] = useState('');
@@ -234,14 +232,10 @@ export const SiteIssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, on
                 <option key={asset.id} value={asset.id}>{asset.name} ({asset.code})</option>
               ))}
             </select>
-            <DatePicker
+            <UniversalDatePicker
               selected={newIssueDueDate}
               onChange={(date) => setNewIssueDueDate(date)}
               placeholderText="Select Due Date (Optional)"
-              dateFormat="dd-MM-yyyy"
-              showYearDropdown
-              showMonthDropdown
-              dropdownMode="select"
               className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
             />
             <div className="flex gap-2 mt-4">
@@ -293,14 +287,10 @@ export const SiteIssueTracker = ({ siteId, issues, onAddIssue, onUpdateIssue, on
                 <option key={asset.id} value={asset.id}>{asset.name} ({asset.code})</option>
               ))}
             </select>
-            <DatePicker
+            <UniversalDatePicker
               selected={editIssueDueDate}
               onChange={(date) => setEditIssueDueDate(date)}
               placeholderText="Select Due Date (Optional)"
-              dateFormat="dd-MM-yyyy"
-              showYearDropdown
-              showMonthDropdown
-              dropdownMode="select"
               className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
             />
             <div className="flex gap-2 mt-4">

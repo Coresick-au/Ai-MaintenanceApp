@@ -516,7 +516,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto">
           <header className="flex flex-col items-center gap-6 mb-10 text-center">
             <div className="flex-shrink-0 flex flex-col items-center gap-4 max-w-xs"> {/* Added max-w-xs here */}
-              <img src="logos/ai-logo.png" alt="Accurate Industries" className="w-full h-auto mb-2" /> {/* Changed w-auto to w-full, h-16 to h-auto */}
+              <img src={selectedSite?.logo || "logos/ai-logo.png"} alt={selectedSite?.name || "Accurate Industries"} className="w-full h-auto mb-2 object-contain max-h-32" /> {/* Changed w-auto to w-full, h-16 to h-auto */}
               <h1 className="text-4xl font-black italic uppercase tracking-wider text-slate-200 text-slate-100 leading-tight" style={{ fontWeight: 800, letterSpacing: '0.15em' }}>Maintenance Tracker</h1>
             </div>
 
@@ -1044,6 +1044,9 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
                   <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
+                  <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-xs text-slate-400 font-bold hidden sm:inline" title="Archived Assets">
+                    {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0} Archived
+                  </span>
                 </div>
                 <div className="flex gap-2 items-center no-print pr-10">
                   <div className="flex items-center mr-2">
@@ -1057,7 +1060,7 @@ export default function App() {
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white hover:bg-cyan-700 px-4 py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center gap-2 shadow-md"><Icons.Plus size={16} /> Add Asset</button>
+                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white hover:bg-cyan-700 p-2 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={16} /> <span className="hidden sm:inline">Add Asset</span></button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">

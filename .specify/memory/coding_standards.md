@@ -35,6 +35,41 @@ export const MyComponent = () => { /* ... */ };
 
 ---
 
+## Date Selection Standardization
+
+### Rule: Use UniversalDatePicker Component
+
+**Directive:**
+All date selection across the application must use the `UniversalDatePicker` component to ensure consistent styling and dark mode compliance.
+
+**Pattern to Avoid:**
+```javascript
+// ❌ BAD: Using native input or raw DatePicker
+<input type="date" />
+<DatePicker />
+```
+
+**Correct Pattern:**
+```javascript
+// ✅ GOOD: Use the standardized component
+import { UniversalDatePicker } from './UIComponents';
+
+<UniversalDatePicker
+  selected={date}
+  onChange={setDate}
+  placeholderText="Select Date"
+/>
+```
+
+**Rationale:**
+- Ensures consistent UI/UX across the application.
+- Centralizes styling and dark mode logic.
+- Simplifies maintenance and updates.
+
+**When this was learned:** 2025-12-03 - Standardized date pickers for dark mode support.
+
+---
+
 ## Future Rules
 
 Additional coding standards will be appended here as new patterns are discovered through build errors and lint warnings.

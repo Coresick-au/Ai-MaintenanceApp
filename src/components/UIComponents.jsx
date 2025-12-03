@@ -434,6 +434,24 @@ export const Modal = ({ title, onClose, children, size = "md" }) => {
   );
 };
 
+export const UniversalDatePicker = ({ selected, onChange, placeholderText, className, ...props }) => {
+  return (
+    <DatePicker
+      selected={selected}
+      onChange={onChange}
+      placeholderText={placeholderText}
+      dateFormat="dd-MM-yyyy"
+      showYearDropdown
+      showMonthDropdown
+      dropdownMode="select"
+      className={`w-full p-2 text-sm border border-slate-600 rounded bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ring-offset-0 transition-colors ${className}`}
+      calendarClassName="react-datepicker-custom-calendar"
+      popperPlacement="auto"
+      {...props}
+    />
+  );
+};
+
 export const EditableCell = ({ value, type = "text", onSave, className = "" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
@@ -444,7 +462,7 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
   if (isEditing) {
     if (type === 'date') {
       return (
-        <DatePicker
+        <UniversalDatePicker
           selected={tempValue ? new Date(tempValue) : null}
           onChange={(date) => {
             setTempValue(date ? date.toISOString().split('T')[0] : '');
@@ -453,14 +471,9 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
           }}
           onBlur={handleBlur}
           onClickOutside={handleBlur}
-          dateFormat="dd-MM-yyyy"
-          showYearDropdown
-          showMonthDropdown
-          dropdownMode="select"
-          className={`w-full p-1 text-sm border border-blue-500 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ring-offset-0 bg-slate-800 bg-slate-900 text-slate-100 text-white z-20 relative ${className}`}
-          calendarClassName="react-datepicker-custom-calendar"
-          popperPlacement="auto"
+          className={`p-1 border-blue-500 bg-slate-900 z-20 relative ${className}`}
           autoFocus
+          open
           onClick={(e) => e.stopPropagation()}
         />
       );
