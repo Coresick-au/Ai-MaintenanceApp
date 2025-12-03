@@ -82,6 +82,8 @@ export default function App() {
   // Actually, let's just use local state for now.
 
 
+
+
   const {
     activeTab, setActiveTab,
     siteSearchQuery, setSiteSearchQuery,
@@ -101,6 +103,23 @@ export default function App() {
   } = useFilterContext();
 
   const { canUndo, performUndo, lastActionDescription } = useUndo();
+
+  // --- APP EXIT CONFIRMATION ---
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (canUndo) {
+        // Trigger confirmation dialog
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes. Are you sure you want to exit?';
+        return e.returnValue;
+      } else {
+        delete e['returnValue'];
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [canUndo]);
 
   const printMenuRef = useRef(null);
 
@@ -1038,7 +1057,7 @@ export default function App() {
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
-                  <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 p-2 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={16} /> <span className="hidden sm:inline">Add Asset</span></button>
+                  <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 sm:w-auto sm:h-auto p-0 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden sm:inline">Add Asset</span></button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">

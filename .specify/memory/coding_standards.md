@@ -70,6 +70,16 @@ import { UniversalDatePicker } from './UIComponents';
 
 ---
 
+### V. Cross-Feature Standardization & Audit Protocol (NON-NEGOTIABLE)
+
+**Core Principle:** All critical UI interactions (Delete, Date Selection, Save/Close) MUST use the single, designated universal component.
+
+**Required Audit Step:** When implementing or replacing a standard component (e.g., `<SecureDeleteButton />`, `<UniversalDatePicker />`), the agent MUST perform a repository-wide code search (`grep` or equivalent) to identify all historical, non-standard implementations (e.g., `window.confirm('Are you sure?')`, old delete buttons, old date pickers).
+
+**Enforcement:** ALL non-standard instances must be replaced with the new universal component.
+
+---
+
 ## Future Rules
 
 Additional coding standards will be appended here as new patterns are discovered through build errors and lint warnings.

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Icons, formatDate } from './UIComponents';
+import { Icons, formatDate, SecureDeleteButton, Button } from './UIComponents';
 
 export const CustomerReportModal = ({
     isOpen,

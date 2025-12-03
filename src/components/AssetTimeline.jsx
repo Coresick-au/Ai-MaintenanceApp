@@ -223,6 +223,22 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                 </div>
 
                 <div className="flex items-center gap-3 w-full md:w-auto">
+                    {/* Jump to Today */}
+                    <button
+                        onClick={() => {
+                            if (scrollContainerRef.current) {
+                                const todayPos = Math.abs(viewConfig.startOffset) * zoomLevel;
+                                const containerWidth = scrollContainerRef.current.clientWidth;
+                                scrollContainerRef.current.scrollTo({ left: Math.max(0, todayPos - (containerWidth / 2) + 100), behavior: 'smooth' });
+                            }
+                        }}
+                        className="bg-slate-900 border border-slate-700 text-slate-300 hover:text-white hover:bg-slate-800 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
+                        title="Jump to Today"
+                    >
+                        <Clock size={16} />
+                        <span className="hidden md:inline">Today</span>
+                    </button>
+
                     {/* Search */}
                     <div className="relative group">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-blue-400" size={16} />
@@ -280,10 +296,10 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                                             <button
                                                 onClick={() => handleJumpToDue(asset)}
                                                 className={`text-[10px] bg-slate-900 text-slate-400 px-1.5 py-0.5 rounded border border-slate-700 truncate max-w-[80px] transition-colors ${hasDueDate ? 'hover:bg-blue-600 hover:text-white hover:border-blue-500 cursor-pointer' : ''}`}
-                                                title={hasDueDate ? "Jump to Due Date" : "No due date"}
+                                                title={hasDueDate ? "Jump to Next Due Date" : "No due date"}
                                                 disabled={!hasDueDate}
                                             >
-                                                {asset.frequency} Days
+                                                Next Due
                                             </button>
                                         </div>
                                     </div>

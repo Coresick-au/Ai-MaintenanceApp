@@ -201,7 +201,7 @@ export const EditSiteModal = ({
           </div>
 
           <div className="flex gap-2">
-            <SecureDeleteButton onComplete={onDelete} label="Hold to Delete Site" />
+            <SecureDeleteButton onComplete={() => onDelete(siteForm.id)} label="Hold to Delete Site" />
             <Button onClick={() => onSave(siteForm)} className="flex-[2] justify-center">Save Changes</Button>
           </div>
         </div>

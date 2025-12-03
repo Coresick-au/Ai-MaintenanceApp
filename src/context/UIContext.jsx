@@ -42,8 +42,7 @@ export const UIProvider = ({ children }) => {
     const [isCooked, setIsCooked] = useState(false);
     const [lightModeMessage, setLightModeMessage] = useState("Light mode users be like: \"I love squinting. It builds character.\"");
     const [showLightModeMessage, setShowLightModeMessage] = useState(false);
-    // We don't need a ref for the timer in context, we can just use setTimeout directly or a simple state reset
-    // But to avoid clearing issues, let's just use a simple timeout.
+    const messageTimeoutRef = React.useRef(null);
 
     const handleLightModeClick = () => {
         // 1. Increment Counter (Functional Update for Reliability)
@@ -57,7 +56,18 @@ export const UIProvider = ({ children }) => {
             return newCount;
         });
 
-        // 2. Cycle Messages
+        // 2. Toggle Message Logic
+        if (showLightModeMessage) {
+            // If already showing, clear timeout and hide immediately
+            if (messageTimeoutRef.current) {
+                clearTimeout(messageTimeoutRef.current);
+                messageTimeoutRef.current = null;
+            }
+            setShowLightModeMessage(false);
+            return;
+        }
+
+        // 3. Cycle Messages (only if we are going to show it)
         const messages = [
             "Light mode users be like: \"I love squinting. It builds character.\"",
             "Light mode: for people who think their screen should double as a flashlight.",
@@ -74,8 +84,12 @@ export const UIProvider = ({ children }) => {
             return messages[nextIndex];
         });
 
+        // 4. Show Message with 2s Timer
         setShowLightModeMessage(true);
-        setTimeout(() => setShowLightModeMessage(false), 3000);
+        messageTimeoutRef.current = setTimeout(() => {
+            setShowLightModeMessage(false);
+            messageTimeoutRef.current = null;
+        }, 2000);
     };
 
     const closeFullscreen = () => setExpandedSection(null);
@@ -112,9 +126,7 @@ export const UIProvider = ({ children }) => {
             specNoteInput, setSpecNoteInput,
             theme, setTheme,
             isPrintMenuOpen, setIsPrintMenuOpen,
-            isPrintMenuOpen, setIsPrintMenuOpen,
             expandedSection, setExpandedSection,
-            closeFullscreen,
             closeFullscreen,
             handleLightModeClick, isCooked, setIsCooked,
             lightModeMessage, showLightModeMessage

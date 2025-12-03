@@ -668,7 +668,7 @@ ${JSON.stringify(cleanReports, null, 2)}
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `AI_Analysis_${asset.code}_${new Date().toISOString().split('T')[0]}.md`;
+        a.download = `${asset.name}_AI_Insight.md`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
