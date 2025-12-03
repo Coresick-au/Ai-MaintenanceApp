@@ -1023,7 +1023,7 @@ export default function App() {
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/40 px-3 py-1 rounded-lg font-bold transition-all flex items-center gap-1 border border-cyan-500/50"><Icons.Plus size={16} /> Add Asset</button>
+                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white hover:bg-cyan-700 px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 shadow-md"><Icons.Plus size={16} /> Add Asset</button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">

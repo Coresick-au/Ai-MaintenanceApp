@@ -504,16 +504,6 @@ export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect, expande
           <h3 className="font-bold text-slate-200">Maintenance Calendar</h3>
         </div>
         <div className="flex items-center gap-4">
-          {setExpandedSection && (
-            <button
-              type="button"
-              onClick={() => setExpandedSection(expandedSection === 'calendar' ? null : 'calendar')}
-              className="text-slate-400 hover:text-cyan-400 p-1 rounded transition-colors"
-              title={expandedSection === 'calendar' ? 'Minimize' : 'Maximize'}
-            >
-              {expandedSection === 'calendar' ? <Icons.Minimize size={18} /> : <Icons.Maximize size={18} />}
-            </button>
-          )}
           <div className="flex bg-slate-700 rounded p-1">
             {['month', 'quarter', 'year'].map(v => (
               <button

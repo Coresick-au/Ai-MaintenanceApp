@@ -326,80 +326,81 @@ export const EditAssetModal = ({
       )}
     </Modal>
   );
+};
 
-  export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
-    const [opStatus, setOpStatus] = React.useState(asset?.opStatus || 'Operational');
-    const [opNote, setOpNote] = React.useState(asset?.opNote || '');
+export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
+  const [opStatus, setOpStatus] = React.useState(asset?.opStatus || 'Operational');
+  const [opNote, setOpNote] = React.useState(asset?.opNote || '');
 
-    if (!isOpen || !asset) return null;
+  if (!isOpen || !asset) return null;
 
-    const handleSave = () => {
-      onSave({
-        opStatus,
-        opNote,
-        opNoteTimestamp: new Date().toISOString()
-      });
-      onClose();
-    };
+  const handleSave = () => {
+    onSave({
+      opStatus,
+      opNote,
+      opNoteTimestamp: new Date().toISOString()
+    });
+    onClose();
+  };
 
-    const statusOptions = [
-      { value: 'Operational', label: 'Operational', color: 'bg-green-600', hoverColor: 'hover:bg-green-700', borderColor: 'border-green-500' },
-      { value: 'Warning', label: 'Warning', color: 'bg-yellow-600', hoverColor: 'hover:bg-yellow-700', borderColor: 'border-yellow-500' },
-      { value: 'Down', label: 'Down/Critical', color: 'bg-red-600', hoverColor: 'hover:bg-red-700', borderColor: 'border-red-500' }
-    ];
+  const statusOptions = [
+    { value: 'Operational', label: 'Operational', color: 'bg-green-600', hoverColor: 'hover:bg-green-700', borderColor: 'border-green-500' },
+    { value: 'Warning', label: 'Warning', color: 'bg-yellow-600', hoverColor: 'hover:bg-yellow-700', borderColor: 'border-yellow-500' },
+    { value: 'Down', label: 'Down/Critical', color: 'bg-red-600', hoverColor: 'hover:bg-red-700', borderColor: 'border-red-500' }
+  ];
 
-    return (
-      <Modal title={`Operational Status: ${asset.name}`} onClose={onClose}>
-        <div className="space-y-4">
-          {/* Status Selector */}
-          <div>
-            <label className={labelClass}>Current Status</label>
-            <div className="grid grid-cols-1 gap-2">
-              {statusOptions.map(option => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => setOpStatus(option.value)}
-                  className={`p-3 rounded-lg border-2 transition-all text-left ${opStatus === option.value
-                      ? `${option.color} ${option.borderColor} text-white shadow-lg`
-                      : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-slate-500'
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-4 h-4 rounded-full ${opStatus === option.value ? 'bg-white' : option.color}`}></div>
-                    <span className="font-bold">{option.label}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Status Notes */}
-          <div>
-            <label className={labelClass}>Status Notes</label>
-            <textarea
-              className={`${inputClass} min-h-[100px] resize-none`}
-              placeholder="Add notes about the current operational status..."
-              value={opNote}
-              onChange={e => setOpNote(e.target.value)}
-            />
-            {asset.opNoteTimestamp && (
-              <div className="text-xs text-slate-500 mt-1">
-                Last updated: {new Date(asset.opNoteTimestamp).toLocaleString()}
-              </div>
-            )}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex gap-2 pt-2">
-            <Button variant="secondary" onClick={onClose} className="flex-1 justify-center">
-              Cancel
-            </Button>
-            <Button onClick={handleSave} className="flex-1 justify-center">
-              Save Status
-            </Button>
+  return (
+    <Modal title={`Operational Status: ${asset.name}`} onClose={onClose}>
+      <div className="space-y-4">
+        {/* Status Selector */}
+        <div>
+          <label className={labelClass}>Current Status</label>
+          <div className="grid grid-cols-1 gap-2">
+            {statusOptions.map(option => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setOpStatus(option.value)}
+                className={`p-3 rounded-lg border-2 transition-all text-left ${opStatus === option.value
+                  ? `${option.color} ${option.borderColor} text-white shadow-lg`
+                  : 'bg-slate-800 border-slate-600 text-slate-300 hover:border-slate-500'
+                  }`}
+              >
+                <div className="flex items-center gap-3">
+                  <div className={`w-4 h-4 rounded-full ${opStatus === option.value ? 'bg-white' : option.color}`}></div>
+                  <span className="font-bold">{option.label}</span>
+                </div>
+              </button>
+            ))}
           </div>
         </div>
-      </Modal>
-    );
-  };
+
+        {/* Status Notes */}
+        <div>
+          <label className={labelClass}>Status Notes</label>
+          <textarea
+            className={`${inputClass} min-h-[100px] resize-none`}
+            placeholder="Add notes about the current operational status..."
+            value={opNote}
+            onChange={e => setOpNote(e.target.value)}
+          />
+          {asset.opNoteTimestamp && (
+            <div className="text-xs text-slate-500 mt-1">
+              Last updated: {new Date(asset.opNoteTimestamp).toLocaleString()}
+            </div>
+          )}
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex gap-2 pt-2">
+          <Button variant="secondary" onClick={onClose} className="flex-1 justify-center">
+            Cancel
+          </Button>
+          <Button onClick={handleSave} className="flex-1 justify-center">
+            Save Status
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
