@@ -37,6 +37,21 @@ export const UIProvider = ({ children }) => {
     const [isPrintMenuOpen, setIsPrintMenuOpen] = useState(false);
     const [expandedSection, setExpandedSection] = useState(null);
 
+    // --- EASTER EGG ---
+    const [lightModeCount, setLightModeCount] = useState(0);
+    const [isCooked, setIsCooked] = useState(false);
+
+    const handleLightModeClick = () => {
+        const newCount = lightModeCount + 1;
+        setLightModeCount(newCount);
+
+        if (newCount >= 10) {
+            setIsCooked(true);
+            setLightModeCount(0);
+            setTimeout(() => setIsCooked(false), 5000); // Reset after 5 seconds
+        }
+    };
+
     const closeFullscreen = () => setExpandedSection(null);
 
     useEffect(() => {
@@ -71,8 +86,10 @@ export const UIProvider = ({ children }) => {
             specNoteInput, setSpecNoteInput,
             theme, setTheme,
             isPrintMenuOpen, setIsPrintMenuOpen,
+            isPrintMenuOpen, setIsPrintMenuOpen,
             expandedSection, setExpandedSection,
-            closeFullscreen
+            closeFullscreen,
+            handleLightModeClick, isCooked, setIsCooked
         }}>
             {children}
         </UIContext.Provider>
