@@ -48,3 +48,21 @@
 
 **Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
 <!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+
+## React Coding Standards & Negative Constraints
+
+### 1. Fast Refresh Compliance
+* **Rule**: Never export constants, helper functions, or variables from the same file as a React Component.
+* **Why**: This breaks Vite/Next.js Fast Refresh.
+* **Solution**: Move constants to `src/constants/` and helpers to `src/utils/`. Only `export default` or named component exports are allowed in `.jsx` files.
+
+### 2. useEffect Safety
+* **Rule**: Do not call `setState` (or `setX`) synchronously inside a `useEffect`.
+* **Exception**: Only allowed inside async data fetching or event listeners.
+* **Solution**:
+    * If calculating state based on props: Use **Derived State** (calculate it during render).
+    * If initializing state: Pass the logic to `useState(initialValue)`.
+
+### 3. Linting Strictness
+* **Rule**: No unused variables are allowed.
+* **Process**: Before marking a task complete, run the linter and auto-fix or manually remove unused imports/variables.

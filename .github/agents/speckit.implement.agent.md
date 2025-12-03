@@ -124,6 +124,18 @@ You **MUST** consider the user input before proceeding (if not empty).
    - Provide clear error messages with context for debugging
    - Suggest next steps if implementation cannot proceed
    - **IMPORTANT** For completed tasks, make sure to mark the task off as [X] in the tasks file.
+   
+   **Self-Correction Protocol:**
+   - Whenever you encounter a build error or lint warning that requires a code change to fix:
+     1. Analyze why the error occurred
+     2. Check `.specify/memory/coding_standards.md` to see if a rule already exists for this pattern
+     3. If no rule exists, append a new rule to `.specify/memory/coding_standards.md` describing:
+        - The pattern to avoid
+        - The correct pattern to use
+        - The rationale behind the rule
+        - When this was learned (date and context)
+     4. Cite this new rule in your final output
+
 
 9. Completion validation:
    - Verify all required tasks are completed

@@ -2,6 +2,9 @@ const { app, BrowserWindow } = require('electron');
 const path = require('path');
 const url = require('url');
 
+// Check if we're in development mode
+const isDev = process.env.IS_DEV === 'true';
+
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 1200,
@@ -13,16 +16,22 @@ function createWindow() {
     },
   });
 
-  // Load your React app's index.html file
-  const startUrl = url.format({
-    pathname: path.join(__dirname, 'dist', 'index.html'),
-    protocol: 'file:',
-    slashes: true
-  });
-  mainWindow.loadURL(startUrl);
+  // Load the appropriate URL based on environment
+  if (isDev) {
+    // Development: Load from Vite dev server
+    mainWindow.loadURL('http://localhost:5173');
 
-  // Open the DevTools.
-  // mainWindow.webContents.openDevTools();
+    // Open DevTools in development
+    mainWindow.webContents.openDevTools();
+  } else {
+    // Production: Load from dist folder
+    const startUrl = url.format({
+      pathname: path.join(__dirname, 'dist', 'index.html'),
+      protocol: 'file:',
+      slashes: true
+    });
+    mainWindow.loadURL(startUrl);
+  }
 }
 
 app.whenReady().then(() => {
