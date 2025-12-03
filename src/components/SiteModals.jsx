@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, LongPressButton, Icons, formatDate } from './UIComponents';
+import { Modal, Button, SecureDeleteButton, Icons, formatDate } from './UIComponents';
 
 // Reusable Input Class
 const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors";
@@ -201,7 +201,7 @@ export const EditSiteModal = ({
           </div>
 
           <div className="flex gap-2">
-            <LongPressButton onComplete={onDelete} label="Hold to Delete Site" />
+            <SecureDeleteButton onComplete={onDelete} label="Hold to Delete Site" />
             <Button onClick={() => onSave(siteForm)} className="flex-[2] justify-center">Save Changes</Button>
           </div>
         </div>

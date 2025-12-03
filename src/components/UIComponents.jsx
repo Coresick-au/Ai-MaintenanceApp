@@ -139,7 +139,7 @@ export const FullScreenContainer = ({ children, className = "", title, onClose, 
   );
 };
 
-export const LongPressButton = ({ onLongPress, duration = 3000, children, className = "" }) => {
+export const SecureDeleteButton = ({ onComplete, duration = 3000, label = "Hold to Delete", className = "" }) => {
   const [isPressing, setIsPressing] = useState(false);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef(null);
@@ -156,7 +156,7 @@ export const LongPressButton = ({ onLongPress, duration = 3000, children, classN
 
       if (elapsed >= duration) {
         clearInterval(intervalRef.current);
-        onLongPress();
+        if (onComplete) onComplete();
         setIsPressing(false);
         setProgress(0);
       }
@@ -179,7 +179,7 @@ export const LongPressButton = ({ onLongPress, duration = 3000, children, classN
       onMouseLeave={cancelPress}
       onTouchStart={startPress}
       onTouchEnd={cancelPress}
-      className={`relative overflow-hidden select-none ${className}`}
+      className={`relative overflow-hidden select-none bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-4 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2 ${className}`}
     >
       {/* Circular Progress Overlay */}
       {isPressing && (
@@ -209,7 +209,7 @@ export const LongPressButton = ({ onLongPress, duration = 3000, children, classN
         </div>
       )}
 
-      <span className="relative z-0">{children}</span>
+      <span className="relative z-0 flex items-center gap-2"><Icons.Trash size={16} /> {label}</span>
     </button>
   );
 };

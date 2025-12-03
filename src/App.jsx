@@ -17,7 +17,7 @@ import {
   CalendarWidget,
   Modal,
   EditableCell,
-  LongPressButton,
+  SecureDeleteButton,
   formatDate,
   FullScreenContainer
 } from './components/UIComponents';
@@ -494,7 +494,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto">
           <header className="flex flex-col items-center gap-6 mb-10 text-center">
             <div className="flex-shrink-0 flex flex-col items-center gap-4 max-w-xs"> {/* Added max-w-xs here */}
-              <img src={selectedSite?.logo || "logos/ai-logo.png"} alt={selectedSite?.name || "Accurate Industries"} className="w-full h-auto mb-2 object-contain max-h-32" /> {/* Changed w-auto to w-full, h-16 to h-auto */}
+              <img key={selectedSite?.logo || 'default-logo'} src={selectedSite?.logo || "logos/ai-logo.png"} alt={selectedSite?.name || "Accurate Industries"} className="w-full h-auto mb-2 object-contain max-h-32" /> {/* Changed w-auto to w-full, h-16 to h-auto */}
               <h1 className="text-4xl font-black italic uppercase tracking-wider text-slate-200 text-slate-100 leading-tight" style={{ fontWeight: 800, letterSpacing: '0.15em' }}>Maintenance Tracker</h1>
             </div>
 
@@ -505,14 +505,14 @@ export default function App() {
                 placeholder="Search sites..."
                 className="w-full pl-12 pr-4 py-3 border border-slate-600 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-slate-100 text-white shadow-md text-base h-12 transition-colors"
                 value={siteSearchQuery}
-                onChange={(e) => setSiteSearchQuery(e.target.value)}
+                onChange={(e) => { setSiteSearchQuery(e.target.value); setSelectedRowIds(new Set()); }}
               />
             </div>
 
             <div className="flex flex-wrap justify-center gap-3 mt-4">
               <select
                 value={siteSortOption}
-                onChange={(e) => setSiteSortOption(e.target.value)}
+                onChange={(e) => { setSiteSortOption(e.target.value); setSelectedRowIds(new Set()); }}
                 className="w-36 h-12 border border-slate-600 border-slate-700 rounded-lg px-2 text-sm font-medium text-slate-300 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 shadow-sm cursor-pointer transition-colors"
               >
                 <option value="risk">Sort: Risk</option>
@@ -526,15 +526,15 @@ export default function App() {
                   type="checkbox"
                   id="show-archived-sites"
                   checked={showArchived}
-                  onChange={(e) => setShowArchived(e.target.checked)}
+                  onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
                   className="mr-2 rounded text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
                 />
                 <label htmlFor="show-archived-sites" className="text-sm text-slate-300 select-none cursor-pointer">Archived</label>
               </div>
 
-              <Button className="w-36 h-12" onClick={() => { setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); }}> <Icons.Plus /> Add Site</Button>
+              <Button className="w-36 h-12" onClick={() => { setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}> <Icons.Plus /> Add Site</Button>
 
-              <Button className="w-36 h-12" onClick={handleDownloadData} variant="secondary"><Icons.Download /> Backup</Button>
+              <Button className="w-36 h-12" onClick={() => { handleDownloadData(); setSelectedRowIds(new Set()); }} variant="secondary"><Icons.Download /> Backup</Button>
               <label className="cursor-pointer bg-slate-800 text-slate-300 text-slate-200 hover:bg-slate-700 border border-slate-600 border-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 w-36 h-12">
                 <Icons.UploadCloud /> Restore <input type="file" className="hidden" accept=".json" onChange={handleFileChange} />
               </label>
@@ -565,8 +565,8 @@ export default function App() {
               return (
                 <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className={`bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setViewContactSite(site); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); setViewContactSite(site); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
                   </div>
 
                   <div className="mb-5 flex items-center justify-start h-16">
@@ -629,7 +629,7 @@ export default function App() {
           </div>
 
           <div className="text-center mt-16 mb-16 no-print">
-            <Button onClick={handleGenerateSample} className="max-w-xs bg-red-600 hover:bg-red-500 text-white"> <Icons.Plus /> Add Demo Site</Button>
+            <Button onClick={() => { handleGenerateSample(); setSelectedRowIds(new Set()); }} className="max-w-xs bg-red-600 hover:bg-red-500 text-white"> <Icons.Plus /> Add Demo Site</Button>
           </div>
 
 
@@ -657,7 +657,7 @@ export default function App() {
         <AddSiteModal
           isOpen={isAddSiteModalOpen}
           onClose={() => setIsAddSiteModalOpen(false)}
-          onSave={handleAddSite}
+          onSave={(form, note) => { handleAddSite(form, note); setIsAddSiteModalOpen(false); }}
           siteForm={siteForm}
           setSiteForm={setSiteForm}
           noteInput={noteInput}
@@ -668,7 +668,7 @@ export default function App() {
         <EditSiteModal
           isOpen={isEditSiteModalOpen}
           onClose={() => setIsEditSiteModalOpen(false)}
-          onSave={handleUpdateSiteInfo}
+          onSave={(form) => { handleUpdateSiteInfo(form); setIsEditSiteModalOpen(false); }}
           onDelete={handleDeleteSite}
           onToggleStatus={toggleSiteStatus}
           siteForm={siteForm}
@@ -783,7 +783,7 @@ export default function App() {
             {/* History Button */}
             <button
               type="button"
-              onClick={() => setIsAppHistoryOpen(true)}
+              onClick={() => { setIsAppHistoryOpen(true); setSelectedRowIds(new Set()); }}
               className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
             >
               <Icons.History size={16} />
@@ -793,7 +793,7 @@ export default function App() {
             {/* Help Button */}
             <button
               type="button"
-              onClick={() => setIsHelpModalOpen(true)}
+              onClick={() => { setIsHelpModalOpen(true); setSelectedRowIds(new Set()); }}
               className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
             >
               <Icons.MessageCircle size={16} />
@@ -819,7 +819,7 @@ export default function App() {
             <div className="relative" ref={printMenuRef}>
               <button
                 type="button"
-                onClick={() => setIsPrintMenuOpen(!isPrintMenuOpen)}
+                onClick={() => { setIsPrintMenuOpen(!isPrintMenuOpen); if (!isPrintMenuOpen) setSelectedRowIds(new Set()); }}
                 className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
               >
                 <Icons.Printer size={16} />
@@ -832,7 +832,7 @@ export default function App() {
                     <button onClick={() => handlePrint('full')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
                     <button onClick={() => handlePrint('schedule')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📅</span> Schedule & Chart Only</button>
                     <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`px-4 py-3 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-400 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700'}`}><span>📋</span> Asset Specs Only <span className="text-[10px] ml-auto text-slate-400">{!selectedAsset ? '(Select Asset)' : ''}</span></button>
-                    <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); }} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📄</span> Customer Report (PDF)</button>
+                    <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); setSelectedRowIds(new Set()); }} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📄</span> Customer Report (PDF)</button>
                   </div>
                 </div>
               )}
@@ -925,7 +925,7 @@ export default function App() {
             {/* Master List */}
             <button
               type="button"
-              onClick={() => setIsMasterListOpen(true)}
+              onClick={() => { setIsMasterListOpen(true); setSelectedRowIds(new Set()); }}
               className="px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800"
             >
               <Icons.Grid size={16} />
@@ -944,7 +944,7 @@ export default function App() {
             <div className="grid grid-cols-2 gap-3 no-print">
               {/* Total Assets */}
               <div
-                onClick={() => setFilterStatus('all')}
+                onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
                 className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'all'
                   ? 'bg-cyan-500/20 border-2 border-cyan-400 ring-2 ring-cyan-400/50'
                   : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-cyan-500/50'
@@ -961,7 +961,7 @@ export default function App() {
 
               {/* Critical / Overdue */}
               <div
-                onClick={() => setFilterStatus('overdue')}
+                onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
                 className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'overdue'
                   ? 'bg-red-600/30 border-2 border-red-500 ring-2 ring-red-500/50'
                   : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-red-500/50'
@@ -978,7 +978,7 @@ export default function App() {
 
               {/* Due Soon */}
               <div
-                onClick={() => setFilterStatus('dueSoon')}
+                onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
                 className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'dueSoon'
                   ? 'bg-amber-500/30 border-2 border-amber-500 ring-2 ring-amber-500/50'
                   : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-amber-500/50'
@@ -995,7 +995,7 @@ export default function App() {
 
               {/* Healthy */}
               <div
-                onClick={() => setFilterStatus('healthy')}
+                onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
                 className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'healthy'
                   ? 'bg-emerald-500/30 border-2 border-emerald-500 ring-2 ring-emerald-500/50'
                   : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-emerald-500/50'
@@ -1032,13 +1032,13 @@ export default function App() {
                       type="checkbox"
                       id="show-archived"
                       checked={showArchived}
-                      onChange={(e) => setShowArchived(e.target.checked)}
+                      onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
                       className="mr-1 accent-cyan-500"
                     />
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
-                  <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-                  <button type="button" onClick={() => setIsAssetModalOpen(true)} className="bg-cyan-600 text-white hover:bg-cyan-700 p-2 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={16} /> <span className="hidden sm:inline">Add Asset</span></button>
+                  <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
+                  <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 p-2 sm:px-4 sm:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={16} /> <span className="hidden sm:inline">Add Asset</span></button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">
@@ -1054,12 +1054,12 @@ export default function App() {
                           title="Select All"
                         />
                       </th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[150px]" onClick={() => handleSort('name')}>Name {getSortIcon('name')}</th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px]" onClick={() => handleSort('code')}>Code {getSortIcon('code')}</th>
-                      <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => handleSort('frequency')}>Freq {getSortIcon('frequency')}</th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => handleSort('lastCal')}>Last Cal {getSortIcon('lastCal')}</th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => handleSort('dueDate')}>Cal Due {getSortIcon('dueDate')}</th>
-                      <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => handleSort('remaining')}>Days {getSortIcon('remaining')}</th>
+                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[150px]" onClick={() => { handleSort('name'); setSelectedRowIds(new Set()); }}>Name {getSortIcon('name')}</th>
+                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px]" onClick={() => { handleSort('code'); setSelectedRowIds(new Set()); }}>Code {getSortIcon('code')}</th>
+                      <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('frequency'); setSelectedRowIds(new Set()); }}>Freq {getSortIcon('frequency')}</th>
+                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('lastCal'); setSelectedRowIds(new Set()); }}>Last Cal {getSortIcon('lastCal')}</th>
+                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('dueDate'); setSelectedRowIds(new Set()); }}>Cal Due {getSortIcon('dueDate')}</th>
+                      <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
                       <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
                       <th className="px-4 py-2 text-center min-w-[100px]">Op Status</th>
                       <th className="px-3 py-2 text-center no-print text-xs">Analytics</th>
@@ -1087,6 +1087,7 @@ export default function App() {
                               e.stopPropagation();
                               setOpStatusAsset(item);
                               setIsOpStatusModalOpen(true);
+                              setSelectedRowIds(new Set());
                             }}
                             className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${item.opStatus === 'Warning'
                               ? 'bg-yellow-600 text-white hover:bg-yellow-700'
@@ -1099,8 +1100,8 @@ export default function App() {
                             {item.opStatus || 'Operational'}
                           </button>
                         </td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); }} className="text-slate-400 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
+                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
+                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
@@ -1111,6 +1112,7 @@ export default function App() {
                               const specs = currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
                               setEditingSpecs(specs || null);
                               setIsAssetEditModalOpen(true);
+                              setSelectedRowIds(new Set());
                             }}
                             className="text-slate-400 hover:text-cyan-400 p-2 rounded"
                             title="Edit Asset Details & Specs"
@@ -1129,7 +1131,7 @@ export default function App() {
                   <div className="h-4 w-px bg-slate-500"></div>
                   <button onClick={performBulkService} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2">Mark Serviced Today</button>
                   <div className="h-4 w-px bg-slate-500"></div>
-                  <button onClick={exportBulkCSV} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2"><Icons.FileCsv /> Export List</button>
+                  <button onClick={() => { exportBulkCSV(); setSelectedRowIds(new Set()); }} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2"><Icons.FileCsv /> Export List</button>
                   <div className="h-4 w-px bg-slate-500"></div>
                   <button onClick={() => setSelectedRowIds(new Set())} className="text-xs text-slate-400 hover:text-white">Clear</button>
                 </div>
@@ -1201,6 +1203,7 @@ export default function App() {
                         const specs = currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
                         setEditingSpecs(specs || null);
                         setIsAssetEditModalOpen(true);
+                        setSelectedRowIds(new Set());
                       }}
                     >
                       ✏️ Edit
@@ -1321,13 +1324,13 @@ export default function App() {
                 <p className="text-slate-400 text-xs mb-4">
                   Resetting the app history will clear all local data, including sites, assets, and history. This action cannot be undone.
                 </p>
-                <LongPressButton
-                  onLongPress={() => setIsResetConfirmOpen(true)}
+                <SecureDeleteButton
+                  onComplete={() => setIsResetConfirmOpen(true)}
                   duration={3000}
                   className="w-full bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-4 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
                 >
                   <Icons.Trash size={16} /> Hold to Reset App History
-                </LongPressButton>
+                </SecureDeleteButton>
               </div>
             </div>
           </Modal>

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Modal, Button, LongPressButton, UniversalDatePicker } from './UIComponents';
+import { Modal, Button, SecureDeleteButton, UniversalDatePicker } from './UIComponents';
 
 // Dark Mode Styles
 const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors";
@@ -172,9 +172,7 @@ export const EditAssetModal = ({
           </div>
 
           <div className="flex gap-2 pt-2">
-            <LongPressButton onLongPress={onDelete} className="bg-red-900/30 text-red-400 border border-red-800 hover:bg-red-900/50 px-4 py-2 rounded text-sm font-medium transition-colors flex-1 flex items-center justify-center">
-              Hold to Delete
-            </LongPressButton>
+            <SecureDeleteButton onComplete={onDelete} className="flex-1" />
             <Button onClick={() => onSave(editingAsset, activeTab)} className="flex-[2] justify-center">Update Asset</Button>
           </div>
         </div>

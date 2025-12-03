@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Modal, Button, Icons, formatDate } from './UIComponents';
+import { Modal, Button, Icons, formatDate, UniversalDatePicker } from './UIComponents';
 import { parseServiceReport } from '../utils/pdfParser';
 import { useFilterContext } from '../context/FilterContext';
 
@@ -999,7 +999,11 @@ ${JSON.stringify(cleanReports, null, 2)}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 mb-1">Service Date</label>
-                                <input type="date" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="Select date" value={formData.date} onChange={e => setFormData({ ...formData, date: e.target.value })} />
+                                <UniversalDatePicker
+                                    selected={formData.date ? new Date(formData.date) : new Date()}
+                                    onChange={(date) => setFormData({ ...formData, date: date ? date.toISOString().split('T')[0] : '' })}
+                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
+                                />
                             </div>
                             <div>
                                 <label className="block text-xs font-bold text-slate-400 mb-1">Technician Name</label>
