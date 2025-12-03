@@ -105,16 +105,13 @@ export default function App() {
   const { canUndo, performUndo, lastActionDescription } = useUndo();
 
   // --- APP EXIT CONFIRMATION ---
+  // --- APP EXIT CONFIRMATION ---
   useEffect(() => {
+    if (!canUndo) return;
+
     const handleBeforeUnload = (e) => {
-      if (canUndo) {
-        // Trigger confirmation dialog
-        e.preventDefault();
-        e.returnValue = 'You have unsaved changes. Are you sure you want to exit?';
-        return e.returnValue;
-      } else {
-        delete e['returnValue'];
-      }
+      e.preventDefault();
+      e.returnValue = 'You have unsaved changes. Are you sure you want to exit?';
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -270,7 +267,8 @@ export default function App() {
 
   const performBulkService = () => {
     if (selectedRowIds.size === 0) return;
-    if (!window.confirm(`Mark ${selectedRowIds.size} items as serviced today?`)) return;
+    if (selectedRowIds.size === 0) return;
+    // Confirmation handled by SecureDeleteButton
 
     const list = activeTab === 'service' ? currentServiceData : currentRollerData;
     const today = new Date().toISOString().split('T')[0];
@@ -340,7 +338,7 @@ export default function App() {
       ? "Re-activate this asset? It will appear in schedules and stats again."
       : "Decommission this asset? It will be hidden from schedules and stats.";
 
-    if (!window.confirm(confirmMsg)) return;
+    // Confirmation handled by SecureDeleteButton
 
     const list = activeTab === 'service' ? currentServiceData : currentRollerData;
     const updatedList = list.map(item => {
@@ -1120,7 +1118,15 @@ export default function App() {
                           </button>
                         </td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); toggleAssetStatus(item, e); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-orange-400 p-2 rounded" title={item.active !== false ? "Archive Asset" : "Restore Asset"}><Icons.Archive /></button></td>
+                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
+                          <div onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} className="inline-block">
+                            <SecureDeleteButton
+                              onComplete={() => { toggleAssetStatus(item); setSelectedRowIds(new Set()); }}
+                              label={<Icons.Archive />}
+                              className="text-slate-400 hover:text-orange-400 p-2 rounded bg-transparent min-w-0 w-auto h-auto shadow-none border-none"
+                            />
+                          </div>
+                        </td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                           <button
                             type="button"
@@ -1148,7 +1154,7 @@ export default function App() {
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-6 py-3 rounded-full shadow-lg border border-slate-600 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200 z-20 no-print">
                   <span className="font-bold text-sm">{selectedRowIds.size} Selected</span>
                   <div className="h-4 w-px bg-slate-500"></div>
-                  <button onClick={performBulkService} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2">Mark Serviced Today</button>
+                  <SecureDeleteButton onComplete={performBulkService} label="Hold to Service" className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2 bg-transparent shadow-none border-none p-0" />
                   <div className="h-4 w-px bg-slate-500"></div>
                   <button onClick={() => { exportBulkCSV(); setSelectedRowIds(new Set()); }} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2"><Icons.FileCsv /> Export List</button>
                   <div className="h-4 w-px bg-slate-500"></div>

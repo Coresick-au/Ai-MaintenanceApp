@@ -153,22 +153,14 @@ export const EditAssetModal = ({
                 {editingAsset.active !== false ? 'Currently Active' : 'Currently Decommissioned'}
               </div>
             </div>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
+            <SecureDeleteButton
+              onComplete={() => {
                 const isActivating = editingAsset.active === false;
-                const confirmMsg = isActivating
-                  ? "Re-activate this asset? It will appear in schedules and stats again."
-                  : "Decommission this asset? It will be hidden from schedules and stats.";
-
-                if (!window.confirm(confirmMsg)) return;
-
                 setEditingAsset({ ...editingAsset, active: isActivating });
               }}
+              label={editingAsset.active !== false ? 'Hold to Archive' : 'Hold to Re-activate'}
               className={`px-3 py-1 text-xs font-bold rounded border ${editingAsset.active !== false ? 'bg-slate-800 text-orange-400 border-orange-900 hover:bg-orange-900/20' : 'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/50'}`}
-            >
-              {editingAsset.active !== false ? 'Archive / Decommission' : 'Re-activate Asset'}
-            </button>
+            />
           </div>
 
           <div className="flex gap-2 pt-2">
