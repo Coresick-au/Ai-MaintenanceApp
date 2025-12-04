@@ -33,7 +33,6 @@ import { SiteIssueTracker } from './components/SiteIssueTracker';
 import AssetTimeline from './components/AssetTimeline';
 import { SiteDropdown } from './components/SiteDropdown';
 import { CustomerReportModal } from './components/CustomerReportModal';
-import { AppMapModal } from './components/AppMapModal';
 
 // ==========================================
 // MAIN APP COMPONENT
@@ -61,7 +60,6 @@ export default function App() {
     isMasterListOpen, setIsMasterListOpen,
     isAppHistoryOpen, setIsAppHistoryOpen,
     isHelpModalOpen, setIsHelpModalOpen,
-    isAppMapOpen, setIsAppMapOpen,
     selectedAssetId, setSelectedAssetId,
     editingAsset, setEditingAsset,
     editingSpecs, setEditingSpecs,
@@ -509,76 +507,170 @@ export default function App() {
   if (!selectedSite) {
     // --- SITE SELECTION VIEW (DARK MODE) ---
     return (
-      <div className="min-h-screen bg-slate-800 bg-slate-900 font-sans text-slate-100 p-8 transition-colors duration-200">
-        <style>{`@media print { .no-print { display: none !important; } }`}</style>
+      <div className="min-h-screen bg-slate-900 font-sans text-slate-100 flex">
+        <style>{`
+          @media print { 
+            .no-print { display: none !important; }
+            aside.sidebar-nav { display: none !important; }
+            main.main-content { margin-left: 0 !important; width: 100% !important; }
+          }
+        `}</style>
 
-        {/* Humorous "Light Mode" Button - Top Right */}
-        <div className="absolute top-4 right-4 no-print">
-          <button
-            onClick={handleLightModeClick}
-            className="p-2 rounded-full bg-slate-800 text-slate-300 hover:bg-slate-700 transition-colors relative group"
-          >
-            ☀️
-            {/* Tooltip with message */}
-            <div className={`absolute right-0 top-full mt-2 w-64 bg-slate-800 text-white text-xs p-3 rounded-lg shadow-xl transition-opacity duration-300 pointer-events-none z-50 border border-slate-600 ${showLightModeMessage ? 'opacity-100' : 'opacity-0'}`}>
-              {lightModeMessage}
+        {/* ===== SIDEBAR NAVIGATION - SITE SELECTION ===== */}
+        <aside className="sidebar-nav w-64 min-h-screen bg-slate-800 border-r border-slate-700 flex flex-col no-print fixed left-0 top-0 z-40">
+          {/* Sidebar Header - Logo */}
+          <div className="p-4 border-b border-slate-700">
+            <div className="flex items-center justify-center mb-3">
+              <img src="logos/ai-logo.png" alt="Accurate Industries" className="h-12 w-auto object-contain" />
             </div>
-          </button>
-        </div>
+            <h2 className="text-center text-lg font-bold text-slate-100 uppercase tracking-wide">Maintenance Tracker</h2>
+          </div>
 
-        <div className="max-w-6xl mx-auto">
-          <header className="flex flex-col items-center gap-6 mb-10 text-center">
-            <div className="flex-shrink-0 flex flex-col items-center gap-4 max-w-xs"> {/* Added max-w-xs here */}
-              <img key={selectedSite?.logo || 'default-logo'} src={selectedSite?.logo || "logos/ai-logo.png"} alt={selectedSite?.name || "Accurate Industries"} className="w-full h-auto mb-2 object-contain max-h-32" /> {/* Changed w-auto to w-full, h-16 to h-auto */}
-              <h1 className="text-4xl font-black italic uppercase tracking-wider text-slate-200 text-slate-100 leading-tight" style={{ fontWeight: 800, letterSpacing: '0.15em' }}>Maintenance Tracker</h1>
-            </div>
-
-            <div className="flex-1 w-full min-w-[300px] max-w-2xl relative mt-4">
-              <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Search /></span>
+          {/* Search */}
+          <div className="p-3 border-b border-slate-700">
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"><Icons.Search size={16} /></span>
               <input
                 type="text"
                 placeholder="Search sites..."
-                className="w-full pl-12 pr-4 py-3 border border-slate-600 border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 text-slate-100 text-white shadow-md text-base h-12 transition-colors"
+                className="w-full pl-9 pr-3 py-2 border border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-700 text-slate-100 text-sm"
                 value={siteSearchQuery}
                 onChange={(e) => { setSiteSearchQuery(e.target.value); setSelectedRowIds(new Set()); }}
               />
             </div>
+          </div>
 
-            <div className="flex flex-wrap justify-center gap-3 mt-4">
-              <select
-                value={siteSortOption}
-                onChange={(e) => { setSiteSortOption(e.target.value); setSelectedRowIds(new Set()); }}
-                className="w-36 h-12 border border-slate-600 border-slate-700 rounded-lg px-2 text-sm font-medium text-slate-300 text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-slate-800 shadow-sm cursor-pointer transition-colors"
-              >
-                <option value="risk">Sort: Risk</option>
-                <option value="name">Sort: Name</option>
-                <option value="customer">Sort: Customer</option>
-                <option value="type">Sort: Type</option>
-              </select>
+          {/* Navigation Links */}
+          <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Sort By</div>
 
-              <div className="flex items-center bg-slate-800 rounded-lg px-3 h-12 border border-slate-600 border-slate-700 shadow-sm transition-colors">
-                <input
-                  type="checkbox"
-                  id="show-archived-sites"
-                  checked={showArchived}
-                  onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
-                  className="mr-2 rounded text-blue-600 focus:ring-blue-500 cursor-pointer accent-blue-600"
-                />
-                <label htmlFor="show-archived-sites" className="text-sm text-slate-300 select-none cursor-pointer">Archived</label>
+            {/* Sort Options */}
+            <button
+              type="button"
+              onClick={() => { setSiteSortOption('risk'); setSelectedRowIds(new Set()); }}
+              className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${siteSortOption === 'risk'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+            >
+              <Icons.AlertTriangle size={18} />
+              <span>Risk Level</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setSiteSortOption('name'); setSelectedRowIds(new Set()); }}
+              className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${siteSortOption === 'name'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+            >
+              <Icons.Building size={18} />
+              <span>Site Name</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setSiteSortOption('customer'); setSelectedRowIds(new Set()); }}
+              className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${siteSortOption === 'customer'
+                ? 'bg-cyan-600 text-white shadow-md'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+            >
+              <Icons.Contact size={18} />
+              <span>Customer</span>
+            </button>
+
+            <div className="border-t border-slate-700 my-3"></div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Filter</div>
+
+            {/* Show Archived Toggle */}
+            <button
+              type="button"
+              onClick={() => { setShowArchived(!showArchived); setSelectedRowIds(new Set()); }}
+              className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${showArchived
+                ? 'bg-slate-600 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+            >
+              <Icons.Archive size={18} />
+              <span>Show Archived</span>
+              {showArchived && <Icons.CheckCircle size={14} className="ml-auto text-green-400" />}
+            </button>
+
+            <div className="border-t border-slate-700 my-3"></div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Actions</div>
+
+            {/* Add Site */}
+            <button
+              type="button"
+              onClick={() => { setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}
+              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 bg-cyan-600 hover:bg-cyan-500 text-white shadow-md"
+            >
+              <Icons.Plus size={18} />
+              <span>Add New Site</span>
+            </button>
+
+            {/* Add Demo Site */}
+            <button
+              type="button"
+              onClick={() => { handleGenerateSample(); setSelectedRowIds(new Set()); }}
+              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
+            >
+              <Icons.Zap size={18} />
+              <span>Add Demo Site</span>
+            </button>
+
+            <div className="border-t border-slate-700 my-3"></div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Data</div>
+
+            {/* Backup */}
+            <button
+              type="button"
+              onClick={() => { handleDownloadData(); setSelectedRowIds(new Set()); }}
+              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
+            >
+              <Icons.Download size={18} />
+              <span>Backup Data</span>
+            </button>
+
+            {/* Restore */}
+            <label className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700 cursor-pointer">
+              <Icons.UploadCloud size={18} />
+              <span>Restore Data</span>
+              <input type="file" className="hidden" accept=".json" onChange={handleFileChange} />
+            </label>
+          </nav>
+
+          {/* Sidebar Footer */}
+          <div className="p-3 border-t border-slate-700">
+            <button
+              type="button"
+              onClick={handleLightModeClick}
+              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-700 relative group"
+            >
+              <span className="text-lg">☀️</span>
+              <span>Light Mode</span>
+            </button>
+            {showLightModeMessage && (
+              <div className="mt-2 p-2 bg-slate-700 text-white text-xs rounded-lg border border-slate-600">
+                {lightModeMessage}
               </div>
+            )}
+          </div>
+        </aside>
 
-              <Button className="w-36 h-12" onClick={() => { setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}> <Icons.Plus /> Add Site</Button>
-
-              <Button className="w-36 h-12" onClick={() => { handleDownloadData(); setSelectedRowIds(new Set()); }} variant="secondary"><Icons.Download /> Backup</Button>
-              <label className="cursor-pointer bg-slate-800 text-slate-300 text-slate-200 hover:bg-slate-700 border border-slate-600 border-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 w-36 h-12">
-                <Icons.UploadCloud /> Restore <input type="file" className="hidden" accept=".json" onChange={handleFileChange} />
-              </label>
-            </div>
+        {/* ===== MAIN CONTENT AREA ===== */}
+        <main className="main-content flex-1 ml-64 p-6">
+          {/* Page Header */}
+          <header className="mb-6 text-center">
+            <h1 className="text-3xl font-bold text-slate-100 mb-2">Site Overview</h1>
+            <p className="text-slate-400">Select a site to view its maintenance dashboard</p>
+            <p className="text-sm text-slate-500 mt-1">{filteredSites.length} site{filteredSites.length !== 1 ? 's' : ''} found</p>
           </header>
 
-          <p className="text-slate-400 text-lg mb-4 no-print italic border-b border-slate-600 border-slate-700 pb-4 text-center">Select a site to view its maintenance dashboard.</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {/* Site Cards Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             {filteredSites.map(site => {
               const serviceAssets = (site.serviceData || []).filter(a => a.active !== false);
               const rollerAssets = (site.rollerData || []).filter(a => a.active !== false);
@@ -668,13 +760,8 @@ export default function App() {
             })}
           </div>
 
-          <div className="text-center mt-16 mb-16 no-print">
-            <Button onClick={() => { handleGenerateSample(); setSelectedRowIds(new Set()); }} className="max-w-xs bg-red-600 hover:bg-red-500 text-white"> <Icons.Plus /> Add Demo Site</Button>
-          </div>
-
-
-
-          <div className="mt-12 p-6 bg-blue-50 bg-blue-900/20 border border-blue-200 border-blue-800/50 rounded-xl no-print">
+          {/* Data Persistence Info */}
+          <div className="mt-12 p-6 bg-blue-900/20 border border-blue-800/50 rounded-xl no-print">
             <h3 className="text-lg font-bold text-blue-700 text-blue-200 mb-2 flex items-center gap-2">
               <span className="text-xl">⚠️</span> Important: Data Persistence Guide
             </h3>
@@ -692,7 +779,7 @@ export default function App() {
               </div>
             </div>
           </div>
-        </div>
+        </main>
 
         <AddSiteModal
           isOpen={isAddSiteModalOpen}
@@ -731,7 +818,7 @@ export default function App() {
 
   // --- DASHBOARD VIEW ---
   return (
-    <div className="min-h-screen bg-slate-900 font-sans text-slate-100 p-6">
+    <div className="min-h-screen bg-slate-900 font-sans text-slate-100 flex">
       <style>{`
         @media print {
             .no-print { display: none !important; }
@@ -777,228 +864,229 @@ export default function App() {
             body.print-master #master-list-modal .relative { display: none !important; }
             body.print-master #master-list-modal table { font-size: 10px !important; width: 100% !important; }
             body.print-master #master-list-modal th, body.print-master #master-list-modal td { padding: 4px !important; border: 1px solid #ccc !important; }
+
+            /* Hide sidebar on print */
+            aside.sidebar-nav { display: none !important; }
+            main.main-content { margin-left: 0 !important; width: 100% !important; }
         }
       `}</style>
 
-      {/* REDESIGNED HEADER - 2 ROWS */}
-      <header className="mb-6 bg-slate-900/50 rounded-xl border border-slate-700/50 no-print relative z-50">
-        {/* ROW 1: Navigation & Utilities */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-slate-700/50">
-          {/* Left: Back, Logo, Site Dropdown, Location */}
-          <div className="flex items-center gap-4">
-            {/* Back Button */}
+      {/* ===== SIDEBAR NAVIGATION ===== */}
+      <aside className="sidebar-nav w-64 min-h-screen bg-slate-800 border-r border-slate-700 flex flex-col no-print fixed left-0 top-0 z-40">
+        {/* Sidebar Header - Logo & Back */}
+        <div className="p-4 border-b border-slate-700">
+          <div className="flex items-center gap-3 mb-4">
             <button
               type="button"
               onClick={() => setSelectedSiteId(null)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
               title="Back to Sites"
             >
               <Icons.ArrowLeft size={20} />
             </button>
-
-            {/* Company Logo */}
-            <div className="flex items-center justify-center w-10 h-10 bg-slate-800 rounded-full border border-slate-700 overflow-hidden">
+            <div className="flex items-center justify-center w-10 h-10 bg-slate-700 rounded-full border border-slate-600 overflow-hidden">
               <img src="logos/ai-logo.png" alt="Accurate Industries" className="w-full h-full object-cover" />
-            </div>
-
-            {/* Site Dropdown & Location */}
-            <div className="flex flex-col">
-              {/* Site Dropdown - Custom Dark Component */}
-              <SiteDropdown
-                sites={sites}
-                selectedSiteId={selectedSiteId}
-                onSiteChange={setSelectedSiteId}
-              />
-
-              {/* Location - subtle, secondary */}
-              <div className="flex items-center gap-2 text-xs text-slate-400 mt-1">
-                <Icons.MapPin size={12} />
-                <span>{selectedSite.location}</span>
-              </div>
             </div>
           </div>
 
-          {/* Right: Utility Buttons */}
-          <div className="flex items-center gap-2">
-            {/* History Button */}
-            <button
-              type="button"
-              onClick={() => { setIsAppHistoryOpen(true); setSelectedRowIds(new Set()); }}
-              className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Icons.History size={16} />
-              <span>History</span>
-            </button>
+          {/* Site Dropdown */}
+          <SiteDropdown
+            sites={sites}
+            selectedSiteId={selectedSiteId}
+            onSiteChange={setSelectedSiteId}
+          />
 
-            {/* Help Button */}
-            <button
-              type="button"
-              onClick={() => { setIsHelpModalOpen(true); setSelectedRowIds(new Set()); }}
-              className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Icons.MessageCircle size={16} />
-              <span>Help</span>
-            </button>
-
-            {/* App Map Button */}
-            <button
-              type="button"
-              onClick={() => { setIsAppMapOpen(true); setSelectedRowIds(new Set()); }}
-              className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-            >
-              <Icons.Map size={16} />
-              <span>Map</span>
-            </button>
-
-            {/* Undo Button */}
-            <button
-              type="button"
-              onClick={performUndo}
-              disabled={!canUndo}
-              title={canUndo ? `Undo: ${lastActionDescription}` : 'Nothing to undo'}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${canUndo
-                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
-                : 'text-slate-400 cursor-not-allowed'
-                }`}
-            >
-              <Icons.Undo size={16} />
-              <span>Undo</span>
-            </button>
-
-            {/* Redo Button */}
-            <button
-              type="button"
-              onClick={performRedo}
-              disabled={!canRedo}
-              title={canRedo ? `Redo: ${lastRedoActionDescription}` : 'Nothing to redo'}
-              className={`px-3 py-2 text-sm font-medium rounded-lg transition-colors flex items-center gap-2 ${canRedo
-                ? 'text-slate-300 hover:text-white hover:bg-slate-800'
-                : 'text-slate-400 cursor-not-allowed'
-                }`}
-            >
-              <Icons.Redo size={16} />
-              <span>Redo</span>
-            </button>
-
-            {/* Export/Print Dropdown */}
-            <div className="relative" ref={printMenuRef}>
-              <button
-                type="button"
-                onClick={() => { setIsPrintMenuOpen(!isPrintMenuOpen); if (!isPrintMenuOpen) setSelectedRowIds(new Set()); }}
-                className="px-3 py-2 text-sm font-medium text-slate-300 hover:text-white hover:bg-slate-800 rounded-lg transition-colors flex items-center gap-2"
-              >
-                <Icons.Printer size={16} />
-                <span>Export</span>
-              </button>
-              {isPrintMenuOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-slate-800 rounded-lg shadow-xl border border-slate-700 z-50 animate-in fade-in zoom-in duration-200 overflow-hidden">
-                  <div className="text-xs font-bold text-slate-400 uppercase px-4 py-2 bg-slate-900 border-b border-slate-700">Print Options</div>
-                  <div className="flex flex-col">
-                    <button onClick={() => handlePrint('full')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
-                    <button onClick={() => handlePrint('schedule')} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📅</span> Schedule & Chart Only</button>
-                    <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`px-4 py-3 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-400 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-700'}`}><span>📋</span> Asset Specs Only <span className="text-[10px] ml-auto text-slate-400">{!selectedAsset ? '(Select Asset)' : ''}</span></button>
-                    <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); setSelectedRowIds(new Set()); }} className="px-4 py-3 text-sm text-left hover:bg-slate-700 text-slate-300 border-b border-slate-700 flex items-center gap-2"><span>📄</span> Customer Report (PDF)</button>
-                  </div>
-                </div>
-              )}
-            </div>
+          {/* Location */}
+          <div className="flex items-center gap-2 text-xs text-slate-400 mt-2 px-1">
+            <Icons.MapPin size={12} />
+            <span className="truncate">{selectedSite.location}</span>
           </div>
         </div>
 
+        {/* Navigation Links */}
+        <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Views</div>
 
-        {/* ROW 2: Dashboard Title & Feature Tabs */}
-        <div className="flex items-center justify-between px-6 py-4">
-          {/* Left: Dashboard Title */}
+          {/* Service Schedule */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('service');
+              setSelectedAssetId(null);
+              setIsRollerOnlyMode(false);
+              setLocalViewMode('list');
+              setExpandedSection(null);
+            }}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${activeTab === 'service' && localViewMode === 'list'
+              ? 'bg-cyan-600 text-white shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+          >
+            <Icons.Calendar size={18} />
+            <span>Service Schedule</span>
+          </button>
+
+          {/* Roller Replacement */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('roller');
+              setSelectedAssetId(null);
+              setIsRollerOnlyMode(true);
+              setLocalViewMode('list');
+              setExpandedSection(null);
+            }}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${activeTab === 'roller' && localViewMode === 'list'
+              ? 'bg-cyan-600 text-white shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+          >
+            <Icons.Settings size={18} />
+            <span>Roller Replacement</span>
+          </button>
+
+          {/* Issue Tracker */}
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('issues');
+              setSelectedAssetId(null);
+              setLocalViewMode('list');
+              setExpandedSection(null);
+            }}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${activeTab === 'issues'
+              ? 'bg-cyan-600 text-white shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+          >
+            <Icons.AlertTriangle size={18} />
+            <span>Issue Tracker</span>
+          </button>
+
+          {/* Timeline */}
+          <button
+            type="button"
+            onClick={() => {
+              setLocalViewMode('timeline');
+              if (activeTab === 'issues') setActiveTab('service');
+            }}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${localViewMode === 'timeline'
+              ? 'bg-cyan-600 text-white shadow-md'
+              : 'text-slate-300 hover:text-white hover:bg-slate-700'
+              }`}
+          >
+            <Icons.Clock size={18} />
+            <span>Timeline</span>
+          </button>
+
+          <div className="border-t border-slate-700 my-3"></div>
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Tools</div>
+
+          {/* Master List */}
+          <button
+            type="button"
+            onClick={() => { setIsMasterListOpen(true); setSelectedRowIds(new Set()); }}
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
+          >
+            <Icons.Grid size={18} />
+            <span>Master List</span>
+          </button>
+
+          {/* Export/Print */}
+          <div className="relative" ref={printMenuRef}>
+            <button
+              type="button"
+              onClick={() => { setIsPrintMenuOpen(!isPrintMenuOpen); if (!isPrintMenuOpen) setSelectedRowIds(new Set()); }}
+              className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isPrintMenuOpen
+                ? 'bg-slate-700 text-white'
+                : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                }`}
+            >
+              <Icons.Printer size={18} />
+              <span>Export</span>
+              <Icons.ChevronDown size={14} className={`ml-auto transition-transform ${isPrintMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {isPrintMenuOpen && (
+              <div className="mt-1 bg-slate-700 rounded-lg shadow-xl border border-slate-600 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
+                <button onClick={() => handlePrint('full')} className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
+                <button onClick={() => handlePrint('schedule')} className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>📅</span> Schedule & Chart</button>
+                <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`w-full px-4 py-2.5 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-500 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-600'}`}><span>📋</span> Asset Specs</button>
+                <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); setSelectedRowIds(new Set()); }} className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>📄</span> Customer Report</button>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-700 my-3"></div>
+          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Actions</div>
+
+          {/* History */}
+          <button
+            type="button"
+            onClick={() => { setIsAppHistoryOpen(true); setSelectedRowIds(new Set()); }}
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
+          >
+            <Icons.History size={18} />
+            <span>History</span>
+          </button>
+
+          {/* Undo */}
+          <button
+            type="button"
+            onClick={performUndo}
+            disabled={!canUndo}
+            title={canUndo ? `Undo: ${lastActionDescription}` : 'Nothing to undo'}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${canUndo
+              ? 'text-slate-300 hover:text-white hover:bg-slate-700'
+              : 'text-slate-500 cursor-not-allowed'
+              }`}
+          >
+            <Icons.Undo size={18} />
+            <span>Undo</span>
+          </button>
+
+          {/* Redo */}
+          <button
+            type="button"
+            onClick={performRedo}
+            disabled={!canRedo}
+            title={canRedo ? `Redo: ${lastRedoActionDescription}` : 'Nothing to redo'}
+            className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${canRedo
+              ? 'text-slate-300 hover:text-white hover:bg-slate-700'
+              : 'text-slate-500 cursor-not-allowed'
+              }`}
+          >
+            <Icons.Redo size={18} />
+            <span>Redo</span>
+          </button>
+        </nav>
+
+        {/* Sidebar Footer - Help */}
+        <div className="p-3 border-t border-slate-700">
+          <button
+            type="button"
+            onClick={() => { setIsHelpModalOpen(true); setSelectedRowIds(new Set()); }}
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-700"
+          >
+            <Icons.MessageCircle size={18} />
+            <span>Help & Settings</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* ===== MAIN CONTENT AREA ===== */}
+      <main className="main-content flex-1 ml-64 p-6">
+        {/* Page Header */}
+        <header className="mb-6">
           <h1 className="text-2xl font-bold text-slate-100">
             {selectedSite.customer ? `${selectedSite.customer} Dashboard` : 'Distribution Hub Dashboard'}
           </h1>
-
-          {/* Right: Feature Navigation Tabs (Pill-shaped) */}
-          <div className="flex items-center gap-2">
-            {/* Service Schedule */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('service');
-                setSelectedAssetId(null);
-                setIsRollerOnlyMode(false);
-                setLocalViewMode('list');
-                setExpandedSection(null);
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'service' && localViewMode === 'list'
-                ? 'bg-cyan-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-            >
-              <Icons.Calendar size={16} />
-              <span>Service Schedule</span>
-            </button>
-
-            {/* Roller Replacement */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('roller');
-                setSelectedAssetId(null);
-                setIsRollerOnlyMode(true);
-                setLocalViewMode('list');
-                setExpandedSection(null);
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'roller' && localViewMode === 'list'
-                ? 'bg-cyan-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-            >
-              <Icons.Settings size={16} />
-              <span>Roller Replacement</span>
-            </button>
-
-            {/* Issue Tracker */}
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('issues');
-                setSelectedAssetId(null);
-                setLocalViewMode('list');
-                setExpandedSection(null);
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${activeTab === 'issues'
-                ? 'bg-cyan-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-            >
-              <Icons.AlertTriangle size={16} />
-              <span>Site Issue Tracker</span>
-            </button>
-
-            {/* Timeline */}
-            <button
-              type="button"
-              onClick={() => {
-                setLocalViewMode('timeline');
-                if (activeTab === 'issues') setActiveTab('service');
-              }}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${localViewMode === 'timeline'
-                ? 'bg-cyan-600 text-white shadow-md'
-                : 'text-slate-400 hover:text-white hover:bg-slate-800'
-                }`}
-            >
-              <Icons.Clock size={16} />
-              <span>Timeline</span>
-            </button>
-
-            {/* Master List */}
-            <button
-              type="button"
-              onClick={() => { setIsMasterListOpen(true); setSelectedRowIds(new Set()); }}
-              className="px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 text-slate-400 hover:text-white hover:bg-slate-800"
-            >
-              <Icons.Grid size={16} />
-              <span>Master List</span>
-            </button>
-          </div>
-        </div>
-      </header >
+          <p className="text-sm text-slate-400 mt-1">
+            {activeTab === 'service' && localViewMode === 'list' && 'Service Schedule'}
+            {activeTab === 'roller' && localViewMode === 'list' && 'Roller Replacement'}
+            {activeTab === 'issues' && 'Site Issue Tracker'}
+            {localViewMode === 'timeline' && 'Maintenance Timeline'}
+          </p>
+        </header>
 
 
       {activeTab !== 'issues' && (
@@ -1321,6 +1409,7 @@ export default function App() {
           </div>
         ) : null}
       </div >
+      </main>
 
       <AddSiteModal
         isOpen={isAddSiteModalOpen}
@@ -1474,11 +1563,6 @@ export default function App() {
         serviceData={currentServiceData}
         rollerData={currentRollerData}
         specData={currentSpecData}
-      />
-
-      <AppMapModal
-        isOpen={isAppMapOpen}
-        onClose={() => setIsAppMapOpen(false)}
       />
 
       {/* OPERATIONAL STATUS MODAL */}

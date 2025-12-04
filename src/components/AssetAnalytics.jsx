@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Modal } from './UIComponents';
+import { Button, Modal, UniversalDatePicker } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { useFilterContext } from '../hooks/useFilterContext';

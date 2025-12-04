@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Modal, Button, UniversalDatePicker } from './UIComponents';
+import { Modal, Button, UniversalDatePicker, SecureDeleteButton } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 

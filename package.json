@@ -15,7 +15,6 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest run --coverage",
-    "map:generate": "node scripts/generate-map.js",
     "build-electron": "npm run build && npm run copy-electron-assets && electron-builder --win --x64",
     "copy-electron-assets": "node -e \"require('fs').cpSync('public/logos', 'dist/logos', { recursive: true });\""
   },
@@ -25,8 +24,8 @@
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "jimp": "^1.6.0",
+    "jspdf": "^3.0.4",
     "lucide-react": "^0.555.0",
-    "mermaid": "^11.12.2",
     "pdfjs-dist": "^5.4.394",
     "react": "^19.2.0",
     "react-datepicker": "^8.10.0",

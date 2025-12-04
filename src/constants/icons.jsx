@@ -51,7 +51,15 @@ import {
     Minimize,
     Maximize2,
     Minimize2,
-    Map
+    Map,
+    Camera,
+    XCircle,
+    Loader,
+    ArrowUpAZ,
+    ArrowDownAZ,
+    ArrowUp,
+    ArrowDown,
+    FileSpreadsheet as FileCsv
 } from 'lucide-react';
 
 export const Icons = {
@@ -106,5 +114,12 @@ export const Icons = {
     Minimize,
     Maximize2,
     Minimize2,
-    Map
+    Map,
+    Camera,
+    Cancel: XCircle,
+    Loader,
+    Sort: ArrowUpDown,
+    SortAsc: ArrowUp,
+    SortDesc: ArrowDown,
+    FileCsv
 };
