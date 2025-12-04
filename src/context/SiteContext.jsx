@@ -303,11 +303,62 @@ export const SiteProvider = ({ children }) => {
 
     const handleSaveEditedAsset = (editingAsset, activeTab) => {
         if (!editingAsset) return;
-        const updated = recalculateRow(editingAsset);
+        
+        // 1. Calculate updates for the asset being edited
+        const updatedPrimary = recalculateRow(editingAsset);
         const newHistory = { date: new Date().toISOString(), action: 'Details Updated', user: 'User' };
-        updated.history = [...(updated.history || []), newHistory];
-        if (activeTab === 'service') { updateSiteData(selectedSiteId, { serviceData: currentServiceData.map(i => i.id === updated.id ? updated : i) }, 'Update Asset Details'); }
-        else { updateSiteData(selectedSiteId, { rollerData: currentRollerData.map(i => i.id === updated.id ? updated : i) }, 'Update Asset Details'); }
+        updatedPrimary.history = [...(updatedPrimary.history || []), newHistory];
+
+        // 2. Prepare copies of both lists
+        let newServiceData = [...currentServiceData];
+        let newRollerData = [...currentRollerData];
+
+        // 3. Update the list where the edit happened
+        if (activeTab === 'service') {
+            newServiceData = newServiceData.map(i => i.id === updatedPrimary.id ? updatedPrimary : i);
+        } else {
+            newRollerData = newRollerData.map(i => i.id === updatedPrimary.id ? updatedPrimary : i);
+        }
+
+        // 4. SYNC SHARED FIELDS to the counterpart list
+        const idParts = editingAsset.id.split('-');
+        const baseId = idParts.length > 1 ? idParts.slice(1).join('-') : null;
+
+        if (baseId) {
+            const counterpartPrefix = activeTab === 'service' ? 'r-' : 's-';
+            const counterpartId = `${counterpartPrefix}${baseId}`;
+            
+            // Define which fields should stay in sync across both views
+            const sharedUpdates = {
+                name: updatedPrimary.name,
+                code: updatedPrimary.code,
+                weigher: updatedPrimary.weigher,
+                // Note: We DO NOT sync 'frequency', 'lastCal', 'dueDate' etc. as those might differ per schedule
+            };
+
+            const updateCounterpartList = (list) => list.map(item => {
+                if (item.id === counterpartId) {
+                    return { 
+                        ...item, 
+                        ...sharedUpdates, 
+                        history: [...(item.history || []), newHistory] 
+                    };
+                }
+                return item;
+            });
+
+            if (activeTab === 'service') {
+                newRollerData = updateCounterpartList(newRollerData);
+            } else {
+                newServiceData = updateCounterpartList(newServiceData);
+            }
+        }
+
+        // 5. Save BOTH lists to ensuring they stay in sync
+        updateSiteData(selectedSiteId, { 
+            serviceData: newServiceData, 
+            rollerData: newRollerData 
+        }, 'Update Asset Details');
     };
 
     const handleSaveEditedSpecs = (editingSpecs) => {

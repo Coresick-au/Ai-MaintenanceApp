@@ -354,21 +354,28 @@ export default function App() {
     if (e) e.stopPropagation();
     const isActivating = asset.active === false;
 
-    // Confirmation handled by SecureDeleteButton
-
-    const list = activeTab === 'service' ? currentServiceData : currentRollerData;
-    const updatedList = list.map(item => {
+    // Helper function to update a list: searches for asset.id and toggles 'active' status.
+    const updateAssetList = (list) => list.map(item => {
       if (item.id === asset.id) {
         const updated = { ...item, active: isActivating };
-        updated.history = [...(updated.history || []), { date: new Date().toISOString(), action: isActivating ? 'Asset Re-activated' : 'Asset Decommissioned', user: 'User' }];
+        // Log history regardless of whether it's service or roller list
+        updated.history = [...(item.history || []), { date: new Date().toISOString(), action: isActivating ? 'Asset Re-activated' : 'Asset Decommissioned', user: 'User' }];
         return updated;
       }
       return item;
     });
 
-    if (activeTab === 'service') { updateSiteData(selectedSiteId, { serviceData: updatedList }); }
-    else { updateSiteData(selectedSiteId, { rollerData: updatedList }); }
+    // CRITICAL FIX: Ensure both data sets are updated consistently using a single call per list.
+    const newServiceData = updateAssetList(currentServiceData);
+    const newRollerData = updateAssetList(currentRollerData); // CORRECTED: Removed nested call
 
+    // Commit the changes to the SiteContext in one go
+    updateSiteData(selectedSiteId, { 
+        serviceData: newServiceData, 
+        rollerData: newRollerData 
+    }, isActivating ? 'Asset Reactivated' : 'Asset Decommissioned'); 
+
+    // UI state cleanup logic (leave as is)
     if (!isActivating && isAssetEditModalOpen) {
       setIsAssetEditModalOpen(false);
       setEditingAsset(null);
@@ -429,31 +436,44 @@ export default function App() {
             <div className="flex justify-between"><span>Load Cell:</span><span className="font-medium text-slate-200">{selectedSpecs.loadCell || '-'}</span></div>
           </div>
         </div>
+        {/* Roller & Billet Section */}
         <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
           <div className="text-orange-400 text-sm font-bold uppercase mb-2">Roller & Billet</div>
-          <div
+          
+          {/* Combined Dimensions Badge (kept as unique view feature) */}
+          <div 
             className="font-mono text-xs bg-slate-800 p-2 rounded border border-slate-600 break-all mb-2 text-slate-300 cursor-copy hover:bg-slate-700 transition-colors relative group"
-            onClick={async (e) => {
-              e.stopPropagation();
-              if (selectedSpecs.rollDims) {
-                try {
-                  await navigator.clipboard.writeText(selectedSpecs.rollDims);
-                  alert("Roller dimensions copied to clipboard!");
-                } catch (err) {
-                  console.error("Failed to copy text: ", err);
-                  alert("Failed to copy dimensions.");
-                }
-              }
-            }}
+            onClick={() => copyToClipboard(`${selectedAsset.rollerDiameter}mm x ${selectedAsset.faceWidth}mm`)}
             title="Click to copy"
           >
-            {selectedSpecs.rollDims || "N/A"}
-            {selectedSpecs.rollDims && <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity"><Icons.CheckSquare /></span>}
+            {selectedAsset.rollerDiameter || '-'}mm x {selectedAsset.faceWidth || '-'}mm
+            <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              <Icons.CheckSquare size={14} />
+            </span>
           </div>
+
+          {/* Detailed Fields */}
           <div className="text-sm space-y-1">
-            <div className="flex justify-between"><span>Adjustment Type:</span><span className="font-medium text-slate-200">{selectedSpecs.adjustmentType || '-'}</span></div>
-            <div className="flex justify-between"><span>Billet Type:</span><span className="font-medium text-slate-200">{selectedSpecs.billetType || '-'}</span></div>
-            <div className="flex justify-between"><span>Billet Weight:</span><span className="font-medium text-slate-200">{selectedSpecs.billetWeight ? `${selectedSpecs.billetWeight} kg` : '-'}</span></div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Shaft Diameter:</span>
+              <span className="font-medium text-slate-200">{selectedAsset.shaftDiameter || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Bearing Type:</span>
+              <span className="font-medium text-slate-200">{selectedAsset.bearingType || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Adjustment Type:</span>
+              <span className="font-medium text-slate-200">{selectedSpecs.adjustmentType || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Billet Type:</span>
+              <span className="font-medium text-slate-200">{selectedSpecs.billetType || '-'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-500">Billet Weight:</span>
+              <span className="font-medium text-slate-200">{selectedSpecs.billetWeight ? `${selectedSpecs.billetWeight} kg` : '-'}</span>
+            </div>
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-slate-700">
@@ -963,7 +983,19 @@ export default function App() {
               }`}
           >
             <Icons.AlertTriangle size={18} />
-            <span>Issue Tracker</span>
+            <div className="flex-1 flex justify-between items-center">
+              <span>Issue Tracker</span>
+              {/* BADGE LOGIC START */}
+              {(() => {
+                const openIssueCount = (selectedSite?.issues || []).filter(i => i.status !== 'Completed').length;
+                return openIssueCount > 0 && (
+                  <span className="flex items-center justify-center w-5 h-5 rounded-full bg-red-600 text-[10px] font-bold text-white shadow-sm">
+                    {openIssueCount}
+                  </span>
+                );
+              })()}
+              {/* BADGE LOGIC END */}
+            </div>
           </button>
 
           {/* Timeline */}
@@ -1263,14 +1295,23 @@ export default function App() {
                           </button>
                         </td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
+                        {/* Archive Column */}
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
-                          <div onClick={e => e.stopPropagation()} onMouseDown={e => e.stopPropagation()} onTouchStart={e => e.stopPropagation()} className="inline-block">
-                            <SecureDeleteButton
-                              onComplete={() => { toggleAssetStatus(item); setSelectedRowIds(new Set()); }}
-                              label={<Icons.Archive />}
-                              className="text-slate-400 hover:text-orange-400 p-2 rounded bg-transparent min-w-0 w-auto h-auto shadow-none border-none"
-                            />
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Added confirmation check
+                              if (window.confirm(item.active === false ? "Are you sure you want to restore this asset?" : "Are you sure you want to archive this asset?")) {
+                                toggleAssetStatus(item);
+                                setSelectedRowIds(new Set());
+                              }
+                            }}
+                            className="text-slate-400 hover:text-orange-400 p-2 rounded transition-colors"
+                            title={item.active === false ? "Restore Asset" : "Archive Asset"}
+                          >
+                            <Icons.Archive size={20} />
+                          </button>
                         </td>
                         <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                           <button
@@ -1299,7 +1340,7 @@ export default function App() {
                 <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-6 py-3 rounded-full shadow-lg border border-slate-600 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200 z-20 no-print">
                   <span className="font-bold text-sm">{selectedRowIds.size} Selected</span>
                   <div className="h-4 w-px bg-slate-500"></div>
-                  <SecureDeleteButton onComplete={performBulkService} label="Hold to Service" className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2 bg-transparent shadow-none border-none p-0" />
+                  <SecureDeleteButton onComplete={performBulkService} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2 bg-transparent shadow-none border-none p-0">Hold to Service</SecureDeleteButton>
                   <div className="h-4 w-px bg-slate-500"></div>
                   <button onClick={() => { exportBulkCSV(); setSelectedRowIds(new Set()); }} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2"><Icons.FileCsv /> Export List</button>
                   <div className="h-4 w-px bg-slate-500"></div>

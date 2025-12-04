@@ -143,7 +143,7 @@ export const FullScreenContainer = ({ children, className = "", title, onClose, 
   );
 };
 
-export const SecureDeleteButton = ({ onComplete, duration = 3000, label = "Hold to Delete", className = "" }) => {
+export const SecureDeleteButton = ({ onComplete, duration = 3000, label = "Hold to Delete", children, className = "" }) => {
   const [isPressing, setIsPressing] = useState(false);
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef(null);
@@ -234,7 +234,11 @@ export const SecureDeleteButton = ({ onComplete, duration = 3000, label = "Hold 
         </div>
       )}
 
-      <span className="relative z-0 flex items-center gap-2"><Icons.Trash size={16} /> {label}</span>
+      {/* --- UPDATED CONTENT SECTION --- */}
+      <span className="relative z-0 flex items-center justify-center gap-2">
+        {/* Render children if they exist (allows custom icons/text), otherwise use label */}
+        {children ? children : label}
+      </span>
     </button>
   );
 };
