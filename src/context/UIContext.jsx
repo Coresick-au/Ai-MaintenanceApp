@@ -3,6 +3,7 @@ import { LIGHT_MODE_MESSAGES, DEFAULT_SITE_FORM, DEFAULT_NOTE_INPUT, DEFAULT_NEW
 
 const UIContext = createContext();
 
+export { UIContext };
 export const UIProvider = ({ children }) => {
     // --- MODALS ---
     const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);

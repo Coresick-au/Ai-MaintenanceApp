@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Icons } from '../constants/icons.jsx';
 import { StatusBadge } from './UIComponents';
-import { calculateSiteHealth } from '../utils/helpers';
+import { getOverallSiteHealth } from '../utils/siteHealth';
 
 export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -54,6 +54,8 @@ export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
                         {sites.map((site) => {
                             const isSelected = site.id === selectedSiteId;
                             const isActive = site.active !== false;
+                            const hasAssets = (site.serviceData && site.serviceData.length > 0) || (site.rollerData && site.rollerData.length > 0);
+                            const overallHealth = getOverallSiteHealth(site);
 
                             return (
                                 <button
@@ -77,9 +79,9 @@ export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
                                         )}
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        {site.assets && site.assets.length > 0 && (
+                                        {hasAssets && (
                                             <StatusBadge 
-                                                remaining={calculateSiteHealth(site) === 'Good' ? 30 : calculateSiteHealth(site) === 'Warning' ? 15 : -1}
+                                                remaining={overallHealth === 'healthy' ? 30 : overallHealth === 'warning' ? 15 : -1}
                                                 isActive={isActive}
                                             />
                                         )}

@@ -23,6 +23,7 @@ import {
 } from './components/UIComponents';
 import { Icons } from './constants/icons.jsx';
 import { formatDate } from './utils/helpers';
+import { SiteHealthCircle } from './components/SiteHealthCircle';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
 import { AddSiteModal, EditSiteModal, ContactModal } from './components/SiteModals';
@@ -651,6 +652,11 @@ export default function App() {
                   <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700 flex items-center justify-between">
                     <span className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2"><Icons.AlertTriangle /> Active Issues</span>
                     <span className="text-2xl font-bold text-red-500 text-red-400">{activeIssuesCount}</span>
+                  </div>
+
+                  {/* Full-width Health Bar */}
+                  <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
+                    <SiteHealthCircle site={site} fullWidth={true} />
                   </div>
 
                   <div className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto">

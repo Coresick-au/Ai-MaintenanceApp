@@ -4,6 +4,7 @@ import { sortSitesByRisk, filterMaintenanceData, sortMaintenanceData, calculateM
 
 const FilterContext = createContext();
 
+export { FilterContext };
 export const FilterProvider = ({ children }) => {
     const { sites, currentServiceData, currentRollerData } = useSiteContext();
 

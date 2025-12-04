@@ -4,6 +4,7 @@ import { MAX_UNDO_STACK_SIZE } from '../constants/uiConstants';
 
 const UndoContext = createContext();
 
+export { UndoContext };
 export const UndoProvider = ({ children }) => {
     const [undoStack, setUndoStack] = useState([]);
     const [redoStack, setRedoStack] = useState([]);

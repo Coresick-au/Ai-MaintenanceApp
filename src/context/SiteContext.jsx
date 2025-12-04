@@ -4,6 +4,7 @@ import { recalculateRow, generateSampleSite } from '../data/mockData';
 import { safelyLoadData, loadSitesFromStorage, loadSelectedSiteIdFromStorage } from '../utils/dataUtils';
 import { SiteContext } from './SiteContext.context';
 
+export { SiteContext };
 export const SiteProvider = ({ children }) => {
     const { addUndoAction, clearDirty } = useUndo();
     const [sites, setSites] = useState([]);

@@ -19,26 +19,31 @@ export const CustomerReportModal = ({
     
     if (!isOpen || !site) return null;
 
+    // Sort and filter data at the top
+    const sortByDue = (a, b) => {
+        if (a.remaining < 0 && b.remaining >= 0) return -1;
+        if (a.remaining >= 0 && b.remaining < 0) return 1;
+        if (a.remaining >= 0 && b.remaining < 30 && b.remaining >= 30) return -1;
+        if (a.remaining >= 30 && b.remaining >= 0 && b.remaining < 30) return 1;
+        return a.remaining - b.remaining;
+    };
+    
+    const sortedService = [...serviceData].filter(a => a.active !== false).sort(sortByDue);
+    const sortedRoller = [...rollerData].filter(a => a.active !== false).sort(sortByDue);
+
     const handlePrint = async () => {
-        // Trigger print styles and allow CSS to apply
-        window.dispatchEvent(new Event('beforeprint'));
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        if (window.electronAPI && window.electronAPI.printToPDF) {
+        // Safe check for Electron API
+        if (window.electronAPI && typeof window.electronAPI.printToPDF === 'function') {
             const result = await window.electronAPI.printToPDF();
             if (result.success) {
-                console.log('PDF saved to:', result.path);
-            } else if (!result.canceled) {
-                console.error('PDF generation failed:', result.error);
-                alert('Failed to generate PDF. Please try again.');
+                console.log('PDF saved:', result.path);
+            } else {
+                console.error('PDF Failed:', result.error);
             }
         } else {
-            // Fallback to browser print if not in Electron
+            // Browser/Dev Fallback
             window.print();
         }
-        
-        // Reset print styles
-        window.dispatchEvent(new Event('afterprint'));
     };
 
     const handleExcelExport = () => {
@@ -365,10 +370,6 @@ export const CustomerReportModal = ({
                 modalHeader.style.display = 'none';
             }
 
-            // Apply print styles for capture
-            window.dispatchEvent(new Event('beforeprint'));
-            await new Promise(resolve => setTimeout(resolve, 300));
-
             // Capture the report content
             const canvas = await html2canvas(reportContentRef.current.querySelector('.print-content-inner'), {
                 backgroundColor: '#ffffff',
@@ -381,8 +382,7 @@ export const CustomerReportModal = ({
                 scrollY: 0
             });
 
-            // Reset styles
-            window.dispatchEvent(new Event('afterprint'));
+            // Reset modal header
             if (modalHeader) {
                 modalHeader.style.display = '';
             }
@@ -406,16 +406,6 @@ export const CustomerReportModal = ({
             originalButton.disabled = false;
         }
     };
-
-    // Helper to sort by Due Date (most urgent first)
-    const sortByDue = (a, b) => {
-        if (a.remaining < b.remaining) return -1;
-        if (a.remaining > b.remaining) return 1;
-        return 0;
-    };
-
-    const sortedService = [...serviceData].filter(a => a.active !== false).sort(sortByDue);
-    const sortedRoller = [...rollerData].filter(a => a.active !== false).sort(sortByDue);
 
     // Helper for operational status text
     const getStatusText = (opStatus) => {
