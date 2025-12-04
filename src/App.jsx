@@ -45,7 +45,7 @@ export default function App() {
     currentServiceData, currentRollerData, currentSpecData,
     updateSiteData,
     handleAddSite, handleGenerateSample, handleDeleteSite, handleUpdateSiteInfo, toggleSiteStatus,
-    handleAddIssue, handleToggleIssueStatus, handleUpdateIssue, handleCopyIssue,
+    handleAddIssue, handleDeleteIssue, handleToggleIssueStatus, handleUpdateIssue, handleCopyIssue,
     handleAddAsset, handleDeleteAsset, handleSaveEditedAsset, handleSaveEditedSpecs, handleInlineUpdate,
     handleAddSpecNote, handleDeleteSpecNote, saveEditedNote,
 
@@ -354,28 +354,39 @@ export default function App() {
     if (e) e.stopPropagation();
     const isActivating = asset.active === false;
 
-    // Helper function to update a list: searches for asset.id and toggles 'active' status.
-    const updateAssetList = (list) => list.map(item => {
-      if (item.id === asset.id) {
+    // Helper to find an asset by ID (or its mirror ID) and update its status
+    const updateListStatus = (list, targetId, mirrorId) => list.map(item => {
+      // Check if this item is the target OR the mirror representation
+      if (item.id === targetId || item.id === mirrorId) {
         const updated = { ...item, active: isActivating };
-        // Log history regardless of whether it's service or roller list
         updated.history = [...(item.history || []), { date: new Date().toISOString(), action: isActivating ? 'Asset Re-activated' : 'Asset Decommissioned', user: 'User' }];
         return updated;
       }
       return item;
     });
 
-    // CRITICAL FIX: Ensure both data sets are updated consistently using a single call per list.
-    const newServiceData = updateAssetList(currentServiceData);
-    const newRollerData = updateAssetList(currentRollerData); // CORRECTED: Removed nested call
+    // Calculate IDs
+    const idParts = asset.id.split('-');
+    const baseId = idParts.length > 1 ? idParts.slice(1).join('-') : null;
+    
+    // Determine the ID of the asset in the OTHER list
+    // If current is s-123, match r-123. If r-123, match s-123.
+    let mirrorId = null;
+    if (baseId) {
+      mirrorId = asset.id.startsWith('s-') ? `r-${baseId}` : `s-${baseId}`;
+    }
 
-    // Commit the changes to the SiteContext in one go
+    // Update BOTH lists looking for the asset ID or its mirror
+    const newServiceData = updateListStatus(currentServiceData, asset.id, mirrorId);
+    const newRollerData = updateListStatus(currentRollerData, asset.id, mirrorId);
+
+    // Save changes
     updateSiteData(selectedSiteId, { 
         serviceData: newServiceData, 
         rollerData: newRollerData 
-    }, isActivating ? 'Asset Reactivated' : 'Asset Decommissioned'); 
+    }, isActivating ? 'Asset Reactivated' : 'Asset Decommissioned');
 
-    // UI state cleanup logic (leave as is)
+    // UI Cleanup
     if (!isActivating && isAssetEditModalOpen) {
       setIsAssetEditModalOpen(false);
       setEditingAsset(null);
@@ -1439,6 +1450,7 @@ export default function App() {
               siteId={selectedSiteId}
               issues={selectedSite?.issues || []}
               onAddIssue={handleAddIssue}
+              onDeleteIssue={handleDeleteIssue}
               onUpdateIssue={handleUpdateIssue} // Pass the new update handler
               onToggleStatus={handleToggleIssueStatus}
               onCopyIssue={handleCopyIssue}

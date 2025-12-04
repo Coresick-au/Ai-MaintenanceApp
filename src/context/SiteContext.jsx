@@ -192,6 +192,18 @@ export const SiteProvider = ({ children }) => {
         );
     };
 
+    const handleDeleteIssue = (siteId, issueId) => {
+        setSites(prevSites => prevSites.map(site => {
+            if (site.id === siteId) {
+                return {
+                    ...site,
+                    issues: (site.issues || []).filter(i => i.id !== issueId)
+                };
+            }
+            return site;
+        }));
+    };
+
     const handleToggleIssueStatus = (siteId, issueId) => {
         setSites(prevSites =>
             prevSites.map(site =>
@@ -373,8 +385,13 @@ export const SiteProvider = ({ children }) => {
     };
 
     const handleInlineUpdate = (id, field, val, activeTab) => {
-        const list = activeTab === 'service' ? currentServiceData : currentRollerData;
-        const updatedList = list.map(item => {
+        // Fields that should NOT match between lists (keep independent)
+        const independentFields = ['lastCal', 'frequency', 'dueDate', 'remaining'];
+        const isIndependentField = independentFields.includes(field);
+
+        // 1. Update the list the user is currently interacting with
+        const currentList = activeTab === 'service' ? currentServiceData : currentRollerData;
+        const updatedCurrentList = currentList.map(item => {
             if (item.id === id) {
                 let updated = { ...item, [field]: val };
                 if (field === 'lastCal' || field === 'frequency') updated = recalculateRow(updated);
@@ -384,30 +401,42 @@ export const SiteProvider = ({ children }) => {
             return item;
         });
 
+        // 2. Handle the "Mirroring" logic
         const idParts = id.split('-');
         const baseId = idParts.length > 1 ? idParts.slice(1).join('-') : null;
 
         if (baseId) {
-            const pairedId = activeTab === 'service' ? `r-${baseId}` : `s-${baseId}`;
-            const pairedList = activeTab === 'service' ? currentRollerData : currentServiceData;
-            const updatedPairedList = pairedList.map(item => {
-                if (item.id === pairedId) {
-                    let updated = { ...item, [field]: val };
-                    if (field === 'lastCal' || field === 'frequency') updated = recalculateRow(updated);
-                    updated.history = [...(updated.history || []), { date: new Date().toISOString(), action: `${field} changed to ${val} (synced)`, user: 'User' }];
-                    return updated;
-                }
-                return item;
-            });
+            // Determine the counterpart list
+            const counterpartPrefix = activeTab === 'service' ? 'r-' : 's-';
+            const counterpartId = `${counterpartPrefix}${baseId}`;
+            const counterpartList = activeTab === 'service' ? currentRollerData : currentServiceData;
 
+            let updatedCounterpartList = counterpartList;
+
+            // ONLY update the counterpart if it is NOT an independent field (like dates)
+            if (!isIndependentField) {
+                updatedCounterpartList = counterpartList.map(item => {
+                    if (item.id === counterpartId) {
+                        return { 
+                            ...item, 
+                            [field]: val,
+                            history: [...(item.history || []), { date: new Date().toISOString(), action: `${field} changed to ${val} (synced)`, user: 'User' }]
+                        };
+                    }
+                    return item;
+                });
+            }
+
+            // Save both lists
             if (activeTab === 'service') {
-                updateSiteData(selectedSiteId, { serviceData: updatedList, rollerData: updatedPairedList }, `Update ${field}`);
+                updateSiteData(selectedSiteId, { serviceData: updatedCurrentList, rollerData: updatedCounterpartList }, `Update ${field}`);
             } else {
-                updateSiteData(selectedSiteId, { serviceData: updatedPairedList, rollerData: updatedList }, `Update ${field}`);
+                updateSiteData(selectedSiteId, { serviceData: updatedCounterpartList, rollerData: updatedCurrentList }, `Update ${field}`);
             }
         } else {
-            if (activeTab === 'service') { updateSiteData(selectedSiteId, { serviceData: updatedList }, `Update ${field}`); }
-            else { updateSiteData(selectedSiteId, { rollerData: updatedList }, `Update ${field}`); }
+            // Fallback for legacy items without matching IDs
+            if (activeTab === 'service') { updateSiteData(selectedSiteId, { serviceData: updatedCurrentList }, `Update ${field}`); }
+            else { updateSiteData(selectedSiteId, { rollerData: updatedCurrentList }, `Update ${field}`); }
         }
     };
 
@@ -504,6 +533,7 @@ export const SiteProvider = ({ children }) => {
             handleUpdateSiteInfo,
             toggleSiteStatus,
             handleAddIssue,
+            handleDeleteIssue,
             handleToggleIssueStatus,
             handleUpdateIssue,
             handleCopyIssue,

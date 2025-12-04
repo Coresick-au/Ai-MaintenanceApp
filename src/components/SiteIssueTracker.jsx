@@ -3,7 +3,7 @@ import { Button, Modal, StatusBadge, UniversalDatePicker } from './UIComponents'
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 
-export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onToggleStatus, onUpdateIssue, onCopyIssue }) => {
+export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onToggleStatus, onUpdateIssue, onCopyIssue, onDeleteIssue }) => {
   const [newIssueDescription, setNewIssueDescription] = useState('');
   const [newIssueAssignedTo, setNewIssueAssignedTo] = useState('');
   const [newIssueImportance, setNewIssueImportance] = useState('Medium');
@@ -230,7 +230,7 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
               onChange={(e) => setNewIssueAssetId(e.target.value)}
             >
               <option value="">Select Asset (Optional)</option>
-              {assets && assets.map(asset => (
+              {assets && assets.filter(a => a.id.startsWith('s-')).map(asset => (
                 <option key={asset.id} value={asset.id}>{asset.name} ({asset.code})</option>
               ))}
             </select>
@@ -285,7 +285,7 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
               onChange={(e) => setEditIssueAssetId(e.target.value)}
             >
               <option value="">Select Asset (Optional)</option>
-              {assets && assets.map(asset => (
+              {assets && assets.filter(a => a.id.startsWith('s-')).map(asset => (
                 <option key={asset.id} value={asset.id}>{asset.name} ({asset.code})</option>
               ))}
             </select>
@@ -295,10 +295,26 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
               placeholderText="Select Due Date (Optional)"
               className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
             />
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-2 mt-4 pt-2 border-t border-slate-700">
               <Button onClick={handleEditIssue} disabled={editIssueDescription.trim() === ''} className="flex-1">
                 <Icons.Save /> Save Changes
               </Button>
+
+              {/* NEW DELETE BUTTON */}
+              <button
+                onClick={() => {
+                    if (window.confirm("Are you sure you want to delete this issue?")) {
+                        if (window.confirm("This cannot be undone. Delete issue permanently?")) {
+                            onDeleteIssue(siteId, editingIssue.id);
+                            closeEditModal();
+                        }
+                    }
+                }}
+                className="flex-1 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-3 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+              >
+                <Icons.Trash size={16} /> Delete
+              </button>
+
               <Button onClick={closeEditModal} variant="secondary" className="flex-1">
                 <Icons.Cancel /> Cancel
               </Button>
