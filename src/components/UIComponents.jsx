@@ -262,10 +262,10 @@ export const SimpleBarChart = ({ data }) => {
   }
 
   return (
-    // 2. IMPORTANT: The container must have a fixed height (h-64)
-    <div className="h-64 w-full mt-4">
+    // 2. IMPORTANT: Increased height to accommodate rotated labels
+    <div className="h-80 w-full mt-4">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+        <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
 
           <XAxis
@@ -277,7 +277,7 @@ export const SimpleBarChart = ({ data }) => {
             interval={0}
             angle={-45}
             textAnchor="end"
-            height={60}
+            height={80}
           />
 
           <YAxis

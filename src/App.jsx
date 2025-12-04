@@ -28,7 +28,7 @@ import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
 import { AddSiteModal, EditSiteModal, ContactModal } from './components/SiteModals';
 import { AssetAnalyticsModal } from './components/AssetAnalytics';
-import { AppHistoryModal } from './components/AppHistoryModal';
+import { AppHistorySidePanel } from './components/AppHistorySidePanel';
 import { SiteIssueTracker } from './components/SiteIssueTracker';
 import AssetTimeline from './components/AssetTimeline';
 import { SiteDropdown } from './components/SiteDropdown';
@@ -132,9 +132,6 @@ export default function App() {
 
   const printMenuRef = useRef(null);
 
-  // --- RESET APP HISTORY STATE ---
-  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-
   // FIX: Local handleSaveReport to prevent race conditions
   // FIX: Local handleSaveReport to prevent race conditions AND use Context
   const handleSaveReport = (assetId, reportData) => {
@@ -166,13 +163,6 @@ export default function App() {
   // --- OPERATIONAL STATUS MODAL STATE ---
   const [opStatusAsset, setOpStatusAsset] = useState(null);
   const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
-
-
-
-  const handleResetConfirm = () => {
-    localStorage.clear();
-    window.location.reload();
-  };
 
   // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
   useEffect(() => {
@@ -679,19 +669,33 @@ export default function App() {
 
           {/* Sidebar Footer */}
           <div className="p-3 border-t border-slate-700">
-            <button
-              type="button"
-              onClick={handleLightModeClick}
-              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-700 relative group"
-            >
-              <span className="text-lg">☀️</span>
-              <span>Light Mode</span>
-            </button>
-            {showLightModeMessage && (
-              <div className="mt-2 p-2 bg-slate-700 text-white text-xs rounded-lg border border-slate-600">
-                {lightModeMessage}
-              </div>
-            )}
+            <div className="px-3 mb-2">
+              {showLightModeMessage && (
+                <div className="mb-2 p-2 bg-slate-700 text-white text-xs rounded-lg border border-slate-600">
+                  {lightModeMessage}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={handleLightModeClick}
+                className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-700 relative group"
+              >
+                <span className="text-lg">☀️</span>
+                <span>Light Mode</span>
+              </button>
+            </div>
+
+            {/* Complete App History */}
+            <div className="px-3 mb-2">
+              <button
+                type="button"
+                onClick={() => { setIsAppHistoryOpen(true); setSelectedRowIds(new Set()); }}
+                className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-400 hover:text-white hover:bg-slate-700"
+              >
+                <Icons.History size={18} />
+                <span>Complete App History</span>
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -796,20 +800,20 @@ export default function App() {
           </div>
 
           {/* Data Persistence Info */}
-          <div className="mt-12 p-6 bg-blue-900/20 border border-blue-800/50 rounded-xl no-print">
-            <h3 className="text-lg font-bold text-blue-700 text-blue-200 mb-2 flex items-center gap-2">
+          <div className="mt-12 p-6 bg-amber-900/20 border border-amber-800/50 rounded-xl no-print">
+            <h3 className="text-lg font-bold text-amber-700 text-amber-200 mb-2 flex items-center gap-2">
               <span className="text-xl">⚠️</span> Important: Data Persistence Guide
             </h3>
-            <p className="text-blue-600 text-blue-300 mb-4 text-sm">
+            <p className="text-amber-600 text-amber-300 mb-4 text-sm">
               This application is currently running in a temporary environment. Your data is <strong>not automatically saved</strong> to a cloud server.
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <strong className="text-blue-600 text-blue-300 block mb-1">How to Save:</strong>
+                <strong className="text-amber-600 text-amber-300 block mb-1">How to Save:</strong>
                 Use the <strong>Backup</strong> button at the top right to download a <code>.json</code> file of your current data.
               </div>
               <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <strong className="text-blue-600 text-blue-300 block mb-1">How to Load:</strong>
+                <strong className="text-amber-600 text-amber-300 block mb-1">How to Load:</strong>
                 Use the <strong>Restore</strong> button to upload a previously saved <code>.json</code> file to continue your work.
               </div>
             </div>
@@ -898,7 +902,34 @@ export default function App() {
             body.print-master #master-list-modal button { display: none !important; }
             body.print-master #master-list-modal .relative { display: none !important; }
             body.print-master #master-list-modal table { font-size: 10px !important; width: 100% !important; }
-            body.print-master #master-list-modal th, body.print-master #master-list-modal td { padding: 4px !important; border: 1px solid #ccc !important; }
+            body.print-master #master-list-modal th, body.print-master #master-list-modal td { 
+                padding: 4px !important; 
+                border: 1px solid #ccc !important; 
+                color: #000 !important;
+                background: #fff !important;
+            }
+            body.print-master #master-list-modal th {
+                background: #f9fafb !important;
+                color: #374151 !important;
+            }
+            body.print-master #master-list-modal .bg-slate-800,
+            body.print-master #master-list-modal .bg-slate-900 {
+                background: #fff !important;
+                color: #000 !important;
+            }
+            body.print-master #master-list-modal .text-slate-100,
+            body.print-master #master-list-modal .text-slate-200,
+            body.print-master #master-list-modal .text-slate-300,
+            body.print-master #master-list-modal .text-slate-400 {
+                color: #000 !important;
+            }
+            body.print-master #master-list-modal .text-gray-800,
+            body.print-master #master-list-modal .text-gray-600 {
+                color: #000 !important;
+            }
+            body.print-master #master-list-modal .border-slate-700 {
+                border-color: #ccc !important;
+            }
 
             /* Hide sidebar on print */
             aside.sidebar-nav { display: none !important; }
@@ -1065,14 +1096,14 @@ export default function App() {
           <div className="border-t border-slate-700 my-3"></div>
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Actions</div>
 
-          {/* History */}
+          {/* Master List */}
           <button
             type="button"
-            onClick={() => { setIsAppHistoryOpen(true); setSelectedRowIds(new Set()); }}
+            onClick={() => { setIsMasterListOpen(true); setSelectedRowIds(new Set()); }}
             className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
           >
-            <Icons.History size={18} />
-            <span>History</span>
+            <Icons.Database size={18} />
+            <span>Master List</span>
           </button>
 
           {/* Undo */}
@@ -1559,10 +1590,9 @@ export default function App() {
         onDeleteReport={handleDeleteReportWrapper}
       />
 
-      <AppHistoryModal
+      <AppHistorySidePanel
         isOpen={isAppHistoryOpen}
         onClose={() => setIsAppHistoryOpen(false)}
-        sites={sites}
         asset={viewHistoryAsset}
       />
 
@@ -1574,43 +1604,6 @@ export default function App() {
               <div>
                 <h4 className="font-bold text-slate-200 mb-2">Support</h4>
                 <p className="text-slate-300 text-sm">Contact BL if you find issues with the app so he can fix them.</p>
-              </div>
-
-              <div className="pt-6 border-t border-slate-700">
-                <h4 className="font-bold text-red-400 mb-2 flex items-center gap-2"><Icons.AlertTriangle size={16} /> Danger Zone</h4>
-                <p className="text-slate-400 text-xs mb-4">
-                  Resetting the app history will clear all local data, including sites, assets, and history. This action cannot be undone.
-                </p>
-                <SecureDeleteButton
-                  onComplete={() => setIsResetConfirmOpen(true)}
-                  duration={3000}
-                  className="w-full bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-4 py-3 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
-                >
-                  <Icons.Trash size={16} /> Hold to Reset App History
-                </SecureDeleteButton>
-              </div>
-            </div>
-          </Modal>
-        )
-      }
-
-      {/* RESET CONFIRMATION MODAL */}
-      {
-        isResetConfirmOpen && (
-          <Modal title="⚠️ Confirm Factory Reset" onClose={() => setIsResetConfirmOpen(false)}>
-            <div className="space-y-4">
-              <div className="bg-red-900/20 border border-red-500/50 p-4 rounded-lg flex gap-3">
-                <Icons.AlertTriangle className="text-red-500 shrink-0" size={24} />
-                <div>
-                  <h4 className="font-bold text-red-400">Are you absolutely sure?</h4>
-                  <p className="text-red-200/80 text-sm mt-1">
-                    This action will permanently delete all data stored on this device. This cannot be undone.
-                  </p>
-                </div>
-              </div>
-              <div className="flex justify-end gap-3 pt-4">
-                <Button variant="secondary" onClick={() => setIsResetConfirmOpen(false)}>Cancel</Button>
-                <Button variant="danger" onClick={handleResetConfirm}>Yes, Delete Everything</Button>
               </div>
             </div>
           </Modal>

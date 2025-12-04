@@ -517,6 +517,36 @@ export const SiteProvider = ({ children }) => {
         };
     };
 
+    const handleClearAllHistory = () => {
+        const updatedSites = sites.map(site => ({
+            ...site,
+            notes: [],
+            serviceData: (site.serviceData || []).map(asset => ({
+                ...asset,
+                history: [],
+                reports: []
+            })),
+            rollerData: (site.rollerData || []).map(asset => ({
+                ...asset,
+                history: [],
+                reports: []
+            })),
+            specData: (site.specData || []).map(spec => ({
+                ...spec,
+                history: [],
+                notes: []
+            }))
+        }));
+
+        addUndoAction({
+            description: 'Clear All App History',
+            undo: () => setSites(sites), // Restore original sites
+            redo: () => setSites(updatedSites) // Redo the clear
+        });
+
+        setSites(updatedSites);
+    };
+
     return (
         <SiteContext.Provider value={{
             sites, setSites,
@@ -549,7 +579,8 @@ export const SiteProvider = ({ children }) => {
             handleDeleteReport: deleteServiceReport, // Alias
             uploadServiceReport,
             deleteServiceReport,
-            handleFileChange
+            handleFileChange,
+            handleClearAllHistory
         }}>
             {children}
         </SiteContext.Provider>

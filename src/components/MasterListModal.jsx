@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useContext } from 'react';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
+import { UIContext } from '../context/UIContext';
 
 export const MasterListModal = ({
   isOpen,
@@ -16,7 +17,8 @@ export const MasterListModal = ({
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
-  const [isDarkMode, setIsDarkMode] = useState(true);
+  const { theme } = useContext(UIContext);
+  const isDarkMode = theme === 'dark';
 
   if (!isOpen) return null;
 
@@ -80,14 +82,6 @@ export const MasterListModal = ({
             </div>
           </div>
           <div className="flex gap-2 items-center">
-            <button
-              type="button"
-              onClick={() => setIsDarkMode(!isDarkMode)}
-              className={`p-2 rounded-full transition-colors ${isDarkMode ? 'text-yellow-400 hover:bg-slate-800' : 'text-slate-400 hover:bg-gray-200'}`}
-              title={isDarkMode ? "Switch to Day Mode" : "Switch to Night Mode"}
-            >
-              {isDarkMode ? '☀️' : '🌙'}
-            </button>
             <button type="button" onClick={() => onPrint('master')} className={`${isDarkMode ? 'text-slate-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'} mr-2`} title="Print Master List"><span className="text-xl"><Icons.Printer /></span></button>
             <div className="relative">
               <span className={`absolute left-2 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}><Icons.Search /></span>
