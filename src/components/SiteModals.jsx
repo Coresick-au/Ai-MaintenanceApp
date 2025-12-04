@@ -1,11 +1,16 @@
-
 import React, { useState } from 'react';
-import { Modal, Button, Icons, UniversalDatePicker } from './UIComponents';
+import { Modal, Button, UniversalDatePicker } from './UIComponents';
+import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
+
+// CSS class constants for form styling
+const labelClass = "block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider";
+const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white focus:outline-none focus:border-blue-500";
+const sectionClass = "p-3 bg-slate-800/50 rounded border border-slate-700";
 
 const TypeSelect = ({ value, onChange }) => (
   <div>
-    <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Site Type</label>
+    <label className={labelClass}>Site Type</label>
     <select
       value={value || 'Mine'}
       onChange={onChange}

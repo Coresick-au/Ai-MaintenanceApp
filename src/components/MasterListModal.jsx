@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Icons } from './UIComponents';
+import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 
 export const MasterListModal = ({

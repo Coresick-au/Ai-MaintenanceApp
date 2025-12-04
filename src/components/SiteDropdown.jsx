@@ -1,6 +1,8 @@
 // src/components/SiteDropdown.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { Icons } from './UIComponents';
+import { Icons } from '../constants/icons.jsx';
+import { StatusBadge } from './UIComponents';
+import { calculateSiteHealth } from '../utils/helpers';
 
 export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -66,7 +68,7 @@ export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
                                                 : 'text-slate-400 cursor-not-allowed opacity-50'
                                         }`}
                                 >
-                                    <div className="flex flex-col">
+                                    <div className="flex flex-col flex-1">
                                         <span className={isSelected ? 'font-bold' : ''}>{site.name}</span>
                                         {site.location && (
                                             <span className={`text-xs ${isSelected ? 'text-cyan-100' : 'text-slate-400'}`}>
@@ -74,9 +76,17 @@ export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
                                             </span>
                                         )}
                                     </div>
-                                    {isSelected && (
-                                        <Icons.CheckCircle size={18} className="text-white" />
-                                    )}
+                                    <div className="flex items-center gap-2">
+                                        {site.assets && site.assets.length > 0 && (
+                                            <StatusBadge 
+                                                remaining={calculateSiteHealth(site) === 'Good' ? 30 : calculateSiteHealth(site) === 'Warning' ? 15 : -1}
+                                                isActive={isActive}
+                                            />
+                                        )}
+                                        {isSelected && (
+                                            <Icons.CheckCircle size={18} className="text-white" />
+                                        )}
+                                    </div>
                                 </button>
                             );
                         })}

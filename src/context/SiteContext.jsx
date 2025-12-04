@@ -1,35 +1,8 @@
-import React, { createContext, useState, useEffect, useMemo, useContext } from 'react';
-import { useUndo } from './UndoContext';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useUndo } from '../hooks/useUndo';
 import { recalculateRow, generateSampleSite } from '../data/mockData';
-
-export const SiteContext = createContext();
-
-export const useSiteContext = () => useContext(SiteContext);
-
-// HELPER: SAFELY LOAD DATA
-const safelyLoadData = (data) => {
-    if (!Array.isArray(data)) return [];
-    return data.map(site => ({
-        ...site,
-        customer: site.customer || '',
-        contactName: site.contactName || '',
-        contactEmail: site.contactEmail || '',
-        contactPosition: site.contactPosition || '',
-        contactPhone1: site.contactPhone1 || '',
-        contactPhone2: site.contactPhone2 || '',
-        active: site.active !== false,
-        serviceData: Array.isArray(site.serviceData) ? site.serviceData.map(i => ({ ...i, active: i.active !== false })) : [],
-        rollerData: Array.isArray(site.rollerData) ? site.rollerData.map(i => ({ ...i, active: i.active !== false })) : [],
-        specData: Array.isArray(site.specData) ? site.specData : [],
-        notes: Array.isArray(site.notes) ? site.notes : [],
-        issues: Array.isArray(site.issues) ? site.issues.map(issue => ({
-            ...issue,
-            importance: issue.importance || 'Medium',
-            assetId: issue.assetId || null,
-            assetName: issue.assetName || null,
-        })) : [],
-    }));
-};
+import { safelyLoadData, loadSitesFromStorage, loadSelectedSiteIdFromStorage } from '../utils/dataUtils';
+import { SiteContext } from './SiteContext.context';
 
 export const SiteProvider = ({ children }) => {
     const { addUndoAction, clearDirty } = useUndo();
@@ -39,20 +12,22 @@ export const SiteProvider = ({ children }) => {
 
     // --- PERSISTENCE ---
     useEffect(() => {
-        // Load Sites
-        const savedData = localStorage.getItem('app_data');
-        if (savedData) {
-            try {
-                const parsed = JSON.parse(savedData);
-                setSites(safelyLoadData(parsed));
-            } catch (e) { console.error("Failed to load sites:", e); }
-        }
-
-        // Load Selected Site ID (FIX: Persist selection across refreshes)
-        const savedSiteId = localStorage.getItem('selected_site_id');
-        if (savedSiteId) setSelectedSiteId(savedSiteId);
-
-        setIsDataLoaded(true);
+        // Load Sites and Selected Site ID asynchronously
+        const loadData = async () => {
+            const loadedSites = loadSitesFromStorage();
+            const loadedSiteId = loadSelectedSiteIdFromStorage();
+            
+            // Use setTimeout to defer state updates and avoid cascading renders
+            setTimeout(() => {
+                setSites(loadedSites);
+                if (loadedSiteId) {
+                    setSelectedSiteId(loadedSiteId);
+                }
+                setIsDataLoaded(true);
+            }, 0);
+        };
+        
+        loadData();
     }, []);
 
     useEffect(() => {
@@ -453,7 +428,8 @@ export const SiteProvider = ({ children }) => {
             try {
                 const parsedData = JSON.parse(e.target.result);
                 if (Array.isArray(parsedData)) {
-                    setSites(safelyLoadData(parsedData));
+                    const loadedData = safelyLoadData(parsedData);
+                    setSites(loadedData);
                     alert("Data loaded successfully!");
                 }
             } catch { alert("Error reading file."); }

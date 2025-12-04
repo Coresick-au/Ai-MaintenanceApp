@@ -2,6 +2,153 @@
 
 This document contains coding standards and patterns learned from build errors and lint warnings encountered during development.
 
+## RPP: MANDATORY REGRESSION PREVENTION PROTOCOL
+
+This protocol must be executed before and during any code implementation to prevent cascading failures and maintain stability. Failure to adhere to RPP is a high-priority regression.
+
+### 1. MODULE DECOUPLING & ISOLATION (Source Check)
+
+**NO RE-EXPORTS:** Immediately remove any non-component exports (utilities, constants, icon objects) from component files (e.g., UIComponents.jsx). The consumer must import from the direct source (e.g., constants/icons.jsx).
+
+**IMPORT TRACING:** Before removing an export, trace all consumers and update their imports to the direct source (e.g., update App.jsx to import Icons directly from constants/icons). This is a critical step to prevent SyntaxErrors.
+
+**STYLE CENTRALIZATION:** For style changes (especially print media queries), restrict modifications to the primary CSS/Tailwind config files. Avoid injecting conflicting styles (like inline `<style>` blocks) in JSX components.
+
+### 2. QUALITY GATE: STATIC ANALYSIS ENFORCEMENT
+
+**LINTING IS LAW:** Treat all ESLint errors (and specified warnings) as critical failures. Fix the underlying code problem rather than applying a blanket suppression.
+
+**HOOK SUPPRESSION:** Use `// eslint-disable-next-line <rule>` only for unavoidable React Hook patterns (like necessary prop-to-state synchronization in EditableCell), and always include a concise comment explaining the necessity.
+
+### 3. CHANGE VERIFICATION & REVIEW
+
+**DIFF REVIEW:** Before generating the final output, review the full diff. Explicitly verify that no necessary component imports or exports were unintentionally removed from the file (e.g., FullScreenContainer in App.jsx).
+
+**FUNCTIONAL REVIEW:** Ensure the implementation did not break known stable functionality (e.g., the print output, component clicking) or introduce new `ReferenceError` crashes.
+
+---
+
+## Project-Specific Standards
+
+### Import Organization
+- Components import from `./components/UIComponents`
+- Icons import directly from `../constants/icons.jsx`
+- Utilities import from `../utils/helpers`
+- Context imports from `../context/[ContextName]`
+
+### React Coding Standards
+
+#### AI-Optimized Docstrings (MANDATORY)
+
+**Rule**: All exported functions, constants, and components MUST be prefaced with a detailed JSDoc/TSDoc summary block including purpose, parameters, and return value.
+
+**Documentation Requirements**:
+```javascript
+/**
+ * Brief one-line summary of what this does
+ * 
+ * @description Detailed explanation of the function's purpose, behavior, and any important side effects.
+ * @param {Type} paramName - Description of parameter and its expected format/values
+ * @param {Type} paramTwo - Description of second parameter
+ * @returns {Type} Description of what the function returns
+ * @example
+ * // Example usage
+ * const result = calculateSiteHealth(site, options);
+ * console.log(result); // Outputs health score 0-100
+ */
+export const calculateSiteHealth = (site, options = {}) => {
+  // Implementation...
+};
+```
+
+**For Components**:
+```javascript
+/**
+ * Reusable modal component for displaying site information
+ * 
+ * @description A dark-themed modal that displays site details with customizable actions.
+ * Handles its own open/close state and provides consistent styling across the application.
+ * @param {Object} props - Component props
+ * @param {boolean} props.isOpen - Whether the modal is currently visible
+ * @param {Function} props.onClose - Callback function when modal is closed
+ * @param {Object} props.site - Site data object to display
+ * @param {Array} props.actions - Array of action buttons to display
+ * @returns {JSX.Element} Rendered modal component
+ * @example
+ * <SiteModal 
+ *   isOpen={showModal} 
+ *   onClose={() => setShowModal(false)}
+ *   site={selectedSite}
+ *   actions={[{ label: 'Edit', onClick: handleEdit }]}
+ * />
+ */
+export const SiteModal = ({ isOpen, onClose, site, actions }) => {
+  // Implementation...
+};
+```
+
+**For Constants**:
+```javascript
+/**
+ * Default configuration for site health calculations
+ * 
+ * @description Contains weighting factors and thresholds used in site health scoring.
+ * These values are based on industry standards and can be adjusted for different requirements.
+ * @type {Object}
+ * @property {number} weightAssetCount - Weight factor for total asset count in health score
+ * @property {number} weightMaintenance - Weight factor for maintenance status
+ * @property {number} criticalThreshold - Threshold below which health is considered critical
+ */
+export const DEFAULT_HEALTH_CONFIG = {
+  weightAssetCount: 0.3,
+  weightMaintenance: 0.7,
+  criticalThreshold: 25
+};
+```
+
+**Enforcement Protocol**:
+- **Code Review**: Docstrings are considered part of the function's contract and subject to code review
+- **Lint Check**: Missing or inadequate docstrings will fail code review
+- **Context Retrieval**: Docstrings enable agent to understand function contracts without full implementation
+- **Fast Refresh Prevention**: Clear documentation prevents accidental non-component exports
+
+**Rationale**: This ensures the agent (and any developer) can understand the function's contract from a snippet or file index without fetching the full implementation, making the system faster and less prone to architectural errors like Fast Refresh violations.
+
+**When this was learned:** 2025-12-04 - Established AI-Optimized Docstrings requirement to improve agent context retrieval and reduce architectural errors.
+
+---
+
+### Component Structure
+- Use functional components with hooks
+- Follow the existing dark theme styling patterns
+- Maintain consistent Tailwind CSS class usage
+- Use print: prefixes for print-specific styles
+
+### Error Handling
+- Use ErrorBoundary components for error isolation
+- Implement proper loading states
+- Handle edge cases (empty data, null values)
+
+### Security Best Practices
+- No process-level listeners in preload scripts
+- Exception handlers belong in main process only
+- Maintain context isolation and sandboxing
+
+### Performance Considerations
+- Use React.memo for expensive components
+- Implement proper dependency arrays in useEffect
+- Avoid unnecessary re-renders with useCallback/useMemo
+
+### Testing & Quality
+- All linting errors must be resolved
+- Critical paths must be tested manually
+- Print functionality must be verified
+- Import/export chains must be validated
+
+**When this was learned:** 2025-12-04 - Established mandatory RPP protocol to prevent cascading failures and maintain stability.
+
+---
+
 ## React Fast Refresh
 
 ### Rule: Separate Non-Component Exports from Component Files
@@ -98,6 +245,280 @@ Any action that successfully persists data MUST trigger an explicit `clearDirty(
 - Critical for correct window close behavior in Electron.
 
 **When this was learned:** 2025-12-03 - Fixed persistent window exit bug (Issue #4).
+
+---
+
+## III. Test-First (NON-NEGOTIABLE)
+
+**Rule**: The Red-Green-Refactor cycle is strictly enforced for all code changes.
+
+**Mandatory TDD Prerequisites (The "Red" State Definition):**
+1. **LINT/Build Compliance MUST be Zero:** Before any new feature code is written, the codebase MUST be fully compliant. The exit code for `npm run lint` and `npm run build` MUST be 0 problems/errors. Any outstanding compliance violations (e.g., Fast Refresh, useEffect Safety) are considered a **FAIL** state.
+2. **Tests Written (The Feature Failure):** New functional requirements MUST be backed by a failing unit or integration test before implementation begins.
+
+**Execution Flow (MUST be followed):**
+* **Step 1: RED (Compliance/Test Failure):** Fix all existing LINT/Build errors, or introduce the failing feature test.
+* **Step 2: GREEN (Success):** Implement the minimal code required to pass the new test AND satisfy the LINT/Build compliance rules.
+* **Step 3: REFACTOR (Cleanup):** Refine code for efficiency, adherence to Code Standards, and apply the **Regression Prevention Protocol (RPP)** checklist.
+
+**Rationale**: Preventing architectural decay (Fast Refresh, useEffect, etc.) is the highest priority. If the foundation is unstable, feature implementation is impossible. A successful task completion report is strictly forbidden until the codebase meets this mandatory zero-error state.
+
+**When this was learned:** 2025-12-04 - Established mandatory Lint/Architectural Compliance as the definitive first step of the Red-Green-Refactor cycle after achieving zero lint errors from 41 initial problems. This constitutional amendment prevents architectural decay from being the blocker that prevents feature development.
+
+---
+
+## IV. Expert Advisor Protocol (PROACTIVE ARCHITECTURAL GUARDRAILS)
+
+**Rule**: The agent MUST proactively identify and prevent architectural violations before implementation begins, not just when users suggest suboptimal solutions.
+
+### Expanded Trigger Criteria (MANDATORY CHECKS)
+
+The Expert Advisor Protocol triggers when ANY of the following conditions are met:
+
+#### 1. **TDD Avoidance Trap**
+**Trigger**: User requests a new utility function or business logic without specifying test requirements.
+
+**Mandatory Response**:
+```
+⚠️ **EXPERT ADVISOR ALERT** - Test-First Principle Violation
+
+Before implementing `calculateSiteHealth` (or any utility/business logic), I MUST follow the Test-First Principle (Section III).
+
+**Required Action**: 
+1. Write a failing test case first
+2. Verify test failure
+3. Then implement minimal code to pass test
+
+Example failing test:
+```javascript
+describe('calculateSiteHealth', () => {
+  it('should return 0 for site with no assets', () => {
+    expect(calculateSiteHealth({ assets: [] })).toBe(0);
+  });
+});
+```
+
+Shall I create the failing test first, then implement?
+```
+
+**Scope**: Applies to ALL utility functions, business logic, data transformations, calculations, and any non-UI code.
+
+#### 2. **Library-First Violation Trap**
+**Trigger**: User requests new code that would embed reusable logic directly within a component.
+
+**Mandatory Response**:
+```
+⚠️ **EXPERT ADVISOR ALERT** - Library-First Principle Violation
+
+The requested Excel export functionality violates Principle I. Library-First.
+
+**Required Action**: 
+- Create reusable utility in `src/utils/` 
+- Import and use in component
+- Ensure utility is testable and reusable
+
+**Proposed Structure**:
+```
+src/utils/
+├── exportHelpers.js    ← New reusable export utilities
+└── __tests__/
+    └── exportHelpers.test.js  ← Tests for utilities
+```
+
+Shall I create the reusable utility first, then implement the component integration?
+```
+
+**Scope**: Applies to data exports, API calls, data transformations, validation logic, and any code that could be reused across components.
+
+#### 3. **Context Pollution Trap**
+**Trigger**: User requests adding non-component exports to component files.
+
+**Mandatory Response**:
+```
+⚠️ **EXPERT ADVISOR ALERT** - Fast Refresh Compliance Violation
+
+Adding constants/helpers to component files violates Fast Refresh requirements.
+
+**Required Action**: 
+- Move constants to `src/constants/`
+- Move helpers to `src/utils/`
+- Import into component
+- Maintain clean component exports
+
+**Proposed Structure**:
+```
+src/constants/
+└── exportConstants.js  ← New constants
+
+src/utils/
+└── exportHelpers.js    ← New helpers
+```
+
+Shall I create the separate utility/constant files first?
+```
+
+#### 4. **Hook Misuse Trap**
+**Trigger**: User requests custom hooks without proper testing or violates React patterns.
+
+**Mandatory Response**:
+```
+⚠️ **EXPERT ADVISOR ALERT** - Hook Pattern Violation
+
+Custom hooks require proper testing and must follow React conventions.
+
+**Required Action**:
+- Create hook in `src/hooks/`
+- Write failing tests for hook behavior
+- Ensure proper dependency arrays
+- Follow naming convention (`use*`)
+
+**Proposed Structure**:
+```
+src/hooks/
+├── useSiteExport.js     ← New custom hook
+└── __tests__/
+    └── useSiteExport.test.js  ← Hook tests
+```
+
+Shall I create the hook with tests first?
+```
+
+### Proactive Enforcement Protocol
+
+**Before ANY Implementation**:
+1. **Analyze Request**: Check against all trigger criteria
+2. **Identify Violations**: Determine which principles would be violated
+3. **Issue Advisory**: Provide mandatory response template
+4. **Wait for Confirmation**: Do not proceed until user agrees to proper approach
+5. **Execute Correctly**: Follow the architectural pattern suggested
+
+**Success Criteria**:
+- ✅ No architectural violations implemented
+- ✅ All utilities in proper directories
+- ✅ All business logic tested first
+- ✅ Components remain clean and focused
+- ✅ Fast Refresh compliance maintained
+
+**When this was learned:** 2025-12-04 - Expanded Expert Advisor Protocol to include proactive architectural guardrails, preventing drift before implementation begins rather than reacting after violations occur.
+
+---
+
+## V. Agent Planning Protocols
+
+### TODO.md Dependency Integration (MANDATORY)
+
+**Rule**: The speckit.plan agent MUST treat TODO.md as a formalized memory artifact that blocks feature planning until technical debt is resolved.
+
+#### Planning Protocol for speckit.plan Agent
+
+**Before ANY Feature Planning**:
+1. **Scan TODO.md**: Read and analyze all outstanding TODO items
+2. **Identify Blockers**: Determine which TODO items impact the planned feature
+3. **Check Outstanding Issues**: Review any known bugs or technical debt (e.g., PDF parsing issues)
+4. **Dependency Injection**: Automatically insert TODO fixes as prerequisite tasks
+
+#### Mandatory Planning Flow:
+
+```
+PLANNING CHECKLIST (Must Complete Before Feature Plan):
+
+□ TODO.md scanned and analyzed
+□ Outstanding technical debt identified
+□ Feature impact assessment completed
+□ TODO dependencies injected as prerequisite tasks
+□ Foundation stability verified
+```
+
+#### Dependency Injection Rules:
+
+**If TODO item blocks feature foundation:**
+```
+TASK 1: Resolve TODO-XXX - [Technical Debt Description]
+  - Status: PREREQUISITE
+  - Priority: HIGH (Blocks feature implementation)
+  - Impact: Foundation stability for [Feature Name]
+
+TASK 2: Implement [Feature Name]
+  - Status: DEPENDENT on TASK 1 completion
+  - Priority: MEDIUM
+  - Impact: Feature delivery
+```
+
+**If TODO item is unrelated to current feature:**
+```
+TASK 1: Implement [Feature Name]
+  - Status: READY
+  - Priority: MEDIUM
+  - Impact: Feature delivery
+
+NOTE: TODO-XXX exists but does not impact this feature. Consider scheduling for technical debt sprint.
+```
+
+#### TODO.md Structure Requirements:
+
+```markdown
+# TODO - Technical Debt & Foundation Issues
+
+## CRITICAL BLOCKERS (Must resolve before any features)
+- [ ] TODO-001: Fix PDF parsing memory leak in parseServiceReport function
+  - Impact: All report-related features
+  - Priority: CRITICAL
+  - Estimated: 2 hours
+
+## FOUNDATION ISSUES (Resolve before dependent features)
+- [ ] TODO-002: Migrate hardcoded asset types to configurable system
+  - Impact: Asset management features
+  - Priority: HIGH
+  - Estimated: 4 hours
+
+## ENHANCEMENTS (Can be scheduled separately)
+- [ ] TODO-003: Implement real-time data synchronization
+  - Impact: Performance and UX
+  - Priority: MEDIUM
+  - Estimated: 8 hours
+```
+
+#### Agent Logic Amendment:
+
+**speckit.plan Agent Internal Logic**:
+```javascript
+async function createFeaturePlan(featureRequest) {
+  // Step 1: Scan TODO.md (MANDATORY)
+  const todoItems = await scanTODO.md();
+  const outstandingIssues = await scanKnownIssues();
+  
+  // Step 2: Identify blockers
+  const blockers = identifyBlockers(todoItems, outstandingIssues, featureRequest);
+  
+  // Step 3: Inject dependencies
+  if (blockers.length > 0) {
+    return createPlanWithDependencies(blockers, featureRequest);
+  } else {
+    return createFeaturePlan(featureRequest);
+  }
+}
+```
+
+#### Success Criteria:
+
+**Plan is VALID only when:**
+- ✅ TODO.md has been scanned and analyzed
+- ✅ All blocking TODO items are included as prerequisites
+- ✅ Technical debt dependencies are clearly marked
+- ✅ Foundation stability is verified before feature tasks
+- ✅ No feature implementation is planned on shaky foundation
+
+**Plan is INVALID when:**
+- ❌ TODO.md was not scanned
+- ❌ Blocking TODO items ignored or postponed
+- ❌ Feature tasks planned without resolving foundation issues
+- ❌ Technical debt treated as optional rather than mandatory
+
+#### Rationale:
+
+This ensures that major technical debt is addressed as a prerequisite, rather than being left to rot while features are implemented on a shaky foundation. TODO.md transitions from a passive wishlist to an active planning artifact that gates feature development.
+
+**When this was learned:** 2025-12-04 - Formalized TODO.md as mandatory planning artifact to prevent technical debt accumulation and ensure foundation stability before feature development.
 
 ---
 

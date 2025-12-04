@@ -3,7 +3,7 @@ import { cleanup } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
 // Polyfill DOMMatrix for pdfjs-dist in jsdom environment
-global.DOMMatrix = class DOMMatrix {
+globalThis.DOMMatrix = class DOMMatrix {
     constructor() {
         this.a = 1;
         this.b = 0;
@@ -31,4 +31,4 @@ afterEach(() => {
 });
 
 // Extend Vitest's expect with jest-dom matchers
-global.expect = expect;
+globalThis.expect = expect;

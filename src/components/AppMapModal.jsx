@@ -1,10 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import mermaid from 'mermaid';
 import { Modal } from './UIComponents';
 import { componentMapData } from '../data/componentMap';
-import { useUIContext } from '../context/UIContext';
-import { useSiteContext } from '../context/SiteContext';
-import { useFilterContext } from '../context/FilterContext';
+import { useUIContext } from '../hooks/useUIContext';
+import { useFilterContext } from '../hooks/useFilterContext';
 
 export const AppMapModal = ({ isOpen, onClose }) => {
     const containerRef = useRef(null);
@@ -13,12 +12,50 @@ export const AppMapModal = ({ isOpen, onClose }) => {
         setIsAssetModalOpen,
         setIsMasterListOpen,
         setIsAppHistoryOpen,
-        setIsHelpModalOpen,
-        setViewAnalyticsAsset,
         setExpandedSection
     } = useUIContext();
 
     const { setActiveTab, setLocalViewMode } = useFilterContext();
+
+    const handleNavigation = useCallback((nodeId) => {
+        // Map node names to actions
+        // This mapping needs to match the node names generated in generate-map.js
+        // Currently generate-map.js uses the filename as the node name.
+
+        switch (nodeId) {
+            case 'AddSiteModal':
+                setIsAddSiteModalOpen(true);
+                break;
+            case 'AddAssetModal':
+                setIsAssetModalOpen(true);
+                break;
+            case 'MasterList':
+                setIsMasterListOpen(true);
+                break;
+            case 'AppHistory':
+                setIsAppHistoryOpen(true);
+                break;
+            case 'LocalView':
+                setActiveTab('service');
+                setLocalViewMode('list');
+                setExpandedSection('local');
+                break;
+            case 'AnalyticsView':
+                setActiveTab('service');
+                setLocalViewMode('analytics');
+                setExpandedSection('local');
+                break;
+            case 'TimelineView':
+                setActiveTab('service');
+                setLocalViewMode('timeline');
+                setExpandedSection('local');
+                break;
+            default:
+                console.log('Unknown node:', nodeId);
+                break;
+        }
+        onClose();
+    }, [setIsAddSiteModalOpen, setIsAssetModalOpen, setIsMasterListOpen, setIsAppHistoryOpen, setActiveTab, setLocalViewMode, setExpandedSection, onClose]);
 
     useEffect(() => {
         if (isOpen && containerRef.current) {
@@ -48,45 +85,7 @@ export const AppMapModal = ({ isOpen, onClose }) => {
                 }
             });
         }
-    }, [isOpen]);
-
-    const handleNavigation = (nodeId) => {
-        // Map node names to actions
-        // This mapping needs to match the node names generated in generate-map.js
-        // Currently generate-map.js uses the filename as the node name.
-
-        switch (nodeId) {
-            case 'AddSiteModal':
-                setIsAddSiteModalOpen(true);
-                break;
-            case 'AddAssetModal':
-                setIsAssetModalOpen(true);
-                break;
-            case 'MasterListModal':
-                setIsMasterListOpen(true);
-                break;
-            case 'AppHistoryModal':
-                setIsAppHistoryOpen(true);
-                break;
-            case 'AssetTimeline':
-                setLocalViewMode('timeline');
-                setExpandedSection('timeline');
-                break;
-            case 'AssetAnalytics':
-                // This one is tricky as it usually needs a specific asset. 
-                // We can't easily open it without context.
-                alert("Select an asset first to view analytics.");
-                return; // Don't close modal
-            case 'SiteIssueTracker':
-                setActiveTab('issues');
-                break;
-            // Add more mappings as needed
-            default:
-                console.log("No navigation action for:", nodeId);
-                return; // Don't close modal if no action
-        }
-        onClose();
-    };
+    }, [isOpen, handleNavigation]);
 
     if (!isOpen) return null;
 

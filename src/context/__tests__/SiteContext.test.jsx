@@ -1,6 +1,7 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { SiteProvider, useSiteContext } from '../SiteContext';
+import { SiteProvider } from '../SiteContext';
+import { useSiteContext } from '../../hooks/useSiteContext';
 import { UndoProvider } from '../UndoContext';
 
 // Wrapper to provide both contexts

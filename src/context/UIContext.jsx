@@ -1,8 +1,7 @@
-import React, { createContext, useState, useEffect, useContext } from 'react';
+import React, { createContext, useState, useEffect } from 'react';
+import { LIGHT_MODE_MESSAGES, DEFAULT_SITE_FORM, DEFAULT_NOTE_INPUT, DEFAULT_NEW_ASSET, DEFAULT_SPEC_NOTE_INPUT } from '../constants/uiConstants';
 
 const UIContext = createContext();
-
-export const useUIContext = () => useContext(UIContext);
 
 export const UIProvider = ({ children }) => {
     // --- MODALS ---
@@ -26,12 +25,10 @@ export const UIProvider = ({ children }) => {
     const [editNoteContent, setEditNoteContent] = useState({ content: '', author: '' });
 
     // --- FORMS ---
-    const [siteForm, setSiteForm] = useState({
-        id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null, issues: []
-    });
-    const [noteInput, setNoteInput] = useState({ content: '', author: '' });
-    const [newAsset, setNewAsset] = useState({ name: '', weigher: '', code: '', lastCal: '', frequency: '' });
-    const [specNoteInput, setSpecNoteInput] = useState({ content: '', author: '' });
+    const [siteForm, setSiteForm] = useState(DEFAULT_SITE_FORM);
+    const [noteInput, setNoteInput] = useState(DEFAULT_NOTE_INPUT);
+    const [newAsset, setNewAsset] = useState(DEFAULT_NEW_ASSET);
+    const [specNoteInput, setSpecNoteInput] = useState(DEFAULT_SPEC_NOTE_INPUT);
 
     // --- THEME & MENUS ---
     const [theme, setTheme] = useState(() => localStorage.getItem('theme') || 'dark');
@@ -39,25 +36,13 @@ export const UIProvider = ({ children }) => {
     const [expandedSection, setExpandedSection] = useState(null);
 
     // --- EASTER EGG ---
-    const [lightModeCount, setLightModeCount] = useState(0);
     const [isCooked, setIsCooked] = useState(false);
-    const [lightModeMessage, setLightModeMessage] = useState("Light mode users be like: \"I love squinting. It builds character.\"");
+    const [lightModeMessage, setLightModeMessage] = useState(LIGHT_MODE_MESSAGES[0]);
     const [showLightModeMessage, setShowLightModeMessage] = useState(false);
     const messageTimeoutRef = React.useRef(null);
 
     const handleLightModeClick = () => {
-        // 1. Increment Counter (Functional Update for Reliability)
-        setLightModeCount(prev => {
-            const newCount = prev + 1;
-            if (newCount >= 10) {
-                setIsCooked(true);
-                setTimeout(() => setIsCooked(false), 5000); // Reset after 5 seconds
-                return 0;
-            }
-            return newCount;
-        });
-
-        // 2. Toggle Message Logic
+        // 1. Toggle Message Logic
         if (showLightModeMessage) {
             // If already showing, clear timeout and hide immediately
             if (messageTimeoutRef.current) {
@@ -68,24 +53,15 @@ export const UIProvider = ({ children }) => {
             return;
         }
 
-        // 3. Cycle Messages (only if we are going to show it)
-        const messages = [
-            "Light mode users be like: \"I love squinting. It builds character.\"",
-            "Light mode: for people who think their screen should double as a flashlight.",
-            "You know, pressing it more doesn’t make it work faster",
-            "Are you trying to blind yourself?",
-            "Stop it. Get some help.",
-            "Dark mode is superior. Accept it."
-        ];
-
+        // 2. Cycle Messages
         setLightModeMessage(prevMsg => {
-            let currentIndex = messages.indexOf(prevMsg);
+            let currentIndex = LIGHT_MODE_MESSAGES.indexOf(prevMsg);
             if (currentIndex === -1) currentIndex = 0;
-            const nextIndex = (currentIndex + 1) % messages.length;
-            return messages[nextIndex];
+            const nextIndex = (currentIndex + 1) % LIGHT_MODE_MESSAGES.length;
+            return LIGHT_MODE_MESSAGES[nextIndex];
         });
 
-        // 4. Show Message with 2s Timer
+        // 3. Show Message with 2s Timer
         setShowLightModeMessage(true);
         messageTimeoutRef.current = setTimeout(() => {
             setShowLightModeMessage(false);

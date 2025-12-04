@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('path');
 const url = require('url');
+const fs = require('fs');
 
 // Check if we're in development mode
 const isDev = process.env.IS_DEV === 'true';
@@ -12,12 +13,24 @@ if (isDev) {
       electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
       hardResetMethod: 'exit',
       // Watch main process files
-      ignored: /node_modules|[\/\\]\.|dist|build/
+      ignored: /node_modules|[\\/\\]\\.|dist|build/
     });
   } catch (err) {
     console.log('electron-reload not available');
   }
 }
+
+// ----------------------------------------------------
+// Global Exception/Rejection Handling (Securely in Main Process)
+// ----------------------------------------------------
+// Rationale: Relocating the uncaughtException handler from the preload script 
+// to the main process addresses the SecurityWarning and maintains security 
+// best practices by keeping process-level listeners out of the renderer context.
+process.on('uncaughtException', (err) => {
+  console.error('Uncaught Exception in Main Process:', err);
+  // You might want to display a user-friendly error dialog here
+  // dialog.showErrorBox('Application Error', 'An unhandled exception occurred.');
+});
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
@@ -65,6 +78,43 @@ app.whenReady().then(() => {
       createWindow();
     }
   });
+});
+
+// IPC Handler for Print to PDF
+ipcMain.handle('print-to-pdf', async (event) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    
+    // Show save dialog
+    const { filePath, canceled } = await dialog.showSaveDialog(win, {
+      title: 'Save Maintenance Report',
+      defaultPath: `maintenance-report-${new Date().toISOString().split('T')[0]}.pdf`,
+      filters: [
+        { name: 'PDF Files', extensions: ['pdf'] }
+      ]
+    });
+    
+    if (canceled || !filePath) {
+      return { success: false, canceled: true };
+    }
+    
+    // Generate PDF with proper options
+    const pdfData = await win.webContents.printToPDF({
+      marginsType: 0,
+      printBackground: true,
+      pageSize: 'A4',
+      landscape: false,
+      preferCSSPageSize: false
+    });
+    
+    // Save to file
+    await fs.promises.writeFile(filePath, pdfData);
+    
+    return { success: true, path: filePath };
+  } catch (error) {
+    console.error('PDF generation error:', error);
+    return { success: false, error: error.message };
+  }
 });
 
 // IPC Handler for checking unsaved changes synchronously

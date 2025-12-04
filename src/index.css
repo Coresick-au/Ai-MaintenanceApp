@@ -180,6 +180,14 @@ h3 {
 
 @media print {
 
+  /* Higher specificity overrides for print-content container */
+  .print-content .bg-slate-800,
+  .print-content .bg-slate-900,
+  .print-content .bg-slate-700 {
+    background-color: white !important;
+    background-image: none !important;
+  }
+
   /* Override body and main container backgrounds */
   body,
   .bg-slate-800,
@@ -187,6 +195,14 @@ h3 {
   .bg-slate-700 {
     background-color: white !important;
     background-image: none !important;
+  }
+
+  /* Higher specificity text color overrides */
+  .print-content .text-slate-100,
+  .print-content .text-slate-200,
+  .print-content .text-slate-300,
+  .print-content .text-slate-400 {
+    color: black !important;
   }
 
   /* Default text to black, but allow specific color classes */
@@ -255,6 +271,32 @@ h3 {
   .border-l,
   .border-r {
     border-color: #d1d5db !important;
+  }
+
+  .print-content .border-slate-600,
+  .print-content .border-slate-700,
+  .print-content .border-slate-800,
+  .print-content .border-slate-900 {
+    border-color: #d1d5db !important;
+  }
+
+  .print-content .divide-slate-200 > * + * {
+    border-color: #d1d5db !important;
+  }
+
+  /* Print content isolation - only print the inner document */
+  .print-content > :not(.print-content-inner) {
+    display: none !important;
+  }
+
+  /* Ensure the inner content takes full width in print */
+  .print-content .print-content-inner {
+    position: static !important;
+    width: 100% !important;
+    max-width: none !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: white !important;
   }
 
   .border-red-200 {

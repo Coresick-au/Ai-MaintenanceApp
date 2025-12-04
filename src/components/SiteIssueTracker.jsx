@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Icons, Button, Modal, StatusBadge, UniversalDatePicker } from './UIComponents';
+import { Button, Modal, StatusBadge, UniversalDatePicker } from './UIComponents';
+import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 
 export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onToggleStatus, onUpdateIssue, onCopyIssue }) => {
@@ -166,7 +167,7 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
                   <input
                     type="checkbox"
                     checked={issue.status === 'Completed'}
-                    onChange={() => onToggleIssueStatus(siteId, issue.id)}
+                    onChange={() => onToggleStatus(siteId, issue.id)}
                     className="rounded text-green-600 focus:ring-green-500 accent-green-600 cursor-pointer"
                   />
                   <span className={`text-sm ${issue.status === 'Completed' ? 'line-through text-slate-400' : 'text-slate-200'}`}>

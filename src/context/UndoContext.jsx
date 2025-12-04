@@ -1,12 +1,12 @@
 // src/context/UndoContext.jsx
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback } from 'react';
+import { MAX_UNDO_STACK_SIZE } from '../constants/uiConstants';
 
 const UndoContext = createContext();
 
 export const UndoProvider = ({ children }) => {
     const [undoStack, setUndoStack] = useState([]);
     const [redoStack, setRedoStack] = useState([]);
-    const MAX_UNDO_STACK_SIZE = 10;
 
     // Track dirty state (unsaved changes)
     const [isDirty, setIsDirty] = useState(false);
@@ -112,12 +112,4 @@ export const UndoProvider = ({ children }) => {
     };
 
     return <UndoContext.Provider value={value}>{children}</UndoContext.Provider>;
-};
-
-export const useUndo = () => {
-    const context = useContext(UndoContext);
-    if (!context) {
-        throw new Error('useUndo must be used within UndoProvider');
-    }
-    return context;
 };

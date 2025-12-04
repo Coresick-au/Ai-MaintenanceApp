@@ -14,14 +14,14 @@ import {
 
 // Import helpers and icons from separate files to fix Fast Refresh warnings
 import { formatDate } from '../utils/helpers';
-import { Icons } from '../constants/icons';
+import { Icons } from '../constants/icons.jsx';
 
 // Re-export Icons for backward compatibility (Components often use Icons.X)
 // But we should try to avoid re-exporting non-components if possible.
 // However, Icons is an object of components, so it might be okay.
 // The warning specifically mentioned "constants, helper functions".
 // formatDate is a helper function.
-export { Icons };
+// NOTE: Icons export removed - all components now import directly from '../constants/icons'
 
 
 // ==========================================
@@ -148,6 +148,27 @@ export const SecureDeleteButton = ({ onComplete, duration = 3000, label = "Hold 
   const [progress, setProgress] = useState(0);
   const intervalRef = useRef(null);
 
+  // Cleanup effect to handle component unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, []);
+
+  // Effect to handle cleanup when isPressing changes
+  useEffect(() => {
+    if (!isPressing) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+      // Defer setState to avoid cascading renders
+      setTimeout(() => setProgress(0), 0);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [isPressing, duration, onComplete]);
+
   const startPress = () => {
     setIsPressing(true);
     let elapsed = 0;
@@ -225,7 +246,7 @@ export const StatusBadge = ({ remaining, isActive }) => {
   return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-900/50 text-green-300 border border-green-800 shadow-sm"><Icons.CheckCircle /> Good</span>;
 };
 
-export const SimpleBarChart = ({ data, onBarClick }) => {
+export const SimpleBarChart = ({ data }) => {
   // 1. Handle empty data
   if (!data || data.length === 0) {
     return (
@@ -289,7 +310,7 @@ export const SimpleBarChart = ({ data, onBarClick }) => {
   );
 };
 
-export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect, expandedSection, setExpandedSection }) => {
+export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect }) => {
   const [currentDate, setCurrentDate] = useState(() => new Date());
   const [view, setView] = useState('quarter');
 
@@ -459,7 +480,9 @@ export const UniversalDatePicker = ({ selected, onChange, placeholderText, class
 export const EditableCell = ({ value, type = "text", onSave, className = "" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // Required to re-sync internal state when external prop changes.
+  // The linter flags this as synchronous setState, so we suppress the rule.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setTempValue(value || ''); }, [value]);
   const handleBlur = () => { setIsEditing(false); if (tempValue !== value) onSave(tempValue); };
 

@@ -1,12 +1,11 @@
-import React, { createContext, useState, useMemo, useContext } from 'react';
-import { useSiteContext } from './SiteContext';
+import React, { createContext, useState, useMemo } from 'react';
+import { useSiteContext } from '../hooks/useSiteContext';
+import { sortSitesByRisk, filterMaintenanceData, sortMaintenanceData, calculateMaintenanceStats } from '../utils/filterUtils';
 
 const FilterContext = createContext();
 
-export const useFilterContext = () => useContext(FilterContext);
-
 export const FilterProvider = ({ children }) => {
-    const { sites, selectedSite, currentServiceData, currentRollerData } = useSiteContext();
+    const { sites, currentServiceData, currentRollerData } = useSiteContext();
 
     const [activeTab, setActiveTab] = useState('service');
     const [siteSearchQuery, setSiteSearchQuery] = useState('');
@@ -34,14 +33,7 @@ export const FilterProvider = ({ children }) => {
         } else if (siteSortOption === 'type') {
             result.sort((a, b) => (a.type || '').localeCompare(b.type || ''));
         } else {
-            result.sort((a, b) => {
-                const countCritical = (site) => {
-                    const service = (site.serviceData || []).filter(a => a.active !== false);
-                    const roller = (site.rollerData || []).filter(a => a.active !== false);
-                    return [...service, ...roller].filter(i => i.remaining < 0).length;
-                };
-                return countCritical(b) - countCritical(a);
-            });
+            result = sortSitesByRisk(result);
         }
         return result;
     }, [sites, siteSearchQuery, siteSortOption, showArchived]);
@@ -49,50 +41,12 @@ export const FilterProvider = ({ children }) => {
     const currentTableData = activeTab === 'service' ? currentServiceData : currentRollerData;
 
     const filteredData = useMemo(() => {
-        if (!currentTableData) return [];
-        let data = currentTableData.filter(item => showArchived ? true : item.active !== false);
-
-        data = data.filter(item =>
-            (item.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.code || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (item.weigher || '').toLowerCase().includes(searchTerm.toLowerCase())
-        );
-
-        if (filterStatus === 'overdue') data = data.filter(d => d.remaining < 0);
-        else if (filterStatus === 'dueSoon') data = data.filter(d => d.remaining >= 0 && d.remaining < 30);
-        else if (filterStatus === 'healthy') data = data.filter(d => d.remaining >= 30);
-
-        if (sortConfig.key) {
-            data.sort((a, b) => {
-                let aVal = a[sortConfig.key];
-                let bVal = b[sortConfig.key];
-
-                if (sortConfig.key === 'dueDate') {
-                    aVal = new Date(a.dueDate).getTime();
-                    bVal = new Date(b.dueDate).getTime();
-                }
-
-                if (aVal < bVal) {
-                    return sortConfig.direction === 'ascending' ? -1 : 1;
-                }
-                if (aVal > bVal) {
-                    return sortConfig.direction === 'ascending' ? 1 : -1;
-                }
-                return 0;
-            });
-        }
-        return data;
+        let data = filterMaintenanceData(currentTableData, searchTerm, filterStatus, showArchived);
+        return sortMaintenanceData(data, sortConfig);
     }, [currentTableData, searchTerm, filterStatus, sortConfig, showArchived]);
 
     const stats = useMemo(() => {
-        if (!currentTableData) return { overdue: 0, dueSoon: 0, total: 0 };
-        const activeData = currentTableData.filter(d => d.active !== false);
-
-        const total = activeData.length;
-        const overdue = activeData.filter(d => d.remaining < 0).length;
-        const dueSoon = activeData.filter(d => d.remaining >= 0 && d.remaining < 30).length;
-        const healthy = activeData.filter(d => d.remaining >= 30).length;
-        return { total, overdue, dueSoon, healthy };
+        return calculateMaintenanceStats(currentTableData);
     }, [currentTableData]);
 
     const handleSort = (key) => {

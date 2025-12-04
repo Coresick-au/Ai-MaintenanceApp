@@ -2,14 +2,13 @@ import React, { useEffect, useRef, useMemo, useState } from 'react';
 // IMPORT DATA & HELPER
 import { recalculateRow } from './data/mockData';
 // IMPORT CONTEXTS
-import { useSiteContext } from './context/SiteContext';
-import { useUIContext } from './context/UIContext';
-import { useFilterContext } from './context/FilterContext';
-import { useUndo } from './context/UndoContext';
+import { useSiteContext } from './hooks/useSiteContext';
+import { useUIContext } from './hooks/useUIContext';
+import { useFilterContext } from './hooks/useFilterContext';
+import { useUndo } from './hooks/useUndo';
 
 // IMPORT UI COMPONENTS
 import {
-  Icons,
   Card,
   Button,
   StatusBadge,
@@ -18,8 +17,11 @@ import {
   Modal,
   EditableCell,
   SecureDeleteButton,
+  UniversalDatePicker,
+  ErrorBoundary,
   FullScreenContainer
 } from './components/UIComponents';
+import { Icons } from './constants/icons.jsx';
 import { formatDate } from './utils/helpers';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
@@ -39,7 +41,7 @@ import { AppMapModal } from './components/AppMapModal';
 export default function App() {
   // Force HMR update
   const {
-    sites, setSites, selectedSiteId, setSelectedSiteId, selectedSite,
+    sites, selectedSiteId, setSelectedSiteId, selectedSite,
     currentServiceData, currentRollerData, currentSpecData,
     updateSiteData,
     handleAddSite, handleGenerateSample, handleDeleteSite, handleUpdateSiteInfo, toggleSiteStatus,
@@ -62,7 +64,7 @@ export default function App() {
     selectedAssetId, setSelectedAssetId,
     editingAsset, setEditingAsset,
     editingSpecs, setEditingSpecs,
-    viewHistoryAsset, setViewHistoryAsset,
+    viewHistoryAsset,
     viewContactSite, setViewContactSite,
     viewAnalyticsAsset, setViewAnalyticsAsset,
     editingNoteId, setEditingNoteId,
@@ -71,7 +73,6 @@ export default function App() {
     noteInput, setNoteInput,
     newAsset, setNewAsset,
     specNoteInput, setSpecNoteInput,
-    theme, setTheme,
     isPrintMenuOpen, setIsPrintMenuOpen,
     expandedSection, setExpandedSection,
     closeFullscreen,
@@ -92,7 +93,7 @@ export default function App() {
     searchTerm, setSearchTerm,
     filterStatus, setFilterStatus,
     isRollerOnlyMode, setIsRollerOnlyMode,
-    sortConfig, setSortConfig,
+    sortConfig,
     selectedRowIds, setSelectedRowIds,
     showArchived, setShowArchived,
     siteSortOption, setSiteSortOption,
@@ -353,9 +354,6 @@ export default function App() {
   const toggleAssetStatus = (asset, e) => {
     if (e) e.stopPropagation();
     const isActivating = asset.active === false;
-    const confirmMsg = isActivating
-      ? "Re-activate this asset? It will appear in schedules and stats again."
-      : "Decommission this asset? It will be hidden from schedules and stats.";
 
     // Confirmation handled by SecureDeleteButton
 

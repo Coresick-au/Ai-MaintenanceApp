@@ -1,7 +1,8 @@
 import React, { useState, useMemo } from 'react';
-import { Icons, Modal } from './UIComponents';
+import { Modal } from './UIComponents';
+import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
-import { useSiteContext } from '../context/SiteContext';
+import { useSiteContext } from '../hooks/useSiteContext';
 
 export const AppHistoryModal = ({ isOpen, onClose, asset, searchQuery: initialSearchQuery }) => {
   const { sites } = useSiteContext();

@@ -20,3 +20,22 @@ export const formatDate = (dateString, includeTime = false) => {
 
     return result;
 };
+
+/**
+ * @summary Calculates the overall health status of a site based on its assets' maintenance schedule.
+ * @param {object} siteData - The full site data object, including assets.
+ * @returns {'Overdue' | 'Warning' | 'Good'} The overall health status.
+ * @docs
+ * The status is determined by the worst-case maintenance item found:
+ * - Overdue: If any asset has an 'Overdue' status.
+ * - Warning: If any asset has a 'Warning' (due soon) status and no 'Overdue' status is present.
+ * - Good: If all assets are 'Good'.
+ */
+export const calculateSiteHealth = (siteData) => {
+  const statuses = siteData.assets.flatMap(asset => asset.maintenanceSchedule.map(item => item.status));
+
+  if (statuses.includes('Overdue')) return 'Overdue';
+  if (statuses.includes('Warning')) return 'Warning';
+
+  return 'Good';
+};

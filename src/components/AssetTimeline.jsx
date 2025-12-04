@@ -14,7 +14,7 @@ import {
     ChevronLeft,
     ChevronRight
 } from 'lucide-react';
-import { differenceInDays, parseISO, startOfDay, addDays, format, subDays, isAfter, isBefore, addMonths, startOfMonth, endOfMonth, eachDayOfInterval, eachMonthOfInterval } from 'date-fns';
+import { differenceInDays, parseISO, startOfDay, addDays, format, subDays, isAfter, isBefore, startOfMonth, endOfMonth, eachMonthOfInterval } from 'date-fns';
 import * as Icons from 'lucide-react';
 
 const AssetTimeline = ({ assets = [], mode = 'service' }) => {
@@ -326,7 +326,6 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                             {/* Month Row */}
                             <div className="relative h-8 w-full border-b border-slate-700/30 bg-slate-800/50">
                                 {(() => {
-                                    const months = [];
                                     const endDate = addDays(TIMELINE_START, TOTAL_DAYS - 1);
 
                                     // Get all months that overlap with the timeline range

@@ -17,6 +17,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     electron: process.versions.electron,
   },
 
+  // PDF Export
+  printToPDF: () => ipcRenderer.invoke('print-to-pdf'),
+
   // File system operations (if needed in the future)
   // Example: readFile: (filePath) => ipcRenderer.invoke('read-file', filePath),
   // Example: writeFile: (filePath, data) => ipcRenderer.invoke('write-file', filePath, data),

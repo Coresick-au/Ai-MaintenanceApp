@@ -422,7 +422,7 @@ export const Modal = ({ title, onClose, children, size = "md" }) => {
 export const EditableCell = ({ value, type = "text", onSave, className = "" }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [tempValue, setTempValue] = useState(value || '');
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+   
   useEffect(() => { setTempValue(value || ''); }, [value]);
   const handleBlur = () => { setIsEditing(false); if (tempValue !== value) onSave(tempValue); };
 

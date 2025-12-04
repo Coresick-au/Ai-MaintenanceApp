@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Button, Modal, Icons } from './UIComponents';
+import { Button, Modal } from './UIComponents';
+import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
-import { useFilterContext } from '../context/FilterContext';
+import { useFilterContext } from '../hooks/useFilterContext';
 import { parseServiceReport } from '../utils/pdfParser';
 
 // --- REPORT DETAILS MODAL ---
 const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
-    const [showWeatherTip, setShowWeatherTip] = useState(false);
     const [weather, setWeather] = useState(null);
     const [loadingWeather, setLoadingWeather] = useState(false);
 
@@ -70,12 +70,6 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
             </div>
         );
     }
-
-    const copyDateForWeather = () => {
-        navigator.clipboard.writeText(report.date);
-        setShowWeatherTip(true);
-        setTimeout(() => setShowWeatherTip(false), 3000);
-    };
 
     // Safely access report properties with fallback to 'N/A' or default values
     const reportDate = report.date ? formatDate(report.date) : 'N/A';
@@ -170,6 +164,10 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
                                 <div className="text-xs text-slate-400 mb-1">Belt Speed</div>
                                 <div className="text-2xl font-mono text-green-400">{speed} m/s</div>
                             </div>
+                            <div>
+                                <div className="text-xs text-slate-400 mb-1">Throughput</div>
+                                <div className="text-2xl font-mono text-orange-400">{throughput} t</div>
+                            </div>
                         </div>
                     </div>
 
@@ -260,7 +258,7 @@ const MiniLineChart = ({ data, dataKeys, colors, min, max, unit, isExpanded = fa
 
     // Linear regression for trend line
     const calculateTrendLine = (dataPoints, key) => {
-        const validPoints = dataPoints.map((d, i) => ({
+        const validPoints = dataPoints.map((d) => ({
             x: new Date(d.date).getTime(), // Convert date to numeric value
             y: d[key]
         })).filter(p => typeof p.y === 'number' && !isNaN(p.y));
