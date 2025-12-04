@@ -472,6 +472,11 @@ export const UniversalDatePicker = ({ selected, onChange, placeholderText, class
       className={`w-full p-2 text-sm border border-slate-600 rounded bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 ring-offset-0 transition-colors ${className}`}
       calendarClassName="react-datepicker-custom-calendar"
       popperPlacement="auto"
+      portalId="root"
+      popperProps={{
+        strategy: "fixed"
+      }}
+      popperClassName="z-[9999]"
       {...props}
     />
   );

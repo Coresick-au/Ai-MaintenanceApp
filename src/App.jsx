@@ -521,7 +521,11 @@ export default function App() {
           {/* Sidebar Header - Logo */}
           <div className="p-4 border-b border-slate-700">
             <div className="flex items-center justify-center mb-3">
-              <img src="logos/ai-logo.png" alt="Accurate Industries" className="h-12 w-auto object-contain" />
+              <img 
+                src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"} 
+                alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"} 
+                className="h-12 w-auto object-contain"
+              />
             </div>
             <h2 className="text-center text-lg font-bold text-slate-100 uppercase tracking-wide">Maintenance Tracker</h2>
           </div>
@@ -875,26 +879,25 @@ export default function App() {
       <aside className="sidebar-nav w-64 min-h-screen bg-slate-800 border-r border-slate-700 flex flex-col no-print fixed left-0 top-0 z-40">
         {/* Sidebar Header - Logo & Back */}
         <div className="p-4 border-b border-slate-700">
-          <div className="flex items-center gap-3 mb-4">
-            <button
-              type="button"
-              onClick={() => setSelectedSiteId(null)}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-              title="Back to Sites"
-            >
-              <Icons.ArrowLeft size={20} />
-            </button>
-            <div className="flex items-center justify-center w-10 h-10 bg-slate-700 rounded-full border border-slate-600 overflow-hidden">
-              <img src="logos/ai-logo.png" alt="Accurate Industries" className="w-full h-full object-cover" />
-            </div>
+          {/* Full-width back button */}
+          <button
+            type="button"
+            onClick={() => setSelectedSiteId(null)}
+            className="w-full p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors flex items-center justify-center gap-2 mb-4"
+            title="Back to Sites"
+          >
+            <Icons.ArrowLeft size={20} />
+            Back to Sites
+          </button>
+          
+          {/* Logo as rounded square - full width */}
+          <div className="flex items-center justify-center w-full h-20 bg-slate-700 rounded-xl border border-slate-600 overflow-hidden">
+            <img 
+              src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"} 
+              alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"} 
+              className="w-full h-full object-contain"
+            />
           </div>
-
-          {/* Site Dropdown */}
-          <SiteDropdown
-            sites={sites}
-            selectedSiteId={selectedSiteId}
-            onSiteChange={setSelectedSiteId}
-          />
 
           {/* Location */}
           <div className="flex items-center gap-2 text-xs text-slate-400 mt-2 px-1">
@@ -989,7 +992,7 @@ export default function App() {
             className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
           >
             <Icons.Grid size={18} />
-            <span>Master List</span>
+            <span>Equipment List</span>
           </button>
 
           {/* Export/Print */}
@@ -1175,11 +1178,16 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
                   <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-800 border border-slate-600 text-xs text-slate-400 font-bold hidden sm:inline" title="Archived Assets">
-                    {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0} Archived
+                  {/* Replaced styling to create a flexible grey circle badge that grows with content */}
+                  <span 
+                    className="ml-2 px-2 py-0.5 rounded-full bg-slate-600 text-xs font-bold text-slate-300 hidden sm:inline min-w-[20px] text-center flex items-center justify-center" 
+                    title={`Archived Assets: ${(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}`}
+                  >
+                    {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}
                   </span>
                 </div>
-                <div className="flex gap-2 items-center no-print pr-10">
+                {/* Added flex-wrap so items stack if needed, and reduced pr-10 to pr-2 (or pr-8 if you really need to clear a close button) */}
+                <div className="flex flex-wrap gap-2 items-center no-print pr-2 sm:pr-10">
                   <div className="flex items-center mr-2">
                     <input
                       type="checkbox"
@@ -1190,7 +1198,8 @@ export default function App() {
                     />
                     <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                   </div>
-                  <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
+                  {/* Changed w-40 to w-32 md:w-40 */}
+                  <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
                   <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
                 </div>
               </div>
