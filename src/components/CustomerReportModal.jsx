@@ -5,8 +5,9 @@ import { formatDate } from '../utils/helpers';
 import * as XLSX from 'xlsx';
 import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
+import { pdf } from '@react-pdf/renderer';
+import MaintenanceReportPDF from './MaintenanceReportPDF';
 import html2canvas from 'html2canvas';
-import jsPDF from 'jspdf';
 
 export const CustomerReportModal = ({
     isOpen,
@@ -41,55 +42,21 @@ export const CustomerReportModal = ({
             button.innerHTML = '<Icons.Loader className="animate-spin" size={18} /> Generating PDF...';
             button.disabled = true;
 
-            // Create PDF from the report content
-            const element = reportContentRef.current;
-            if (!element) {
-                throw new Error('Report content not found');
-            }
-
-            // Generate canvas from the element
-            const canvas = await html2canvas(element, {
-                scale: 2, // High resolution
-                useCORS: true,
-                allowTaint: true,
-                backgroundColor: '#ffffff',
-                logging: false,
-                width: element.scrollWidth, // Capture full width
-                height: element.scrollHeight, // Capture full height
-                windowWidth: document.documentElement.offsetWidth, // Prevent scroll clipping
-                windowHeight: document.documentElement.offsetHeight
-            });
-
-            // Create PDF
-            const imgData = canvas.toDataURL('image/png');
-            const pdf = new jsPDF({
-                orientation: 'portrait',
-                unit: 'mm',
-                format: 'a4'
-            });
-
-            // Calculate dimensions to fit the page
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-
-            // FIX: Removed the * 200 multiplier that was exploding the image size
-            // This calculates the scale factor to fit the image within A4 bounds
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-            
-            const centeredWidth = imgWidth * ratio;
-            const centeredHeight = imgHeight * ratio;
-
-            const imgX = (pdfWidth - centeredWidth) / 2;
-            const imgY = 10; // 10mm top margin
-
-            // Add image to PDF
-            pdf.addImage(imgData, 'PNG', imgX, imgY, centeredWidth, centeredHeight);
+            // Create PDF using react-pdf
+            const blob = await pdf((
+                <MaintenanceReportPDF 
+                    site={{
+                        ...site,
+                        serviceData,
+                        rollerData
+                    }}
+                    generatedDate={formatDate(new Date().toISOString())}
+                />
+            )).toBlob();
 
             // Generate filename and download
             const fileName = `maintenance-report-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.pdf`;
-            pdf.save(fileName);
+            saveAs(blob, fileName);
 
         } catch (error) {
             console.error('PDF generation failed:', error);

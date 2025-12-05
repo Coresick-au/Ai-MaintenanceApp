@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useUndo } from '../hooks/useUndo';
 import { recalculateRow, generateSampleSite } from '../data/mockData';
-import { safelyLoadData, loadSitesFromStorage, loadSelectedSiteIdFromStorage } from '../utils/dataUtils';
+import { safelyLoadData, loadSitesFromStorage } from '../utils/dataUtils';
 import { SiteContext } from './SiteContext.context';
 
 export { SiteContext };
@@ -13,17 +13,13 @@ export const SiteProvider = ({ children }) => {
 
     // --- PERSISTENCE ---
     useEffect(() => {
-        // Load Sites and Selected Site ID asynchronously
+        // Load Sites asynchronously (no longer load selectedSiteId)
         const loadData = async () => {
             const loadedSites = loadSitesFromStorage();
-            const loadedSiteId = loadSelectedSiteIdFromStorage();
             
             // Use setTimeout to defer state updates and avoid cascading renders
             setTimeout(() => {
                 setSites(loadedSites);
-                if (loadedSiteId) {
-                    setSelectedSiteId(loadedSiteId);
-                }
                 setIsDataLoaded(true);
             }, 0);
         };
@@ -37,11 +33,6 @@ export const SiteProvider = ({ children }) => {
             clearDirty();
         }
     }, [sites, isDataLoaded, clearDirty]);
-
-    useEffect(() => {
-        // Save Selected Site ID when it changes
-        if (selectedSiteId) localStorage.setItem('selected_site_id', selectedSiteId);
-    }, [selectedSiteId]);
 
     // --- DERIVED STATE ---
     const selectedSite = useMemo(() => sites.find(s => s.id === selectedSiteId), [sites, selectedSiteId]);

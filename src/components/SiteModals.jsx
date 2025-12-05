@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Modal, Button, UniversalDatePicker, SecureDeleteButton } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
+import { validateSiteForm, sanitizeInput } from '../utils/validation';
 
 // CSS class constants for form styling
 const labelClass = "block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider";
@@ -35,19 +36,86 @@ export const AddSiteModal = ({
   setNoteInput,
   onLogoUpload
 }) => {
+  const [validationErrors, setValidationErrors] = useState({});
+  
+  const handleSave = () => {
+    // Sanitize inputs
+    const sanitizedForm = {
+      ...siteForm,
+      name: sanitizeInput(siteForm.name || ''),
+      customer: sanitizeInput(siteForm.customer || ''),
+      location: sanitizeInput(siteForm.location || ''),
+      contactEmail: sanitizeInput(siteForm.contactEmail || ''),
+      contactPhone1: sanitizeInput(siteForm.contactPhone1 || ''),
+      contactPhone2: sanitizeInput(siteForm.contactPhone2 || ''),
+      contactName: sanitizeInput(siteForm.contactName || ''),
+      contactPosition: sanitizeInput(siteForm.contactPosition || ''),
+      typeDetail: sanitizeInput(siteForm.typeDetail || '')
+    };
+    
+    // Validate form
+    const validation = validateSiteForm(sanitizedForm);
+    
+    if (!validation.isValid) {
+      setValidationErrors(validation.errors);
+      return;
+    }
+    
+    // Clear errors and save
+    setValidationErrors({});
+    onSave(sanitizedForm, noteInput);
+  };
+  
+  const getErrorClass = (field) => {
+    return validationErrors[field] ? 'border-red-500' : '';
+  };
+  
+  const getErrorMessage = (field) => {
+    return validationErrors[field] ? (
+      <span className="text-red-400 text-xs mt-1">{validationErrors[field]}</span>
+    ) : null;
+  };
+
   if (!isOpen) return null;
 
   return (
     <Modal title="Add New Site" onClose={onClose}>
       <div className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
-          <div><label className={labelClass}>Site Name</label><input className={inputClass} placeholder="Site Name" value={siteForm.name || ''} onChange={e => setSiteForm({ ...siteForm, name: e.target.value })} /></div>
-          <div><label className={labelClass}>Customer</label><input className={inputClass} placeholder="Customer Name" value={siteForm.customer || ''} onChange={e => setSiteForm({ ...siteForm, customer: e.target.value })} /></div>
+          <div>
+            <label className={labelClass}>Site Name *</label>
+            <input 
+              className={`${inputClass} ${getErrorClass('name')}`} 
+              placeholder="Site Name" 
+              value={siteForm.name || ''} 
+              onChange={e => setSiteForm({ ...siteForm, name: e.target.value })} 
+            />
+            {getErrorMessage('name')}
+          </div>
+          <div>
+            <label className={labelClass}>Customer *</label>
+            <input 
+              className={`${inputClass} ${getErrorClass('customer')}`} 
+              placeholder="Customer Name" 
+              value={siteForm.customer || ''} 
+              onChange={e => setSiteForm({ ...siteForm, customer: e.target.value })} 
+            />
+            {getErrorMessage('customer')}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <TypeSelect value={siteForm.type} onChange={e => setSiteForm({ ...siteForm, type: e.target.value })} />
-          <div><label className={labelClass}>Location</label><input className={inputClass} placeholder="Location" value={siteForm.location || ''} onChange={e => setSiteForm({ ...siteForm, location: e.target.value })} /></div>
+          <div>
+            <label className={labelClass}>Location *</label>
+            <input 
+              className={`${inputClass} ${getErrorClass('location')}`} 
+              placeholder="Location" 
+              value={siteForm.location || ''} 
+              onChange={e => setSiteForm({ ...siteForm, location: e.target.value })} 
+            />
+            {getErrorMessage('location')}
+          </div>
         </div>
 
         {/* Task 1: Conditional Custom Input */}
@@ -69,10 +137,34 @@ export const AddSiteModal = ({
             <input className={inputClass} placeholder="Contact Name" value={siteForm.contactName || ''} onChange={e => setSiteForm({ ...siteForm, contactName: e.target.value })} />
             <input className={inputClass} placeholder="Position" value={siteForm.contactPosition || ''} onChange={e => setSiteForm({ ...siteForm, contactPosition: e.target.value })} />
           </div>
-          <input className={inputClass} placeholder="Email" value={siteForm.contactEmail || ''} onChange={e => setSiteForm({ ...siteForm, contactEmail: e.target.value })} />
+          <div>
+            <input 
+              className={`${inputClass} ${getErrorClass('contactEmail')}`} 
+              placeholder="Email" 
+              value={siteForm.contactEmail || ''} 
+              onChange={e => setSiteForm({ ...siteForm, contactEmail: e.target.value })} 
+            />
+            {getErrorMessage('contactEmail')}
+          </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
-            <input className={inputClass} placeholder="Phone 1" value={siteForm.contactPhone1 || ''} onChange={e => setSiteForm({ ...siteForm, contactPhone1: e.target.value })} />
-            <input className={inputClass} placeholder="Phone 2" value={siteForm.contactPhone2 || ''} onChange={e => setSiteForm({ ...siteForm, contactPhone2: e.target.value })} />
+            <div>
+              <input 
+                className={`${inputClass} ${getErrorClass('contactPhone1')}`} 
+                placeholder="Phone 1" 
+                value={siteForm.contactPhone1 || ''} 
+                onChange={e => setSiteForm({ ...siteForm, contactPhone1: e.target.value })} 
+              />
+              {getErrorMessage('contactPhone1')}
+            </div>
+            <div>
+              <input 
+                className={`${inputClass} ${getErrorClass('contactPhone2')}`} 
+                placeholder="Phone 2" 
+                value={siteForm.contactPhone2 || ''} 
+                onChange={e => setSiteForm({ ...siteForm, contactPhone2: e.target.value })} 
+              />
+              {getErrorMessage('contactPhone2')}
+            </div>
           </div>
         </div>
 
@@ -83,7 +175,7 @@ export const AddSiteModal = ({
           <input className={`${inputClass} mb-2`} placeholder="Author" value={noteInput.author || ''} onChange={e => setNoteInput({ ...noteInput, author: e.target.value })} />
           <textarea className={inputClass} rows="2" placeholder="Content" value={noteInput.content || ''} onChange={e => setNoteInput({ ...noteInput, content: e.target.value })} />
         </div>
-        <Button onClick={() => onSave(siteForm, noteInput)} className="w-full justify-center">Create Site</Button>
+        <Button onClick={handleSave} className="w-full justify-center">Create Site</Button>
       </div>
     </Modal>
   );

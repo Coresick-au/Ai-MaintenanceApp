@@ -302,6 +302,15 @@ export default function App() {
     setSelectedRowIds(new Set());
   };
 
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // Could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
   const handlePrint = (mode) => {
     const body = document.body;
     body.classList.remove('print-schedule', 'print-specs', 'print-master');
@@ -845,11 +854,11 @@ export default function App() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                 <strong className="text-amber-600 text-amber-300 block mb-1">How to Save:</strong>
-                Use the <strong>Backup</strong> button at the top right to download a <code>.json</code> file of your current data.
+                Use the <strong>Backup Data</strong> button in the left sidebar (under Data) to download a <code>.json</code> file of your current data.
               </div>
               <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
                 <strong className="text-amber-600 text-amber-300 block mb-1">How to Load:</strong>
-                Use the <strong>Restore</strong> button to upload a previously saved <code>.json</code> file to continue your work.
+                Use the <strong>Restore Data</strong> link in the left sidebar (under Data) to upload a previously saved <code>.json</code> file to continue your work.
               </div>
             </div>
           </div>
