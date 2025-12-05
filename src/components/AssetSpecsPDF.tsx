@@ -254,7 +254,7 @@ export const AssetSpecsPDF: React.FC<AssetSpecsPDFProps> = ({
           {/* Header */}
           <View style={styles.header}>
             <Image
-              src="/logos/ai-logo.png"
+              src="./logos/ai-logo.png"
               style={styles.logo}
             />
             <View style={styles.titleContainer}>

@@ -670,7 +670,7 @@ export default function App() {
           <div className="p-4 border-b border-slate-700 bg-slate-700">
             <div className="flex items-center justify-center mb-3">
               <img
-                src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"}
+                src={selectedSite?.customerLogo || selectedSite?.logo || "./logos/ai-logo.png"}
                 alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"}
                 className="h-36 w-auto object-contain"
               />
@@ -1123,7 +1123,7 @@ export default function App() {
           {/* Logo as rounded square - full width */}
           <div className="flex items-center justify-center w-full h-20 bg-slate-700 rounded-xl border border-slate-600 overflow-hidden">
             <img
-              src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"}
+              src={selectedSite?.customerLogo || selectedSite?.logo || "./logos/ai-logo.png"}
               alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"}
               className="w-full h-full object-contain"
             />

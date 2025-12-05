@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Maintenance App - Downloader</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            margin: 0 auto 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: white;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .features {
+            text-align: left;
+            margin: 30px 0;
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+        }
+
+        .features h3 {
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .features ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        .features li {
+            padding: 8px 0;
+            color: #555;
+            display: flex;
+            align-items: center;
+        }
+
+        .features li:before {
+            content: "✓";
+            color: #28a745;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .download-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 20px 10px;
+            display: inline-block;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        .info-box h4 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #555;
+            line-height: 1.6;
+        }
+
+        .version {
+            color: #888;
+            font-size: 14px;
+            margin-top: 20px;
+        }
+
+        .instructions {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            text-align: left;
+        }
+
+        .instructions h4 {
+            color: #856404;
+            margin-bottom: 10px;
+        }
+
+        .instructions ol {
+            color: #856404;
+            margin-left: 20px;
+        }
+
+        .instructions li {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🔧</div>
+        <h1>AI Maintenance App</h1>
+        <p class="subtitle">Professional Equipment Calibration & Asset Management System</p>
+        
+        <div class="info-box">
+            <h4>📋 Latest Updates (v2.1 - December 5, 2025)</h4>
+            <p><strong>Calibration Reports Enhanced:</strong></p>
+            <ul>
+                <li>✓ Manual entry fields for tare/zero change and span change</li>
+                <li>✓ Professional units added to all fields (mV, m/s, m, s, t, t/h)</li>
+                <li>✓ Redundant fields removed (kg/m, pulses per length, totaliser)</li>
+                <li>✓ "Pulses" renamed to "test duration pulses"</li>
+                <li>✓ New "Simulated Rate - t/h" field added</li>
+                <li>✓ Dynamic report name generation fixed</li>
+            </ul>
+            <p><strong>Roller Dimensions Improved:</strong></p>
+            <ul>
+                <li>✓ Updated heading with detailed format specification</li>
+                <li>✓ New roller size entry helper modal with 6 dimension fields</li>
+                <li>✓ Enhanced button layout in Edit Asset Modal</li>
+                <li>✓ All PDF exports updated with new format</li>
+            </ul>
+        </div>
+
+        <div class="features">
+            <h3>🚀 Key Features</h3>
+            <ul>
+                <li>Equipment calibration scheduling and tracking</li>
+                <li>Master equipment list management</li>
+                <li>Professional PDF report generation</li>
+                <li>Customer report exports (Excel/PDF)</li>
+                <li>Asset specifications management</li>
+                <li>Roller dimensions helper tool</li>
+                <li>Site and customer management</li>
+                <li>Operational status tracking</li>
+                <li>Automated due date calculations</li>
+                <li>Archive and restore functionality</li>
+            </ul>
+        </div>
+
+        <div class="instructions">
+            <h4>⚠️ Installation Instructions</h4>
+            <ol>
+                <li>Download the ZIP file below</li>
+                <li>Extract to a folder on your computer</li>
+                <li>Install Node.js (if not already installed)</li>
+                <li>Open command prompt in the project folder</li>
+                <li>Run: <code>npm install</code></li>
+                <li>Run: <code>npm start</code></li>
+                <li>Open browser to: http://localhost:3000</li>
+            </ol>
+        </div>
+
+        <div>
+            <a href="https://github.com/Coresick-au/Ai-MaintenanceApp/archive/refs/heads/main.zip" 
+               class="download-btn" 
+               download="Ai-MaintenanceApp-2025-12-05.zip">
+                📥 Download Latest Version
+            </a>
+        </div>
+
+        <div class="info-box">
+            <h4>📦 Package Contents</h4>
+            <p>This download includes the complete application with:</p>
+            <ul>
+                <li>• React frontend application</li>
+                <li>• All components and utilities</li>
+                <li>• PDF generation capabilities</li>
+                <li>• Sample data for testing</li>
+                <li>• Complete documentation</li>
+                <li>• Installation instructions</li>
+            </ul>
+        </div>
+
+        <div class="version">
+            Generated on: December 5, 2025 at 21:45:12 UTC<br>
+            Version: 2.1 | Commit: bb01e5e
+        </div>
+    </div>
+
+    <script>
+        // Add download tracking
+        document.querySelector('.download-btn').addEventListener('click', function() {
+            console.log('Download initiated - AI Maintenance App v2.1');
+            
+            // Show download started message
+            const btn = this;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '⏳ Downloading...';
+            btn.style.opacity = '0.7';
+            
+            setTimeout(() => {
+                btn.innerHTML = '✅ Download Started!';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.style.opacity = '1';
+                }, 2000);
+            }, 1000);
+        });
+
+        // Add some interactive effects
+        document.addEventListener('DOMContentLoaded', function() {
+            const features = document.querySelectorAll('.features li');
+            features.forEach((feature, index) => {
+                feature.style.opacity = '0';
+                feature.style.transform = 'translateX(-20px)';
+                setTimeout(() => {
+                    feature.style.transition = 'all 0.5s ease';
+                    feature.style.opacity = '1';
+                    feature.style.transform = 'translateX(0)';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>

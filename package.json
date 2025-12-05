@@ -18,7 +18,8 @@
     "test:e2e:headed": "playwright test --headed",
     "start-electron": "electron .",
     "electron:dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && cross-env IS_DEV=true electron .\"",
-    "build-electron": "npm run build && npm run copy-electron-assets && electron-builder --win --x64",
+    "build-electron": "npm run build:electron && npm run copy-electron-assets && electron-builder --win --x64",
+    "build:electron": "vite build --mode electron",
     "copy-electron-assets": "node -e \"require('fs').cpSync('public/logos', 'dist/logos', { recursive: true });\""
   },
   "dependencies": {

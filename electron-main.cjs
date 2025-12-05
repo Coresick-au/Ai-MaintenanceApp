@@ -75,7 +75,7 @@ function createWindow() {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
-          'Content-Security-Policy': ['default-src \'self\' \'unsafe-inline\' data: blob:']
+          'Content-Security-Policy': ['default-src \'self\' \'unsafe-inline\' \'unsafe-eval\' data: blob:; style-src \'self\' \'unsafe-inline\' https://fonts.googleapis.com; font-src \'self\' https://fonts.gstatic.com data:; script-src \'self\' \'unsafe-inline\' \'unsafe-eval\'; connect-src \'self\' https://fonts.googleapis.com; img-src \'self\' data: blob: https:;']
         }
       });
     });

@@ -73,7 +73,7 @@ export const MasterListModal = ({
         {/* HEADER */}
         <div className={`flex justify-between items-center p-4 border-b rounded-t-lg transition-colors ${isDarkMode ? 'border-slate-700 bg-slate-900' : 'border-slate-700 bg-gray-50'}`}>
           <div className="flex items-center gap-4">
-            <img src="/logos/ai-logo.png" alt="Accurate Industries Logo" className="h-10" />
+            <img src="./logos/ai-logo.png" alt="Accurate Industries Logo" className="h-10" />
             <div>
               <h3 className={`font-bold text-xl flex items-center gap-2 ${isDarkMode ? 'text-slate-100' : 'text-gray-800'}`}>Master Equipment List</h3>
               <p className={`text-sm ${isDarkMode ? 'text-slate-400' : 'text-gray-500'}`}>
