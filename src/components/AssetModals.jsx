@@ -161,6 +161,7 @@ export const EditAssetModal = ({
                     numberOfLoadCells: '',
                     billetWeightType: '',
                     billetWeightSize: '',
+                    billetWeightIds: [], // Initialize as empty array
                     notes: []
                   });
                 }}
@@ -181,7 +182,9 @@ export const EditAssetModal = ({
               </div>
 
               <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
-                <h4 className="text-blue-400 text-sm font-bold uppercase mb-3">Scale Details</h4>
+                <h4 className="text-blue-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
+                  <span>📦</span> Scale Details
+                </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] text-slate-400 block">Scale Type</label>
@@ -290,6 +293,45 @@ export const EditAssetModal = ({
                       value={specs.billetWeightSize}
                       onChange={e => setSpecs({ ...specs, billetWeightSize: e.target.value })}
                     />
+                  </div>
+
+                  {/* Dynamic Billet Weight IDs */}
+                  <div className="col-span-2 border-t border-slate-700/50 pt-2 mt-1">
+                    <label className="text-[10px] text-slate-400 block mb-1">Billet Weight IDs</label>
+                    <div className="space-y-2">
+                      {(specs.billetWeightIds || []).map((id, index) => (
+                        <div key={index} className="flex gap-2">
+                          <input
+                            className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                            placeholder={`ID #${index + 1}`}
+                            value={id}
+                            onChange={e => {
+                              const newIds = [...(specs.billetWeightIds || [])];
+                              newIds[index] = e.target.value;
+                              setSpecs({ ...specs, billetWeightIds: newIds });
+                            }}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const newIds = (specs.billetWeightIds || []).filter((_, i) => i !== index);
+                              setSpecs({ ...specs, billetWeightIds: newIds });
+                            }}
+                            className="px-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
+                            title="Remove ID"
+                          >
+                            <Icons.Trash size={14} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setSpecs({ ...specs, billetWeightIds: [...(specs.billetWeightIds || []), ''] })}
+                        className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"
+                      >
+                        <Icons.Plus size={12} /> Add ID
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>

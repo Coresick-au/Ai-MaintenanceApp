@@ -412,7 +412,7 @@ export const CalendarWidget = ({ assets, selectedAssetId, onAssetSelect }) => {
   }
 
   return (
-    <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-4 no-print">
+    <div className="bg-slate-800 rounded-xl shadow-sm border border-slate-700 p-4 no-print h-full flex flex-col">
       <div className="flex justify-between items-center mb-4 border-b border-slate-700 pb-2">
         <div className="flex items-center gap-2">
           <span className="text-lg text-cyan-400 bg-cyan-900/30 p-1 rounded"><Icons.Calendar /></span>

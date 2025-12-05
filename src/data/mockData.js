@@ -177,8 +177,9 @@ export const generateSampleSite = () => {
     loadCellSize: ['50 kg', '100 kg', '250 kg', '500 kg', '1000 kg'][i % 5],
     loadCellSensitivity: ['2.0 mV/V', '3.0 mV/V', '1.5 mV/V', '2.0 mV/V', '2.5 mV/V'][i % 5],
     numberOfLoadCells: [2, 4, 4, 6, 4][i % 5],
-    billetType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
-    billetWeight: `${500 + i * 50} kg`,
+    billetWeightType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
+    billetWeightSize: ['500 kg', '550 kg', '600 kg', '650 kg', '700 kg'][i % 5],
+    billetWeightIds: [`BW-${1000 + i}`, `BW-${2000 + i}`],
     notes: [],
     history: [
       {
@@ -351,8 +352,9 @@ defaultSite.specData = [
     loadCellSize: ['50 kg', '100 kg', '250 kg', '500 kg', '1000 kg'][i % 5],
     loadCellSensitivity: ['2.0 mV/V', '3.0 mV/V', '1.5 mV/V', '2.0 mV/V', '2.5 mV/V'][i % 5],
     numberOfLoadCells: [2, 4, 4, 6, 4][i % 5],
-    billetType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
-    billetWeight: `${500 + i * 50} kg`,
+    billetWeightType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
+    billetWeightSize: ['500 kg', '550 kg', '600 kg', '650 kg', '700 kg'][i % 5],
+    billetWeightIds: [`BW-${1000 + i}`, `BW-${2000 + i}`],
     notes: [],
     history: [
       {

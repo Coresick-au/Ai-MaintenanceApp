@@ -82,6 +82,7 @@ export default function App() {
 
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
   const [localViewMode, setLocalViewMode] = useState('list');
+  const [commentsExpanded, setCommentsExpanded] = useState(true); // Comments section starts expanded
   // Actually, let's just use local state for now.
 
 
@@ -443,17 +444,20 @@ export default function App() {
           <p className="text-sm font-mono text-slate-400 bg-slate-900 inline-block px-2 rounded mt-1">{selectedSpecs.weigher}</p>
         </div>
         <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-          <div className="text-blue-400 text-sm font-bold uppercase mb-2">System Info</div>
+          <div className="text-blue-400 text-sm font-bold uppercase mb-2 flex items-center gap-2"><span>📦</span> Scale Details</div>
           <div className="text-sm space-y-1">
-            <div className="flex justify-between"><span>Scale:</span><span className="font-medium text-slate-200">{selectedSpecs.scale}</span></div>
-            <div className="flex justify-between"><span>Integrator:</span><span className="font-medium text-slate-200">{selectedSpecs.integrator}</span></div>
-            <div className="flex justify-between"><span>Speed Sensor:</span><span className="font-medium text-slate-200">{selectedSpecs.speedSensor || '-'}</span></div>
-            <div className="flex justify-between"><span>Load Cell:</span><span className="font-medium text-slate-200">{selectedSpecs.loadCell || '-'}</span></div>
+            <div className="flex justify-between"><span>Scale Type:</span><span className="font-medium text-slate-200">{selectedSpecs.scaleType || '-'}</span></div>
+            <div className="flex justify-between"><span>Integrator:</span><span className="font-medium text-slate-200">{selectedSpecs.integratorController || '-'}</span></div>
+            <div className="flex justify-between"><span>Speed Sensor:</span><span className="font-medium text-slate-200">{selectedSpecs.speedSensorType || '-'}</span></div>
+            <div className="flex justify-between"><span>Load Cell Brand:</span><span className="font-medium text-slate-200">{selectedSpecs.loadCellBrand || '-'}</span></div>
+            <div className="flex justify-between"><span>Load Cell Size:</span><span className="font-medium text-slate-200">{selectedSpecs.loadCellSize || '-'}</span></div>
+            <div className="flex justify-between"><span>LC Sensitivity:</span><span className="font-medium text-slate-200">{selectedSpecs.loadCellSensitivity || '-'}</span></div>
+            <div className="flex justify-between"><span>No. of Load Cells:</span><span className="font-medium text-slate-200">{selectedSpecs.numberOfLoadCells || '-'}</span></div>
           </div>
         </div>
         {/* Roller Details Section */}
         <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-          <div className="text-orange-400 text-sm font-bold uppercase mb-2">Roller Details</div>
+          <div className="text-orange-400 text-sm font-bold uppercase mb-2 flex items-center gap-2"><span>🔧</span> Roller Details</div>
 
           {/* Combined Dimensions Badge */}
           <div
@@ -478,60 +482,109 @@ export default function App() {
 
         {/* Billet Details Section */}
         <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-          <div className="text-purple-400 text-sm font-bold uppercase mb-2">Billet Details</div>
+          <div className="text-purple-400 text-sm font-bold uppercase mb-2 flex items-center gap-2"><span>⚖️</span> Billet Details</div>
           <div className="text-sm space-y-1">
             <div className="flex justify-between">
-              <span className="text-slate-500">Billet Type:</span>
-              <span className="font-medium text-slate-200">{selectedSpecs.billetType || '-'}</span>
+              <span className="text-slate-500">Billet Weight Type:</span>
+              <span className="font-medium text-slate-200">{selectedSpecs.billetWeightType || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Billet Weight:</span>
-              <span className="font-medium text-slate-200">{selectedSpecs.billetWeight ? `${selectedSpecs.billetWeight} kg` : '-'}</span>
+              <span className="text-slate-500">Billet Weight Size:</span>
+              <span className="font-medium text-slate-200">{selectedSpecs.billetWeightSize || '-'}</span>
             </div>
+            {/* Billet Weight IDs Display */}
+            {selectedSpecs.billetWeightIds && selectedSpecs.billetWeightIds.length > 0 && (
+              <div className="pt-2 mt-2 border-t border-slate-700/50">
+                <span className="text-slate-500 block mb-1 text-xs">Billet Weight IDs:</span>
+                <div className="flex flex-wrap gap-1">
+                  {selectedSpecs.billetWeightIds.map((id, idx) => (
+                    <span key={idx} className="bg-slate-800 border border-slate-600 px-1.5 py-0.5 rounded text-xs font-mono text-slate-300">
+                      {id}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <div className="mt-4 pt-4 border-t border-slate-700">
-          <h4 className="text-xs font-bold uppercase text-slate-400 mb-2 flex items-center gap-2"><Icons.MessageCircle /> Comments</h4>
-          <div className="space-y-2 mb-2 max-h-40 overflow-y-auto">
-            {(selectedSpecs.notes || []).map(n => (
-              <div key={n.id} className="p-2 bg-slate-900/50 border border-slate-700 rounded text-xs group hover:bg-slate-800 hover:border-blue-500/50 transition-all relative">
-                {editingNoteId === n.id ? (
-                  <div className="space-y-2 animate-in fade-in zoom-in duration-200">
-                    <div className="flex justify-between items-center mb-1"><span className="font-bold text-blue-400">Editing Comment...</span></div>
-                    <input className="w-full border border-slate-600 rounded p-2 text-xs mb-1 bg-slate-800 text-white" value={editNoteContent.author} onChange={e => setEditNoteContent({ ...editNoteContent, author: e.target.value })} placeholder="Initials / Name" />
-                    <textarea className="w-full border border-slate-600 rounded p-2 text-xs bg-slate-800 text-white" rows="3" value={editNoteContent.content} onChange={e => setEditNoteContent({ ...editNoteContent, content: e.target.value })} />
-                    <div className="flex gap-2 justify-end mt-2">
-                      <button onClick={saveEditedNote} className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-500 flex items-center gap-1"><Icons.Save /> Save</button>
-                      <button onClick={cancelEditNote} className="bg-slate-700 text-slate-300 px-3 py-1 rounded text-xs hover:bg-slate-600 flex items-center gap-1"><Icons.Cancel /> Cancel</button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex justify-between items-start mb-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-slate-300 bg-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">{n.author || 'UNK'}</span>
-                        <span className="text-[10px] text-slate-400 flex items-center gap-1"><Icons.Clock /> {formatDate(n.timestamp, true)}</span>
-                      </div>
-                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 bg-slate-800 rounded shadow-sm border border-slate-600 p-0.5">
-                        <button onClick={(e) => { e.stopPropagation(); startEditingNote(n); }} className="hover:bg-slate-700 p-1 rounded text-blue-400" title="Edit Note"><Icons.Edit /></button>
-                        <button onClick={(e) => handleDeleteSpecNote(e, n.id)} className="hover:bg-slate-700 p-1 rounded text-red-400" title="Delete Note"><Icons.Trash /></button>
-                      </div>
-                    </div>
-                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed pl-1">{n.content}</p>
-                  </>
-                )}
+          <h4
+            className="text-xs font-bold uppercase text-slate-400 mb-2 flex items-center gap-2 cursor-pointer hover:text-slate-300 hover:bg-slate-700/30 transition-all p-2 rounded -mx-2"
+            onClick={() => setCommentsExpanded(!commentsExpanded)}
+          >
+            <Icons.MessageCircle />
+            Comments
+            {selectedSpecs.notes && selectedSpecs.notes.length > 0 && (
+              <span className="text-[10px] bg-cyan-600 text-white px-2 py-0.5 rounded-full font-bold">{selectedSpecs.notes.length}</span>
+            )}
+            <Icons.ChevronDown className={`ml-auto transition-transform ${commentsExpanded ? 'rotate-180' : ''}`} size={16} />
+          </h4>
+
+          {/* Show latest comment when collapsed (if comments exist) */}
+          {!commentsExpanded && selectedSpecs.notes && selectedSpecs.notes.length > 0 && (
+            <div className="mt-2 p-2 bg-slate-800/50 rounded border border-slate-700/50 text-xs">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="font-bold text-slate-300 bg-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">
+                  {selectedSpecs.notes[selectedSpecs.notes.length - 1].author || 'UNK'}
+                </span>
+                <span className="text-[10px] text-slate-400">
+                  {formatDate(selectedSpecs.notes[selectedSpecs.notes.length - 1].timestamp, true)}
+                </span>
               </div>
-            ))}
-            {(!selectedSpecs.notes || selectedSpecs.notes.length === 0) && <p className="text-slate-400 text-xs italic text-center py-2">No comments yet.</p>}
-          </div>
-          <div className="p-3 bg-slate-900/50 border border-slate-700 rounded border-dashed mt-3 hover:border-blue-500/50 transition-colors">
-            <div className="flex gap-2 mb-2">
-              <input className="w-24 text-xs border border-slate-600 rounded p-2 bg-slate-800 focus:bg-slate-900 text-white transition-colors" placeholder="Initials / Name" value={specNoteInput.author || ''} onChange={e => setSpecNoteInput({ ...specNoteInput, author: e.target.value })} />
-              <div className="flex-1 text-[10px] text-slate-400 flex items-center justify-end italic">{formatDate(new Date(), false)}</div>
+              <p className="text-slate-300 line-clamp-2">{selectedSpecs.notes[selectedSpecs.notes.length - 1].content}</p>
+              {selectedSpecs.notes.length > 1 && (
+                <p className="text-[10px] text-slate-500 mt-1 italic">
+                  +{selectedSpecs.notes.length - 1} more comment{selectedSpecs.notes.length - 1 !== 1 ? 's' : ''}
+                </p>
+              )}
             </div>
-            <textarea className="w-full text-xs border border-slate-600 rounded p-2 mb-2 bg-slate-800 focus:bg-slate-900 text-white transition-colors focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Add a comment..." rows="2" value={specNoteInput.content || ''} onChange={e => setSpecNoteInput({ ...specNoteInput, content: e.target.value })} />
-            <button type="button" onClick={handleAddSpecNote} disabled={!specNoteInput.content} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-blue-400 text-xs py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><Icons.Plus /> Add Comment</button>
-          </div>
+          )}
+
+          {/* Expanded view */}
+          {commentsExpanded && (
+            <>
+              <div className="space-y-2 mb-2 max-h-60 overflow-y-auto">
+                {(selectedSpecs.notes || []).map(n => (
+                  <div key={n.id} className="p-2 bg-slate-900/50 border border-slate-700 rounded text-xs group hover:bg-slate-800 hover:border-blue-500/50 transition-all relative">
+                    {editingNoteId === n.id ? (
+                      <div className="space-y-2 animate-in fade-in zoom-in duration-200">
+                        <div className="flex justify-between items-center mb-1"><span className="font-bold text-blue-400">Editing Comment...</span></div>
+                        <input className="w-full border border-slate-600 rounded p-2 text-xs mb-1 bg-slate-800 text-white" value={editNoteContent.author} onChange={e => setEditNoteContent({ ...editNoteContent, author: e.target.value })} placeholder="Initials / Name" />
+                        <textarea className="w-full border border-slate-600 rounded p-2 text-xs bg-slate-800 text-white" rows="3" value={editNoteContent.content} onChange={e => setEditNoteContent({ ...editNoteContent, content: e.target.value })} />
+                        <div className="flex gap-2 justify-end mt-2">
+                          <button onClick={() => { saveEditedNote(editingNoteId, editNoteContent, selectedSpecs); setEditingNoteId(null); }} className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-500 flex items-center gap-1"><Icons.Save /> Save</button>
+                          <button onClick={cancelEditNote} className="bg-slate-700 text-slate-300 px-3 py-1 rounded text-xs hover:bg-slate-600 flex items-center gap-1"><Icons.Cancel /> Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-start mb-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-slate-300 bg-slate-700 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide">{n.author || 'UNK'}</span>
+                            <span className="text-[10px] text-slate-400 flex items-center gap-1"><Icons.Clock /> {formatDate(n.timestamp, true)}</span>
+                          </div>
+                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity absolute right-2 top-2 bg-slate-800 rounded shadow-sm border border-slate-600 p-0.5">
+                            <button onClick={(e) => { e.stopPropagation(); startEditingNote(n); }} className="hover:bg-slate-700 p-1 rounded text-blue-400" title="Edit Note"><Icons.Edit /></button>
+                            <button onClick={(e) => { e.stopPropagation(); handleDeleteSpecNote(n.id, selectedSpecs); }} className="hover:bg-slate-700 p-1 rounded text-red-400" title="Delete Note"><Icons.Trash /></button>
+                          </div>
+                        </div>
+                        <p className="text-slate-300 whitespace-pre-wrap leading-relaxed pl-1">{n.content}</p>
+                      </>
+                    )}
+                  </div>
+                ))}
+                {(!selectedSpecs.notes || selectedSpecs.notes.length === 0) && <p className="text-slate-400 text-xs italic text-center py-2">No comments yet.</p>}
+              </div>
+              <div className="p-3 bg-slate-900/50 border border-slate-700 rounded border-dashed mt-3 hover:border-blue-500/50 transition-colors">
+                <div className="flex gap-2 mb-2">
+                  <input className="w-24 text-xs border border-slate-600 rounded p-2 bg-slate-800 focus:bg-slate-900 text-white transition-colors" placeholder="Initials / Name" value={specNoteInput.author || ''} onChange={e => setSpecNoteInput({ ...specNoteInput, author: e.target.value })} />
+                  <div className="flex-1 text-[10px] text-slate-400 flex items-center justify-end italic">{formatDate(new Date(), false)}</div>
+                </div>
+                <textarea className="w-full text-xs border border-slate-600 rounded p-2 mb-2 bg-slate-800 focus:bg-slate-900 text-white transition-colors focus:ring-1 focus:ring-blue-500 outline-none" placeholder="Add a comment..." rows="2" value={specNoteInput.content || ''} onChange={e => setSpecNoteInput({ ...specNoteInput, content: e.target.value })} />
+                <button type="button" onClick={() => { handleAddSpecNote(specNoteInput, selectedSpecs); setSpecNoteInput({ ...specNoteInput, content: '' }); }} disabled={!specNoteInput.content} className="w-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-blue-400 text-xs py-2 rounded font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"><Icons.Plus /> Add Comment</button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     );
@@ -718,7 +771,13 @@ export default function App() {
           <header className="mb-6 text-center">
             <h1 className="text-3xl font-bold text-slate-100 mb-2">Site Overview</h1>
             <p className="text-slate-400">Select a site to view its maintenance dashboard</p>
-            <p className="text-sm text-slate-500 mt-1">{filteredSites.length} site{filteredSites.length !== 1 ? 's' : ''} found</p>
+            <p className="text-sm text-slate-500 mt-1">
+              {filteredSites.length} site{filteredSites.length !== 1 ? 's' : ''} found
+              {(() => {
+                const archivedCount = filteredSites.filter(s => s.active === false).length;
+                return archivedCount > 0 ? ` (${archivedCount} archived)` : '';
+              })()}
+            </p>
           </header>
 
           {/* Site Cards Grid */}
@@ -1227,84 +1286,146 @@ export default function App() {
         </header>
 
 
+
+        {/* ===== REFINED LAYOUT: Main Container with consistent padding and spacing ===== */}
         {activeTab !== 'issues' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            {/* LEFT COLUMN: KPI Cards + Service Schedule Table */}
-            <div className="lg:col-span-4 flex flex-col gap-4">
-              {/* KPI Cards - 2x2 Grid */}
-              <div className="grid grid-cols-2 gap-3 no-print">
-                {/* Total Assets */}
-                <div
-                  onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
-                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'all'
-                    ? 'bg-cyan-500/20 border-2 border-cyan-400 ring-2 ring-cyan-400/50'
-                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-cyan-500/50'
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Icons.Database className="text-cyan-400" size={20} />
-                    <span className={`text-2xl font-bold ${filterStatus === 'all' ? 'text-white' : 'text-slate-200'}`}>{stats.total}</span>
-                  </div>
-                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'all' ? 'text-cyan-100' : 'text-slate-400'}`}>
-                    Total Assets
-                  </div>
-                </div>
+          <div className="w-full space-y-6">
 
-                {/* Critical / Overdue */}
-                <div
-                  onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
-                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'overdue'
-                    ? 'bg-red-600/30 border-2 border-red-500 ring-2 ring-red-500/50'
-                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-red-500/50'
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Icons.AlertTriangle className="text-red-400" size={20} />
-                    <span className={`text-2xl font-bold ${filterStatus === 'overdue' ? 'text-white' : 'text-slate-200'}`}>{stats.overdue}</span>
+            {/* ===== TOP ROW: Asset Analytics (Left) + Maintenance Calendar (Right) ===== */}
+            <section
+              aria-label="Overview Statistics and Maintenance Calendar"
+              className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+            >
+              {/* Asset Analytics - KPI Cards (1/3 or 1/4 width) */}
+              <div className="lg:col-span-1 flex">
+                <div className="flex flex-col gap-3 no-print w-full">
+                  {/* Total Assets */}
+                  <div
+                    onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
+                    className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'all'
+                      ? 'bg-cyan-500/20 border-2 border-cyan-400 ring-2 ring-cyan-400/50'
+                      : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-cyan-500/50'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Icons.Database className="text-cyan-400" size={20} />
+                      <span className={`text-2xl font-bold ${filterStatus === 'all' ? 'text-white' : 'text-slate-200'}`}>{stats.total}</span>
+                    </div>
+                    <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'all' ? 'text-cyan-100' : 'text-slate-400'}`}>
+                      Total Assets
+                    </div>
                   </div>
-                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'overdue' ? 'text-red-100' : 'text-slate-400'}`}>
-                    Critical (Overdue)
-                  </div>
-                </div>
 
-                {/* Due Soon */}
-                <div
-                  onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
-                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'dueSoon'
-                    ? 'bg-amber-500/30 border-2 border-amber-500 ring-2 ring-amber-500/50'
-                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-amber-500/50'
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Icons.Clock className="text-amber-400" size={20} />
-                    <span className={`text-2xl font-bold ${filterStatus === 'dueSoon' ? 'text-white' : 'text-slate-200'}`}>{stats.dueSoon}</span>
+                  {/* Critical / Overdue */}
+                  <div
+                    onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
+                    className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'overdue'
+                      ? 'bg-red-600/30 border-2 border-red-500 ring-2 ring-red-500/50'
+                      : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-red-500/50'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Icons.AlertTriangle className="text-red-400" size={20} />
+                      <span className={`text-2xl font-bold ${filterStatus === 'overdue' ? 'text-white' : 'text-slate-200'}`}>{stats.overdue}</span>
+                    </div>
+                    <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'overdue' ? 'text-red-100' : 'text-slate-400'}`}>
+                      Critical (Overdue)
+                    </div>
                   </div>
-                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'dueSoon' ? 'text-amber-100' : 'text-slate-400'}`}>
-                    Due Soon
-                  </div>
-                </div>
 
-                {/* Healthy */}
-                <div
-                  onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
-                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'healthy'
-                    ? 'bg-emerald-500/30 border-2 border-emerald-500 ring-2 ring-emerald-500/50'
-                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-emerald-500/50'
-                    }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <Icons.CheckCircle className="text-emerald-400" size={20} />
-                    <span className={`text-2xl font-bold ${filterStatus === 'healthy' ? 'text-white' : 'text-slate-200'}`}>{stats.total - stats.overdue - stats.dueSoon}</span>
+                  {/* Due Soon */}
+                  <div
+                    onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
+                    className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'dueSoon'
+                      ? 'bg-amber-500/30 border-2 border-amber-500 ring-2 ring-amber-500/50'
+                      : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-amber-500/50'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Icons.Clock className="text-amber-400" size={20} />
+                      <span className={`text-2xl font-bold ${filterStatus === 'dueSoon' ? 'text-white' : 'text-slate-200'}`}>{stats.dueSoon}</span>
+                    </div>
+                    <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'dueSoon' ? 'text-amber-100' : 'text-slate-400'}`}>
+                      Due Soon
+                    </div>
                   </div>
-                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'healthy' ? 'text-emerald-100' : 'text-slate-400'}`}>
-                    Healthy
+
+                  {/* Healthy */}
+                  <div
+                    onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
+                    className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'healthy'
+                      ? 'bg-emerald-500/30 border-2 border-emerald-500 ring-2 ring-emerald-500/50'
+                      : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-emerald-500/50'
+                      }`}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <Icons.CheckCircle className="text-emerald-400" size={20} />
+                      <span className={`text-2xl font-bold ${filterStatus === 'healthy' ? 'text-white' : 'text-slate-200'}`}>{stats.total - stats.overdue - stats.dueSoon}</span>
+                    </div>
+                    <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'healthy' ? 'text-emerald-100' : 'text-slate-400'}`}>
+                      Healthy
+                    </div>
                   </div>
                 </div>
               </div>
 
-              {/* Service Schedule Table */}
+              {/* Maintenance Calendar (2/3 or 3/4 width) */}
+              <div className="lg:col-span-2 xl:col-span-3 h-full">
+                {expandedSection === 'calendar' ? (
+                  <FullScreenContainer title="Maintenance Calendar" id="calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
+                    <CalendarWidget
+                      assets={filteredData}
+                      selectedAssetId={selectedAssetId}
+                      onAssetSelect={setSelectedAssetId}
+                      expandedSection={expandedSection}
+                      setExpandedSection={setExpandedSection}
+                    />
+                  </FullScreenContainer>
+                ) : (
+                  <div className="h-full">
+                    <CalendarWidget
+                      assets={filteredData}
+                      selectedAssetId={selectedAssetId}
+                      onAssetSelect={setSelectedAssetId}
+                      expandedSection={expandedSection}
+                      setExpandedSection={setExpandedSection}
+                    />
+                  </div>
+                )}
+              </div>
+            </section>
+
+            <hr className="border-slate-800" />
+
+            {/* ===== FULL-WIDTH SECTION: Remaining Days Chart ===== */}
+            <section aria-label="Asset Health Overview" className="w-full">
               <FullScreenContainer
-                className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1"
+                className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col"
+                title="Asset Health Overview"
+                isOpen={expandedSection === 'chart'}
+                onToggle={(val) => setExpandedSection(val ? 'chart' : null)}
+              >
+                <h3 className="font-semibold text-lg text-slate-200 mb-4 flex items-center gap-2">
+                  <Icons.Activity className="text-cyan-400" />
+                  Remaining Days
+                </h3>
+                <div className="flex-1 min-h-0">
+                  <SimpleBarChart data={filteredData} onBarClick={(data) => {
+                    // Filter table based on clicked bar
+                    if (data.remaining < 0) setFilterStatus('overdue');
+                    else if (data.remaining < 30) setFilterStatus('dueSoon');
+                    else setFilterStatus('healthy');
+                  }} />
+                </div>
+              </FullScreenContainer>
+            </section>
+
+            <hr className="border-slate-800" />
+
+            {/* ===== FULL-WIDTH SECTION: Service/Roller Schedule ===== */}
+            <section aria-label="Service and Roller Schedules" className="w-full">
+              <FullScreenContainer
+                className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden"
                 id="print-section-schedule"
                 isOpen={expandedSection === 'schedule'}
                 onToggle={(val) => setExpandedSection(val ? 'schedule' : null)}
@@ -1313,7 +1434,6 @@ export default function App() {
                   <div className="flex items-center gap-2">
                     <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
                     <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
-                    {/* Replaced styling to create a flexible grey circle badge that grows with content */}
                     <span
                       className="ml-2 px-2 py-0.5 rounded-full bg-slate-600 text-xs font-bold text-slate-300 hidden sm:inline min-w-[20px] text-center flex items-center justify-center"
                       title={`Archived Assets: ${(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}`}
@@ -1321,7 +1441,6 @@ export default function App() {
                       {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}
                     </span>
                   </div>
-                  {/* Added flex-wrap so items stack if needed, and reduced pr-10 to pr-2 (or pr-8 if you really need to clear a close button) */}
                   <div className="flex flex-wrap gap-2 items-center no-print pr-2 sm:pr-10">
                     <div className="flex items-center mr-2">
                       <input
@@ -1333,7 +1452,6 @@ export default function App() {
                       />
                       <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
                     </div>
-                    {/* Changed w-40 to w-32 md:w-40 */}
                     <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
                     <button type="button" onClick={() => { closeFullscreen(); setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
                   </div>
@@ -1399,13 +1517,11 @@ export default function App() {
                             </button>
                           </td>
                           <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
-                          {/* Archive Column */}
                           <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                // Added confirmation check
                                 if (window.confirm(item.active === false ? "Are you sure you want to restore this asset?" : "Are you sure you want to archive this asset?")) {
                                   toggleAssetStatus(item);
                                   setSelectedRowIds(new Set());
@@ -1452,60 +1568,13 @@ export default function App() {
                   </div>
                 )}
               </FullScreenContainer>
-            </div>
+            </section>
 
-            {/* CENTER COLUMN: Chart + Calendar */}
-            <div className="lg:col-span-5 flex flex-col gap-4">
-              {/* Remaining Days Chart - WRAPPED IN FULLSCREEN */}
-              <FullScreenContainer
-                className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col"
-                title="Asset Health Overview"
-                isOpen={expandedSection === 'chart'}
-                onToggle={(val) => setExpandedSection(val ? 'chart' : null)}
-              >
-                <h3 className="font-semibold text-lg text-slate-200 mb-4 flex items-center gap-2">
-                  <Icons.Activity className="text-cyan-400" />
-                  Remaining Days
-                </h3>
-                <div className="flex-1 min-h-0">
-                  <SimpleBarChart data={filteredData} onBarClick={(data) => {
-                    // Filter table based on clicked bar
-                    if (data.remaining < 0) setFilterStatus('overdue');
-                    else if (data.remaining < 30) setFilterStatus('dueSoon');
-                    else setFilterStatus('healthy');
-                  }} />
-                </div>
-              </FullScreenContainer>
+            <hr className="border-slate-800" />
 
-              {/* Maintenance Calendar */}
-              {/* Maintenance Calendar */}
-              {expandedSection === 'calendar' ? (
-                <FullScreenContainer title="Maintenance Calendar" id="calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
-                  <CalendarWidget
-                    assets={filteredData}
-                    selectedAssetId={selectedAssetId}
-                    onAssetSelect={setSelectedAssetId}
-                    expandedSection={expandedSection}
-                    setExpandedSection={setExpandedSection}
-                  />
-                </FullScreenContainer>
-              ) : (
-                <div>
-                  <CalendarWidget
-                    assets={filteredData}
-                    selectedAssetId={selectedAssetId}
-                    onAssetSelect={setSelectedAssetId}
-                    expandedSection={expandedSection}
-                    setExpandedSection={setExpandedSection}
-                  />
-                </div>
-              )}
-            </div>
-
-
-            {/* RIGHT COLUMN: Equipment Details (Sticky) */}
-            <div className="lg:col-span-3" id="print-section-specs">
-              <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 h-full flex flex-col sticky top-6" title="Equipment Specification">
+            {/* ===== FULL-WIDTH SECTION: Equipment Details ===== */}
+            <section aria-label="Equipment Details" className="w-full" id="print-section-specs">
+              <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 flex flex-col" title="Equipment Specification">
                 <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-between items-center">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
                   {selectedAsset && (
@@ -1531,8 +1600,8 @@ export default function App() {
                   {specsPanelContent}
                 </div>
               </FullScreenContainer>
-            </div>
-          </div >
+            </section>
+          </div>
         )
         }
 
