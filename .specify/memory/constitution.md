@@ -1,6 +1,53 @@
 # [PROJECT_NAME] Constitution
 <!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
 
+## Tech Stack Principles (MANDATORY)
+
+### I. Core Framework
+- MUST use **React** version 19.2.0
+- MUST use **React DOM** version 19.2.0
+- MUST use React 19 patterns (no deprecated APIs like `ReactDOM.render`)
+
+### II. Desktop Application
+- MUST use **Electron** version 39.2.4
+- MUST use **electron-builder** version 26.0.12 for packaging
+- MUST use `.cjs` extension for Electron main process and preload scripts
+- Build target is Windows (NSIS installer)
+
+### III. Build System
+- MUST use **Vite** version 7.2.4 as build system
+- MUST use **@vitejs/plugin-react** version 5.1.1
+- Project uses ES Modules (`"type": "module"`)
+
+### IV. Testing Framework
+- MUST use **Vitest** version 4.0.15 for testing (NOT Jest)
+- MUST use **@testing-library/react** version 16.3.0
+- MUST use **jsdom** version 27.2.0 for DOM simulation
+
+### V. Styling
+- MUST use **TailwindCSS** version 3.4.17 for styling
+- SHOULD NOT use inline styles
+- MUST use **PostCSS** version 8.5.6
+
+### VI. Linting
+- MUST use **ESLint** version 9.39.1
+- MUST use **eslint-plugin-react-hooks** version 7.0.1
+
+### VII. UI Libraries
+- MUST import icons from `lucide-react` via centralized `Icons` object in `src/constants/icons.jsx`
+- MUST use **Recharts** version 3.5.1 for charts
+- MUST use **react-datepicker** version 8.10.0 for date inputs
+
+### VIII. Document Generation
+- MUST use **jsPDF** version 3.0.4 for PDF generation
+- MUST use **docx** version 9.5.1 for Word documents
+- MUST use **xlsx** version 0.18.5 for Excel files
+- MUST use **pdfjs-dist** version 5.4.394 for PDF parsing
+
+### IX. Utilities
+- MUST use **date-fns** version 4.1.0 for date manipulation
+- SHOULD NOT introduce new dependencies without justification
+
 ## Core Principles
 
 ### [PRINCIPLE_1_NAME]

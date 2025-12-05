@@ -432,7 +432,7 @@ export const AppHistorySidePanel = ({ isOpen, onClose, asset, searchQuery: initi
           )}
         </div>
       </div>
-    </div>
+      </div>
     </>
   );
 };

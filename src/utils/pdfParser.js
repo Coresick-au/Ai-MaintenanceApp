@@ -6,12 +6,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
-/**
- * Extracts raw text from a PDF file
- * @param {File} file - The PDF file to extract text from
- * @returns {Promise<string>} - The extracted text content
- */
-export async function extractTextFromPDF(file) {
+// Internal function to extract text from PDF
+async function extractTextFromPDF(file) {
   try {
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;

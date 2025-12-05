@@ -284,3 +284,259 @@ export const ContactModal = ({ site, onClose }) => {
     </Modal>
   );
 };
+
+// ==========================================
+// SITE NOTES MODAL - Full notes management
+// ==========================================
+export const SiteNotesModal = ({ 
+  isOpen, 
+  onClose, 
+  site, 
+  onAddNote, 
+  onUpdateNote, 
+  onDeleteNote, 
+  onArchiveNote 
+}) => {
+  const [newNoteContent, setNewNoteContent] = useState('');
+  const [newNoteAuthor, setNewNoteAuthor] = useState('');
+  const [editingNote, setEditingNote] = useState(null);
+  const [editContent, setEditContent] = useState('');
+  const [editAuthor, setEditAuthor] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [sortOrder, setSortOrder] = useState('desc'); // 'desc' = newest first
+
+  if (!isOpen || !site) return null;
+
+  const notes = site.notes || [];
+  
+  // Filter and sort notes
+  const filteredNotes = notes
+    .filter(note => showArchived || !note.archived)
+    .sort((a, b) => {
+      const dateA = new Date(a.timestamp);
+      const dateB = new Date(b.timestamp);
+      return sortOrder === 'desc' ? dateB - dateA : dateA - dateB;
+    });
+
+  const activeNotesCount = notes.filter(n => !n.archived).length;
+  const archivedNotesCount = notes.filter(n => n.archived).length;
+
+  const handleAddNote = () => {
+    if (!newNoteContent.trim()) return;
+    
+    onAddNote(site.id, {
+      id: `note-${Date.now()}`,
+      content: newNoteContent.trim(),
+      author: newNoteAuthor.trim() || 'Unknown',
+      timestamp: new Date().toISOString(),
+      archived: false
+    });
+    
+    setNewNoteContent('');
+    setNewNoteAuthor('');
+  };
+
+  const handleStartEdit = (note) => {
+    setEditingNote(note);
+    setEditContent(note.content);
+    setEditAuthor(note.author);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editingNote || !editContent.trim()) return;
+    
+    onUpdateNote(site.id, editingNote.id, {
+      content: editContent.trim(),
+      author: editAuthor.trim() || editingNote.author,
+      timestamp: new Date().toISOString() // Update timestamp on edit
+    });
+    
+    setEditingNote(null);
+    setEditContent('');
+    setEditAuthor('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditingNote(null);
+    setEditContent('');
+    setEditAuthor('');
+  };
+
+  const handleDelete = (noteId) => {
+    if (window.confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+      onDeleteNote(site.id, noteId);
+    }
+  };
+
+  const handleArchive = (noteId, isArchived) => {
+    onArchiveNote(site.id, noteId, !isArchived);
+  };
+
+  return (
+    <Modal title={`Notes: ${site.customer || site.name}`} onClose={onClose} size="lg">
+      <div className="space-y-4">
+        {/* Stats Bar */}
+        <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+          <div className="flex items-center gap-4">
+            <div className="text-center">
+              <div className="text-lg font-bold text-blue-400">{activeNotesCount}</div>
+              <div className="text-[10px] text-slate-400 uppercase">Active</div>
+            </div>
+            <div className="text-center">
+              <div className="text-lg font-bold text-slate-500">{archivedNotesCount}</div>
+              <div className="text-[10px] text-slate-400 uppercase">Archived</div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+              title={sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+            >
+              {sortOrder === 'desc' ? <Icons.SortDesc size={16} /> : <Icons.SortAsc size={16} />}
+            </button>
+            <button
+              onClick={() => setShowArchived(!showArchived)}
+              className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${
+                showArchived 
+                  ? 'bg-slate-700 text-white border-slate-600' 
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+              }`}
+            >
+              {showArchived ? 'Hide Archived' : 'Show Archived'}
+            </button>
+          </div>
+        </div>
+
+        {/* Add New Note */}
+        <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+          <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
+            <Icons.Plus size={14} /> Add New Note
+          </div>
+          <div className="space-y-2">
+            <input
+              type="text"
+              placeholder="Author name..."
+              value={newNoteAuthor}
+              onChange={(e) => setNewNoteAuthor(e.target.value)}
+              className={inputClass}
+            />
+            <textarea
+              placeholder="Write your note here..."
+              value={newNoteContent}
+              onChange={(e) => setNewNoteContent(e.target.value)}
+              rows={3}
+              className={`${inputClass} resize-none`}
+            />
+            <Button 
+              onClick={handleAddNote} 
+              disabled={!newNoteContent.trim()}
+              className="w-full justify-center"
+            >
+              <Icons.Plus size={16} /> Add Note
+            </Button>
+          </div>
+        </div>
+
+        {/* Notes List */}
+        <div className="max-h-[400px] overflow-y-auto space-y-2">
+          {filteredNotes.length === 0 ? (
+            <div className="text-center py-8 text-slate-400">
+              <Icons.FileText size={32} className="mx-auto mb-2 opacity-50" />
+              <p className="text-sm">No notes found</p>
+              {!showArchived && archivedNotesCount > 0 && (
+                <p className="text-xs mt-1">({archivedNotesCount} archived notes hidden)</p>
+              )}
+            </div>
+          ) : (
+            filteredNotes.map((note) => (
+              <div 
+                key={note.id} 
+                className={`p-3 rounded-lg border transition-all ${
+                  note.archived 
+                    ? 'bg-slate-900/30 border-slate-800 opacity-60' 
+                    : 'bg-slate-800 border-slate-700'
+                } ${editingNote?.id === note.id ? 'ring-2 ring-blue-500' : ''}`}
+              >
+                {editingNote?.id === note.id ? (
+                  // Edit Mode
+                  <div className="space-y-2">
+                    <input
+                      type="text"
+                      value={editAuthor}
+                      onChange={(e) => setEditAuthor(e.target.value)}
+                      className={`${inputClass} text-xs`}
+                      placeholder="Author"
+                    />
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      rows={3}
+                      className={`${inputClass} resize-none text-sm`}
+                    />
+                    <div className="flex gap-2">
+                      <Button onClick={handleSaveEdit} className="flex-1 justify-center text-xs py-1">
+                        <Icons.Check size={14} /> Save
+                      </Button>
+                      <Button onClick={handleCancelEdit} variant="secondary" className="flex-1 justify-center text-xs py-1">
+                        <Icons.X size={14} /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  // View Mode
+                  <>
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-slate-300">👤 {note.author}</span>
+                        {note.archived && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-slate-700 text-slate-400 rounded">Archived</span>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-slate-500">{formatDate(note.timestamp, true)}</span>
+                    </div>
+                    <p className="text-slate-300 text-sm mb-3 whitespace-pre-wrap">{note.content}</p>
+                    
+                    {/* Action Buttons */}
+                    <div className="flex gap-1 pt-2 border-t border-slate-700">
+                      <button
+                        onClick={() => handleStartEdit(note)}
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/30 rounded transition-colors"
+                      >
+                        <Icons.Edit size={12} /> Edit
+                      </button>
+                      <button
+                        onClick={() => handleArchive(note.id, note.archived)}
+                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
+                          note.archived 
+                            ? 'text-green-400 hover:bg-green-900/30' 
+                            : 'text-orange-400 hover:bg-orange-900/30'
+                        }`}
+                      >
+                        {note.archived ? <><Icons.RotateCcw size={12} /> Restore</> : <><Icons.Archive size={12} /> Archive</>}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(note.id)}
+                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                      >
+                        <Icons.Trash size={12} /> Delete
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="pt-2 border-t border-slate-700">
+          <Button onClick={onClose} variant="secondary" className="w-full justify-center">
+            Close
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};

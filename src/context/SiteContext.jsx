@@ -517,6 +517,45 @@ export const SiteProvider = ({ children }) => {
         };
     };
 
+    // ==========================================
+    // SITE NOTES MANAGEMENT
+    // ==========================================
+    const handleAddSiteNote = (siteId, noteData) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        
+        const updatedNotes = [...(site.notes || []), noteData];
+        updateSiteData(siteId, { notes: updatedNotes }, 'Add Site Note');
+    };
+
+    const handleUpdateSiteNote = (siteId, noteId, updates) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        
+        const updatedNotes = (site.notes || []).map(note => 
+            note.id === noteId ? { ...note, ...updates } : note
+        );
+        updateSiteData(siteId, { notes: updatedNotes }, 'Update Site Note');
+    };
+
+    const handleDeleteSiteNote = (siteId, noteId) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        
+        const updatedNotes = (site.notes || []).filter(note => note.id !== noteId);
+        updateSiteData(siteId, { notes: updatedNotes }, 'Delete Site Note');
+    };
+
+    const handleArchiveSiteNote = (siteId, noteId, archived) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        
+        const updatedNotes = (site.notes || []).map(note => 
+            note.id === noteId ? { ...note, archived } : note
+        );
+        updateSiteData(siteId, { notes: updatedNotes }, archived ? 'Archive Site Note' : 'Restore Site Note');
+    };
+
     const handleClearAllHistory = () => {
         const updatedSites = sites.map(site => ({
             ...site,
@@ -580,7 +619,11 @@ export const SiteProvider = ({ children }) => {
             uploadServiceReport,
             deleteServiceReport,
             handleFileChange,
-            handleClearAllHistory
+            handleClearAllHistory,
+            handleAddSiteNote,
+            handleUpdateSiteNote,
+            handleDeleteSiteNote,
+            handleArchiveSiteNote
         }}>
             {children}
         </SiteContext.Provider>

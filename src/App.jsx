@@ -26,7 +26,7 @@ import { formatDate } from './utils/helpers';
 import { SiteHealthCircle } from './components/SiteHealthCircle';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
-import { AddSiteModal, EditSiteModal, ContactModal } from './components/SiteModals';
+import { AddSiteModal, EditSiteModal, ContactModal, SiteNotesModal } from './components/SiteModals';
 import { AssetAnalyticsModal } from './components/AssetAnalytics';
 import { AppHistorySidePanel } from './components/AppHistorySidePanel';
 import { SiteIssueTracker } from './components/SiteIssueTracker';
@@ -48,6 +48,7 @@ export default function App() {
     handleAddIssue, handleDeleteIssue, handleToggleIssueStatus, handleUpdateIssue, handleCopyIssue,
     handleAddAsset, handleDeleteAsset, handleSaveEditedAsset, handleSaveEditedSpecs, handleInlineUpdate,
     handleAddSpecNote, handleDeleteSpecNote, saveEditedNote,
+    handleAddSiteNote, handleUpdateSiteNote, handleDeleteSiteNote, handleArchiveSiteNote,
 
     handleFileChange, uploadServiceReport, deleteServiceReport
   } = useSiteContext();
@@ -159,6 +160,10 @@ export default function App() {
 
   // --- CUSTOMER REPORT MODAL STATE ---
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+
+  // --- SITE NOTES MODAL STATE ---
+  const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
+  const [notesModalSite, setNotesModalSite] = useState(null);
 
   // --- OPERATIONAL STATUS MODAL STATE ---
   const [opStatusAsset, setOpStatusAsset] = useState(null);
@@ -629,7 +634,7 @@ export default function App() {
             {/* Add Site */}
             <button
               type="button"
-              onClick={() => { setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}
+              onClick={() => { closeFullscreen(); setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}
               className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 bg-cyan-600 hover:bg-cyan-500 text-white shadow-md"
             >
               <Icons.Plus size={18} />
@@ -731,8 +736,8 @@ export default function App() {
               return (
                 <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className={`bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
-                    <button type="button" onClick={(e) => { e.stopPropagation(); setViewContactSite(site); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
+                    <button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewContactSite(site); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
                   </div>
 
                   <div className="mb-5 flex items-center justify-start h-16">
@@ -790,9 +795,39 @@ export default function App() {
                     <SiteHealthCircle site={site} fullWidth={true} />
                   </div>
 
-                  <div className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto">
-                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1 flex items-center gap-1"><Icons.FileText /> Latest Note</div>
-                    {site.notes && site.notes.length > 0 ? <><p className="text-sm text-slate-400 text-slate-300 line-clamp-2">{site.notes[site.notes.length - 1].content}</p><div className="mt-auto pt-2 text-[10px] text-slate-400 text-slate-400 text-right">{formatDate(site.notes[site.notes.length - 1].timestamp, true)}</div></> : <p className="text-sm text-slate-400 text-slate-400 italic">No notes.</p>}
+                  <div 
+                    className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto cursor-pointer hover:bg-slate-800/50 hover:border-slate-600 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeFullscreen();
+                      setNotesModalSite(site);
+                      setIsNotesModalOpen(true);
+                    }}
+                    title="Click to manage notes"
+                  >
+                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1 flex items-center gap-1 justify-between">
+                      <span className="flex items-center gap-1"><Icons.FileText /> Latest Note</span>
+                      <Icons.ChevronRight size={14} className="text-slate-500" />
+                    </div>
+                    {(() => {
+                      // Get the most recent non-archived note
+                      const activeNotes = (site.notes || []).filter(n => !n.archived);
+                      const latestNote = activeNotes.length > 0 
+                        ? activeNotes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
+                        : null;
+                      
+                      return latestNote ? (
+                        <>
+                          <p className="text-sm text-slate-300 line-clamp-2">{latestNote.content}</p>
+                          <div className="mt-auto pt-2 text-[10px] text-slate-400 text-right flex justify-between items-center">
+                            <span className="text-slate-500">👤 {latestNote.author}</span>
+                            <span>{formatDate(latestNote.timestamp, true)}</span>
+                          </div>
+                        </>
+                      ) : (
+                        <p className="text-sm text-slate-400 italic">No notes. Click to add one.</p>
+                      );
+                    })()}
                   </div>
                 </div>
               );
@@ -1062,7 +1097,7 @@ export default function App() {
           {/* Master List */}
           <button
             type="button"
-            onClick={() => { setIsMasterListOpen(true); setSelectedRowIds(new Set()); }}
+            onClick={() => { closeFullscreen(); setIsMasterListOpen(true); setSelectedRowIds(new Set()); }}
             className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
           >
             <Icons.Grid size={18} />
@@ -1274,7 +1309,7 @@ export default function App() {
                   </div>
                   {/* Changed w-40 to w-32 md:w-40 */}
                   <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
-                  <button type="button" onClick={() => { setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
+                  <button type="button" onClick={() => { closeFullscreen(); setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
                 </div>
               </div>
               <div className="overflow-x-auto h-full">
@@ -1321,6 +1356,7 @@ export default function App() {
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
+                              closeFullscreen();
                               setOpStatusAsset(item);
                               setIsOpStatusModalOpen(true);
                               setSelectedRowIds(new Set());
@@ -1452,6 +1488,7 @@ export default function App() {
                       variant={activeTab === 'service' ? 'secondary' : 'orange'}
                       onClick={(e) => {
                         e.stopPropagation();
+                        closeFullscreen();
                         setEditingAsset({ ...selectedAsset });
                         const specs = currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
                         setEditingSpecs(specs || null);
@@ -1486,6 +1523,7 @@ export default function App() {
               onToggleStatus={handleToggleIssueStatus}
               onCopyIssue={handleCopyIssue}
               assets={[...(selectedSite?.serviceData || []), ...(selectedSite?.rollerData || [])].filter(asset => asset.active !== false)}
+              closeFullscreen={closeFullscreen}
             />
           </div>
         ) : localViewMode === 'timeline' ? (
@@ -1594,6 +1632,20 @@ export default function App() {
         isOpen={isAppHistoryOpen}
         onClose={() => setIsAppHistoryOpen(false)}
         asset={viewHistoryAsset}
+      />
+
+      {/* SITE NOTES MODAL */}
+      <SiteNotesModal
+        isOpen={isNotesModalOpen}
+        onClose={() => {
+          setIsNotesModalOpen(false);
+          setNotesModalSite(null);
+        }}
+        site={notesModalSite}
+        onAddNote={handleAddSiteNote}
+        onUpdateNote={handleUpdateSiteNote}
+        onDeleteNote={handleDeleteSiteNote}
+        onArchiveNote={handleArchiveSiteNote}
       />
 
       {/* NEW HELP MODAL */}

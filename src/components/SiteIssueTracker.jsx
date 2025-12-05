@@ -3,7 +3,7 @@ import { Button, Modal, StatusBadge, UniversalDatePicker } from './UIComponents'
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 
-export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onToggleStatus, onUpdateIssue, onCopyIssue, onDeleteIssue }) => {
+export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onToggleStatus, onUpdateIssue, onCopyIssue, onDeleteIssue, closeFullscreen }) => {
   const [newIssueDescription, setNewIssueDescription] = useState('');
   const [newIssueAssignedTo, setNewIssueAssignedTo] = useState('');
   const [newIssueImportance, setNewIssueImportance] = useState('Medium');
@@ -193,7 +193,7 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
         )}
       </div>
 
-      <Button onClick={() => setShowAddIssueModal(true)} className="w-full justify-center">
+      <Button onClick={() => { closeFullscreen && closeFullscreen(); setShowAddIssueModal(true); }} className="w-full justify-center">
         <Icons.Plus /> New Issue
       </Button>
 

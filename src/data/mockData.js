@@ -95,78 +95,6 @@ const generateSampleReports = (startDate, numReports = 4) => {
 };
 
 // ==========================================
-// HELPER: GENERATE TEST ASSETS WITH SHARED BASE ID
-// ==========================================
-export const generateTestAssets = (count, prefix, daysAgoBase, baseName, baseCode) => {
-  const assets = [];
-  const now = new Date();
-
-  for (let i = 0; i < count; i++) {
-    const daysAgo = daysAgoBase + (i * 30) + Math.floor(Math.random() * 20);
-    const lastCalDate = new Date(now);
-    lastCalDate.setDate(lastCalDate.getDate() - daysAgo);
-
-    const frequency = prefix === 's' ? 3 : 12; // 3 months for service, 12 for rollers
-
-    // Generate random number of reports (2-6)
-    const numReports = Math.floor(Math.random() * 5) + 2;
-
-    const asset = {
-      id: `${prefix}-${Math.random().toString(36).substr(2, 9)}`,
-      name: `${baseName} ${i + 1}`,
-      weigher: `W${i + 1}`,
-      code: `${baseCode}-${String(i + 1).padStart(3, '0')}`,
-      lastCal: lastCalDate.toISOString().split('T')[0],
-      frequency: frequency,
-      active: true,
-      history: [
-        {
-          date: lastCalDate.toISOString(),
-          action: 'Asset Created',
-          user: 'System'
-        }
-      ],
-      reports: generateSampleReports(lastCalDate, numReports)
-    };
-
-    assets.push(recalculateRow(asset));
-  }
-
-  return assets;
-};
-
-// ==========================================
-// HELPER: GENERATE TEST SPECS
-// ==========================================
-export const generateTestSpecs = (assets) => {
-  return assets.map((asset, i) => ({
-    id: `spec-${Math.random().toString(36).substr(2, 9)}`,
-    weigher: asset.weigher,
-    altCode: asset.code,
-    description: asset.name,
-    scaleType: ['Schenck VEG20600', 'Ramsey Micro-Tech', 'Thayer Scale', 'Siemens Milltronics', 'Hardy HI-6600'][i % 5],
-    integratorController: ['Siemens S7-1200', 'Allen Bradley CompactLogix', 'Schneider M340', 'Mitsubishi FX5U', 'Omron NX'][i % 5],
-    speedSensorType: ['Proximity Sensor 24VDC', 'Encoder 1024 PPR', 'Tachometer', 'Radar Speed Sensor', 'Optical Encoder'][i % 5],
-    rollDims: `${100 + i * 10}mm x ${50 + i * 5}mm`,
-    adjustmentType: ['Manual Screw', 'Pneumatic', 'Hydraulic', 'Electric Motor', 'Spring Loaded'][i % 5],
-    loadCellBrand: ['Vishay Nobel', 'HBM', 'Scaime', 'Mettler Toledo', 'Flintec'][i % 5],
-    loadCellSize: ['50 kg', '100 kg', '250 kg', '500 kg', '1000 kg'][i % 5],
-    loadCellSensitivity: ['2.0 mV/V', '3.0 mV/V', '1.5 mV/V', '2.0 mV/V', '2.5 mV/V'][i % 5],
-    numberOfLoadCells: [2, 4, 4, 6, 4][i % 5],
-    billetWeightType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
-    billetWeightSize: `${500 + i * 50}mm`,
-    notes: [],
-    history: [
-      {
-        date: new Date().toISOString(),
-        action: 'Specification Created',
-        user: 'System'
-      }
-    ]
-  }));
-};
-
-// ==========================================
 // HELPER: GENERATE SAMPLE SITE WITH LINKED ASSETS
 // ==========================================
 export const generateSampleSite = () => {
@@ -234,7 +162,32 @@ export const generateSampleSite = () => {
     }));
   });
 
-  const specData = [...generateTestSpecs(serviceData)];
+  // Generate spec data inline (previously generateTestSpecs function)
+  const specData = serviceData.map((asset, i) => ({
+    id: `spec-${Math.random().toString(36).substr(2, 9)}`,
+    weigher: asset.weigher,
+    altCode: asset.code,
+    description: asset.name,
+    scaleType: ['Schenck VEG20600', 'Ramsey Micro-Tech', 'Thayer Scale', 'Siemens Milltronics', 'Hardy HI-6600'][i % 5],
+    integratorController: ['Siemens S7-1200', 'Allen Bradley CompactLogix', 'Schneider M340', 'Mitsubishi FX5U', 'Omron NX'][i % 5],
+    speedSensorType: ['Proximity Sensor 24VDC', 'Encoder 1024 PPR', 'Tachometer', 'Radar Speed Sensor', 'Optical Encoder'][i % 5],
+    rollDims: `${100 + i * 10}mm x ${50 + i * 5}mm`,
+    adjustmentType: ['Manual Screw', 'Pneumatic', 'Hydraulic', 'Electric Motor', 'Spring Loaded'][i % 5],
+    loadCellBrand: ['Vishay Nobel', 'HBM', 'Scaime', 'Mettler Toledo', 'Flintec'][i % 5],
+    loadCellSize: ['50 kg', '100 kg', '250 kg', '500 kg', '1000 kg'][i % 5],
+    loadCellSensitivity: ['2.0 mV/V', '3.0 mV/V', '1.5 mV/V', '2.0 mV/V', '2.5 mV/V'][i % 5],
+    numberOfLoadCells: [2, 4, 4, 6, 4][i % 5],
+    billetType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
+    billetWeight: `${500 + i * 50} kg`,
+    notes: [],
+    history: [
+      {
+        date: new Date().toISOString(),
+        action: 'Specification Created',
+        user: 'System'
+      }
+    ]
+  }));
 
   const customerNames = ['Acme Mining Corp', 'TechCo Industries', 'MegaMine Resources Ltd', 'Global Bulk Materials', 'Peak Coal Resources', 'Summit Mining', 'Horizon Materials', 'Continental Mining Co'];
   const siteNames = ['North Mine', 'South Processing Plant', 'East Pit Operations', 'West Crushing Facility', 'Central Distribution Hub', 'Longwall Panel', 'Open Cut Operations'];
@@ -384,5 +337,29 @@ export const initialSites = [
 // Auto-generate specs for the default site after creation
 const defaultSite = initialSites[0];
 defaultSite.specData = [
-  ...generateTestSpecs(defaultSite.serviceData)
+  ...defaultSite.serviceData.map((asset, i) => ({
+    id: `spec-${Math.random().toString(36).substr(2, 9)}`,
+    weigher: asset.weigher,
+    altCode: asset.code,
+    description: asset.name,
+    scaleType: ['Schenck VEG20600', 'Ramsey Micro-Tech', 'Thayer Scale', 'Siemens Milltronics', 'Hardy HI-6600'][i % 5],
+    integratorController: ['Siemens S7-1200', 'Allen Bradley CompactLogix', 'Schneider M340', 'Mitsubishi FX5U', 'Omron NX'][i % 5],
+    speedSensorType: ['Proximity Sensor 24VDC', 'Encoder 1024 PPR', 'Tachometer', 'Radar Speed Sensor', 'Optical Encoder'][i % 5],
+    rollDims: `${100 + i * 10}mm x ${50 + i * 5}mm`,
+    adjustmentType: ['Manual Screw', 'Pneumatic', 'Hydraulic', 'Electric Motor', 'Spring Loaded'][i % 5],
+    loadCellBrand: ['Vishay Nobel', 'HBM', 'Scaime', 'Mettler Toledo', 'Flintec'][i % 5],
+    loadCellSize: ['50 kg', '100 kg', '250 kg', '500 kg', '1000 kg'][i % 5],
+    loadCellSensitivity: ['2.0 mV/V', '3.0 mV/V', '1.5 mV/V', '2.0 mV/V', '2.5 mV/V'][i % 5],
+    numberOfLoadCells: [2, 4, 4, 6, 4][i % 5],
+    billetType: ['Steel Round', 'Aluminum Square', 'Copper Hex', 'Brass Flat', 'Stainless Rod'][i % 5],
+    billetWeight: `${500 + i * 50} kg`,
+    notes: [],
+    history: [
+      {
+        date: new Date().toISOString(),
+        action: 'Specification Created',
+        user: 'System'
+      }
+    ]
+  }))
 ];

@@ -49,6 +49,16 @@ function createWindow() {
     // Development: Load from Vite dev server
     mainWindow.loadURL('http://localhost:5173');
 
+    // Set Content Security Policy for development
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': ['default-src \'self\' \'unsafe-inline\' \'unsafe-eval\' http://localhost:5173 ws://localhost:5173 data: blob:']
+        }
+      });
+    });
+
     // Open DevTools in development
     mainWindow.webContents.openDevTools();
   } else {
@@ -59,6 +69,16 @@ function createWindow() {
       slashes: true
     });
     mainWindow.loadURL(startUrl);
+
+    // Set Content Security Policy for production
+    mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+      callback({
+        responseHeaders: {
+          ...details.responseHeaders,
+          'Content-Security-Policy': ['default-src \'self\' \'unsafe-inline\' data: blob:']
+        }
+      });
+    });
   }
 
   mainWindow.on('close', (e) => {

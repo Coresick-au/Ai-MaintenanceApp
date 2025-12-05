@@ -59,6 +59,8 @@ import {
     ArrowDownAZ,
     ArrowUp,
     ArrowDown,
+    RotateCcw,
+    Check,
     FileSpreadsheet as FileCsv
 } from 'lucide-react';
 
@@ -121,5 +123,7 @@ export const Icons = {
     Sort: ArrowUpDown,
     SortAsc: ArrowUp,
     SortDesc: ArrowDown,
+    RotateCcw,
+    Check,
     FileCsv
 };

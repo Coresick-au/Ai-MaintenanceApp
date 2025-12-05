@@ -4,61 +4,10 @@ import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { useFilterContext } from '../hooks/useFilterContext';
 import { parseServiceReport } from '../utils/pdfParser';
+import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 
 // --- REPORT DETAILS MODAL ---
 const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
-    const [weather, setWeather] = useState(null);
-    const [loadingWeather, setLoadingWeather] = useState(false);
-
-    useEffect(() => {
-        if (report?.date && siteLocation) {
-            fetchWeather(report.date, siteLocation);
-        }
-    }, [report, siteLocation]);
-
-    const fetchWeather = async (date, location) => {
-        setLoadingWeather(true);
-        try {
-            // 1. Geocode
-            const geoRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(location)}&count=1&language=en&format=json`);
-            const geoData = await geoRes.json();
-
-            if (!geoData.results || geoData.results.length === 0) {
-                setWeather({ error: 'Location not found' });
-                return;
-            }
-
-            const { latitude, longitude } = geoData.results[0];
-
-            // 2. Weather Archive
-            const weatherRes = await fetch(`https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${date}&end_date=${date}&daily=weathercode,temperature_2m_max,temperature_2m_min&timezone=auto`);
-            const weatherData = await weatherRes.json();
-
-            if (weatherData.daily) {
-                setWeather({
-                    maxTemp: weatherData.daily.temperature_2m_max[0],
-                    minTemp: weatherData.daily.temperature_2m_min[0],
-                    code: weatherData.daily.weathercode[0]
-                });
-            }
-        } catch (e) {
-            console.error("Weather fetch failed", e);
-            setWeather({ error: 'Failed to load' });
-        } finally {
-            setLoadingWeather(false);
-        }
-    };
-
-    const getWeatherIcon = (code) => {
-        if (code === 0) return '☀️';
-        if (code <= 3) return '⛅';
-        if (code <= 48) return '🌫️';
-        if (code <= 67) return '🌧️';
-        if (code <= 77) return '❄️';
-        if (code <= 82) return '🌧️';
-        if (code <= 99) return '⛈️';
-        return '❓';
-    };
 
     if (!report) {
         return (
@@ -103,28 +52,13 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
                             <div className="text-xs text-slate-400 uppercase font-bold mb-1">Service Date</div>
                             <div className="text-2xl font-bold text-white">{reportDate}</div>
 
-                            {/* Weather Section */}
+                            {/* Location Section */}
                             {siteLocation && (
                                 <div className="mt-3 pt-3 border-t border-slate-800">
                                     <div className="text-[10px] text-slate-400 uppercase font-bold mb-1 flex items-center gap-1">
-                                        Weather in {siteLocation}
+                                        <Icons.MapPin size={12} /> Location
                                     </div>
-                                    {loadingWeather ? (
-                                        <div className="text-xs text-slate-400 animate-pulse">Loading history...</div>
-                                    ) : weather ? (
-                                        weather.error ? (
-                                            <div className="text-xs text-red-400">{weather.error}</div>
-                                        ) : (
-                                            <div className="flex items-center gap-3">
-                                                <div className="text-2xl" title="Weather Condition">{getWeatherIcon(weather.code)}</div>
-                                                <div>
-                                                    <div className="text-sm font-bold text-slate-200">{weather.maxTemp}°C / {weather.minTemp}°C</div>
-                                                </div>
-                                            </div>
-                                        )
-                                    ) : (
-                                        <div className="text-xs text-slate-400">No data available</div>
-                                    )}
+                                    <div className="text-sm font-medium text-slate-200">{siteLocation}</div>
                                 </div>
                             )}
                         </div>
@@ -592,7 +526,7 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
     });
 
     // --- NEW: Function to generate the AI Context Dump ---
-    const handleExportAIContext = () => {
+    const handleExportAIContext = async (format = 'txt') => {
         if (!asset || !reports.length) return;
 
         // 1. Prepare the Data (Filter if selection exists)
@@ -611,9 +545,170 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
             comments: r.comments ? r.comments.map(c => c.text).join(' | ') : ''
         }));
 
-        // 2. Build the Content (Markdown Format)
-        const fileContent = `
-# AI Maintenance Analysis Context
+        // 2. The New AI System Prompt
+        const systemPrompt = `You are a senior belt-scale specialist and reliability engineer with expert-level knowledge of:
+Conveyor belt weighers (Schenck, SRO BA44, multi-idler)
+Tare/span drift physics
+Vibration and mechanical influences
+Load-cell signal degradation and moisture effects
+Environmental impacts including humidity and temperature
+I will provide multiple calibration reports for the same conveyor. Analyse them as a unified time-series dataset.
+
+1️⃣ Data Extraction & Time-Series Summary
+Extract per service date:
+Tare & Span (old/new, % changes, repeatability)
+Load-cell Zero/Span mV/V signals
+Belt length/speed data
+Key technician comments
+Deliver:
+A combined chronological dataset
+Trend charts for tare, span, and LC drift
+Highlight tolerance exceedances
+
+2️⃣ Mechanical & Environmental Diagnostics
+Evaluate:
+Roller/return-roller effects on signal noise
+Buildup-driven tare lift
+Frame/alignment stability
+Categorise:
+Resolved
+Outstanding
+Emerging
+
+3️⃣ Signal Health Review
+Track load-cell signal movement to detect:
+Creep, moisture, wiring degradation
+Noise from belt splices or mechanical vibration
+Chart signals and flag risk points.
+
+4️⃣ Integrator Configuration Validation
+Check:
+Pulses per metre
+Angle & platform length
+Auto-zero behaviour
+Circuit/belt time
+Parameter consistency between services
+Report any deviations that could bias measurement.
+
+5️⃣ Comment Log Intelligence
+Cluster comments to identify:
+Recurring failure patterns
+Missed corrective actions
+Housekeeping changes over time
+
+6️⃣ Forward Reliability & Maintenance Plan
+Provide:
+Predictive risk of sensing instability
+Recommended physical adjustments
+Spare parts technician should bring to next service
+Traffic-light severity rating
+
+7️⃣ Weather Correlation Analysis
+If weather data is provided or retrievable:
+Compare drift patterns to humidity/rainfall/temp changes
+Explain mechanical or signal physics linking the two
+Place weather trend overlay on calibration graphs if applicable
+Note if correlation is weak or non-existent
+
+🔹 Additional Output Options (if requested)
+A. Visual Dashboard
+KPI tiles + trend visuals
+Fault recurrence index
+Issue status matrix
+B. PowerPoint-Ready Slides
+Key findings in bullets
+1–2 charts per topic
+A final "Call to Action" slide
+
+8️⃣ Executive Summary
+Provide two versions:
+Technical engineer focus
+Business leader focus (accuracy & cost-risk)
+
+9️⃣ Long-Term Drift Model (Predictive Analytics)
+Forecast tare/span values for next 2–4 services using historical trend
+Estimate time-to-breach of ±1% accuracy limits
+Include forecast curve on graphs
+Provide engineering cause likelihoods & recommended intervention window
+
+🔟 Final Formatting Rule — TLDR Must Be LAST
+Regardless of any additional sections, the report must always end with a TLDR section formatted as follows:
+TLDR:
+• Two short, direct insights (risk + cause)
+Next Actions:
+1) Highest priority
+2) Second highest priority
+
+The TLDR must appear after all charts, summaries, tables, and predictions.`;
+
+        if (format === 'docx') {
+            // Generate Word Document
+            const doc = new Document({
+                sections: [{
+                    properties: {},
+                    children: [
+                        new Paragraph({
+                            text: "AI Maintenance Analysis - System Prompt",
+                            heading: HeadingLevel.HEADING_1,
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Generated on: ", bold: true }),
+                                new TextRun(new Date().toISOString().split('T')[0]),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Asset: ", bold: true }),
+                                new TextRun(`${asset.name} (${asset.code})`),
+                            ],
+                        }),
+                        new Paragraph({
+                            children: [
+                                new TextRun({ text: "Location: ", bold: true }),
+                                new TextRun(siteLocation || 'Unknown'),
+                            ],
+                        }),
+                        new Paragraph({ text: "" }),
+                        new Paragraph({
+                            text: "SYSTEM PROMPT",
+                            heading: HeadingLevel.HEADING_2,
+                        }),
+                        new Paragraph({
+                            text: "Copy the following prompt to your AI assistant:",
+                            spacing: { after: 200 },
+                        }),
+                        ...systemPrompt.split('\n').map(line => 
+                            new Paragraph({
+                                children: [new TextRun(line)],
+                                spacing: { after: 100 },
+                            })
+                        ),
+                        new Paragraph({ text: "" }),
+                        new Paragraph({
+                            text: "DATASET",
+                            heading: HeadingLevel.HEADING_2,
+                        }),
+                        new Paragraph({
+                            text: "The calibration data is included in the accompanying .txt file as JSON format.",
+                            spacing: { after: 200 },
+                        }),
+                    ],
+                }],
+            });
+
+            const blob = await Packer.toBlob(doc);
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${asset.name}_AI_Prompt.docx`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } else {
+            // Generate Text/Markdown file (default)
+            const fileContent = `# AI Maintenance Analysis Context
 **Generated on:** ${new Date().toISOString().split('T')[0]}
 **Asset:** ${asset.name} (${asset.code})
 **Location:** ${siteLocation || 'Unknown'}
@@ -621,38 +716,7 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
 ---
 
 ## 🤖 SYSTEM PROMPT (Copy this to AI)
-You are now a **Senior Field Service Engineer** and **Technical Specialist** for a leading **Weighing Equipment Original Equipment Manufacturer (OEM)**.
-
-### Primary Directive: Data Analysis and Diagnostic Output
-Your primary directive is to provide code changes and technical support, with a critical focus on deep, actionable data analysis, especially concerning service reports.
-
-1.  **Service Report Analysis:** When generating a service report summary, you MUST analyze the full report history for the site.
-2.  **Weather Correlation:** When analyzing reports, you MUST perform a Google search for the **historical weather data** (Temperature, precipitation, and general conditions) for the site's location, covering the entire date range of the reports (e.g., "historical weather data for ${siteLocation || 'Unknown'} from [First Report Date] to [Last Report Date]").
-3.  **Diagnostic Charting:** Generate a chart that visually correlates **maintenance events/faults** with the **weather conditions** at the time of the report. This is critical for diagnosing environment-related failures.
-
-### Personality & Output Rules
-* **Tone:** Your communication must be professional, practical, and focused on maximizing **uptime and reliability**. You prioritize clear, working solutions that prevent costly service calls.
-* **Accessibility Mandate:** You understand that many users are non-technical field personnel and managers. Therefore, all data and analytical outputs **MUST** be made accessible.
-
-### Chart Data Export Protocol (Accessibility Mandate)
-Whenever a task involves analyzing or outputting data for visualization (charts, graphs, metrics) from the Asset Analytics or other sections, you MUST adhere to the following output format:
-
-1.  **Present the Data:** Render the raw, underlying chart data as a simple markdown table with clear column headers. The data must be structured as if it were to be pasted directly into an Excel spreadsheet (one column for the X-axis/Category, one or more columns for the Y-axis/Values).
-2.  **DELETE RULE:** You must **NOT** repeat the "How to Create a Chart in Microsoft Excel" steps in your final response. The user has confirmed they have these instructions.
-
-### Post-Analysis Follow-up
-All analytical write-ups (especially service reports) MUST conclude with a set of user-friendly technical questions to guide the next phase of work.
-
-1.  **Question Count:** Generate exactly **five (5)** distinct technical questions.
-2.  **Format:** The questions must be actionable, user-friendly, and presented as a list, allowing the user to easily respond with a number to direct the next step.
-
-**Example Question Format:**
-"Do you want me to proceed with a deep dive on:
-1. ...
-2. ...
-3. ...
-4. ...
-5. ..."
+${systemPrompt}
 
 ---
 
@@ -660,18 +724,18 @@ All analytical write-ups (especially service reports) MUST conclude with a set o
 \`\`\`json
 ${JSON.stringify(cleanReports, null, 2)}
 \`\`\`
-        `;
+`;
 
-        // 3. Trigger Download
-        const blob = new Blob([fileContent], { type: 'text/markdown' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${asset.name}_AI_Insight.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+            const blob = new Blob([fileContent], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${asset.name}_AI_Insight.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
     };
 
     return (
@@ -684,14 +748,23 @@ ${JSON.stringify(cleanReports, null, 2)}
                         <Button onClick={() => setShowAddReport(true)} className="flex-1">
                             <Icons.Plus /> Add Report
                         </Button>
-                        {/* NEW: AI Export Button */}
-                        <button
-                            onClick={handleExportAIContext}
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded font-medium shadow-lg shadow-purple-900/20 transition-all border border-purple-400/30"
-                            title="Download context file for AI Analysis"
-                        >
-                            <span>🤖</span> Generate AI Insight
-                        </button>
+                        {/* AI Export Buttons */}
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => handleExportAIContext('txt')}
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded font-medium shadow-lg shadow-purple-900/20 transition-all border border-purple-400/30"
+                                title="Download as Text file with prompt and data"
+                            >
+                                <span>🤖</span> AI Insight (.txt)
+                            </button>
+                            <button
+                                onClick={() => handleExportAIContext('docx')}
+                                className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded font-medium shadow-lg shadow-blue-900/20 transition-all border border-blue-400/30"
+                                title="Download prompt as Word document"
+                            >
+                                <Icons.FileText size={16} /> Prompt (.docx)
+                            </button>
+                        </div>
                     </div>
 
                     {/* TOP ROW: DRIFT - Tare Change */}
