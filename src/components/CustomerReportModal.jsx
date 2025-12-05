@@ -49,13 +49,15 @@ export const CustomerReportModal = ({
 
             // Generate canvas from the element
             const canvas = await html2canvas(element, {
-                scale: 2,
+                scale: 2, // High resolution
                 useCORS: true,
                 allowTaint: true,
                 backgroundColor: '#ffffff',
                 logging: false,
-                width: element.scrollWidth,
-                height: element.scrollHeight
+                width: element.scrollWidth, // Capture full width
+                height: element.scrollHeight, // Capture full height
+                windowWidth: document.documentElement.offsetWidth, // Prevent scroll clipping
+                windowHeight: document.documentElement.offsetHeight
             });
 
             // Create PDF
@@ -71,12 +73,19 @@ export const CustomerReportModal = ({
             const pdfHeight = pdf.internal.pageSize.getHeight();
             const imgWidth = canvas.width;
             const imgHeight = canvas.height;
-            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight) * 200;
-            const imgX = (pdfWidth - imgWidth * ratio) / 2;
-            const imgY = 10;
+
+            // FIX: Removed the * 200 multiplier that was exploding the image size
+            // This calculates the scale factor to fit the image within A4 bounds
+            const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+            
+            const centeredWidth = imgWidth * ratio;
+            const centeredHeight = imgHeight * ratio;
+
+            const imgX = (pdfWidth - centeredWidth) / 2;
+            const imgY = 10; // 10mm top margin
 
             // Add image to PDF
-            pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+            pdf.addImage(imgData, 'PNG', imgX, imgY, centeredWidth, centeredHeight);
 
             // Generate filename and download
             const fileName = `maintenance-report-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.pdf`;

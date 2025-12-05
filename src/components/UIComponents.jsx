@@ -264,7 +264,7 @@ export const SimpleBarChart = ({ data }) => {
   return (
     // 2. IMPORTANT: Increased height to accommodate rotated labels
     <div className="h-80 w-full mt-4">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" aspect={2}>
         <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
 
