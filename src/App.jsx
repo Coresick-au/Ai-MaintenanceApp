@@ -33,6 +33,15 @@ import { SiteIssueTracker } from './components/SiteIssueTracker';
 import AssetTimeline from './components/AssetTimeline';
 import { SiteDropdown } from './components/SiteDropdown';
 import { CustomerReportModal } from './components/CustomerReportModal';
+import { FullDashboardPDFPreview } from './components/FullDashboardPDFPreview';
+import { ScheduleChartPDFPreview } from './components/ScheduleChartPDFPreview';
+import { AssetSpecsPDFPreview } from './components/AssetSpecsPDFPreview';
+import { MasterListPDFPreview } from './components/MasterListPDFPreview';
+import { FullDashboardPDF } from './components/FullDashboardPDF';
+import { ScheduleChartPDF } from './components/ScheduleChartPDF';
+import { AssetSpecsPDF } from './components/AssetSpecsPDF';
+import { pdf } from '@react-pdf/renderer';
+import { saveAs } from 'file-saver';
 
 // ==========================================
 // MAIN APP COMPONENT
@@ -161,6 +170,10 @@ export default function App() {
 
   // --- CUSTOMER REPORT MODAL STATE ---
   const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isFullDashboardPreviewOpen, setIsFullDashboardPreviewOpen] = useState(false);
+  const [isScheduleChartPreviewOpen, setIsScheduleChartPreviewOpen] = useState(false);
+  const [isAssetSpecsPreviewOpen, setIsAssetSpecsPreviewOpen] = useState(false);
+  const [isMasterListPreviewOpen, setIsMasterListPreviewOpen] = useState(false);
 
   // --- SITE NOTES MODAL STATE ---
   const [isNotesModalOpen, setIsNotesModalOpen] = useState(false);
@@ -198,7 +211,11 @@ export default function App() {
   const selectedAsset = React.useMemo(() => (filteredData || []).find(i => i.id === selectedAssetId), [filteredData, selectedAssetId]);
   const selectedSpecs = React.useMemo(() => {
     if (!selectedAsset) return null;
-    return (currentSpecData || []).find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
+    return (currentSpecData || []).find(s => 
+      s.weigher === selectedAsset.weigher || 
+      s.altCode === selectedAsset.code || 
+      s.weigher === selectedAsset.code
+    );
   }, [selectedAsset, currentSpecData]);
 
   // --- EFFECTS ---
@@ -313,17 +330,59 @@ export default function App() {
   };
 
   const handlePrint = (mode) => {
-    const body = document.body;
-    body.classList.remove('print-schedule', 'print-specs', 'print-master');
-
-    if (mode === 'schedule') body.classList.add('print-schedule');
-    if (mode === 'specs') body.classList.add('print-specs');
-    if (mode === 'master') body.classList.add('print-master');
-
     setIsPrintMenuOpen(false);
-    setTimeout(() => {
-      window.print();
-    }, 100);
+    
+    if (mode === 'full') {
+      // Open Full Dashboard Preview
+      setIsFullDashboardPreviewOpen(true);
+    } else if (mode === 'schedule') {
+      // Open Schedule & Chart Preview
+      setIsScheduleChartPreviewOpen(true);
+    } else if (mode === 'specs') {
+      // Asset Specs PDF for multiple selected assets
+      if (selectedRowIds.size === 0) {
+        alert('Please select one or more assets using the checkboxes to generate specifications.');
+        return;
+      }
+      
+      const selectedAssets = filteredData.filter(asset => selectedRowIds.has(asset.id));
+      const assetsWithSpecs = selectedAssets.map(asset => {
+        const specs = (currentSpecData || []).find(s => 
+          s.weigher === asset.weigher || 
+          s.altCode === asset.code || 
+          s.weigher === asset.code
+        );
+        return { asset, specs };
+      }).filter(item => item.specs); // Only include assets that have specs
+      
+      if (assetsWithSpecs.length === 0) {
+        alert('No specifications found for any of the selected assets. Please select assets that have matching spec data.');
+        return;
+      }
+      
+      if (assetsWithSpecs.length < selectedRowIds.size) {
+        const skipped = selectedRowIds.size - assetsWithSpecs.length;
+        alert(`Warning: ${skipped} selected asset(s) don't have specifications. Generating PDF for ${assetsWithSpecs.length} asset(s) with specs.`);
+      }
+      
+      // Open Asset Specs Preview with the filtered assets
+      setIsAssetSpecsPreviewOpen(true);
+    } else if (mode === 'master') {
+      // Open Master List Preview
+      setIsMasterListPreviewOpen(true);
+    } else {
+      // Fallback to original print method for other modes
+      const body = document.body;
+      body.classList.remove('print-schedule', 'print-specs', 'print-master');
+      
+      if (mode === 'schedule') body.classList.add('print-schedule');
+      if (mode === 'specs') body.classList.add('print-specs');
+      if (mode === 'master') body.classList.add('print-master');
+      
+      setTimeout(() => {
+        window.print();
+      }, 100);
+    }
   };
 
   const exportBulkCSV = () => {
@@ -1193,7 +1252,7 @@ export default function App() {
           <div className="relative" ref={printMenuRef}>
             <button
               type="button"
-              onClick={() => { setIsPrintMenuOpen(!isPrintMenuOpen); if (!isPrintMenuOpen) setSelectedRowIds(new Set()); }}
+              onClick={() => { setIsPrintMenuOpen(!isPrintMenuOpen); }}
               className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isPrintMenuOpen
                 ? 'bg-slate-700 text-white'
                 : 'text-slate-300 hover:text-white hover:bg-slate-700'
@@ -1205,10 +1264,10 @@ export default function App() {
             </button>
             {isPrintMenuOpen && (
               <div className="mt-1 bg-slate-700 rounded-lg shadow-xl border border-slate-600 overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200">
-                <button onClick={() => handlePrint('full')} className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
-                <button onClick={() => handlePrint('schedule')} className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>📅</span> Schedule & Chart</button>
-                <button onClick={() => handlePrint('specs')} disabled={!selectedAsset} className={`w-full px-4 py-2.5 text-sm text-left flex items-center gap-2 ${!selectedAsset ? 'text-slate-500 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-600'}`}><span>📋</span> Asset Specs</button>
-                <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); setSelectedRowIds(new Set()); }} className="w-full px-4 py-2.5 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>📄</span> Customer Report</button>
+                <button onClick={() => handlePrint('full')} className="w-full px-6 py-3 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>🖨️</span> Full Dashboard</button>
+                <button onClick={() => handlePrint('schedule')} className="w-full px-6 py-3 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>📅</span> Schedule & Chart</button>
+                <button onClick={() => handlePrint('specs')} disabled={selectedRowIds.size === 0} className={`w-full px-6 py-3 text-sm text-left flex items-center gap-2 ${selectedRowIds.size === 0 ? 'text-slate-500 cursor-not-allowed' : 'text-slate-300 hover:bg-slate-600'}`}><span>📋</span> Asset Specs{selectedRowIds.size > 0 ? ` (${selectedRowIds.size} selected)` : ' (Select assets)'}</button>
+                <button onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); }} className="w-full px-6 py-3 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"><span>📄</span> Customer Report</button>
               </div>
             )}
           </div>
@@ -1471,13 +1530,13 @@ export default function App() {
                         </th>
                         <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[150px]" onClick={() => { handleSort('name'); setSelectedRowIds(new Set()); }}>Name {getSortIcon('name')}</th>
                         <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px]" onClick={() => { handleSort('code'); setSelectedRowIds(new Set()); }}>Code {getSortIcon('code')}</th>
-                        <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('frequency'); setSelectedRowIds(new Set()); }}>Freq {getSortIcon('frequency')}</th>
                         <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('lastCal'); setSelectedRowIds(new Set()); }}>Last Cal {getSortIcon('lastCal')}</th>
+                        <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('frequency'); setSelectedRowIds(new Set()); }}>Freq {getSortIcon('frequency')}</th>
                         <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('dueDate'); setSelectedRowIds(new Set()); }}>Cal Due {getSortIcon('dueDate')}</th>
                         <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
                         <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
                         <th className="px-4 py-2 text-center min-w-[100px]">Op Status</th>
-                        <th className="px-3 py-2 text-center no-print text-xs">Analytics</th>
+                        <th className="px-3 py-2 text-center no-print text-xs">Reports / Analytics</th>
                         <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
                         <th className="px-3 py-2 text-center no-print text-xs">Edit</th>
                       </tr>
@@ -1490,8 +1549,8 @@ export default function App() {
                           </td>
                           <td className="px-4 py-2 font-medium text-slate-200">{item.name} {item.active === false && <span className="text-[10px] text-slate-400">(Archived)</span>}</td>
                           <td className="px-4 py-2 font-mono text-xs text-slate-400">{item.code}</td>
-                          <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val, activeTab)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
                           <td className="px-4 py-2"><EditableCell value={item.lastCal} type="date" onSave={(val) => handleInlineUpdate(item.id, 'lastCal', val, activeTab)} className="bg-slate-800 text-white border-slate-600" /></td>
+                          <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val, activeTab)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
                           <td className="px-4 py-2 text-slate-400 font-medium">{formatDate(item.dueDate)}</td>
                           <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
                           <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>
@@ -1516,7 +1575,7 @@ export default function App() {
                               {item.opStatus || 'Operational'}
                             </button>
                           </td>
-                          <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
+                          <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Reports / Analytics"><Icons.Activity /></button></td>
                           <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
                             <button
                               type="button"
@@ -1765,6 +1824,65 @@ export default function App() {
         serviceData={currentServiceData}
         rollerData={currentRollerData}
         specData={currentSpecData}
+      />
+
+      {/* FULL DASHBOARD PREVIEW MODAL */}
+      <FullDashboardPDFPreview
+        isOpen={isFullDashboardPreviewOpen}
+        onClose={() => setIsFullDashboardPreviewOpen(false)}
+        site={{
+          ...selectedSite,
+          serviceData: currentServiceData,
+          rollerData: currentRollerData
+        }}
+        generatedDate={formatDate(new Date().toISOString())}
+      />
+
+      {/* SCHEDULE CHART PREVIEW MODAL */}
+      <ScheduleChartPDFPreview
+        isOpen={isScheduleChartPreviewOpen}
+        onClose={() => setIsScheduleChartPreviewOpen(false)}
+        site={{
+          ...selectedSite,
+          serviceData: currentServiceData,
+          rollerData: currentRollerData
+        }}
+        generatedDate={formatDate(new Date().toISOString())}
+      />
+
+      {/* ASSET SPECS PREVIEW MODAL */}
+      <AssetSpecsPDFPreview
+        isOpen={isAssetSpecsPreviewOpen}
+        onClose={() => setIsAssetSpecsPreviewOpen(false)}
+        assets={(() => {
+          if (selectedRowIds.size === 0) return [];
+          const selectedAssets = filteredData.filter(asset => selectedRowIds.has(asset.id));
+          return selectedAssets.map(asset => {
+            const specs = (currentSpecData || []).find(s => 
+              s.weigher === asset.weigher || 
+              s.altCode === asset.code || 
+              s.weigher === asset.code
+            );
+            return { asset, specs };
+          }).filter(item => item.specs);
+        })()}
+        generatedDate={formatDate(new Date().toISOString())}
+      />
+
+      {/* MASTER LIST PREVIEW MODAL */}
+      <MasterListPDFPreview
+        isOpen={isMasterListPreviewOpen}
+        onClose={() => setIsMasterListPreviewOpen(false)}
+        site={{
+          ...selectedSite,
+          serviceData: currentServiceData,
+          rollerData: currentRollerData
+        }}
+        serviceData={currentServiceData}
+        rollerData={currentRollerData}
+        specData={currentSpecData}
+        showArchived={showArchived}
+        generatedDate={formatDate(new Date().toISOString())}
       />
 
       {/* OPERATIONAL STATUS MODAL */}

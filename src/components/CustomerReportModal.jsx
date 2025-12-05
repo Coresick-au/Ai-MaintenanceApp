@@ -8,18 +8,17 @@ import { Modal, Button } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import * as XLSX from 'xlsx';
-import { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell, WidthType, AlignmentType, HeadingLevel } from 'docx';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
 import MaintenanceReportPDF from './MaintenanceReportPDF';
-import html2canvas from 'html2canvas';
 
 export const CustomerReportModal = ({
     isOpen,
     onClose,
     site,
     serviceData,
-    rollerData
+    rollerData,
+    specData
 }) => {
     const modalContainerRef = useRef(null);
     const reportContentRef = useRef(null);
@@ -76,364 +75,181 @@ export const CustomerReportModal = ({
     };
 
     const handleExcelExport = () => {
-        // Create workbook
+        // Create workbook with comprehensive maintenance report data
         const wb = XLSX.utils.book_new();
 
-        // Summary Sheet
+        // === SHEET 1: EXECUTIVE SUMMARY ===
         const summaryData = [
-            ['Maintenance Report Summary'],
-            ['Customer', site.customer],
-            ['Site Name', site.name],
-            ['Location', site.location],
+            ['MAINTENANCE REPORT - EXECUTIVE SUMMARY'],
+            [''],
+            ['Site Information'],
+            ['Customer', site.customer || ''],
+            ['Site Name', site.name || ''],
+            ['Location', site.location || ''],
             ['Generated Date', formatDate(new Date().toISOString())],
             [''],
+            ['Asset Summary'],
+            ['Total Service Equipment', sortedService.length],
+            ['Total Roller Equipment', sortedRoller.length],
             ['Total Assets', sortedService.length + sortedRoller.length],
-            ['Critical Attention', [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length],
-            ['Due < 30 Days', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length],
+            ['Critical (Overdue)', [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length],
+            ['Due Soon (0-30 days)', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length],
+            ['Operational', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 30).length],
+            [''],
+            ['Health Distribution'],
+            ['Critical Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%'],
+            ['Warning Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%'],
+            ['Healthy Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining >= 30).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%']
         ];
-
         const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
-        XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
+        XLSX.utils.book_append_sheet(wb, summaryWs, 'Executive Summary');
 
-        // Service & Calibration Sheet
-        const serviceHeaders = ['Asset Name', 'Code', 'Last Service', 'Due Date', 'Status', 'Remaining Days'];
-        const serviceRows = sortedService.map(item => [
-            item.name,
-            item.code,
-            formatDate(item.lastCal),
-            formatDate(item.dueDate),
-            getStatusText(item.opStatus),
-            item.remaining
-        ]);
-
-        const serviceWs = XLSX.utils.aoa_to_sheet([serviceHeaders, ...serviceRows]);
-        XLSX.utils.book_append_sheet(wb, serviceWs, 'Service & Calibration');
-
-        // Roller Data Sheet (if exists)
-        if (sortedRoller.length > 0) {
-            const rollerHeaders = ['Asset Name', 'Code', 'Last Service', 'Due Date', 'Status', 'Remaining Days'];
-            const rollerRows = sortedRoller.map(item => [
-                item.name,
-                item.code,
+        // === SHEET 2: SERVICE EQUIPMENT DETAILS ===
+        const serviceData = [
+            ['SERVICE EQUIPMENT - MAINTENANCE SCHEDULE'],
+            [''],
+            ['Asset Name', 'Code', 'Frequency', 'Last Service Date', 'Due Date', 'Days Remaining', 'Status', 'Operational Status', 'Operational Notes', 'Weigher ID', 'Active Status']
+        ];
+        
+        sortedService.forEach(item => {
+            serviceData.push([
+                item.name || '',
+                item.code || '',
+                item.frequency || '',
                 formatDate(item.lastCal),
                 formatDate(item.dueDate),
-                getStatusText(item.opStatus),
-                item.remaining
+                item.remaining || 0,
+                item.remaining < 0 ? 'OVERDUE' : item.remaining < 30 ? 'DUE SOON' : 'OPERATIONAL',
+                item.opStatus || 'OPERATIONAL',
+                item.opNote || '',
+                item.weigher || '',
+                item.active !== false ? 'Active' : 'Inactive'
             ]);
+        });
+        
+        const serviceWs = XLSX.utils.aoa_to_sheet(serviceData);
+        XLSX.utils.book_append_sheet(wb, serviceWs, 'Service Equipment');
 
-            const rollerWs = XLSX.utils.aoa_to_sheet([rollerHeaders, ...rollerRows]);
-            XLSX.utils.book_append_sheet(wb, rollerWs, 'Roller Data');
-        }
+        // === SHEET 3: ROLLER EQUIPMENT DETAILS ===
+        const rollerData = [
+            ['ROLLER EQUIPMENT - MAINTENANCE SCHEDULE'],
+            [''],
+            ['Asset Name', 'Code', 'Frequency', 'Last Service Date', 'Due Date', 'Days Remaining', 'Status', 'Operational Status', 'Operational Notes', 'Weigher ID', 'Active Status']
+        ];
+        
+        sortedRoller.forEach(item => {
+            rollerData.push([
+                item.name || '',
+                item.code || '',
+                item.frequency || '',
+                formatDate(item.lastCal),
+                formatDate(item.dueDate),
+                item.remaining || 0,
+                item.remaining < 0 ? 'OVERDUE' : item.remaining < 30 ? 'DUE SOON' : 'OPERATIONAL',
+                item.opStatus || 'OPERATIONAL',
+                item.opNote || '',
+                item.weigher || '',
+                item.active !== false ? 'Active' : 'Inactive'
+            ]);
+        });
+        
+        const rollerWs = XLSX.utils.aoa_to_sheet(rollerData);
+        XLSX.utils.book_append_sheet(wb, rollerWs, 'Roller Equipment');
+
+        // === SHEET 4: EQUIPMENT SPECIFICATIONS ===
+        const specDataExport = [
+            ['EQUIPMENT SPECIFICATIONS'],
+            [''],
+            ['Asset Name', 'Asset Code', 'Weigher ID', 'Description', 'Scale Type', 'Integrator Controller', 'Speed Sensor Type', 'Load Cell Brand', 'Load Cell Size', 'Load Cell Sensitivity', 'Number of Load Cells', 'Roller Dimensions', 'Adjustment Type', 'Billet Weight Type', 'Billet Weight Size', 'Billet Weight IDs', 'Notes Count']
+        ];
+        
+        // Combine all assets and match with specs
+        const allAssets = [...sortedService, ...sortedRoller];
+        allAssets.forEach(asset => {
+            const spec = (specData || []).find(s => 
+                s.weigher === asset.weigher || 
+                s.altCode === asset.code || 
+                s.weigher === asset.code
+            );
+            
+            if (spec) {
+                specDataExport.push([
+                    asset.name || '',
+                    asset.code || '',
+                    spec.weigher || '',
+                    spec.description || '',
+                    spec.scaleType || '',
+                    spec.integratorController || '',
+                    spec.speedSensorType || '',
+                    spec.loadCellBrand || '',
+                    spec.loadCellSize || '',
+                    spec.loadCellSensitivity || '',
+                    spec.numberOfLoadCells || '',
+                    spec.rollDims || '',
+                    spec.adjustmentType || '',
+                    spec.billetWeightType || '',
+                    spec.billetWeightSize || '',
+                    (spec.billetWeightIds || []).join('; ') || '',
+                    (spec.notes || []).length || 0
+                ]);
+            }
+        });
+        
+        const specWs = XLSX.utils.aoa_to_sheet(specDataExport);
+        XLSX.utils.book_append_sheet(wb, specWs, 'Specifications');
+
+        // === SHEET 5: CRITICAL ASSETS ALERT ===
+        const criticalAssets = [...sortedService, ...sortedRoller].filter(i => i.remaining < 0 || i.opStatus === 'Down');
+        const criticalData = [
+            ['CRITICAL ASSETS - IMMEDIATE ATTENTION REQUIRED'],
+            [''],
+            ['Asset Name', 'Code', 'Type', 'Days Overdue', 'Operational Status', 'Operational Notes', 'Last Service', 'Due Date', 'Weigher ID']
+        ];
+        
+        criticalAssets.forEach(item => {
+            criticalData.push([
+                item.name || '',
+                item.code || '',
+                sortedService.includes(item) ? 'Service Equipment' : 'Roller Equipment',
+                item.remaining < 0 ? `${Math.abs(item.remaining)} days overdue` : '0',
+                item.opStatus || 'OPERATIONAL',
+                item.opNote || '',
+                formatDate(item.lastCal),
+                formatDate(item.dueDate),
+                item.weigher || ''
+            ]);
+        });
+        
+        const criticalWs = XLSX.utils.aoa_to_sheet(criticalData);
+        XLSX.utils.book_append_sheet(wb, criticalWs, 'Critical Assets');
+
+        // === SHEET 6: DUE SOON ASSETS ===
+        const dueSoonAssets = [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30);
+        const dueSoonData = [
+            ['ASSETS DUE SOON - SCHEDULE WITHIN 30 DAYS'],
+            [''],
+            ['Asset Name', 'Code', 'Type', 'Days Remaining', 'Operational Status', 'Last Service', 'Due Date', 'Weigher ID']
+        ];
+        
+        dueSoonAssets.forEach(item => {
+            dueSoonData.push([
+                item.name || '',
+                item.code || '',
+                sortedService.includes(item) ? 'Service Equipment' : 'Roller Equipment',
+                `${item.remaining} days`,
+                item.opStatus || 'OPERATIONAL',
+                formatDate(item.lastCal),
+                formatDate(item.dueDate),
+                item.weigher || ''
+            ]);
+        });
+        
+        const dueSoonWs = XLSX.utils.aoa_to_sheet(dueSoonData);
+        XLSX.utils.book_append_sheet(wb, dueSoonWs, 'Due Soon');
 
         // Generate filename and download
         const fileName = `maintenance-report-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.xlsx`;
         XLSX.writeFile(wb, fileName);
-    };
-
-    const handleWordExport = async () => {
-        // Create document sections
-        const docChildren = [];
-
-        // Title Section
-        docChildren.push(
-            new Paragraph({
-                children: [
-                    new TextRun({
-                        text: "MAINTENANCE REPORT",
-                        bold: true,
-                        size: 32,
-                        color: "2E74B5"
-                    })
-                ],
-                heading: HeadingLevel.TITLE,
-                alignment: AlignmentType.CENTER,
-                spacing: { after: 400 }
-            })
-        );
-
-        // Site Information Section
-        docChildren.push(
-            new Paragraph({
-                children: [
-                    new TextRun({
-                        text: "Site Information",
-                        bold: true,
-                        size: 24,
-                        color: "4F81BD"
-                    })
-                ],
-                heading: HeadingLevel.HEADING_1,
-                spacing: { before: 400, after: 200 }
-            })
-        );
-
-        // Site Details Table
-        const siteTable = new Table({
-            rows: [
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Customer")], width: { size: 30, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(site.customer)], width: { size: 70, type: WidthType.PERCENTAGE } })
-                    ]
-                }),
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Site Name")], width: { size: 30, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(site.name)], width: { size: 70, type: WidthType.PERCENTAGE } })
-                    ]
-                }),
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Location")], width: { size: 30, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(site.location)], width: { size: 70, type: WidthType.PERCENTAGE } })
-                    ]
-                }),
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Generated Date")], width: { size: 30, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(formatDate(new Date().toISOString()))], width: { size: 70, type: WidthType.PERCENTAGE } })
-                    ]
-                })
-            ],
-            width: { size: 100, type: WidthType.PERCENTAGE }
-        });
-        docChildren.push(siteTable);
-
-        // Executive Summary Section
-        const criticalCount = [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length;
-        const dueSoonCount = [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length;
-
-        docChildren.push(
-            new Paragraph({
-                children: [
-                    new TextRun({
-                        text: "Executive Summary",
-                        bold: true,
-                        size: 24,
-                        color: "4F81BD"
-                    })
-                ],
-                heading: HeadingLevel.HEADING_1,
-                spacing: { before: 400, after: 200 }
-            })
-        );
-
-        const summaryTable = new Table({
-            rows: [
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Total Assets")], width: { size: 50, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(String(sortedService.length + sortedRoller.length))], width: { size: 50, type: WidthType.PERCENTAGE } })
-                    ]
-                }),
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Critical Attention Required")], width: { size: 50, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(String(criticalCount))], width: { size: 50, type: WidthType.PERCENTAGE } })
-                    ]
-                }),
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph("Due < 30 Days")], width: { size: 50, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph(String(dueSoonCount))], width: { size: 50, type: WidthType.PERCENTAGE } })
-                    ]
-                })
-            ],
-            width: { size: 100, type: WidthType.PERCENTAGE }
-        });
-        docChildren.push(summaryTable);
-
-        // Service & Calibration Section
-        if (sortedService.length > 0) {
-            docChildren.push(
-                new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: "Service & Calibration Schedule",
-                            bold: true,
-                            size: 24,
-                            color: "4F81BD"
-                        })
-                    ],
-                    heading: HeadingLevel.HEADING_1,
-                    spacing: { before: 400, after: 200 }
-                })
-            );
-
-            // Service Table Header
-            const serviceTableRows = [
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph({ text: "Asset Name", bold: true })], width: { size: 25, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Code", bold: true })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Last Service", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Due Date", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Status", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } })
-                    ]
-                })
-            ];
-
-            // Service Data Rows
-            sortedService.forEach(item => {
-                const statusColor = item.opStatus === 'Down' ? 'FF0000' : item.opStatus === 'Warning' ? 'FFA500' : '008000';
-                serviceTableRows.push(
-                    new TableRow({
-                        children: [
-                            new TableCell({ children: [new Paragraph(item.name)], width: { size: 25, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph(item.code)], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph(formatDate(item.lastCal))], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph(formatDate(item.dueDate))], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph({ text: getStatusText(item.opStatus), color: statusColor })], width: { size: 20, type: WidthType.PERCENTAGE } })
-                        ]
-                    })
-                );
-            });
-
-            const serviceTable = new Table({
-                rows: serviceTableRows,
-                width: { size: 100, type: WidthType.PERCENTAGE }
-            });
-            docChildren.push(serviceTable);
-        }
-
-        // Roller Data Section
-        if (sortedRoller.length > 0) {
-            docChildren.push(
-                new Paragraph({
-                    children: [
-                        new TextRun({
-                            text: "Roller Data Schedule",
-                            bold: true,
-                            size: 24,
-                            color: "4F81BD"
-                        })
-                    ],
-                    heading: HeadingLevel.HEADING_1,
-                    spacing: { before: 400, after: 200 }
-                })
-            );
-
-            // Roller Table Header
-            const rollerTableRows = [
-                new TableRow({
-                    children: [
-                        new TableCell({ children: [new Paragraph({ text: "Asset Name", bold: true })], width: { size: 25, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Code", bold: true })], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Last Service", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Due Date", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                        new TableCell({ children: [new Paragraph({ text: "Status", bold: true })], width: { size: 20, type: WidthType.PERCENTAGE } })
-                    ]
-                })
-            ];
-
-            // Roller Data Rows
-            sortedRoller.forEach(item => {
-                const statusColor = item.opStatus === 'Down' ? 'FF0000' : item.opStatus === 'Warning' ? 'FFA500' : '008000';
-                rollerTableRows.push(
-                    new TableRow({
-                        children: [
-                            new TableCell({ children: [new Paragraph(item.name)], width: { size: 25, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph(item.code)], width: { size: 15, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph(formatDate(item.lastCal))], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph(formatDate(item.dueDate))], width: { size: 20, type: WidthType.PERCENTAGE } }),
-                            new TableCell({ children: [new Paragraph({ text: getStatusText(item.opStatus), color: statusColor })], width: { size: 20, type: WidthType.PERCENTAGE } })
-                        ]
-                    })
-                );
-            });
-
-            const rollerTable = new Table({
-                rows: rollerTableRows,
-                width: { size: 100, type: WidthType.PERCENTAGE }
-            });
-            docChildren.push(rollerTable);
-        }
-
-        // Footer Section
-        docChildren.push(
-            new Paragraph({
-                children: [
-                    new TextRun({
-                        text: "Generated by Accurate Industries Maintenance System",
-                        italics: true,
-                        size: 20,
-                        color: "666666"
-                    })
-                ],
-                alignment: AlignmentType.CENTER,
-                spacing: { before: 600 }
-            })
-        );
-
-        // Create document
-        const doc = new Document({
-            sections: [{
-                children: docChildren
-            }]
-        });
-
-        // Generate and download
-        const buffer = await Packer.toBuffer(doc);
-        const fileName = `maintenance-report-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.docx`;
-        saveAs(new Blob([buffer]), fileName);
-    };
-
-    const handleImageExport = async () => {
-        if (!reportContentRef.current) {
-            alert('Unable to capture report content. Please try again.');
-            return;
-        }
-
-        // Store original button state outside try-catch
-        const originalButton = event.target;
-        const originalText = originalButton.innerHTML;
-
-        try {
-            // Show loading state
-            originalButton.innerHTML = '<span class="animate-spin">⏳</span> Capturing...';
-            originalButton.disabled = true;
-
-            // Hide the modal header temporarily for clean capture
-            const modalHeader = reportContentRef.current.querySelector('.print\\:hidden');
-            if (modalHeader) {
-                modalHeader.style.display = 'none';
-            }
-
-            // Capture the report content
-            const canvas = await html2canvas(reportContentRef.current.querySelector('.print-content-inner'), {
-                backgroundColor: '#ffffff',
-                scale: 2, // Higher resolution
-                useCORS: true,
-                allowTaint: true,
-                width: reportContentRef.current.querySelector('.print-content-inner').scrollWidth,
-                height: reportContentRef.current.querySelector('.print-content-inner').scrollHeight,
-                scrollX: 0,
-                scrollY: 0
-            });
-
-            // Reset modal header
-            if (modalHeader) {
-                modalHeader.style.display = '';
-            }
-
-            // Convert to blob and download
-            canvas.toBlob((blob) => {
-                const fileName = `maintenance-report-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.png`;
-                saveAs(blob, fileName);
-
-                // Reset button
-                originalButton.innerHTML = originalText;
-                originalButton.disabled = false;
-            }, 'image/png', 0.95);
-
-        } catch (error) {
-            console.error('Image export failed:', error);
-            alert('Failed to capture image. Please try again.');
-
-            // Reset button on error
-            originalButton.innerHTML = originalText;
-            originalButton.disabled = false;
-        }
     };
 
     // Helper for operational status text
@@ -471,12 +287,6 @@ export const CustomerReportModal = ({
                     <div className="flex gap-2">
                         <button onClick={handleExcelExport} className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
                             <Icons.Download size={18} /> Export Excel
-                        </button>
-                        <button onClick={handleWordExport} className="bg-blue-700 hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
-                            <Icons.FileText size={18} /> Export Word
-                        </button>
-                        <button onClick={handleImageExport} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
-                            <Icons.Camera size={18} /> Export Image
                         </button>
                         <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
                             <Icons.Printer size={18} /> Print to PDF

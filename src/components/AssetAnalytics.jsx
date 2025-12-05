@@ -740,7 +740,7 @@ ${JSON.stringify(cleanReports, null, 2)}
 
     return (
         <>
-            {!showAddReport && <Modal title={`Analytics: ${asset.name}`} onClose={onClose} size="max">
+            {!showAddReport && <Modal title={`Reports / Analytics: ${asset.name}`} onClose={onClose} size="max">
 
                 <div className="space-y-6">
                     {/* Action Bar */}
