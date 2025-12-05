@@ -1,4 +1,9 @@
 import React from 'react';
+// ==========================================
+// IMPORTANT: LAYOUT SYNCHRONIZATION
+// Changes made to this PDF Layout (MaintenanceReportPDF.tsx) MUST be mirrored 
+// in the Report Preview (CustomerReportModal.jsx) to ensure Visual Consistency.
+// ==========================================
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
 
 // Asset interface for TypeScript
@@ -67,12 +72,35 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     backgroundColor: '#F9FAFB',
   },
-  row: {
-    flexDirection: 'row',
+  entryContainer: {
+    flexDirection: 'column',
     borderBottomWidth: 0.5,
     borderBottomColor: '#E5E7EB',
     borderBottomStyle: 'solid',
+  },
+  row: {
+    flexDirection: 'row',
     paddingVertical: 3,
+  },
+  commentRow: {
+    flexDirection: 'row',
+    backgroundColor: '#fef2f2', // red-50
+    padding: 4,
+    marginHorizontal: 10,
+    marginBottom: 4,
+    marginTop: 2,
+    borderRadius: 4,
+  },
+  commentText: {
+    fontSize: 8,
+    color: '#475569', // slate-600
+    fontStyle: 'italic',
+  },
+  commentLabel: {
+    fontSize: 8,
+    color: '#991b1b', // red-800
+    fontWeight: 'bold',
+    marginRight: 4,
   },
   cell: {
     flex: 1,
@@ -119,6 +147,75 @@ const styles = StyleSheet.create({
     borderTopStyle: 'solid',
     paddingTop: 10,
     textAlign: 'center',
+  },
+  // New Styles for Overview
+  kpiContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+  },
+  kpiBox: {
+    flex: 1,
+    padding: 8,
+    borderWidth: 1,
+    borderRadius: 6,
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+    marginRight: 8,
+  },
+  kpiBoxLast: {
+    marginRight: 0,
+  },
+  kpiTitle: {
+    fontSize: 8,
+    textTransform: 'uppercase',
+    color: '#64748B',
+    marginBottom: 4,
+    fontWeight: 'bold',
+  },
+  kpiValue: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#0F172A',
+  },
+  healthContainer: {
+    marginBottom: 20,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 8,
+    backgroundColor: '#F8FAFC',
+  },
+  healthHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+    alignItems: 'center',
+  },
+  healthTitle: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    color: '#9CA3AF',
+  },
+  healthLegend: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  progressBar: {
+    flexDirection: 'row',
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressSegment: {
+    height: '100%',
+  },
+  healthSummary: {
+    marginTop: 8,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });
 
@@ -178,6 +275,11 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
   const criticalCount = allAssets.filter(a => a.remaining < 0).length;
   const dueSoonCount = allAssets.filter(a => a.remaining >= 0 && a.remaining < 30).length;
   const healthyCount = allAssets.filter(a => a.remaining >= 30).length;
+  const totalCount = allAssets.length;
+
+  const criticalPct = totalCount > 0 ? (criticalCount / totalCount) * 100 : 0;
+  const dueSoonPct = totalCount > 0 ? (dueSoonCount / totalCount) * 100 : 0;
+  const healthyPct = totalCount > 0 ? (healthyCount / totalCount) * 100 : 0;
 
   return (
     <Document>
@@ -203,12 +305,54 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
         </View>
 
         {/* Summary Statistics */}
-        <View style={styles.summaryBox}>
-          <Text style={styles.subtitle}>Summary</Text>
-          <Text style={styles.summaryText}>Total Assets: {allAssets.length}</Text>
-          <Text style={styles.summaryText}>Critical Attention Required: {criticalCount}</Text>
-          <Text style={styles.summaryText}>Due Soon (Next 30 Days): {dueSoonCount}</Text>
-          <Text style={styles.summaryText}>Healthy: {healthyCount}</Text>
+        {/* KPI Cards */}
+        <View style={styles.kpiContainer}>
+          <View style={styles.kpiBox}>
+            <Text style={styles.kpiTitle}>Total Assets</Text>
+            <Text style={styles.kpiValue}>{totalCount}</Text>
+          </View>
+          <View style={[styles.kpiBox, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]}>
+            <Text style={[styles.kpiTitle, { color: '#DC2626' }]}>Critical</Text>
+            <Text style={[styles.kpiValue, { color: '#DC2626' }]}>{criticalCount}</Text>
+          </View>
+          <View style={[styles.kpiBox, { borderColor: '#FDE68A', backgroundColor: '#FFFBEB' }]}>
+            <Text style={[styles.kpiTitle, { color: '#D97706' }]}>Due Soon</Text>
+            <Text style={[styles.kpiValue, { color: '#D97706' }]}>{dueSoonCount}</Text>
+          </View>
+          <View style={[styles.kpiBox, styles.kpiBoxLast, { borderColor: '#A7F3D0', backgroundColor: '#ECFDF5' }]}>
+            <Text style={[styles.kpiTitle, { color: '#059669' }]}>Healthy</Text>
+            <Text style={[styles.kpiValue, { color: '#059669' }]}>{healthyCount}</Text>
+          </View>
+        </View>
+
+        {/* Overall Health Bar */}
+        <View style={styles.healthContainer}>
+          <View style={styles.healthHeader}>
+            <Text style={styles.healthTitle}>Overall Health</Text>
+            <View style={styles.healthLegend}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: '#EF4444' }}>{Math.round(criticalPct)}%</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F59E0B', marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: '#F59E0B' }}>{Math.round(dueSoonPct)}%</Text>
+              </View>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: '#10B981' }}>{Math.round(healthyPct)}%</Text>
+              </View>
+            </View>
+          </View>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressSegment, { width: `${criticalPct}%`, backgroundColor: '#EF4444' }]} />
+            <View style={[styles.progressSegment, { width: `${dueSoonPct}%`, backgroundColor: '#F59E0B' }]} />
+            <View style={[styles.progressSegment, { width: `${healthyPct}%`, backgroundColor: '#10B981' }]} />
+          </View>
+          <View style={styles.healthSummary}>
+            <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#EF4444' }}>{Math.round(criticalPct)}% Critical</Text>
+            <Text style={{ fontSize: 9, color: '#9CA3AF', marginLeft: 4 }}>({criticalCount} assets)</Text>
+          </View>
         </View>
 
         {/* Service & Calibration Equipment */}
@@ -222,23 +366,27 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
               <Text style={styles.headerCell}>Due Date</Text>
               <Text style={styles.headerCell}>Days Remaining</Text>
               <Text style={styles.headerCell}>Status</Text>
-              <Text style={styles.headerCell}>Comment</Text>
             </View>
             {site.serviceData
               .filter(asset => asset.active !== false)
               .map((asset, index) => (
-                <View key={`service-${index}`} style={styles.row}>
-                  <Text style={styles.cell}>{asset.name}</Text>
-                  <Text style={styles.cell}>{asset.code}</Text>
-                  <Text style={styles.cell}>{asset.lastCal}</Text>
-                  <Text style={styles.cell}>{asset.dueDate}</Text>
-                  <Text style={styles.cell}>{asset.remaining}</Text>
-                  <Text style={[styles.cell, getStatusStyle(asset)]}>
-                    {getStatusText(asset)}
-                  </Text>
-                  <Text style={styles.cell}>
-                    {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote ? asset.opNote : '-'}
-                  </Text>
+                <View key={`service-${index}`} style={styles.entryContainer}>
+                  <View style={styles.row}>
+                    <Text style={styles.cell}>{asset.name}</Text>
+                    <Text style={styles.cell}>{asset.code}</Text>
+                    <Text style={styles.cell}>{asset.lastCal}</Text>
+                    <Text style={styles.cell}>{asset.dueDate}</Text>
+                    <Text style={styles.cell}>{asset.remaining}</Text>
+                    <Text style={[styles.cell, getStatusStyle(asset)]}>
+                      {getStatusText(asset)}
+                    </Text>
+                  </View>
+                  {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote && (
+                    <View style={styles.commentRow}>
+                      <Text style={styles.commentLabel}>Comment:</Text>
+                      <Text style={styles.commentText}>{asset.opNote}</Text>
+                    </View>
+                  )}
                 </View>
               ))}
           </View>
@@ -255,23 +403,27 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
               <Text style={styles.headerCell}>Due Date</Text>
               <Text style={styles.headerCell}>Days Remaining</Text>
               <Text style={styles.headerCell}>Status</Text>
-              <Text style={styles.headerCell}>Comment</Text>
             </View>
             {site.rollerData
               .filter(asset => asset.active !== false)
               .map((asset, index) => (
-                <View key={`roller-${index}`} style={styles.row}>
-                  <Text style={styles.cell}>{asset.name}</Text>
-                  <Text style={styles.cell}>{asset.code}</Text>
-                  <Text style={styles.cell}>{asset.lastCal}</Text>
-                  <Text style={styles.cell}>{asset.dueDate}</Text>
-                  <Text style={styles.cell}>{asset.remaining}</Text>
-                  <Text style={[styles.cell, getStatusStyle(asset)]}>
-                    {getStatusText(asset)}
-                  </Text>
-                  <Text style={styles.cell}>
-                    {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote ? asset.opNote : '-'}
-                  </Text>
+                <View key={`roller-${index}`} style={styles.entryContainer}>
+                  <View style={styles.row}>
+                    <Text style={styles.cell}>{asset.name}</Text>
+                    <Text style={styles.cell}>{asset.code}</Text>
+                    <Text style={styles.cell}>{asset.lastCal}</Text>
+                    <Text style={styles.cell}>{asset.dueDate}</Text>
+                    <Text style={styles.cell}>{asset.remaining}</Text>
+                    <Text style={[styles.cell, getStatusStyle(asset)]}>
+                      {getStatusText(asset)}
+                    </Text>
+                  </View>
+                  {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote && (
+                    <View style={styles.commentRow}>
+                      <Text style={styles.commentLabel}>Comment:</Text>
+                      <Text style={styles.commentText}>{asset.opNote}</Text>
+                    </View>
+                  )}
                 </View>
               ))}
           </View>

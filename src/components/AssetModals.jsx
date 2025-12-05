@@ -140,188 +140,167 @@ export const EditAssetModal = ({
 
         {/* === SPECIFICATIONS SECTION (MERGED CONTENT) === */}
         <div className="pt-4 border-t border-slate-700 space-y-4">
-        {!specs ? (
-          <div className="text-center py-8 text-slate-400">
-            <p className="mb-4">No specifications found for this asset.</p>
-            <Button
-              onClick={() => {
-                setSpecs({
-                  id: null,
-                  weigher: editingAsset.weigher || '',
-                  altCode: editingAsset.code || '',
-                  description: editingAsset.name || '',
-                  scaleType: '',
-                  integratorController: '',
-                  speedSensorType: '',
-                  rollDims: '',
-                  adjustmentType: '',
-                  loadCellBrand: '',
-                  loadCellSize: '',
-                  loadCellSensitivity: '',
-                  numberOfLoadCells: '',
-                  billetWeightType: '',
-                  billetWeightSize: '',
-                  notes: []
-                });
-              }}
-              className="justify-center"
-            >
-              Create Specification
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="grid grid-cols-2 gap-4">
+          {!specs ? (
+            <div className="text-center py-8 text-slate-400">
+              <p className="mb-4">No specifications found for this asset.</p>
+              <Button
+                onClick={() => {
+                  setSpecs({
+                    id: null,
+                    weigher: editingAsset.weigher || '',
+                    altCode: editingAsset.code || '',
+                    description: editingAsset.name || '',
+                    scaleType: '',
+                    integratorController: '',
+                    speedSensorType: '',
+                    rollDims: '',
+                    adjustmentType: '',
+                    loadCellBrand: '',
+                    loadCellSize: '',
+                    loadCellSensitivity: '',
+                    numberOfLoadCells: '',
+                    billetWeightType: '',
+                    billetWeightSize: '',
+                    notes: []
+                  });
+                }}
+                className="justify-center"
+              >
+                Create Specification
+              </Button>
+            </div>
+          ) : (
+            <>
               <div>
-                <label className={labelClass}>Asset Name</label>
+                <label className={labelClass}>Long Description</label>
                 <input
                   className={inputClass}
-                  value={specs.weigher}
-                  onChange={e => setSpecs({ ...specs, weigher: e.target.value })}
-                  placeholder="e.g. W1"
+                  value={specs.description}
+                  onChange={e => setSpecs({ ...specs, description: e.target.value })}
                 />
               </div>
-              <div>
-                <label className={labelClass}>Asset Code</label>
-                <input
-                  className={inputClass}
-                  value={specs.altCode}
-                  onChange={e => setSpecs({ ...specs, altCode: e.target.value })}
-                  placeholder="Matches Asset Code"
-                />
-              </div>
-            </div>
 
-            <div>
-              <label className={labelClass}>Description</label>
-              <input
-                className={inputClass}
-                value={specs.description}
-                onChange={e => setSpecs({ ...specs, description: e.target.value })}
-              />
-            </div>
-
-            <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
-              <h4 className="text-blue-400 text-sm font-bold uppercase mb-3">Scale Details</h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Scale Type</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.scaleType}
-                    onChange={e => setSpecs({ ...specs, scaleType: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Integrator / Controller</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.integratorController}
-                    onChange={e => setSpecs({ ...specs, integratorController: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Speed Sensor Type</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.speedSensorType}
-                    onChange={e => setSpecs({ ...specs, speedSensorType: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Load Cell Brand</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.loadCellBrand}
-                    onChange={e => setSpecs({ ...specs, loadCellBrand: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Load Cell Size (e.g. 50kg)</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.loadCellSize}
-                    onChange={e => setSpecs({ ...specs, loadCellSize: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block">LC Sensitivity (mV/V)</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.loadCellSensitivity}
-                    onChange={e => setSpecs({ ...specs, loadCellSensitivity: e.target.value })}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-[10px] text-slate-400 block">Number of Load Cells</label>
-                  <input
-                    type="number"
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.numberOfLoadCells}
-                    onChange={e => setSpecs({ ...specs, numberOfLoadCells: e.target.value })}
-                  />
+              <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
+                <h4 className="text-blue-400 text-sm font-bold uppercase mb-3">Scale Details</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Scale Type</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.scaleType}
+                      onChange={e => setSpecs({ ...specs, scaleType: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Integrator / Controller</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.integratorController}
+                      onChange={e => setSpecs({ ...specs, integratorController: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Speed Sensor Type</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.speedSensorType}
+                      onChange={e => setSpecs({ ...specs, speedSensorType: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Load Cell Brand</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.loadCellBrand}
+                      onChange={e => setSpecs({ ...specs, loadCellBrand: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Load Cell Size (e.g. 50kg)</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.loadCellSize}
+                      onChange={e => setSpecs({ ...specs, loadCellSize: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">LC Sensitivity (mV/V)</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.loadCellSensitivity}
+                      onChange={e => setSpecs({ ...specs, loadCellSensitivity: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-slate-400 block">Number of Load Cells</label>
+                    <input
+                      type="number"
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.numberOfLoadCells}
+                      onChange={e => setSpecs({ ...specs, numberOfLoadCells: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Roller Details Section */}
-            <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
-              <h4 className="text-orange-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
-                <span>🔧</span> Roller Details
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="text-[10px] text-slate-400 block">Roller Dimensions</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.rollDims}
-                    onChange={e => setSpecs({ ...specs, rollDims: e.target.value })}
-                    placeholder="e.g. 100mm x 50mm"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-[10px] text-slate-400 block">Adjustment Type</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.adjustmentType}
-                    onChange={e => setSpecs({ ...specs, adjustmentType: e.target.value })}
-                  />
+              {/* Roller Details Section */}
+              <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
+                <h4 className="text-orange-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
+                  <span>🔧</span> Roller Details
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-slate-400 block">Roller Dimensions</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.rollDims}
+                      onChange={e => setSpecs({ ...specs, rollDims: e.target.value })}
+                      placeholder="e.g. 100mm x 50mm"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-[10px] text-slate-400 block">Adjustment Type</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.adjustmentType}
+                      onChange={e => setSpecs({ ...specs, adjustmentType: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Billet Details Section */}
-            <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
-              <h4 className="text-purple-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
-                <span>⚖️</span> Billet Details
-              </h4>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Billet Weight Type</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.billetWeightType}
-                    onChange={e => setSpecs({ ...specs, billetWeightType: e.target.value })}
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] text-slate-400 block">Billet Weight Size</label>
-                  <input
-                    className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                    value={specs.billetWeightSize}
-                    onChange={e => setSpecs({ ...specs, billetWeightSize: e.target.value })}
-                  />
+              {/* Billet Details Section */}
+              <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
+                <h4 className="text-purple-400 text-sm font-bold uppercase mb-3 flex items-center gap-2">
+                  <span>⚖️</span> Billet Details
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Billet Weight Type</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.billetWeightType}
+                      onChange={e => setSpecs({ ...specs, billetWeightType: e.target.value })}
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] text-slate-400 block">Billet Weight Size</label>
+                    <input
+                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                      value={specs.billetWeightSize}
+                      onChange={e => setSpecs({ ...specs, billetWeightSize: e.target.value })}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
 
-                      </>
-        )}
+            </>
+          )}
 
         </div>
         {/* --- ACTION BUTTONS (CONSOLIDATED) --- */}
         <div className="flex gap-2 pt-2 border-t border-slate-700">
-          
+
           {/* 1. Primary Save Button (FIX: Combines Asset and Spec saves) */}
           <Button
             onClick={() => {

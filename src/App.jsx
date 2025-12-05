@@ -451,17 +451,17 @@ export default function App() {
             <div className="flex justify-between"><span>Load Cell:</span><span className="font-medium text-slate-200">{selectedSpecs.loadCell || '-'}</span></div>
           </div>
         </div>
-        {/* Roller & Billet Section */}
+        {/* Roller Details Section */}
         <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
-          <div className="text-orange-400 text-sm font-bold uppercase mb-2">Roller & Billet</div>
+          <div className="text-orange-400 text-sm font-bold uppercase mb-2">Roller Details</div>
 
-          {/* Combined Dimensions Badge (kept as unique view feature) */}
+          {/* Combined Dimensions Badge */}
           <div
             className="font-mono text-xs bg-slate-800 p-2 rounded border border-slate-600 break-all mb-2 text-slate-300 cursor-copy hover:bg-slate-700 transition-colors relative group"
-            onClick={() => copyToClipboard(`${selectedAsset.rollerDiameter}mm x ${selectedAsset.faceWidth}mm`)}
+            onClick={() => copyToClipboard(selectedSpecs.rollDims || '')}
             title="Click to copy"
           >
-            {selectedAsset.rollerDiameter || '-'}mm x {selectedAsset.faceWidth || '-'}mm
+            {selectedSpecs.rollDims || '-'}
             <span className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
               <Icons.CheckSquare size={14} />
             </span>
@@ -470,17 +470,16 @@ export default function App() {
           {/* Detailed Fields */}
           <div className="text-sm space-y-1">
             <div className="flex justify-between">
-              <span className="text-slate-500">Shaft Diameter:</span>
-              <span className="font-medium text-slate-200">{selectedAsset.shaftDiameter || '-'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-slate-500">Bearing Type:</span>
-              <span className="font-medium text-slate-200">{selectedAsset.bearingType || '-'}</span>
-            </div>
-            <div className="flex justify-between">
               <span className="text-slate-500">Adjustment Type:</span>
               <span className="font-medium text-slate-200">{selectedSpecs.adjustmentType || '-'}</span>
             </div>
+          </div>
+        </div>
+
+        {/* Billet Details Section */}
+        <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
+          <div className="text-purple-400 text-sm font-bold uppercase mb-2">Billet Details</div>
+          <div className="text-sm space-y-1">
             <div className="flex justify-between">
               <span className="text-slate-500">Billet Type:</span>
               <span className="font-medium text-slate-200">{selectedSpecs.billetType || '-'}</span>
@@ -1373,8 +1372,8 @@ export default function App() {
                           </td>
                           <td className="px-4 py-2 font-medium text-slate-200">{item.name} {item.active === false && <span className="text-[10px] text-slate-400">(Archived)</span>}</td>
                           <td className="px-4 py-2 font-mono text-xs text-slate-400">{item.code}</td>
-                          <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
-                          <td className="px-4 py-2"><EditableCell value={item.lastCal} type="date" onSave={(val) => handleInlineUpdate(item.id, 'lastCal', val)} className="bg-slate-800 text-white border-slate-600" /></td>
+                          <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val, activeTab)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
+                          <td className="px-4 py-2"><EditableCell value={item.lastCal} type="date" onSave={(val) => handleInlineUpdate(item.id, 'lastCal', val, activeTab)} className="bg-slate-800 text-white border-slate-600" /></td>
                           <td className="px-4 py-2 text-slate-400 font-medium">{formatDate(item.dueDate)}</td>
                           <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
                           <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>

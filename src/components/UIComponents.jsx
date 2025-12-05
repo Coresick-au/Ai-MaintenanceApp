@@ -264,7 +264,7 @@ export const SimpleBarChart = ({ data }) => {
   return (
     // 2. IMPORTANT: Increased height to accommodate rotated labels
     <div className="h-80 w-full mt-4">
-      <ResponsiveContainer width="100%" height="100%" aspect={2}>
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
 
@@ -447,7 +447,7 @@ export const Modal = ({ title, onClose, children, size = "md" }) => {
   const maxWidth = size === "max" ? "max-w-7xl" : size === "lg" ? "max-w-4xl" : "max-w-md";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm">
       <div className={`bg-slate-800 rounded-lg shadow-2xl border border-slate-700 w-full ${maxWidth} max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in duration-200`}>
         <div className="flex justify-between items-center p-4 border-b border-slate-700">
           <h3 className="font-semibold text-lg text-slate-200 text-slate-100">{title}</h3>

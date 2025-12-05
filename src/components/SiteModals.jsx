@@ -504,75 +504,111 @@ export const SiteNotesModal = ({
             filteredNotes.map((note) => (
               <div
                 key={note.id}
-                className={`p-3 rounded-lg border transition-all ${note.archived
-                  ? 'bg-slate-900/30 border-slate-800 opacity-60'
-                  : 'bg-slate-800 border-slate-700'
-                  } ${editingNote?.id === note.id ? 'ring-2 ring-blue-500' : ''}`}
+                className={`group rounded-lg border transition-all ${note.archived
+                    ? 'bg-slate-900/30 border-slate-800 opacity-60'
+                    : 'bg-slate-700/50 border-slate-600 hover:border-blue-500/50'
+                  } p-3`}
               >
                 {editingNote?.id === note.id ? (
-                  // Edit Mode
+                  // EDITING STATE (Refined buttons for Archive/Delete)
                   <div className="space-y-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <span className="font-bold text-blue-400 text-xs uppercase tracking-wide">Editing Note...</span>
+                    </div>
                     <input
-                      type="text"
+                      className="w-full border border-slate-600 rounded p-2 text-sm mb-1 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                       value={editAuthor}
                       onChange={(e) => setEditAuthor(e.target.value)}
-                      className={`${inputClass} text-xs`}
-                      placeholder="Author"
+                      placeholder="Author Name"
                     />
                     <textarea
+                      className="w-full border border-slate-600 rounded p-2 text-sm bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-blue-500 resize-none"
+                      rows="3"
                       value={editContent}
                       onChange={(e) => setEditContent(e.target.value)}
-                      rows={3}
-                      className={`${inputClass} resize-none text-sm`}
                     />
-                    <div className="flex gap-2">
-                      <Button onClick={handleSaveEdit} className="flex-1 justify-center text-xs py-1">
-                        <Icons.Check size={14} /> Save
-                      </Button>
-                      <Button onClick={handleCancelEdit} variant="secondary" className="flex-1 justify-center text-xs py-1">
-                        <Icons.X size={14} /> Cancel
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  // View Mode
-                  <>
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-slate-300">👤 {note.author}</span>
-                        {note.archived && (
-                          <span className="px-1.5 py-0.5 text-[10px] bg-slate-700 text-slate-400 rounded">Archived</span>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-slate-500">{formatDate(note.timestamp, true)}</span>
-                    </div>
-                    <p className="text-slate-300 text-sm mb-3 whitespace-pre-wrap">{note.content}</p>
-
-                    {/* Action Buttons */}
-                    <div className="flex gap-1 pt-2 border-t border-slate-700">
-                      <button
-                        onClick={() => handleStartEdit(note)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs text-blue-400 hover:bg-blue-900/30 rounded transition-colors"
-                      >
-                        <Icons.Edit size={12} /> Edit
-                      </button>
+                    <div className="flex gap-2 justify-end pt-2 border-t border-slate-600 items-center">
+                      {/* Icon-only Archive/Delete for editing state */}
                       <button
                         onClick={() => handleArchive(note.id, note.archived)}
-                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-colors ${note.archived
-                          ? 'text-green-400 hover:bg-green-900/30'
-                          : 'text-orange-400 hover:bg-orange-900/30'
-                          }`}
+                        className={`p-1.5 rounded hover:bg-slate-600 transition-colors ${note.archived ? 'text-green-400' : 'text-amber-400'}`}
+                        title={note.archived ? "Restore Note" : "Archive Note"}
                       >
-                        {note.archived ? <><Icons.RotateCcw size={12} /> Restore</> : <><Icons.Archive size={12} /> Archive</>}
+                        {note.archived ? <Icons.RotateCcw size={16} /> : <Icons.Archive size={16} />}
                       </button>
                       <button
                         onClick={() => handleDelete(note.id)}
-                        className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs text-red-400 hover:bg-red-900/30 rounded transition-colors"
+                        className="p-1.5 rounded text-red-400 hover:bg-slate-600 hover:text-red-300 transition-colors"
+                        title="Delete Note"
                       >
-                        <Icons.Trash size={12} /> Delete
+                        <Icons.Trash size={16} />
+                      </button>
+
+                      <div className="w-px h-4 bg-slate-600 mx-1"></div>
+
+                      {/* Text buttons for primary actions */}
+                      <button onClick={handleCancelEdit} className="bg-slate-600 text-white px-3 py-1 rounded text-xs hover:bg-slate-500 font-bold transition-colors flex items-center gap-1">
+                        <Icons.X size={14} /> Cancel
+                      </button>
+                      <button onClick={handleSaveEdit} className="bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-500 font-bold transition-colors flex items-center gap-1">
+                        <Icons.Check size={14} /> Save
                       </button>
                     </div>
-                  </>
+                  </div>
+                ) : (
+                  // DISPLAY STATE (Refined: Clickable content, hover buttons)
+                  <button
+                    type="button"
+                    onClick={() => handleStartEdit(note)}
+                    className="w-full text-left space-y-2 p-0 relative focus:outline-none rounded-lg group-hover:scale-[1.005] transition-transform duration-200"
+                    title="Click to edit note"
+                  >
+                    <div className="flex justify-between items-start mb-1 relative pr-16">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-300 bg-slate-800/80 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-slate-700/50">👤 {note.author || 'UNKNOWN'}</span>
+                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                          {formatDate(note.timestamp, true)}
+                        </span>
+                        {note.archived && (
+                          <span className="px-1.5 py-0.5 text-[10px] bg-slate-800 text-orange-400 rounded border border-orange-900/30">Archived</span>
+                        )}
+                      </div>
+
+                      {/* Floating Icon-Only Action Buttons (Visible on group-hover) */}
+                      <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 bg-slate-800 rounded-lg shadow-lg border border-slate-600 p-1 scale-90 group-hover:scale-100">
+                        {/* Edit Visual Cue */}
+                        <span className="p-1.5 rounded text-blue-400 hover:bg-slate-700" title="Edit Note">
+                          <Icons.Edit size={14} />
+                        </span>
+
+                        <div className="w-px h-4 bg-slate-700 my-auto mx-0.5"></div>
+
+                        {/* Archive Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleArchive(note.id, note.archived); }}
+                          className={`p-1.5 rounded hover:bg-slate-700 transition-colors ${note.archived ? 'text-green-400' : 'text-amber-400'}`}
+                          title={note.archived ? "Restore Note" : "Archive Note"}
+                        >
+                          {note.archived ? <Icons.RotateCcw size={14} /> : <Icons.Archive size={14} />}
+                        </button>
+                        {/* Delete Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
+                          className="p-1.5 rounded text-red-400 hover:bg-slate-700 hover:text-red-300 transition-colors"
+                          title="Delete Note"
+                        >
+                          <Icons.Trash size={14} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Note Content */}
+                    <p className={`text-sm text-slate-300 whitespace-pre-wrap leading-relaxed ${note.archived ? 'line-through opacity-70' : ''}`}>
+                      {note.content}
+                    </p>
+                  </button>
                 )}
               </div>
             ))

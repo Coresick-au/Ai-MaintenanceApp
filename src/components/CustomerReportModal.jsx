@@ -1,4 +1,9 @@
 import React, { useRef } from 'react';
+// ==========================================
+// IMPORTANT: LAYOUT SYNCHRONIZATION
+// Changes made to the Report Preview Layout (this file) MUST be mirrored 
+// in the PDF Export (MaintenanceReportPDF.tsx) to ensure Visual Consistency.
+// ==========================================
 import { Modal, Button } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
@@ -18,7 +23,7 @@ export const CustomerReportModal = ({
 }) => {
     const modalContainerRef = useRef(null);
     const reportContentRef = useRef(null);
-    
+
     if (!isOpen || !site) return null;
 
     // Sort and filter data at the top
@@ -29,7 +34,7 @@ export const CustomerReportModal = ({
         if (a.remaining >= 30 && b.remaining >= 0 && b.remaining < 30) return 1;
         return a.remaining - b.remaining;
     };
-    
+
     const sortedService = [...serviceData].filter(a => a.active !== false).sort(sortByDue);
     const sortedRoller = [...rollerData].filter(a => a.active !== false).sort(sortByDue);
 
@@ -44,7 +49,7 @@ export const CustomerReportModal = ({
 
             // Create PDF using react-pdf
             const blob = await pdf((
-                <MaintenanceReportPDF 
+                <MaintenanceReportPDF
                     site={{
                         ...site,
                         serviceData,
@@ -86,7 +91,7 @@ export const CustomerReportModal = ({
             ['Critical Attention', [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length],
             ['Due < 30 Days', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length],
         ];
-        
+
         const summaryWs = XLSX.utils.aoa_to_sheet(summaryData);
         XLSX.utils.book_append_sheet(wb, summaryWs, 'Summary');
 
@@ -100,7 +105,7 @@ export const CustomerReportModal = ({
             getStatusText(item.opStatus),
             item.remaining
         ]);
-        
+
         const serviceWs = XLSX.utils.aoa_to_sheet([serviceHeaders, ...serviceRows]);
         XLSX.utils.book_append_sheet(wb, serviceWs, 'Service & Calibration');
 
@@ -115,7 +120,7 @@ export const CustomerReportModal = ({
                 getStatusText(item.opStatus),
                 item.remaining
             ]);
-            
+
             const rollerWs = XLSX.utils.aoa_to_sheet([rollerHeaders, ...rollerRows]);
             XLSX.utils.book_append_sheet(wb, rollerWs, 'Roller Data');
         }
@@ -415,7 +420,7 @@ export const CustomerReportModal = ({
             canvas.toBlob((blob) => {
                 const fileName = `maintenance-report-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.png`;
                 saveAs(blob, fileName);
-                
+
                 // Reset button
                 originalButton.innerHTML = originalText;
                 originalButton.disabled = false;
@@ -424,7 +429,7 @@ export const CustomerReportModal = ({
         } catch (error) {
             console.error('Image export failed:', error);
             alert('Failed to capture image. Please try again.');
-            
+
             // Reset button on error
             originalButton.innerHTML = originalText;
             originalButton.disabled = false;
@@ -436,6 +441,19 @@ export const CustomerReportModal = ({
         if (opStatus === 'Down') return 'DOWN/CRITICAL';
         if (opStatus === 'Warning') return 'WARNING';
         return 'OPERATIONAL';
+    };
+
+    // Helper for preview status text and color (STRICTLY OPERATION STATUS)
+    const getPreviewStatus = (item) => {
+        if (item.opStatus === 'Down') return 'DOWN/CRITICAL';
+        if (item.opStatus === 'Warning') return 'WARNING';
+        return 'OPERATIONAL';
+    };
+
+    const getPreviewColor = (item) => {
+        if (item.opStatus === 'Down') return 'bg-red-100 text-red-800';
+        if (item.opStatus === 'Warning') return 'bg-amber-100 text-amber-800';
+        return 'bg-green-100 text-green-800';
     };
 
     return (
@@ -491,24 +509,56 @@ export const CustomerReportModal = ({
                         </header>
 
                         {/* EXECUTIVE SUMMARY */}
-                        <section className="mb-8 grid grid-cols-3 gap-6">
-                            <div className="p-4 border border-gray-300 rounded bg-white">
-                                <div className="text-xs font-bold text-black uppercase">Total Assets</div>
-                                <div className="text-2xl font-bold text-black">{sortedService.length + sortedRoller.length}</div>
-                            </div>
-                            <div className="p-4 border border-gray-300 rounded bg-white">
-                                <div className="text-xs font-bold text-black uppercase">Critical Attention</div>
-                                <div className="text-2xl font-bold text-red-600">
-                                    {[...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length}
-                                </div>
-                            </div>
-                            <div className="p-4 border border-gray-300 rounded bg-white">
-                                <div className="text-xs font-bold text-black uppercase">Due &lt; 30 Days</div>
-                                <div className="text-2xl font-bold text-amber-600">
-                                    {[...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length}
-                                </div>
-                            </div>
-                        </section>
+                        {/* EXECUTIVE SUMMARY */}
+                        {(() => {
+                            const allAssets = [...sortedService, ...sortedRoller];
+                            const totalAssets = allAssets.length;
+                            const criticalCount = allAssets.filter(i => i.remaining < 0).length;
+                            const warningCount = allAssets.filter(i => i.remaining >= 0 && i.remaining < 30).length;
+                            const healthyCount = allAssets.filter(i => i.remaining >= 30).length;
+
+                            const criticalPct = totalAssets > 0 ? Math.round((criticalCount / totalAssets) * 100) : 0;
+                            const warningPct = totalAssets > 0 ? Math.round((warningCount / totalAssets) * 100) : 0;
+                            const healthyPct = totalAssets > 0 ? Math.round((healthyCount / totalAssets) * 100) : 0;
+
+                            return (
+                                <section className="mb-8">
+                                    <div className="grid grid-cols-3 gap-6 mb-6">
+                                        <div className="p-4 border border-gray-300 rounded bg-white">
+                                            <div className="text-xs font-bold text-black uppercase">Total Assets</div>
+                                            <div className="text-2xl font-bold text-black">{totalAssets}</div>
+                                        </div>
+                                        <div className="p-4 border border-gray-300 rounded bg-white">
+                                            <div className="text-xs font-bold text-black uppercase">Critical Attention</div>
+                                            <div className="text-2xl font-bold text-red-600">{criticalCount}</div>
+                                        </div>
+                                        <div className="p-4 border border-gray-300 rounded bg-white">
+                                            <div className="text-xs font-bold text-black uppercase">Due &lt; 30 Days</div>
+                                            <div className="text-2xl font-bold text-amber-600">{warningCount}</div>
+                                        </div>
+                                    </div>
+
+                                    <div className="p-4 border border-gray-300 rounded bg-white">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-gray-500 uppercase">Overall Health</span>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-xs text-red-600 font-medium">{criticalPct}%</span></div>
+                                                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-xs text-amber-600 font-medium">{warningPct}%</span></div>
+                                                <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div><span className="text-xs text-green-600 font-medium">{healthyPct}%</span></div>
+                                            </div>
+                                        </div>
+                                        <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden flex">
+                                            <div className="bg-red-500 transition-all duration-500" style={{ width: `${criticalPct}%` }}></div>
+                                            <div className="bg-amber-500 transition-all duration-500" style={{ width: `${warningPct}%` }}></div>
+                                            <div className="bg-green-500 transition-all duration-500" style={{ width: `${healthyPct}%` }}></div>
+                                        </div>
+                                        <div className="mt-2 text-center text-xs text-gray-400">
+                                            <span className="font-bold text-red-600 text-sm">{criticalPct}% Critical</span> ({criticalCount} assets)
+                                        </div>
+                                    </div>
+                                </section>
+                            );
+                        })()}
 
                         {/* SERVICE SCHEDULE */}
                         <section className="mb-10">
@@ -522,26 +572,39 @@ export const CustomerReportModal = ({
                                         <th className="py-2 font-bold">Code</th>
                                         <th className="py-2 font-bold">Last Service</th>
                                         <th className="py-2 font-bold">Due Date</th>
-                                        <th className="py-2 font-bold text-right">Status</th>
+                                        <th className="py-2 font-bold text-right">Operation Status</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-300">
                                     {sortedService.map((item) => (
-                                        <tr key={item.id} className="border-b border-gray-200">
-                                            <td className="py-3 font-semibold text-black">{item.name}</td>
-                                            <td className="py-3 font-mono text-black text-xs">{item.code}</td>
-                                            <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
-                                            <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
-                                            <td className="py-3 text-right">
-                                                <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                                    item.remaining < 0 ? 'bg-red-100 text-red-800' :
-                                                    item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
-                                                    'bg-green-100 text-green-800'
-                                                }`}>
-                                                    {getStatusText(item.opStatus)}
-                                                </span>
-                                            </td>
-                                        </tr>
+                                        <React.Fragment key={item.id}>
+                                            <tr className="border-b border-gray-200">
+                                                <td className="py-3 font-semibold text-black">{item.name}</td>
+                                                <td className="py-3 font-mono text-black text-xs">{item.code}</td>
+                                                <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
+                                                <td className="py-3 text-black font-medium">
+                                                    {item.remaining < 0 ? (
+                                                        <span className="text-red-700 font-bold border border-red-500 rounded px-1.5 py-0.5 inline-block">
+                                                            {formatDate(item.dueDate)}
+                                                        </span>
+                                                    ) : (
+                                                        formatDate(item.dueDate)
+                                                    )}
+                                                </td>
+                                                <td className="py-3 text-right">
+                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${getPreviewColor(item)}`}>
+                                                        {getPreviewStatus(item)}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                            {(item.opStatus === 'Down' || item.opStatus === 'Warning') && item.opNote && (
+                                                <tr className="border-b border-gray-200 bg-red-50/50">
+                                                    <td colSpan="5" className="py-2 px-4 text-xs italic text-slate-600">
+                                                        <span className="font-bold text-red-800">Comment:</span> {item.opNote}
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))}
                                 </tbody>
                             </table>
@@ -560,26 +623,39 @@ export const CustomerReportModal = ({
                                             <th className="py-2 font-bold">Code</th>
                                             <th className="py-2 font-bold">Last Service</th>
                                             <th className="py-2 font-bold">Due Date</th>
-                                            <th className="py-2 font-bold text-right">Status</th>
+                                            <th className="py-2 font-bold text-right">Operation Status</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-300">
                                         {sortedRoller.map((item) => (
-                                            <tr key={item.id} className="border-b border-gray-200">
-                                                <td className="py-3 font-semibold text-black">{item.name}</td>
-                                                <td className="py-3 font-mono text-black text-xs">{item.code}</td>
-                                                <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
-                                                <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
-                                                <td className="py-3 text-right">
-                                                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                                                        item.remaining < 0 ? 'bg-red-100 text-red-800' :
-                                                        item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
-                                                        'bg-green-100 text-green-800'
-                                                    }`}>
-                                                        {getStatusText(item.opStatus)}
-                                                    </span>
-                                                </td>
-                                            </tr>
+                                            <React.Fragment key={item.id}>
+                                                <tr className="border-b border-gray-200">
+                                                    <td className="py-3 font-semibold text-black">{item.name}</td>
+                                                    <td className="py-3 font-mono text-black text-xs">{item.code}</td>
+                                                    <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
+                                                    <td className="py-3 text-black font-medium">
+                                                        {item.remaining < 0 ? (
+                                                            <span className="text-red-700 font-bold border border-red-500 rounded px-1.5 py-0.5 inline-block">
+                                                                {formatDate(item.dueDate)}
+                                                            </span>
+                                                        ) : (
+                                                            formatDate(item.dueDate)
+                                                        )}
+                                                    </td>
+                                                    <td className="py-3 text-right">
+                                                        <span className={`px-2 py-1 rounded text-xs font-bold ${getPreviewColor(item)}`}>
+                                                            {getPreviewStatus(item)}
+                                                        </span>
+                                                    </td>
+                                                </tr>
+                                                {(item.opStatus === 'Down' || item.opStatus === 'Warning') && item.opNote && (
+                                                    <tr className="border-b border-gray-200 bg-red-50/50">
+                                                        <td colSpan="5" className="py-2 px-4 text-xs italic text-slate-600">
+                                                            <span className="font-bold text-red-800">Comment:</span> {item.opNote}
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>
