@@ -112,7 +112,7 @@ export const MasterListModal = ({
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Speed Sensor</th>
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Load Cell</th>
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Billet Info</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Roller Dimensions</th>
+                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)</th>
                 <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Adjustment Type</th>
               </tr>
             </thead>

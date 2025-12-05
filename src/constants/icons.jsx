@@ -18,6 +18,7 @@ import {
     FileText,
     Grid,
     ArrowLeft,
+    ArrowRight,
     Building,
     Upload,
     Trash,
@@ -61,7 +62,9 @@ import {
     ArrowDown,
     RotateCcw,
     Check,
-    FileSpreadsheet as FileCsv
+    FileSpreadsheet as FileCsv,
+    ExternalLink,
+    Info
 } from 'lucide-react';
 
 export const Icons = {
@@ -83,6 +86,7 @@ export const Icons = {
     FileText,
     Grid,
     ArrowLeft,
+    ArrowRight,
     Building,
     Upload,
     Trash,
@@ -125,5 +129,8 @@ export const Icons = {
     SortDesc: ArrowDown,
     RotateCcw,
     Check,
-    FileCsv
+    FileCsv,
+    ExternalLink,
+    Info,
+    XCircle
 };

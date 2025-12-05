@@ -246,7 +246,7 @@ const MasterListPDF = ({
                     <Text style={styles.tableColHeader}>Speed Sensor</Text>
                     <Text style={styles.tableColHeader}>Load Cell</Text>
                     <Text style={styles.tableColHeader}>Billet Info</Text>
-                    <Text style={styles.tableColHeader}>Roller Dims</Text>
+                    <Text style={styles.tableColHeader}>Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)</Text>
                     <Text style={styles.tableColHeader}>Adjustment</Text>
                   </View>
 

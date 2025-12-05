@@ -210,7 +210,7 @@ export const MasterListPDFPreview = ({
                       <th className="border border-gray-300 px-2 py-1 text-left font-bold text-xs">Speed Sensor</th>
                       <th className="border border-gray-300 px-2 py-1 text-left font-bold text-xs">Load Cell</th>
                       <th className="border border-gray-300 px-2 py-1 text-left font-bold text-xs">Billet Info</th>
-                      <th className="border border-gray-300 px-2 py-1 text-left font-bold text-xs">Roller Dimensions</th>
+                      <th className="border border-gray-300 px-2 py-1 text-left font-bold text-xs">Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)</th>
                       <th className="border border-gray-300 px-2 py-1 text-left font-bold text-xs">Adjustment Type</th>
                     </tr>
                   </thead>

@@ -160,7 +160,7 @@ export const CustomerReportModal = ({
         const specDataExport = [
             ['EQUIPMENT SPECIFICATIONS'],
             [''],
-            ['Asset Name', 'Asset Code', 'Weigher ID', 'Description', 'Scale Type', 'Integrator Controller', 'Speed Sensor Type', 'Load Cell Brand', 'Load Cell Size', 'Load Cell Sensitivity', 'Number of Load Cells', 'Roller Dimensions', 'Adjustment Type', 'Billet Weight Type', 'Billet Weight Size', 'Billet Weight IDs', 'Notes Count']
+            ['Asset Name', 'Asset Code', 'Weigher ID', 'Description', 'Scale Type', 'Integrator Controller', 'Speed Sensor Type', 'Load Cell Brand', 'Load Cell Size', 'Load Cell Sensitivity', 'Number of Load Cells', 'Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)', 'Adjustment Type', 'Billet Weight Type', 'Billet Weight Size', 'Billet Weight IDs', 'Notes Count']
         ];
         
         // Combine all assets and match with specs

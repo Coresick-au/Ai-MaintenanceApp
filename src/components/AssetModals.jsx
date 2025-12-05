@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Modal, Button, SecureDeleteButton, UniversalDatePicker } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 
@@ -85,6 +85,16 @@ export const EditAssetModal = ({
   setSpecs,
   onSaveSpecs
 }) => {
+  const [showRollerHelper, setShowRollerHelper] = useState(false);
+  const [rollerHelperData, setRollerHelperData] = useState({
+  diameter: '',
+  face: '',
+  b2b: '',
+  totalLength: '',
+  shaftSize: '',
+  slotSize: ''
+});
+
   if (!isOpen || !editingAsset) return null;
 
   return (
@@ -253,13 +263,22 @@ export const EditAssetModal = ({
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="col-span-2">
-                    <label className="text-[10px] text-slate-400 block">Roller Dimensions</label>
-                    <input
-                      className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                      value={specs.rollDims}
-                      onChange={e => setSpecs({ ...specs, rollDims: e.target.value })}
-                      placeholder="e.g. 100mm x 50mm"
-                    />
+                    <label className="text-[10px] text-slate-400 block">Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)</label>
+                    <div className="flex gap-2">
+                      <input
+                        className="flex-1 bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                        value={specs.rollDims}
+                        onChange={e => setSpecs({ ...specs, rollDims: e.target.value })}
+                        placeholder="e.g. 100mm x 50mm"
+                      />
+                      <button
+                        onClick={() => setShowRollerHelper(!showRollerHelper)}
+                        className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+                        title="Roller Size Entry Helper"
+                      >
+                        📐
+                      </button>
+                    </div>
                   </div>
                   <div className="col-span-2">
                     <label className="text-[10px] text-slate-400 block">Adjustment Type</label>
@@ -340,21 +359,21 @@ export const EditAssetModal = ({
           )}
 
         </div>
-        {/* --- ACTION BUTTONS (CONSOLIDATED) --- */}
+        {/* --- ACTION BUTTONS (REORDERED) --- */}
         <div className="flex gap-2 pt-2 border-t border-slate-700">
 
-          {/* 1. Primary Save Button (FIX: Combines Asset and Spec saves) */}
+          {/* 1. Primary Save Button (WIDER) */}
           <Button
             onClick={() => {
               onSave(editingAsset, activeTab); // Save asset details
               if (specs) onSaveSpecs(specs); // Save specs if they exist
             }}
-            className="flex-[2] justify-center"
+            className="flex-[3] justify-center"
           >
             Save All Changes
           </Button>
 
-          {/* 2. Archive/Reactivate Button (Unchanged logic) */}
+          {/* 2. Archive/Reactivate Button (SMALLER) */}
           <Button
             onClick={() => {
               const isArchiving = editingAsset.active !== false;
@@ -371,7 +390,7 @@ export const EditAssetModal = ({
             {editingAsset.active !== false ? '📦 Archive' : '✅ Reactivate'}
           </Button>
 
-          {/* NEW DOUBLE CONFIRM DELETE BUTTON */}
+          {/* 3. Delete Button (SMALLER) */}
           <button
             type="button"
             onClick={() => {
@@ -387,6 +406,115 @@ export const EditAssetModal = ({
           </button>
         </div>
       </div>
+
+      {/* Roller Size Entry Helper Modal */}
+      {showRollerHelper && (
+        <Modal title="Roller Size Entry Helper" onClose={() => setShowRollerHelper(false)}>
+          <div className="space-y-4">
+            <p className="text-sm text-slate-300">Enter roller dimensions in millimeters (mm):</p>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Diameter (mm)</label>
+                <input
+                  type="number"
+                  value={rollerHelperData.diameter}
+                  onChange={e => setRollerHelperData({ ...rollerHelperData, diameter: e.target.value })}
+                  placeholder="e.g., 100"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Face (mm)</label>
+                <input
+                  type="number"
+                  value={rollerHelperData.face}
+                  onChange={e => setRollerHelperData({ ...rollerHelperData, face: e.target.value })}
+                  placeholder="e.g., 50"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">B2B (mm)</label>
+                <input
+                  type="number"
+                  value={rollerHelperData.b2b}
+                  onChange={e => setRollerHelperData({ ...rollerHelperData, b2b: e.target.value })}
+                  placeholder="e.g., 600"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Total Length (mm)</label>
+                <input
+                  type="number"
+                  value={rollerHelperData.totalLength}
+                  onChange={e => setRollerHelperData({ ...rollerHelperData, totalLength: e.target.value })}
+                  placeholder="e.g., 650"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Shaft Size (mm)</label>
+                <input
+                  type="number"
+                  value={rollerHelperData.shaftSize}
+                  onChange={e => setRollerHelperData({ ...rollerHelperData, shaftSize: e.target.value })}
+                  placeholder="e.g., 25"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">Slot Size (mm)</label>
+                <input
+                  type="number"
+                  value={rollerHelperData.slotSize}
+                  onChange={e => setRollerHelperData({ ...rollerHelperData, slotSize: e.target.value })}
+                  placeholder="e.g., 10"
+                  className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Preview */}
+            <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
+              <p className="text-xs text-slate-400 mb-1">Preview:</p>
+              <p className="text-sm text-blue-400 font-mono">
+                {rollerHelperData.diameter || 'Diameter'}mm x {rollerHelperData.face || 'Face'}mm x {rollerHelperData.b2b || 'B2B'}mm x {rollerHelperData.totalLength || 'Total'}mm x {rollerHelperData.shaftSize || 'Shaft'}mm x {rollerHelperData.slotSize || 'Slot'}mm
+              </p>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3">
+              <Button
+                onClick={() => {
+                  const rollDimsString = `${rollerHelperData.diameter || 'Diameter'}mm x ${rollerHelperData.face || 'Face'}mm x ${rollerHelperData.b2b || 'B2B'}mm x ${rollerHelperData.totalLength || 'Total'}mm x ${rollerHelperData.shaftSize || 'Shaft'}mm x ${rollerHelperData.slotSize || 'Slot'}mm`;
+                  setSpecs({ ...specs, rollDims: rollDimsString });
+                  setShowRollerHelper(false);
+                  setRollerHelperData({
+                    diameter: '',
+                    face: '',
+                    b2b: '',
+                    totalLength: '',
+                    shaftSize: '',
+                    slotSize: ''
+                  });
+                }}
+                className="flex-1 justify-center"
+              >
+                Apply to Roller Dimensions
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => setShowRollerHelper(false)}
+                className="flex-1 justify-center"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </Modal>
   );
 };

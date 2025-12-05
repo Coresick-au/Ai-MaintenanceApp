@@ -4,6 +4,12 @@ import { Icons } from '../constants/icons.jsx';
 import { StatusBadge } from './UIComponents';
 import { getOverallSiteHealth } from '../utils/siteHealth';
 
+// Helper function to get display location
+const getDisplayLocation = (site) => {
+  if (!site) return 'No location';
+  return site.fullLocation || site.location || 'No location';
+};
+
 export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
     const [isOpen, setIsOpen] = useState(false);
     const dropdownRef = useRef(null);
@@ -72,9 +78,9 @@ export const SiteDropdown = ({ sites, selectedSiteId, onSiteChange }) => {
                                 >
                                     <div className="flex flex-col flex-1">
                                         <span className={isSelected ? 'font-bold' : ''}>{site.name}</span>
-                                        {site.location && (
+                                        {getDisplayLocation(site) && (
                                             <span className={`text-xs ${isSelected ? 'text-cyan-100' : 'text-slate-400'}`}>
-                                                {site.location}
+                                                {getDisplayLocation(site)}
                                             </span>
                                         )}
                                     </div>

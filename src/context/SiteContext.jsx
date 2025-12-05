@@ -4,6 +4,24 @@ import { recalculateRow, generateSampleSite } from '../data/mockData';
 import { safelyLoadData, loadSitesFromStorage } from '../utils/dataUtils';
 import { SiteContext } from './SiteContext.context';
 
+// Helper function to format full location string
+const formatFullLocation = (siteForm) => {
+  const parts = [];
+  
+  if (siteForm.streetAddress) parts.push(siteForm.streetAddress);
+  if (siteForm.city) parts.push(siteForm.city);
+  if (siteForm.state) parts.push(siteForm.state);
+  if (siteForm.postcode) parts.push(siteForm.postcode);
+  if (siteForm.country && siteForm.country !== 'Australia') parts.push(siteForm.country);
+  
+  // If no detailed address, fallback to location name
+  if (parts.length === 0 && siteForm.location) {
+    return siteForm.location;
+  }
+  
+  return parts.join(', ') || '';
+};
+
 export { SiteContext };
 export const SiteProvider = ({ children }) => {
     const { addUndoAction, clearDirty } = useUndo();
@@ -70,6 +88,13 @@ export const SiteProvider = ({ children }) => {
             name: siteForm.name,
             customer: siteForm.customer,
             location: siteForm.location,
+            fullLocation: formatFullLocation(siteForm),
+            streetAddress: siteForm.streetAddress || '',
+            city: siteForm.city || '',
+            state: siteForm.state || '',
+            postcode: siteForm.postcode || '',
+            country: siteForm.country || 'Australia',
+            gpsCoordinates: siteForm.gpsCoordinates || '',
             contactName: siteForm.contactName,
             contactEmail: siteForm.contactEmail,
             contactPosition: siteForm.contactPosition,
@@ -97,7 +122,17 @@ export const SiteProvider = ({ children }) => {
 
     const handleGenerateSample = () => {
         const sample = generateSampleSite();
-        setSites([sample, ...sites]);
+        
+        // Clear all service reports from existing sites
+        const sitesWithoutReports = sites.map(site => ({
+            ...site,
+            assets: (site.assets || []).map(asset => ({
+                ...asset,
+                reports: [] // Clear all service reports
+            }))
+        }));
+        
+        setSites([sample, ...sitesWithoutReports]);
     };
 
     const handleDeleteSite = (siteId) => {
@@ -120,6 +155,13 @@ export const SiteProvider = ({ children }) => {
             name: siteForm.name,
             customer: siteForm.customer,
             location: siteForm.location,
+            fullLocation: formatFullLocation(siteForm),
+            streetAddress: siteForm.streetAddress || '',
+            city: siteForm.city || '',
+            state: siteForm.state || '',
+            postcode: siteForm.postcode || '',
+            country: siteForm.country || 'Australia',
+            gpsCoordinates: siteForm.gpsCoordinates || '',
             contactName: siteForm.contactName,
             contactEmail: siteForm.contactEmail,
             contactPosition: siteForm.contactPosition,

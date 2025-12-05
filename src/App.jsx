@@ -43,9 +43,11 @@ import { AssetSpecsPDF } from './components/AssetSpecsPDF';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 
-// ==========================================
-// MAIN APP COMPONENT
-// ==========================================
+// Helper function to get display location
+const getDisplayLocation = (site) => {
+  if (!site) return 'No location';
+  return site.fullLocation || site.location || 'No location';
+};
 
 export default function App() {
   // Force HMR update
@@ -754,7 +756,7 @@ export default function App() {
             {/* Add Site */}
             <button
               type="button"
-              onClick={() => { closeFullscreen(); setSiteForm({ id: null, name: '', customer: '', location: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}
+              onClick={() => { closeFullscreen(); setSiteForm({ id: null, name: '', customer: '', location: '', fullLocation: '', streetAddress: '', city: '', state: '', postcode: '', country: 'Australia', gpsCoordinates: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}
               className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 bg-cyan-600 hover:bg-cyan-500 text-white shadow-md"
             >
               <Icons.Plus size={18} />
@@ -873,7 +875,7 @@ export default function App() {
                   <h2 className="2xl font-bold text-slate-200 text-slate-100 mb-2 leading-tight">
                     {site.name} {site.active === false && <span className="text-sm font-normal text-slate-400">(Archived)</span>}
                   </h2>
-                  <div className="flex items-center text-slate-400 text-sm mb-5"><span className="mr-1"><Icons.MapPin /></span> {site.location || 'No location'}</div>
+                  <div className="flex items-center text-slate-400 text-sm mb-5"><span className="mr-1"><Icons.MapPin /></span> {getDisplayLocation(selectedSite)}</div>
 
                   <div className="mb-4 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
                     <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Service Assets</div>
@@ -1777,7 +1779,7 @@ export default function App() {
         isOpen={viewAnalyticsAsset !== null}
         onClose={() => setViewAnalyticsAsset(null)}
         asset={viewAnalyticsAsset}
-        siteLocation={selectedSite?.location}
+        siteLocation={selectedSite?.fullLocation || selectedSite?.location}
         onSaveReport={handleSaveReport}
         onDeleteReport={handleDeleteReportWrapper}
       />

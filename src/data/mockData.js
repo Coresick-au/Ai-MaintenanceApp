@@ -38,21 +38,48 @@ const generateSampleReports = (startDate, numReports = 4) => {
 
     // 1. Calibration Drift (Tare/Span %)
     // Realistic drift: usually small, occasionally larger
-    const tareDrift = (Math.random() * 1.5 - 0.5).toFixed(2);
-    const spanDrift = (Math.random() * 1.0 - 0.4).toFixed(2);
+    const oldTare = (1000 + Math.random() * 500).toFixed(1);
+    const newTare = (parseFloat(oldTare) + (Math.random() * 20 - 10)).toFixed(1);
+    const tareChange = ((parseFloat(newTare) - parseFloat(oldTare)) / parseFloat(oldTare) * 100).toFixed(2);
+    
+    const oldSpan = (5000 + Math.random() * 1000).toFixed(1);
+    const newSpan = (parseFloat(oldSpan) + (Math.random() * 50 - 25)).toFixed(1);
+    const spanChange = ((parseFloat(newSpan) - parseFloat(oldSpan)) / parseFloat(oldSpan) * 100).toFixed(2);
 
-    // 2. Signal Health (mV/V)
-    // Zero usually around 8-9mV, Span around 12-13mV
-    const zeroMV = (8.3 + Math.random() * 0.4).toFixed(2);
-    const spanMV = (12.4 + Math.random() * 0.3).toFixed(2);
+    // 2. Repeatability values
+    const tareRepeatability = (Math.random() * 0.2).toFixed(3);
+    const spanRepeatability = (Math.random() * 0.3).toFixed(3);
 
-    // 3. Belt Speed (m/s) - usually constant, maybe slight variation
-    const speed = (5.7 + Math.random() * 0.3).toFixed(2);
+    // 3. Load Cell signals (mV/V)
+    const lcMvZero = (8.3 + Math.random() * 0.4).toFixed(2);
+    const lcMvSpan = (12.4 + Math.random() * 0.3).toFixed(2);
 
-    // 4. Throughput (Tonnes since last service)
-    const throughput = Math.floor(40000 + Math.random() * 40000);
+    // 4. Belt & Speed data
+    const beltSpeed = (2.5 + Math.random() * 0.5).toFixed(2);
+    const beltLength = (50 + Math.random() * 20).toFixed(1);
+    const testLength = (10 + Math.random() * 5).toFixed(1);
+    const testTime = (testLength / beltSpeed).toFixed(1);
 
-    // Random comments
+    // System Tests data
+    const totaliserAsLeft = Math.floor(100000 + Math.random() * 50000);
+    const revTime = (60 + Math.random() * 20).toFixed(1);
+    const testRevolutions = Math.floor(5 + Math.random() * 3);
+    const pulses = testRevolutions * Math.floor(1000 + Math.random() * 500);
+    const simulatedRate = (100 + Math.random() * 50).toFixed(1);
+    const targetWeight = (testLength * (100 + Math.random() * 50)).toFixed(1);
+    const totaliser = Math.floor(40000 + Math.random() * 40000);
+
+    // 6. Scale condition descriptions
+    const scaleConditions = [
+      "Scale in good condition, minor belt wear visible",
+      "Excellent condition, all components operating normally",
+      "Some buildup on weigh frame, cleaned during service",
+      "Belt tracking slightly off, adjusted during calibration",
+      "Load cell access covers showing corrosion, sealed",
+      "Idler rollers showing wear, noted for next maintenance"
+    ];
+
+    // 7. Comments and recommendations
     const commentOptions = [
       "Spiral cage speed sensor bearings noisy.",
       "Load cell cable showing wear, recommend replacement.",
@@ -62,6 +89,15 @@ const generateSampleReports = (startDate, numReports = 4) => {
       "No issues found, system operating normally.",
       "Span adjustment required due to material density change.",
       "Junction box moisture detected, sealed and dried."
+    ];
+
+    const recommendationOptions = [
+      "Schedule load cell replacement within 6 months",
+      "Monitor belt wear, consider replacement at next service",
+      "Clean speed sensor quarterly to prevent drift",
+      "Check idler roller bearings at next maintenance",
+      "No immediate action required, continue normal monitoring",
+      "Upgrade to newer load cell model for improved accuracy"
     ];
 
     const shouldHaveComment = Math.random() > 0.6; // 40% chance of comment
@@ -74,20 +110,67 @@ const generateSampleReports = (startDate, numReports = 4) => {
     ] : [];
 
     const techNames = ["C. Bateman", "J. Smith", "M. Johnson", "A. Williams", "R. Brown"];
+    const jobNumbers = ["251486", "251487", "251488", "251489", "251490"];
+    const jobCodes = ["cv06", "cv07", "cv08", "cv09", "cv10"];
+
+    const selectedTech = techNames[Math.floor(Math.random() * techNames.length)];
+    const selectedJobNumber = jobNumbers[Math.floor(Math.random() * jobNumbers.length)];
+    const selectedJobCode = jobCodes[Math.floor(Math.random() * jobCodes.length)];
+    const dateStr = date.toISOString().split('T')[0].replace(/-/g, '.');
 
     reports.push({
       id: `rep-${date.getTime()}-${Math.random().toString(36).substr(2, 5)}`,
       date: date.toISOString().split('T')[0],
-      fileName: `Calibration-${date.toISOString().split('T')[0]}.pdf`,
-      technician: techNames[Math.floor(Math.random() * techNames.length)],
-      // The Critical Data Points
-      tareChange: parseFloat(tareDrift),
-      spanChange: parseFloat(spanDrift),
-      zeroMV: parseFloat(zeroMV),
-      spanMV: parseFloat(spanMV),
-      speed: parseFloat(speed),
-      throughput: throughput,
-      comments: comments
+      fileName: `${dateStr}-CALR-${selectedJobNumber}-${selectedJobCode}.pdf`,
+      technician: selectedTech,
+      
+      // Basic Info
+      scaleCondition: scaleConditions[Math.floor(Math.random() * scaleConditions.length)],
+      
+      // Tare/Zero
+      oldTare: oldTare,
+      newTare: newTare,
+      tareChange: parseFloat(tareChange),
+      tareRepeatability: tareRepeatability,
+      
+      // Span
+      oldSpan: oldSpan,
+      newSpan: newSpan,
+      spanChange: parseFloat(spanChange),
+      spanRepeatability: spanRepeatability,
+      
+      // Load Cell
+      lcMvZero: lcMvZero,
+      lcMvSpan: lcMvSpan,
+      
+      // Belt & Speed
+      beltSpeed: parseFloat(beltSpeed),
+      beltLength: parseFloat(beltLength),
+      testLength: parseFloat(testLength),
+      testTime: parseFloat(testTime),
+      
+      // System Tests
+      totaliserAsLeft: totaliserAsLeft,
+      revTime: parseFloat(revTime),
+      testRevolutions: testRevolutions,
+      pulses: pulses,
+      simulatedRate: parseFloat(simulatedRate),
+      targetWeight: parseFloat(targetWeight),
+      totaliser: totaliser,
+      
+      // Comments and Recommendations
+      comments: comments,
+      recommendations: recommendationOptions[Math.floor(Math.random() * recommendationOptions.length)],
+      
+      // File naming
+      jobNumber: selectedJobNumber,
+      jobCode: selectedJobCode,
+      
+      // Legacy fields for compatibility
+      zeroMV: lcMvZero,
+      spanMV: lcMvSpan,
+      speed: parseFloat(beltSpeed),
+      throughput: totaliser
     });
   }
 

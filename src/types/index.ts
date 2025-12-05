@@ -3,7 +3,14 @@ export interface Site {
   id: string;
   customer: string;
   name: string;
-  location: string;
+  location: string; // Primary location name (backward compatibility)
+  fullLocation?: string; // Formatted full address
+  streetAddress?: string;
+  city?: string;
+  state?: string;
+  postcode?: string;
+  country?: string;
+  gpsCoordinates?: string;
   type?: string;
   typeDetail?: string;
   contactName?: string;
@@ -11,7 +18,7 @@ export interface Site {
   contactEmail?: string;
   contactPhone1?: string;
   contactPhone2?: string;
-  logo?: string;
+  logo?: string | null;
   notes?: Note[];
   serviceData?: Asset[];
   rollerData?: Asset[];

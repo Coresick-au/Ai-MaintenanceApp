@@ -4,6 +4,24 @@ import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { validateSiteForm, sanitizeInput } from '../utils/validation';
 
+// Helper function to format full location string
+const formatFullLocation = (siteForm) => {
+  const parts = [];
+  
+  if (siteForm.streetAddress) parts.push(siteForm.streetAddress);
+  if (siteForm.city) parts.push(siteForm.city);
+  if (siteForm.state) parts.push(siteForm.state);
+  if (siteForm.postcode) parts.push(siteForm.postcode);
+  if (siteForm.country && siteForm.country !== 'Australia') parts.push(siteForm.country);
+  
+  // If no detailed address, fallback to location name
+  if (parts.length === 0 && siteForm.location) {
+    return siteForm.location;
+  }
+  
+  return parts.join(', ') || 'Location will appear here...';
+};
+
 // CSS class constants for form styling
 const labelClass = "block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider";
 const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white focus:outline-none focus:border-blue-500";
@@ -207,7 +225,181 @@ export const EditSiteModal = ({
 
           <div className="grid grid-cols-2 gap-4">
             <TypeSelect value={siteForm.type} onChange={e => setSiteForm({ ...siteForm, type: e.target.value })} />
-            <div><label className={labelClass}>Location</label><input className={inputClass} placeholder="Location" value={siteForm.location || ''} onChange={e => setSiteForm({ ...siteForm, location: e.target.value })} /></div>
+            <div>
+              <label className={labelClass}>Location Name</label>
+              <input 
+                className={inputClass} 
+                placeholder="e.g., Townsville Plant" 
+                value={siteForm.location || ''} 
+                onChange={e => {
+                  const newLocation = e.target.value;
+                  setSiteForm({ 
+                    ...siteForm, 
+                    location: newLocation,
+                    // Update full location string when location name changes
+                    fullLocation: formatFullLocation({
+                      ...siteForm,
+                      location: newLocation
+                    })
+                  }); 
+                }} 
+              />
+              <p className="text-xs text-slate-500 mt-1">Primary location name (displayed in reports)</p>
+            </div>
+          </div>
+
+          {/* Enhanced Location Details */}
+          <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
+            <h4 className="text-xs font-bold uppercase text-blue-400 mb-3">Detailed Address Information</h4>
+            
+            <div className="grid grid-cols-1 gap-4">
+              {/* Street Address */}
+              <div>
+                <label className={labelClass}>Street Address</label>
+                <input 
+                  className={inputClass} 
+                  placeholder="123 Main Street" 
+                  value={siteForm.streetAddress || ''} 
+                  onChange={e => {
+                    setSiteForm({ 
+                      ...siteForm, 
+                      streetAddress: e.target.value,
+                      fullLocation: formatFullLocation({
+                        ...siteForm,
+                        streetAddress: e.target.value
+                      })
+                    }); 
+                  }} 
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                {/* City */}
+                <div>
+                  <label className={labelClass}>City/Suburb</label>
+                  <input 
+                    className={inputClass} 
+                    placeholder="Townsville" 
+                    value={siteForm.city || ''} 
+                    onChange={e => {
+                      setSiteForm({ 
+                        ...siteForm, 
+                        city: e.target.value,
+                        fullLocation: formatFullLocation({
+                          ...siteForm,
+                          city: e.target.value
+                        })
+                      }); 
+                    }} 
+                  />
+                </div>
+
+                {/* State */}
+                <div>
+                  <label className={labelClass}>State</label>
+                  <select 
+                    className={`${inputClass} cursor-pointer`}
+                    value={siteForm.state || ''} 
+                    onChange={e => {
+                      setSiteForm({ 
+                        ...siteForm, 
+                        state: e.target.value,
+                        fullLocation: formatFullLocation({
+                          ...siteForm,
+                          state: e.target.value
+                        })
+                      }); 
+                    }}
+                  >
+                    <option value="">Select State</option>
+                    <option value="QLD">Queensland</option>
+                    <option value="NSW">New South Wales</option>
+                    <option value="VIC">Victoria</option>
+                    <option value="WA">Western Australia</option>
+                    <option value="SA">South Australia</option>
+                    <option value="TAS">Tasmania</option>
+                    <option value="ACT">Australian Capital Territory</option>
+                    <option value="NT">Northern Territory</option>
+                  </select>
+                </div>
+
+                {/* Postcode */}
+                <div>
+                  <label className={labelClass}>Postcode</label>
+                  <input 
+                    className={inputClass} 
+                    placeholder="4810" 
+                    value={siteForm.postcode || ''} 
+                    onChange={e => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                      setSiteForm({ 
+                        ...siteForm, 
+                        postcode: value,
+                        fullLocation: formatFullLocation({
+                          ...siteForm,
+                          postcode: value
+                        })
+                      }); 
+                    }} 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                {/* Country */}
+                <div>
+                  <label className={labelClass}>Country</label>
+                  <input 
+                    className={inputClass} 
+                    placeholder="Australia" 
+                    value={siteForm.country || 'Australia'} 
+                    onChange={e => {
+                      setSiteForm({ 
+                        ...siteForm, 
+                        country: e.target.value,
+                        fullLocation: formatFullLocation({
+                          ...siteForm,
+                          country: e.target.value
+                        })
+                      }); 
+                    }} 
+                  />
+                </div>
+
+                {/* Google Maps Link */}
+                <div>
+                  <label className={labelClass}>Google Maps Link</label>
+                  <input 
+                    className={inputClass} 
+                    placeholder="-19.2590, 146.8169" 
+                    value={siteForm.gpsCoordinates || ''} 
+                    onChange={e => setSiteForm({ ...siteForm, gpsCoordinates: e.target.value })} 
+                  />
+                  {siteForm.gpsCoordinates && (
+                    <div className="mt-2">
+                      <a
+                        href={`https://www.google.com/maps?q=${siteForm.gpsCoordinates}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                      >
+                        <Icons.MapPin size={12} />
+                        View on Google Maps
+                      </a>
+                    </div>
+                  )}
+                  <p className="text-xs text-slate-500 mt-1">Latitude, Longitude</p>
+                </div>
+              </div>
+
+              {/* Display Full Formatted Location */}
+              <div className="mt-3 p-3 bg-slate-900/50 rounded border border-slate-600">
+                <p className="text-xs text-slate-400 mb-1">Formatted Location:</p>
+                <p className="text-sm text-slate-200 font-medium">
+                  {formatFullLocation(siteForm) || 'Location will appear here...'}
+                </p>
+              </div>
+            </div>
           </div>
 
           {/* Task 1: Conditional Custom Input */}

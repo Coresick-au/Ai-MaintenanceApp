@@ -1,9 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button, Modal, UniversalDatePicker } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { useFilterContext } from '../hooks/useFilterContext';
 import { parseServiceReport } from '../utils/pdfParser';
+import { ManualCalibrationModal } from './ManualCalibrationModal';
+import { EditCalibrationModal } from './EditCalibrationModal';
 import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
 
 // --- REPORT DETAILS MODAL ---
@@ -11,7 +13,7 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
 
     if (!report) {
         return (
-            <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-90 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black bg-opacity-90 p-4 backdrop-blur-sm animate-in fade-in duration-200">
                 <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 w-full max-w-3xl p-6 text-center text-slate-400">
                     <p className="text-lg mb-4">Report data could not be loaded.</p>
                     <Button onClick={onClose}>Close</Button>
@@ -29,11 +31,11 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
     const zeroMV = typeof report.zeroMV === 'number' ? report.zeroMV : 'N/A';
     const spanMV = typeof report.spanMV === 'number' ? report.spanMV : 'N/A';
     const speed = typeof report.speed === 'number' ? report.speed : 'N/A';
-    const throughput = typeof report.throughput === 'number' ? report.throughput : 'N/A';
+    const totaliser = typeof report.totaliser === 'number' ? report.totaliser : 'N/A';
     const comments = report.comments || [];
 
     return (
-        <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-90 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black bg-opacity-90 p-4 backdrop-blur-sm animate-in fade-in duration-200">
             <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 w-full max-w-3xl max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-gradient-to-r from-blue-900/50 to-slate-900/50">
                     <div>
@@ -99,8 +101,8 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
                                 <div className="text-2xl font-mono text-green-400">{speed} m/s</div>
                             </div>
                             <div>
-                                <div className="text-xs text-slate-400 mb-1">Throughput</div>
-                                <div className="text-2xl font-mono text-orange-400">{throughput} t</div>
+                                <div className="text-xs text-slate-400 mb-1">Totaliser</div>
+                                <div className="text-2xl font-mono text-orange-400">{totaliser} t</div>
                             </div>
                         </div>
                     </div>
@@ -127,7 +129,7 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
                         <Button onClick={onClose} className="flex-1">Close</Button>
                         <button
                             onClick={() => {
-                                if (confirm('Delete this report?')) {
+                                if (confirm(`Are you sure you want to delete this calibration report?\n\nDate: ${reportDate}\nTechnician: ${technician}\nFile: ${fileName}\n\nThis action cannot be undone.`)) {
                                     onDelete();
                                     onClose();
                                 }
@@ -146,7 +148,7 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
 
 // --- EXPANDABLE CHART MODAL ---
 const ExpandedChartModal = ({ title, description, children, onClose }) => (
-    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm animate-in fade-in duration-200">
         <div className="bg-slate-800 rounded-lg shadow-2xl border border-slate-700 w-full max-w-[80vw] max-h-[95vh] overflow-y-auto">
             <div className="flex justify-between items-center p-6 border-b border-slate-700 bg-slate-900/50">
                 <div>
@@ -446,6 +448,9 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
     const [isProcessingPDF, setIsProcessingPDF] = useState(false);
     const [pdfError, setPdfError] = useState('');
     const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0, fileName: '' });
+    const [manualCalibrationModalOpen, setManualCalibrationModalOpen] = useState(false);
+    const [editCalibrationModalOpen, setEditCalibrationModalOpen] = useState(false);
+    const [editingReport, setEditingReport] = useState(null);
     const { selectedReportIds, toggleReportSelection, clearReportSelections } = useFilterContext();
 
     const mountedRef = useRef(true); // NEW: To track if component is mounted
@@ -537,12 +542,56 @@ export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDe
         const cleanReports = reportsToAnalyze.map(r => ({
             date: r.date,
             technician: r.technician,
+            fileName: r.fileName,
+            
+            // Basic Info
+            scaleCondition: r.scaleCondition || 'N/A',
+            
+            // Tare/Zero
+            oldTare: r.oldTare || 'N/A',
+            newTare: r.newTare || 'N/A',
             tareChange: `${r.tareChange}%`,
+            tareRepeatability: r.tareRepeatability || 'N/A',
+            
+            // Span
+            oldSpan: r.oldSpan || 'N/A',
+            newSpan: r.newSpan || 'N/A',
             spanChange: `${r.spanChange}%`,
-            zeroSignal: `${r.zeroMV} mV/V`,
-            spanSignal: `${r.spanMV} mV/V`,
-            beltSpeed: `${r.speed} m/s`,
-            comments: r.comments ? r.comments.map(c => c.text).join(' | ') : ''
+            spanRepeatability: r.spanRepeatability || 'N/A',
+            
+            // Load Cell
+            lcMvZero: r.lcMvZero || 'N/A',
+            lcMvSpan: r.lcMvSpan || 'N/A',
+            
+            // Belt & Speed
+            beltSpeed: `${r.beltSpeed} m/s`,
+            beltLength: `${r.beltLength} m`,
+            testLength: `${r.testLength} m`,
+            testTime: `${r.testTime} s`,
+            kgPerMeter: `${r.kgPerMeter} kg/m`,
+            
+            // System Tests
+            totaliserAsLeft: r.totaliserAsLeft || 'N/A',
+            pulsesPerLength: r.pulsesPerLength || 'N/A',
+            revTime: `${r.revTime} s`,
+            testRevolutions: r.testRevolutions || 'N/A',
+            pulses: r.pulses || 'N/A',
+            targetWeight: `${r.targetWeight} kg`,
+            totaliser: `${r.totaliser} t`,
+            
+            // Comments and Recommendations
+            comments: r.comments ? r.comments.map(c => c.text).join(' | ') : '',
+            recommendations: r.recommendations || 'N/A',
+            
+            // File naming
+            jobNumber: r.jobNumber || 'N/A',
+            jobCode: r.jobCode || 'N/A',
+            
+            // Legacy fields for compatibility
+            zeroSignal: `${r.zeroMV || r.lcMvZero || 'N/A'} mV/V`,
+            spanSignal: `${r.spanMV || r.lcMvSpan || 'N/A'} mV/V`,
+            speed: `${r.speed || r.beltSpeed || 'N/A'} m/s`,
+            throughput: `${r.throughput || r.totaliser || 'N/A'} t`
         }));
 
         // 2. The New AI System Prompt
@@ -641,73 +690,31 @@ Next Actions:
 
 The TLDR must appear after all charts, summaries, tables, and predictions.`;
 
-        if (format === 'docx') {
-            // Generate Word Document
-            const doc = new Document({
-                sections: [{
-                    properties: {},
-                    children: [
-                        new Paragraph({
-                            text: "AI Maintenance Analysis - System Prompt",
-                            heading: HeadingLevel.HEADING_1,
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Generated on: ", bold: true }),
-                                new TextRun(new Date().toISOString().split('T')[0]),
-                            ],
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Asset: ", bold: true }),
-                                new TextRun(`${asset.name} (${asset.code})`),
-                            ],
-                        }),
-                        new Paragraph({
-                            children: [
-                                new TextRun({ text: "Location: ", bold: true }),
-                                new TextRun(siteLocation || 'Unknown'),
-                            ],
-                        }),
-                        new Paragraph({ text: "" }),
-                        new Paragraph({
-                            text: "SYSTEM PROMPT",
-                            heading: HeadingLevel.HEADING_2,
-                        }),
-                        new Paragraph({
-                            text: "Copy the following prompt to your AI assistant:",
-                            spacing: { after: 200 },
-                        }),
-                        ...systemPrompt.split('\n').map(line => 
-                            new Paragraph({
-                                children: [new TextRun(line)],
-                                spacing: { after: 100 },
-                            })
-                        ),
-                        new Paragraph({ text: "" }),
-                        new Paragraph({
-                            text: "DATASET",
-                            heading: HeadingLevel.HEADING_2,
-                        }),
-                        new Paragraph({
-                            text: "The calibration data is included in the accompanying .txt file as JSON format.",
-                            spacing: { after: 200 },
-                        }),
-                    ],
-                }],
-            });
+        if (format === 'ai-ready') {
+            // Generate AI-ready JSON file for drag-and-drop to ChatGPT/Gemini
+            const aiData = {
+                instruction: systemPrompt,
+                context: {
+                    asset: `${asset.name} (${asset.code})`,
+                    location: siteLocation || 'Unknown',
+                    generatedOn: new Date().toISOString().split('T')[0],
+                    reportCount: cleanReports.length
+                },
+                calibrationData: cleanReports,
+                request: "Please analyze this calibration data according to the instruction above."
+            };
 
-            const blob = await Packer.toBlob(doc);
+            const blob = new Blob([JSON.stringify(aiData, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${asset.name}_AI_Prompt.docx`;
+            a.download = `${asset.name}_AI_Analysis.json`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         } else {
-            // Generate Text/Markdown file (default)
+            // Generate Text file for copying (notepad format)
             const fileContent = `# AI Maintenance Analysis Context
 **Generated on:** ${new Date().toISOString().split('T')[0]}
 **Asset:** ${asset.name} (${asset.code})
@@ -730,11 +737,65 @@ ${JSON.stringify(cleanReports, null, 2)}
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${asset.name}_AI_Insight.txt`;
+            a.download = `${asset.name}_Prompt.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
+        }
+    };
+
+    // Handle manual calibration data from form
+    const handleImportCalibrationData = (calibrationData) => {
+        console.log('Manual calibration data:', calibrationData);
+        
+        try {
+            // Transform form data to report format (already handled in ManualCalibrationModal)
+            const newReport = {
+                ...calibrationData,
+                // Ensure all required fields are present
+                id: calibrationData.id || `rep-${Date.now()}`,
+                date: calibrationData.date || new Date().toISOString().split('T')[0],
+                technician: calibrationData.technician || 'Unknown',
+                fileName: calibrationData.fileName || `Report-${calibrationData.date || new Date().toISOString().split('T')[0]}.pdf`,
+                tareChange: typeof calibrationData.tareChange === 'number' ? calibrationData.tareChange : 0,
+                spanChange: typeof calibrationData.spanChange === 'number' ? calibrationData.spanChange : 0,
+                zeroMV: calibrationData.zeroMV || 'N/A',
+                spanMV: calibrationData.spanMV || 'N/A', 
+                speed: typeof calibrationData.speed === 'number' ? calibrationData.speed : 'N/A',
+                totaliser: typeof calibrationData.totaliser === 'number' ? calibrationData.totaliser : 'N/A',
+                comments: calibrationData.comments || []
+            };
+
+            // Save the new report
+            onSaveReport(asset.id, newReport);
+            setManualCalibrationModalOpen(false);
+            
+            // Show success message
+            alert(`Successfully saved calibration report: ${newReport.fileName}`);
+            
+        } catch (error) {
+            console.error('Error saving calibration report:', error);
+            alert(`Error saving report: ${error.message}\n\nPlease check the data and try again.`);
+        }
+    };
+
+    // Handle updating existing calibration data
+    const handleUpdateCalibrationData = (updatedData) => {
+        console.log('Updating calibration data:', updatedData);
+        
+        try {
+            // Update the existing report
+            onSaveReport(asset.id, updatedData);
+            setEditCalibrationModalOpen(false);
+            setEditingReport(null);
+            
+            // Show success message
+            alert(`Successfully updated calibration report: ${updatedData.fileName}`);
+            
+        } catch (error) {
+            console.error('Error updating calibration report:', error);
+            alert(`Error updating report: ${error.message}\n\nPlease check the data and try again.`);
         }
     };
 
@@ -745,24 +806,24 @@ ${JSON.stringify(cleanReports, null, 2)}
                 <div className="space-y-6">
                     {/* Action Bar */}
                     <div className="flex gap-3">
-                        <Button onClick={() => setShowAddReport(true)} className="flex-1">
-                            <Icons.Plus /> Add Report
+                        <Button onClick={() => setManualCalibrationModalOpen(true)} className="flex-1">
+                            <Icons.Plus /> Add Calibration Report
                         </Button>
                         {/* AI Export Buttons */}
                         <div className="flex gap-2">
                             <button
-                                onClick={() => handleExportAIContext('txt')}
+                                onClick={() => handleExportAIContext('ai-ready')}
                                 className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded font-medium shadow-lg shadow-purple-900/20 transition-all border border-purple-400/30"
-                                title="Download as Text file with prompt and data"
+                                title="Create AI-ready JSON file for drag-and-drop to ChatGPT/Gemini"
                             >
-                                <span>🤖</span> AI Insight (.txt)
+                                <span>🤖</span> AI Insight (.json)
                             </button>
                             <button
-                                onClick={() => handleExportAIContext('docx')}
+                                onClick={() => handleExportAIContext('txt')}
                                 className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded font-medium shadow-lg shadow-blue-900/20 transition-all border border-blue-400/30"
-                                title="Download prompt as Word document"
+                                title="Download as text file for copying"
                             >
-                                <Icons.FileText size={16} /> Prompt (.docx)
+                                <Icons.FileText size={16} /> Prompt (.txt)
                             </button>
                         </div>
                     </div>
@@ -864,17 +925,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                     {/* REPORTS TABLE */}
                     <div className="border-t border-slate-700 pt-4">
                         <div className="flex justify-between items-center mb-3">
-                            <div className="flex items-center gap-4">
-                                <h3 className="text-lg font-bold text-slate-100">Service Reports</h3>
-                                {selectedReportIds.size > 0 && (
-                                    <button
-                                        onClick={() => { handleExportAIContext(); clearReportSelections(); }}
-                                        className="bg-[var(--accent-primary)] hover:bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded flex items-center gap-2 animate-pulse"
-                                    >
-                                        <Icons.Cpu className="w-3 h-3" /> Analyze Selected ({selectedReportIds.size})
-                                    </button>
-                                )}
-                            </div>
+                            <h3 className="text-lg font-bold text-slate-100">Service Reports</h3>
                             <div className="bg-gradient-to-br from-blue-900/30 to-blue-700/30 rounded-lg p-2 border border-blue-700">
                                 <div className="text-xs text-blue-300 uppercase font-bold mb-1">Total Reports</div>
                                 <div className="text-xl font-bold text-white text-center">{reports.length}</div>
@@ -904,7 +955,7 @@ ${JSON.stringify(cleanReports, null, 2)}
                                     {sortedReports.map(r => (
                                         <tr
                                             key={r.id}
-                                            className="hover:bg-slate-800 cursor-pointer"
+                                            className="hover:bg-slate-700 hover:shadow-lg cursor-pointer transition-all duration-200"
                                             onClick={() => setSelectedReport(r)}
                                         >
                                             <td className="p-3" onClick={(e) => e.stopPropagation()}>
@@ -916,7 +967,13 @@ ${JSON.stringify(cleanReports, null, 2)}
                                                 />
                                             </td>
                                             <td className="p-3">{formatDate(r.date)}</td>
-                                            <td className="p-3 text-blue-400 flex items-center gap-1"><Icons.FileText /> {r.fileName}</td>
+                                            <td className="p-3 text-blue-400 flex items-center gap-1 hover:text-blue-300 transition-colors" title="Click to view report details">
+                                                <Icons.FileText className="flex-shrink-0" />
+                                                <span className="underline decoration-dotted underline-offset-2 hover:underline-solid cursor-pointer">
+                                                  {r.fileName}
+                                                </span>
+                                                <Icons.ExternalLink className="w-3 h-3 opacity-60" />
+                                            </td>
                                             <td className="p-3">{r.technician || '-'}</td>
                                             <td className={`p-3 text-right font-mono ${Math.abs(r.tareChange) > 0.5 ? 'text-red-400' : 'text-green-400'}`}>{r.tareChange}%</td>
                                             <td className={`p-3 text-right font-mono ${Math.abs(r.spanChange) > 0.25 ? 'text-yellow-400' : 'text-blue-400'}`}>{r.spanChange}%</td>
@@ -924,12 +981,25 @@ ${JSON.stringify(cleanReports, null, 2)}
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onDeleteReport(asset.id, r.id);
+                                                        setEditingReport(r);
+                                                        setEditCalibrationModalOpen(true);
                                                     }}
-                                                    className="text-slate-400 hover:text-red-500 transition-colors"
+                                                    className="px-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded transition-colors mr-2"
+                                                    title="Edit Report"
+                                                >
+                                                    <Icons.Edit size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (confirm(`Are you sure you want to delete this calibration report?\n\nDate: ${formatDate(r.date)}\nFile: ${r.fileName || 'N/A'}\n\nThis action cannot be undone.`)) {
+                                                            onDeleteReport(asset.id, r.id);
+                                                        }
+                                                    }}
+                                                    className="px-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
                                                     title="Delete Report"
                                                 >
-                                                    <Icons.Trash />
+                                                    <Icons.Trash size={14} />
                                                 </button>
                                             </td>
                                         </tr>
@@ -1142,6 +1212,30 @@ ${JSON.stringify(cleanReports, null, 2)}
                     siteLocation={siteLocation}
                     onClose={() => setSelectedReport(null)}
                     onDelete={() => onDeleteReport(asset.id, selectedReport.id)}
+                />
+            )}
+
+            {/* Manual Calibration Modal */}
+            {manualCalibrationModalOpen && (
+                <ManualCalibrationModal
+                    isOpen={manualCalibrationModalOpen}
+                    onClose={() => setManualCalibrationModalOpen(false)}
+                    onSaveCalibrationData={handleImportCalibrationData}
+                    asset={asset}
+                />
+            )}
+
+            {/* Edit Calibration Modal */}
+            {editCalibrationModalOpen && (
+                <EditCalibrationModal
+                    isOpen={editCalibrationModalOpen}
+                    onClose={() => {
+                        setEditCalibrationModalOpen(false);
+                        setEditingReport(null);
+                    }}
+                    onUpdateCalibrationData={handleUpdateCalibrationData}
+                    asset={asset}
+                    report={editingReport}
                 />
             )}
 

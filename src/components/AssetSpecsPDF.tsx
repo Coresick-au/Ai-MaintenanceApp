@@ -341,7 +341,7 @@ export const AssetSpecsPDF: React.FC<AssetSpecsPDFProps> = ({
             <Text style={styles.sectionTitle}>Roller Details</Text>
             <View style={styles.specsGrid}>
               <View style={styles.specsItem}>
-                <Text style={styles.specsLabel}>Roller Dimensions</Text>
+                <Text style={styles.specsLabel}>Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)</Text>
                 <View style={styles.codeBlock}>
                   <Text>{assetWithSpecs.specs.rollDims || 'N/A'}</Text>
                 </View>
