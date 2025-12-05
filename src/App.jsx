@@ -372,7 +372,7 @@ export default function App() {
     // Calculate IDs
     const idParts = asset.id.split('-');
     const baseId = idParts.length > 1 ? idParts.slice(1).join('-') : null;
-    
+
     // Determine the ID of the asset in the OTHER list
     // If current is s-123, match r-123. If r-123, match s-123.
     let mirrorId = null;
@@ -385,9 +385,9 @@ export default function App() {
     const newRollerData = updateListStatus(currentRollerData, asset.id, mirrorId);
 
     // Save changes
-    updateSiteData(selectedSiteId, { 
-        serviceData: newServiceData, 
-        rollerData: newRollerData 
+    updateSiteData(selectedSiteId, {
+      serviceData: newServiceData,
+      rollerData: newRollerData
     }, isActivating ? 'Asset Reactivated' : 'Asset Decommissioned');
 
     // UI Cleanup
@@ -454,9 +454,9 @@ export default function App() {
         {/* Roller & Billet Section */}
         <div className="bg-slate-900/50 p-4 rounded border border-slate-700">
           <div className="text-orange-400 text-sm font-bold uppercase mb-2">Roller & Billet</div>
-          
+
           {/* Combined Dimensions Badge (kept as unique view feature) */}
-          <div 
+          <div
             className="font-mono text-xs bg-slate-800 p-2 rounded border border-slate-600 break-all mb-2 text-slate-300 cursor-copy hover:bg-slate-700 transition-colors relative group"
             onClick={() => copyToClipboard(`${selectedAsset.rollerDiameter}mm x ${selectedAsset.faceWidth}mm`)}
             title="Click to copy"
@@ -554,12 +554,12 @@ export default function App() {
         {/* ===== SIDEBAR NAVIGATION - SITE SELECTION ===== */}
         <aside className="sidebar-nav w-64 min-h-screen bg-slate-800 border-r border-slate-700 flex flex-col no-print fixed left-0 top-0 z-40">
           {/* Sidebar Header - Logo */}
-          <div className="p-4 border-b border-slate-700">
+          <div className="p-4 border-b border-slate-700 bg-slate-700">
             <div className="flex items-center justify-center mb-3">
-              <img 
-                src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"} 
-                alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"} 
-                className="h-12 w-auto object-contain"
+              <img
+                src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"}
+                alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"}
+                className="h-36 w-auto object-contain"
               />
             </div>
             <h2 className="text-center text-lg font-bold text-slate-100 uppercase tracking-wide">Maintenance Tracker</h2>
@@ -743,7 +743,7 @@ export default function App() {
               const cardOpacity = site.active === false ? 'opacity-60 grayscale' : '';
 
               return (
-                <div key={site.id} onClick={() => setSelectedSiteId(site.id)} className={`bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
+                <div key={site.id} onClick={() => { setSelectedSiteId(site.id); setIsAppHistoryOpen(false); }} className={`bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
                     <button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setSiteForm({ ...site }); setIsEditSiteModalOpen(true); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-blue-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="Edit Site Details"><Icons.Edit /></button>
                     <button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewContactSite(site); setSelectedRowIds(new Set()); }} className="p-2 bg-slate-800 bg-slate-700 hover:text-green-400 rounded-full shadow-md border border-slate-700 border-slate-600 text-slate-400 text-slate-300 transition-colors" title="View Contact Info"><Icons.Contact /></button>
@@ -804,8 +804,9 @@ export default function App() {
                     <SiteHealthCircle site={site} fullWidth={true} />
                   </div>
 
-                  <div 
-                    className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto cursor-pointer hover:bg-slate-800/50 hover:border-slate-600 transition-colors"
+                  <button
+                    type="button"
+                    className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto cursor-pointer hover:bg-slate-800/50 hover:border-slate-600 transition-colors text-left w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
                     onClick={(e) => {
                       e.stopPropagation();
                       closeFullscreen();
@@ -821,10 +822,10 @@ export default function App() {
                     {(() => {
                       // Get the most recent non-archived note
                       const activeNotes = (site.notes || []).filter(n => !n.archived);
-                      const latestNote = activeNotes.length > 0 
+                      const latestNote = activeNotes.length > 0
                         ? activeNotes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
                         : null;
-                      
+
                       return latestNote ? (
                         <>
                           <p className="text-sm text-slate-300 line-clamp-2">{latestNote.content}</p>
@@ -837,7 +838,7 @@ export default function App() {
                         <p className="text-sm text-slate-400 italic">No notes. Click to add one.</p>
                       );
                     })()}
-                  </div>
+                  </button>
                 </div>
               );
             })}
@@ -864,6 +865,7 @@ export default function App() {
           </div>
         </main>
 
+
         <AddSiteModal
           isOpen={isAddSiteModalOpen}
           onClose={() => setIsAddSiteModalOpen(false)}
@@ -883,19 +885,31 @@ export default function App() {
           onToggleStatus={toggleSiteStatus}
           siteForm={siteForm}
           setSiteForm={setSiteForm}
-          noteInput={noteInput}
-          setNoteInput={setNoteInput}
           onLogoUpload={handleLogoUpload}
-          onAddNote={() => {
-            if (!noteInput.content) return;
-            const newNote = { id: Date.now(), content: noteInput.content, author: noteInput.author || 'Unknown', timestamp: new Date().toISOString() };
-            setSiteForm(prev => ({ ...prev, notes: [...prev.notes, newNote] }));
-            setNoteInput({ content: '', author: '' });
-          }}
         />
 
         <ContactModal site={viewContactSite} onClose={() => setViewContactSite(null)} />
-      </div>
+
+        <AppHistorySidePanel
+          isOpen={isAppHistoryOpen}
+          onClose={() => setIsAppHistoryOpen(false)}
+          asset={viewHistoryAsset}
+        />
+
+        {/* SITE NOTES MODAL - Also needed in Site Overview */}
+        <SiteNotesModal
+          isOpen={isNotesModalOpen}
+          onClose={() => {
+            setIsNotesModalOpen(false);
+            setNotesModalSite(null);
+          }}
+          site={sites.find(s => s.id === notesModalSite?.id)}
+          onAddNote={handleAddSiteNote}
+          onUpdateNote={handleUpdateSiteNote}
+          onDeleteNote={handleDeleteSiteNote}
+          onArchiveNote={handleArchiveSiteNote}
+        />
+      </div >
     );
   }
 
@@ -985,22 +999,13 @@ export default function App() {
       <aside className="sidebar-nav w-64 min-h-screen bg-slate-800 border-r border-slate-700 flex flex-col no-print fixed left-0 top-0 z-40">
         {/* Sidebar Header - Logo & Back */}
         <div className="p-4 border-b border-slate-700">
-          {/* Full-width back button */}
-          <button
-            type="button"
-            onClick={() => setSelectedSiteId(null)}
-            className="w-full p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors flex items-center justify-center gap-2 mb-4"
-            title="Back to Sites"
-          >
-            <Icons.ArrowLeft size={20} />
-            Back to Sites
-          </button>
-          
+
+
           {/* Logo as rounded square - full width */}
           <div className="flex items-center justify-center w-full h-20 bg-slate-700 rounded-xl border border-slate-600 overflow-hidden">
-            <img 
-              src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"} 
-              alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"} 
+            <img
+              src={selectedSite?.customerLogo || selectedSite?.logo || "logos/ai-logo.png"}
+              alt={selectedSite?.customerName || selectedSite?.name || "Accurate Industries"}
               className="w-full h-full object-contain"
             />
           </div>
@@ -1014,6 +1019,19 @@ export default function App() {
 
         {/* Navigation Links */}
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
+
+          {/* Full-width back button (MOVED) */}
+          <button
+            type="button"
+            onClick={() => setSelectedSiteId(null)}
+            className="w-full px-3 py-2.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors flex items-center gap-3 text-sm font-medium"
+            title="Back to Sites"
+          >
+            <Icons.ArrowLeft size={18} />
+            <span>Back to Sites</span>
+          </button>
+
+          <div className="border-t border-slate-700 my-3"></div>
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Views</div>
 
           {/* Service Schedule */}
@@ -1210,345 +1228,345 @@ export default function App() {
         </header>
 
 
-      {activeTab !== 'issues' && (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* LEFT COLUMN: KPI Cards + Service Schedule Table */}
-          <div className="lg:col-span-4 flex flex-col gap-4">
-            {/* KPI Cards - 2x2 Grid */}
-            <div className="grid grid-cols-2 gap-3 no-print">
-              {/* Total Assets */}
-              <div
-                onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
-                className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'all'
-                  ? 'bg-cyan-500/20 border-2 border-cyan-400 ring-2 ring-cyan-400/50'
-                  : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-cyan-500/50'
-                  }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Icons.Database className="text-cyan-400" size={20} />
-                  <span className={`text-2xl font-bold ${filterStatus === 'all' ? 'text-white' : 'text-slate-200'}`}>{stats.total}</span>
-                </div>
-                <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'all' ? 'text-cyan-100' : 'text-slate-400'}`}>
-                  Total Assets
-                </div>
-              </div>
-
-              {/* Critical / Overdue */}
-              <div
-                onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
-                className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'overdue'
-                  ? 'bg-red-600/30 border-2 border-red-500 ring-2 ring-red-500/50'
-                  : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-red-500/50'
-                  }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Icons.AlertTriangle className="text-red-400" size={20} />
-                  <span className={`text-2xl font-bold ${filterStatus === 'overdue' ? 'text-white' : 'text-slate-200'}`}>{stats.overdue}</span>
-                </div>
-                <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'overdue' ? 'text-red-100' : 'text-slate-400'}`}>
-                  Critical (Overdue)
-                </div>
-              </div>
-
-              {/* Due Soon */}
-              <div
-                onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
-                className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'dueSoon'
-                  ? 'bg-amber-500/30 border-2 border-amber-500 ring-2 ring-amber-500/50'
-                  : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-amber-500/50'
-                  }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Icons.Clock className="text-amber-400" size={20} />
-                  <span className={`text-2xl font-bold ${filterStatus === 'dueSoon' ? 'text-white' : 'text-slate-200'}`}>{stats.dueSoon}</span>
-                </div>
-                <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'dueSoon' ? 'text-amber-100' : 'text-slate-400'}`}>
-                  Due Soon
-                </div>
-              </div>
-
-              {/* Healthy */}
-              <div
-                onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
-                className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'healthy'
-                  ? 'bg-emerald-500/30 border-2 border-emerald-500 ring-2 ring-emerald-500/50'
-                  : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-emerald-500/50'
-                  }`}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <Icons.CheckCircle className="text-emerald-400" size={20} />
-                  <span className={`text-2xl font-bold ${filterStatus === 'healthy' ? 'text-white' : 'text-slate-200'}`}>{stats.total - stats.overdue - stats.dueSoon}</span>
-                </div>
-                <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'healthy' ? 'text-emerald-100' : 'text-slate-400'}`}>
-                  Healthy
-                </div>
-              </div>
-            </div>
-
-            {/* Service Schedule Table */}
-            <FullScreenContainer
-              className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1"
-              id="print-section-schedule"
-              isOpen={expandedSection === 'schedule'}
-              onToggle={(val) => setExpandedSection(val ? 'schedule' : null)}
-            >
-              <div className="p-4 border-b border-slate-700 flex flex-wrap gap-4 justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
-                <div className="flex items-center gap-2">
-                  <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
-                  <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
-                  {/* Replaced styling to create a flexible grey circle badge that grows with content */}
-                  <span 
-                    className="ml-2 px-2 py-0.5 rounded-full bg-slate-600 text-xs font-bold text-slate-300 hidden sm:inline min-w-[20px] text-center flex items-center justify-center" 
-                    title={`Archived Assets: ${(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}`}
-                  >
-                    {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}
-                  </span>
-                </div>
-                {/* Added flex-wrap so items stack if needed, and reduced pr-10 to pr-2 (or pr-8 if you really need to clear a close button) */}
-                <div className="flex flex-wrap gap-2 items-center no-print pr-2 sm:pr-10">
-                  <div className="flex items-center mr-2">
-                    <input
-                      type="checkbox"
-                      id="show-archived"
-                      checked={showArchived}
-                      onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
-                      className="mr-1 accent-cyan-500"
-                    />
-                    <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
+        {activeTab !== 'issues' && (
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            {/* LEFT COLUMN: KPI Cards + Service Schedule Table */}
+            <div className="lg:col-span-4 flex flex-col gap-4">
+              {/* KPI Cards - 2x2 Grid */}
+              <div className="grid grid-cols-2 gap-3 no-print">
+                {/* Total Assets */}
+                <div
+                  onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
+                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'all'
+                    ? 'bg-cyan-500/20 border-2 border-cyan-400 ring-2 ring-cyan-400/50'
+                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-cyan-500/50'
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Icons.Database className="text-cyan-400" size={20} />
+                    <span className={`text-2xl font-bold ${filterStatus === 'all' ? 'text-white' : 'text-slate-200'}`}>{stats.total}</span>
                   </div>
-                  {/* Changed w-40 to w-32 md:w-40 */}
-                  <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
-                  <button type="button" onClick={() => { closeFullscreen(); setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
+                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'all' ? 'text-cyan-100' : 'text-slate-400'}`}>
+                    Total Assets
+                  </div>
+                </div>
+
+                {/* Critical / Overdue */}
+                <div
+                  onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
+                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'overdue'
+                    ? 'bg-red-600/30 border-2 border-red-500 ring-2 ring-red-500/50'
+                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-red-500/50'
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Icons.AlertTriangle className="text-red-400" size={20} />
+                    <span className={`text-2xl font-bold ${filterStatus === 'overdue' ? 'text-white' : 'text-slate-200'}`}>{stats.overdue}</span>
+                  </div>
+                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'overdue' ? 'text-red-100' : 'text-slate-400'}`}>
+                    Critical (Overdue)
+                  </div>
+                </div>
+
+                {/* Due Soon */}
+                <div
+                  onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
+                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'dueSoon'
+                    ? 'bg-amber-500/30 border-2 border-amber-500 ring-2 ring-amber-500/50'
+                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-amber-500/50'
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Icons.Clock className="text-amber-400" size={20} />
+                    <span className={`text-2xl font-bold ${filterStatus === 'dueSoon' ? 'text-white' : 'text-slate-200'}`}>{stats.dueSoon}</span>
+                  </div>
+                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'dueSoon' ? 'text-amber-100' : 'text-slate-400'}`}>
+                    Due Soon
+                  </div>
+                </div>
+
+                {/* Healthy */}
+                <div
+                  onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
+                  className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md ${filterStatus === 'healthy'
+                    ? 'bg-emerald-500/30 border-2 border-emerald-500 ring-2 ring-emerald-500/50'
+                    : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-emerald-500/50'
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <Icons.CheckCircle className="text-emerald-400" size={20} />
+                    <span className={`text-2xl font-bold ${filterStatus === 'healthy' ? 'text-white' : 'text-slate-200'}`}>{stats.total - stats.overdue - stats.dueSoon}</span>
+                  </div>
+                  <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'healthy' ? 'text-emerald-100' : 'text-slate-400'}`}>
+                    Healthy
+                  </div>
                 </div>
               </div>
-              <div className="overflow-x-auto h-full">
-                <table className="w-full text-left text-sm text-slate-300">
-                  <thead className="bg-slate-900 text-slate-400 z-20">
-                    <tr>
-                      <th className="px-4 py-2 w-8 text-center no-print">
-                        <input
-                          type="checkbox"
-                          checked={filteredData.length > 0 && selectedRowIds.size === filteredData.length}
-                          onChange={toggleSelectAll}
-                          className="rounded border-slate-500 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
-                          title="Select All"
-                        />
-                      </th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[150px]" onClick={() => { handleSort('name'); setSelectedRowIds(new Set()); }}>Name {getSortIcon('name')}</th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px]" onClick={() => { handleSort('code'); setSelectedRowIds(new Set()); }}>Code {getSortIcon('code')}</th>
-                      <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('frequency'); setSelectedRowIds(new Set()); }}>Freq {getSortIcon('frequency')}</th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('lastCal'); setSelectedRowIds(new Set()); }}>Last Cal {getSortIcon('lastCal')}</th>
-                      <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('dueDate'); setSelectedRowIds(new Set()); }}>Cal Due {getSortIcon('dueDate')}</th>
-                      <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
-                      <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
-                      <th className="px-4 py-2 text-center min-w-[100px]">Op Status</th>
-                      <th className="px-3 py-2 text-center no-print text-xs">Analytics</th>
-                      <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
-                      <th className="px-3 py-2 text-center no-print text-xs">Edit</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700">
-                    {filteredData.map(item => (
-                      <tr key={item.id} data-asset-id={item.id} onClick={() => setSelectedAssetId(item.id)} className={`cursor-pointer transition-all duration-200 ease-in-out ${selectedAssetId === item.id ? 'bg-cyan-900/40 ring-1 ring-cyan-500 ring-offset-0 shadow-sm z-10 relative' : selectedRowIds.has(item.id) ? 'bg-cyan-900/20' : (item.active === false ? 'bg-slate-900 opacity-50' : 'hover:bg-slate-700 border-b border-slate-700 border-l-4 border-l-transparent hover:border-l-cyan-500')}`}>
-                        <td className="px-4 py-2 text-center no-print" onClick={(e) => { e.stopPropagation(); toggleRow(item.id); }}>
-                          <input type="checkbox" checked={selectedRowIds.has(item.id)} onChange={() => { }} className="rounded border-slate-500 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600" />
-                        </td>
-                        <td className="px-4 py-2 font-medium text-slate-200">{item.name} {item.active === false && <span className="text-[10px] text-slate-400">(Archived)</span>}</td>
-                        <td className="px-4 py-2 font-mono text-xs text-slate-400">{item.code}</td>
-                        <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
-                        <td className="px-4 py-2"><EditableCell value={item.lastCal} type="date" onSave={(val) => handleInlineUpdate(item.id, 'lastCal', val)} className="bg-slate-800 text-white border-slate-600" /></td>
-                        <td className="px-4 py-2 text-slate-400 font-medium">{formatDate(item.dueDate)}</td>
-                        <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
-                        <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>
-                        <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              closeFullscreen();
-                              setOpStatusAsset(item);
-                              setIsOpStatusModalOpen(true);
-                              setSelectedRowIds(new Set());
-                            }}
-                            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${item.opStatus === 'Warning'
-                              ? 'bg-yellow-600 text-white hover:bg-yellow-700'
-                              : item.opStatus === 'Down'
-                                ? 'bg-red-600 text-white hover:bg-red-700'
-                                : 'bg-green-600 text-white hover:bg-green-700'
-                              }`}
-                            title={item.opNote || 'Click to update operational status'}
-                          >
-                            {item.opStatus || 'Operational'}
-                          </button>
-                        </td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
-                        {/* Archive Column */}
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Added confirmation check
-                              if (window.confirm(item.active === false ? "Are you sure you want to restore this asset?" : "Are you sure you want to archive this asset?")) {
-                                toggleAssetStatus(item);
-                                setSelectedRowIds(new Set());
-                              }
-                            }}
-                            className="text-slate-400 hover:text-orange-400 p-2 rounded transition-colors"
-                            title={item.active === false ? "Restore Asset" : "Archive Asset"}
-                          >
-                            <Icons.Archive size={20} />
-                          </button>
-                        </td>
-                        <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              closeFullscreen();
-                              setEditingAsset({ ...item });
-                              const specs = currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
-                              setEditingSpecs(specs || null);
-                              setIsAssetEditModalOpen(true);
-                              setSelectedRowIds(new Set());
-                            }}
-                            className="text-slate-400 hover:text-cyan-400 p-2 rounded"
-                            title="Edit Asset Details & Specs"
-                          >
-                            <Icons.Edit />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {selectedRowIds.size > 0 && (
-                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-6 py-3 rounded-full shadow-lg border border-slate-600 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200 z-20 no-print">
-                  <span className="font-bold text-sm">{selectedRowIds.size} Selected</span>
-                  <div className="h-4 w-px bg-slate-500"></div>
-                  <SecureDeleteButton onComplete={performBulkService} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2 bg-transparent shadow-none border-none p-0">Hold to Service</SecureDeleteButton>
-                  <div className="h-4 w-px bg-slate-500"></div>
-                  <button onClick={() => { exportBulkCSV(); setSelectedRowIds(new Set()); }} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2"><Icons.FileCsv /> Export List</button>
-                  <div className="h-4 w-px bg-slate-500"></div>
-                  <button onClick={() => setSelectedRowIds(new Set())} className="text-xs text-slate-400 hover:text-white">Clear</button>
-                </div>
-              )}
-            </FullScreenContainer>
-          </div>
 
-          {/* CENTER COLUMN: Chart + Calendar */}
-          <div className="lg:col-span-5 flex flex-col gap-4">
-            {/* Remaining Days Chart - WRAPPED IN FULLSCREEN */}
-            <FullScreenContainer
-              className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col"
-              title="Asset Health Overview"
-              isOpen={expandedSection === 'chart'}
-              onToggle={(val) => setExpandedSection(val ? 'chart' : null)}
-            >
-              <h3 className="font-semibold text-lg text-slate-200 mb-4 flex items-center gap-2">
-                <Icons.Activity className="text-cyan-400" />
-                Remaining Days
-              </h3>
-              <div className="flex-1 min-h-0">
-                <SimpleBarChart data={filteredData} onBarClick={(data) => {
-                  // Filter table based on clicked bar
-                  if (data.remaining < 0) setFilterStatus('overdue');
-                  else if (data.remaining < 30) setFilterStatus('dueSoon');
-                  else setFilterStatus('healthy');
-                }} />
-              </div>
-            </FullScreenContainer>
-
-            {/* Maintenance Calendar */}
-            {/* Maintenance Calendar */}
-            {expandedSection === 'calendar' ? (
-              <FullScreenContainer title="Maintenance Calendar" id="calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
-                <CalendarWidget
-                  assets={filteredData}
-                  selectedAssetId={selectedAssetId}
-                  onAssetSelect={setSelectedAssetId}
-                  expandedSection={expandedSection}
-                  setExpandedSection={setExpandedSection}
-                />
-              </FullScreenContainer>
-            ) : (
-              <div>
-                <CalendarWidget
-                  assets={filteredData}
-                  selectedAssetId={selectedAssetId}
-                  onAssetSelect={setSelectedAssetId}
-                  expandedSection={expandedSection}
-                  setExpandedSection={setExpandedSection}
-                />
-              </div>
-            )}
-          </div>
-
-
-          {/* RIGHT COLUMN: Equipment Details (Sticky) */}
-          <div className="lg:col-span-3" id="print-section-specs">
-            <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 h-full flex flex-col sticky top-6" title="Equipment Specification">
-              <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-between items-center">
-                <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
-                {selectedAsset && (
-                  <div className="no-print mr-8">
-                    <Button
-                      variant={activeTab === 'service' ? 'secondary' : 'orange'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        closeFullscreen();
-                        setEditingAsset({ ...selectedAsset });
-                        const specs = currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
-                        setEditingSpecs(specs || null);
-                        setIsAssetEditModalOpen(true);
-                        setSelectedRowIds(new Set());
-                      }}
+              {/* Service Schedule Table */}
+              <FullScreenContainer
+                className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 overflow-hidden flex-1"
+                id="print-section-schedule"
+                isOpen={expandedSection === 'schedule'}
+                onToggle={(val) => setExpandedSection(val ? 'schedule' : null)}
+              >
+                <div className="p-4 border-b border-slate-700 flex flex-wrap gap-4 justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
+                  <div className="flex items-center gap-2">
+                    <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
+                    <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
+                    {/* Replaced styling to create a flexible grey circle badge that grows with content */}
+                    <span
+                      className="ml-2 px-2 py-0.5 rounded-full bg-slate-600 text-xs font-bold text-slate-300 hidden sm:inline min-w-[20px] text-center flex items-center justify-center"
+                      title={`Archived Assets: ${(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}`}
                     >
-                      ✏️ Edit
-                    </Button>
+                      {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}
+                    </span>
+                  </div>
+                  {/* Added flex-wrap so items stack if needed, and reduced pr-10 to pr-2 (or pr-8 if you really need to clear a close button) */}
+                  <div className="flex flex-wrap gap-2 items-center no-print pr-2 sm:pr-10">
+                    <div className="flex items-center mr-2">
+                      <input
+                        type="checkbox"
+                        id="show-archived"
+                        checked={showArchived}
+                        onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
+                        className="mr-1 accent-cyan-500"
+                      />
+                      <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
+                    </div>
+                    {/* Changed w-40 to w-32 md:w-40 */}
+                    <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
+                    <button type="button" onClick={() => { closeFullscreen(); setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
+                  </div>
+                </div>
+                <div className="overflow-x-auto h-full">
+                  <table className="w-full text-left text-sm text-slate-300">
+                    <thead className="bg-slate-900 text-slate-400 z-20">
+                      <tr>
+                        <th className="px-4 py-2 w-8 text-center no-print">
+                          <input
+                            type="checkbox"
+                            checked={filteredData.length > 0 && selectedRowIds.size === filteredData.length}
+                            onChange={toggleSelectAll}
+                            className="rounded border-slate-500 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600"
+                            title="Select All"
+                          />
+                        </th>
+                        <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[150px]" onClick={() => { handleSort('name'); setSelectedRowIds(new Set()); }}>Name {getSortIcon('name')}</th>
+                        <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px]" onClick={() => { handleSort('code'); setSelectedRowIds(new Set()); }}>Code {getSortIcon('code')}</th>
+                        <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('frequency'); setSelectedRowIds(new Set()); }}>Freq {getSortIcon('frequency')}</th>
+                        <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('lastCal'); setSelectedRowIds(new Set()); }}>Last Cal {getSortIcon('lastCal')}</th>
+                        <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('dueDate'); setSelectedRowIds(new Set()); }}>Cal Due {getSortIcon('dueDate')}</th>
+                        <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
+                        <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
+                        <th className="px-4 py-2 text-center min-w-[100px]">Op Status</th>
+                        <th className="px-3 py-2 text-center no-print text-xs">Analytics</th>
+                        <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
+                        <th className="px-3 py-2 text-center no-print text-xs">Edit</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                      {filteredData.map(item => (
+                        <tr key={item.id} data-asset-id={item.id} onClick={() => setSelectedAssetId(item.id)} className={`cursor-pointer transition-all duration-200 ease-in-out ${selectedAssetId === item.id ? 'bg-cyan-900/40 ring-1 ring-cyan-500 ring-offset-0 shadow-sm z-10 relative' : selectedRowIds.has(item.id) ? 'bg-cyan-900/20' : (item.active === false ? 'bg-slate-900 opacity-50' : 'hover:bg-slate-700 border-b border-slate-700 border-l-4 border-l-transparent hover:border-l-cyan-500')}`}>
+                          <td className="px-4 py-2 text-center no-print" onClick={(e) => { e.stopPropagation(); toggleRow(item.id); }}>
+                            <input type="checkbox" checked={selectedRowIds.has(item.id)} onChange={() => { }} className="rounded border-slate-500 text-cyan-600 focus:ring-cyan-500 cursor-pointer accent-cyan-600" />
+                          </td>
+                          <td className="px-4 py-2 font-medium text-slate-200">{item.name} {item.active === false && <span className="text-[10px] text-slate-400">(Archived)</span>}</td>
+                          <td className="px-4 py-2 font-mono text-xs text-slate-400">{item.code}</td>
+                          <td className="px-4 py-2 text-center"><EditableCell value={item.frequency} type="number" onSave={(val) => handleInlineUpdate(item.id, 'frequency', val)} className="text-center bg-slate-800 text-white border-slate-600" /></td>
+                          <td className="px-4 py-2"><EditableCell value={item.lastCal} type="date" onSave={(val) => handleInlineUpdate(item.id, 'lastCal', val)} className="bg-slate-800 text-white border-slate-600" /></td>
+                          <td className="px-4 py-2 text-slate-400 font-medium">{formatDate(item.dueDate)}</td>
+                          <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
+                          <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>
+                          <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                closeFullscreen();
+                                setOpStatusAsset(item);
+                                setIsOpStatusModalOpen(true);
+                                setSelectedRowIds(new Set());
+                              }}
+                              className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${item.opStatus === 'Warning'
+                                ? 'bg-yellow-600 text-white hover:bg-yellow-700'
+                                : item.opStatus === 'Down'
+                                  ? 'bg-red-600 text-white hover:bg-red-700'
+                                  : 'bg-green-600 text-white hover:bg-green-700'
+                                }`}
+                              title={item.opNote || 'Click to update operational status'}
+                            >
+                              {item.opStatus || 'Operational'}
+                            </button>
+                          </td>
+                          <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}><button type="button" onClick={(e) => { e.stopPropagation(); closeFullscreen(); setViewAnalyticsAsset(item); setSelectedRowIds(new Set()); }} className="text-slate-400 hover:text-purple-400 p-2 rounded" title="View Analytics & Reports"><Icons.Activity /></button></td>
+                          {/* Archive Column */}
+                          <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // Added confirmation check
+                                if (window.confirm(item.active === false ? "Are you sure you want to restore this asset?" : "Are you sure you want to archive this asset?")) {
+                                  toggleAssetStatus(item);
+                                  setSelectedRowIds(new Set());
+                                }
+                              }}
+                              className="text-slate-400 hover:text-orange-400 p-2 rounded transition-colors"
+                              title={item.active === false ? "Restore Asset" : "Archive Asset"}
+                            >
+                              <Icons.Archive size={20} />
+                            </button>
+                          </td>
+                          <td className="px-3 py-2 text-center no-print" onClick={(e) => e.stopPropagation()}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                closeFullscreen();
+                                setEditingAsset({ ...item });
+                                const specs = currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
+                                setEditingSpecs(specs || null);
+                                setIsAssetEditModalOpen(true);
+                                setSelectedRowIds(new Set());
+                              }}
+                              className="text-slate-400 hover:text-cyan-400 p-2 rounded"
+                              title="Edit Asset Details & Specs"
+                            >
+                              <Icons.Edit />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {selectedRowIds.size > 0 && (
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-700 text-white px-6 py-3 rounded-full shadow-lg border border-slate-600 flex items-center gap-4 animate-in slide-in-from-bottom-4 duration-200 z-20 no-print">
+                    <span className="font-bold text-sm">{selectedRowIds.size} Selected</span>
+                    <div className="h-4 w-px bg-slate-500"></div>
+                    <button onClick={performBulkService} className="text-sm font-medium text-slate-300 hover:text-green-400 flex items-center gap-2 bg-transparent shadow-none border-none p-0 transition-colors"><Icons.CheckCircle size={16} /> Mark as Serviced Today</button>
+                    <div className="h-4 w-px bg-slate-500"></div>
+                    <button onClick={() => { exportBulkCSV(); setSelectedRowIds(new Set()); }} className="text-sm font-medium hover:text-cyan-300 flex items-center gap-2"><Icons.FileCsv /> Export List</button>
+                    <div className="h-4 w-px bg-slate-500"></div>
+                    <button onClick={() => setSelectedRowIds(new Set())} className="text-xs text-slate-400 hover:text-white">Clear</button>
                   </div>
                 )}
-              </div>
-              <div className="flex-1 p-6 text-slate-300 overflow-y-auto">
-                {specsPanelContent}
-              </div>
-            </FullScreenContainer>
-          </div>
+              </FullScreenContainer>
+            </div>
+
+            {/* CENTER COLUMN: Chart + Calendar */}
+            <div className="lg:col-span-5 flex flex-col gap-4">
+              {/* Remaining Days Chart - WRAPPED IN FULLSCREEN */}
+              <FullScreenContainer
+                className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 p-4 no-print flex flex-col"
+                title="Asset Health Overview"
+                isOpen={expandedSection === 'chart'}
+                onToggle={(val) => setExpandedSection(val ? 'chart' : null)}
+              >
+                <h3 className="font-semibold text-lg text-slate-200 mb-4 flex items-center gap-2">
+                  <Icons.Activity className="text-cyan-400" />
+                  Remaining Days
+                </h3>
+                <div className="flex-1 min-h-0">
+                  <SimpleBarChart data={filteredData} onBarClick={(data) => {
+                    // Filter table based on clicked bar
+                    if (data.remaining < 0) setFilterStatus('overdue');
+                    else if (data.remaining < 30) setFilterStatus('dueSoon');
+                    else setFilterStatus('healthy');
+                  }} />
+                </div>
+              </FullScreenContainer>
+
+              {/* Maintenance Calendar */}
+              {/* Maintenance Calendar */}
+              {expandedSection === 'calendar' ? (
+                <FullScreenContainer title="Maintenance Calendar" id="calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
+                  <CalendarWidget
+                    assets={filteredData}
+                    selectedAssetId={selectedAssetId}
+                    onAssetSelect={setSelectedAssetId}
+                    expandedSection={expandedSection}
+                    setExpandedSection={setExpandedSection}
+                  />
+                </FullScreenContainer>
+              ) : (
+                <div>
+                  <CalendarWidget
+                    assets={filteredData}
+                    selectedAssetId={selectedAssetId}
+                    onAssetSelect={setSelectedAssetId}
+                    expandedSection={expandedSection}
+                    setExpandedSection={setExpandedSection}
+                  />
+                </div>
+              )}
+            </div>
+
+
+            {/* RIGHT COLUMN: Equipment Details (Sticky) */}
+            <div className="lg:col-span-3" id="print-section-specs">
+              <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 h-full flex flex-col sticky top-6" title="Equipment Specification">
+                <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-between items-center">
+                  <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
+                  {selectedAsset && (
+                    <div className="no-print mr-8">
+                      <Button
+                        variant={activeTab === 'service' ? 'secondary' : 'orange'}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeFullscreen();
+                          setEditingAsset({ ...selectedAsset });
+                          const specs = currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
+                          setEditingSpecs(specs || null);
+                          setIsAssetEditModalOpen(true);
+                          setSelectedRowIds(new Set());
+                        }}
+                      >
+                        ✏️ Edit
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                <div className="flex-1 p-6 text-slate-300 overflow-y-auto">
+                  {specsPanelContent}
+                </div>
+              </FullScreenContainer>
+            </div>
+          </div >
+        )
+        }
+
+
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {activeTab === 'issues' ? (
+            <div className="lg:col-span-12 flex flex-col gap-6"> {/* Full width for issues tab */}
+              <SiteIssueTracker
+                siteId={selectedSiteId}
+                issues={selectedSite?.issues || []}
+                onAddIssue={handleAddIssue}
+                onDeleteIssue={handleDeleteIssue}
+                onUpdateIssue={handleUpdateIssue} // Pass the new update handler
+                onToggleStatus={handleToggleIssueStatus}
+                onCopyIssue={handleCopyIssue}
+                assets={[...(selectedSite?.serviceData || []), ...(selectedSite?.rollerData || [])].filter(asset => asset.active !== false)}
+                closeFullscreen={closeFullscreen}
+              />
+            </div>
+          ) : localViewMode === 'timeline' ? (
+            <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px] mt-6">
+              {/* WRAPPED: Asset Timeline with Full Screen */}
+              <FullScreenContainer
+                className="h-full w-full bg-slate-900 rounded-xl border border-slate-800"
+                title="Maintenance Timeline"
+                isOpen={expandedSection === 'timeline'}
+                onToggle={(val) => setExpandedSection(val ? 'timeline' : null)}
+              >
+                <AssetTimeline assets={filteredData} mode={activeTab} />
+              </FullScreenContainer>
+            </div>
+          ) : null}
         </div >
-      )
-      }
-
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {activeTab === 'issues' ? (
-          <div className="lg:col-span-12 flex flex-col gap-6"> {/* Full width for issues tab */}
-            <SiteIssueTracker
-              siteId={selectedSiteId}
-              issues={selectedSite?.issues || []}
-              onAddIssue={handleAddIssue}
-              onDeleteIssue={handleDeleteIssue}
-              onUpdateIssue={handleUpdateIssue} // Pass the new update handler
-              onToggleStatus={handleToggleIssueStatus}
-              onCopyIssue={handleCopyIssue}
-              assets={[...(selectedSite?.serviceData || []), ...(selectedSite?.rollerData || [])].filter(asset => asset.active !== false)}
-              closeFullscreen={closeFullscreen}
-            />
-          </div>
-        ) : localViewMode === 'timeline' ? (
-          <div className="lg:col-span-12 h-[calc(100vh-300px)] min-h-[600px] mt-6">
-            {/* WRAPPED: Asset Timeline with Full Screen */}
-            <FullScreenContainer
-              className="h-full w-full bg-slate-900 rounded-xl border border-slate-800"
-              title="Maintenance Timeline"
-              isOpen={expandedSection === 'timeline'}
-              onToggle={(val) => setExpandedSection(val ? 'timeline' : null)}
-            >
-              <AssetTimeline assets={filteredData} mode={activeTab} />
-            </FullScreenContainer>
-          </div>
-        ) : null}
-      </div >
       </main>
 
       <AddSiteModal
@@ -1650,7 +1668,7 @@ export default function App() {
           setIsNotesModalOpen(false);
           setNotesModalSite(null);
         }}
-        site={notesModalSite}
+        site={sites.find(s => s.id === notesModalSite?.id)}
         onAddNote={handleAddSiteNote}
         onUpdateNote={handleUpdateSiteNote}
         onDeleteNote={handleDeleteSiteNote}

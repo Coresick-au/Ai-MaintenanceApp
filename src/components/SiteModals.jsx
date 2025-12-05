@@ -37,7 +37,7 @@ export const AddSiteModal = ({
   onLogoUpload
 }) => {
   const [validationErrors, setValidationErrors] = useState({});
-  
+
   const handleSave = () => {
     // Sanitize inputs
     const sanitizedForm = {
@@ -52,24 +52,24 @@ export const AddSiteModal = ({
       contactPosition: sanitizeInput(siteForm.contactPosition || ''),
       typeDetail: sanitizeInput(siteForm.typeDetail || '')
     };
-    
+
     // Validate form
     const validation = validateSiteForm(sanitizedForm);
-    
+
     if (!validation.isValid) {
       setValidationErrors(validation.errors);
       return;
     }
-    
+
     // Clear errors and save
     setValidationErrors({});
     onSave(sanitizedForm, noteInput);
   };
-  
+
   const getErrorClass = (field) => {
     return validationErrors[field] ? 'border-red-500' : '';
   };
-  
+
   const getErrorMessage = (field) => {
     return validationErrors[field] ? (
       <span className="text-red-400 text-xs mt-1">{validationErrors[field]}</span>
@@ -84,21 +84,21 @@ export const AddSiteModal = ({
         <div className="grid grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Site Name *</label>
-            <input 
-              className={`${inputClass} ${getErrorClass('name')}`} 
-              placeholder="Site Name" 
-              value={siteForm.name || ''} 
-              onChange={e => setSiteForm({ ...siteForm, name: e.target.value })} 
+            <input
+              className={`${inputClass} ${getErrorClass('name')}`}
+              placeholder="Site Name"
+              value={siteForm.name || ''}
+              onChange={e => setSiteForm({ ...siteForm, name: e.target.value })}
             />
             {getErrorMessage('name')}
           </div>
           <div>
             <label className={labelClass}>Customer *</label>
-            <input 
-              className={`${inputClass} ${getErrorClass('customer')}`} 
-              placeholder="Customer Name" 
-              value={siteForm.customer || ''} 
-              onChange={e => setSiteForm({ ...siteForm, customer: e.target.value })} 
+            <input
+              className={`${inputClass} ${getErrorClass('customer')}`}
+              placeholder="Customer Name"
+              value={siteForm.customer || ''}
+              onChange={e => setSiteForm({ ...siteForm, customer: e.target.value })}
             />
             {getErrorMessage('customer')}
           </div>
@@ -108,11 +108,11 @@ export const AddSiteModal = ({
           <TypeSelect value={siteForm.type} onChange={e => setSiteForm({ ...siteForm, type: e.target.value })} />
           <div>
             <label className={labelClass}>Location *</label>
-            <input 
-              className={`${inputClass} ${getErrorClass('location')}`} 
-              placeholder="Location" 
-              value={siteForm.location || ''} 
-              onChange={e => setSiteForm({ ...siteForm, location: e.target.value })} 
+            <input
+              className={`${inputClass} ${getErrorClass('location')}`}
+              placeholder="Location"
+              value={siteForm.location || ''}
+              onChange={e => setSiteForm({ ...siteForm, location: e.target.value })}
             />
             {getErrorMessage('location')}
           </div>
@@ -138,30 +138,30 @@ export const AddSiteModal = ({
             <input className={inputClass} placeholder="Position" value={siteForm.contactPosition || ''} onChange={e => setSiteForm({ ...siteForm, contactPosition: e.target.value })} />
           </div>
           <div>
-            <input 
-              className={`${inputClass} ${getErrorClass('contactEmail')}`} 
-              placeholder="Email" 
-              value={siteForm.contactEmail || ''} 
-              onChange={e => setSiteForm({ ...siteForm, contactEmail: e.target.value })} 
+            <input
+              className={`${inputClass} ${getErrorClass('contactEmail')}`}
+              placeholder="Email"
+              value={siteForm.contactEmail || ''}
+              onChange={e => setSiteForm({ ...siteForm, contactEmail: e.target.value })}
             />
             {getErrorMessage('contactEmail')}
           </div>
           <div className="grid grid-cols-2 gap-2 mt-2">
             <div>
-              <input 
-                className={`${inputClass} ${getErrorClass('contactPhone1')}`} 
-                placeholder="Phone 1" 
-                value={siteForm.contactPhone1 || ''} 
-                onChange={e => setSiteForm({ ...siteForm, contactPhone1: e.target.value })} 
+              <input
+                className={`${inputClass} ${getErrorClass('contactPhone1')}`}
+                placeholder="Phone 1"
+                value={siteForm.contactPhone1 || ''}
+                onChange={e => setSiteForm({ ...siteForm, contactPhone1: e.target.value })}
               />
               {getErrorMessage('contactPhone1')}
             </div>
             <div>
-              <input 
-                className={`${inputClass} ${getErrorClass('contactPhone2')}`} 
-                placeholder="Phone 2" 
-                value={siteForm.contactPhone2 || ''} 
-                onChange={e => setSiteForm({ ...siteForm, contactPhone2: e.target.value })} 
+              <input
+                className={`${inputClass} ${getErrorClass('contactPhone2')}`}
+                placeholder="Phone 2"
+                value={siteForm.contactPhone2 || ''}
+                onChange={e => setSiteForm({ ...siteForm, contactPhone2: e.target.value })}
               />
               {getErrorMessage('contactPhone2')}
             </div>
@@ -189,13 +189,8 @@ export const EditSiteModal = ({
   onToggleStatus,
   siteForm,
   setSiteForm,
-  noteInput,
-  setNoteInput,
-  onLogoUpload,
-  onAddNote
+  onLogoUpload
 }) => {
-  const [showNotes, setShowNotes] = useState(false); // Task 2: Local state for notes toggle
-
   if (!isOpen) return null;
 
   return (
@@ -242,41 +237,6 @@ export const EditSiteModal = ({
           </div>
         </div>
 
-        {/* Task 2: Hide Notes Section */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <h4 className={labelClass}>Notes History</h4>
-            <Button
-              onClick={() => setShowNotes(!showNotes)}
-              variant="secondary"
-              className="text-xs py-1 px-2 h-auto"
-            >
-              {showNotes ? 'Hide Notes' : 'Show Notes'}
-            </Button>
-          </div>
-
-          {showNotes && (
-            <>
-              <div className="max-h-40 overflow-y-auto space-y-2 border border-slate-600 p-2 rounded bg-slate-900/50">
-                {(siteForm.notes || []).map(note => (
-                  <div key={note.id} className="p-2 border border-slate-700 rounded text-sm bg-slate-800">
-                    <div className="flex justify-between"><span className="font-bold text-xs text-slate-300">👤 {note.author}</span><span className="text-[10px] text-slate-400">{formatDate(note.timestamp, true)}</span></div>
-                    <p className="text-slate-300 mt-1">{note.content}</p>
-                  </div>
-                ))}
-                {(!siteForm.notes || siteForm.notes.length === 0) && <p className="text-slate-400 text-xs italic text-center">No notes found.</p>}
-              </div>
-              <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
-                <input className={`${inputClass} mb-2 text-xs`} placeholder="New Note Author" value={noteInput.author || ''} onChange={e => setNoteInput({ ...noteInput, author: e.target.value })} />
-                <div className="flex gap-2">
-                  <input className={`${inputClass} text-xs`} placeholder="New Note Content" value={noteInput.content || ''} onChange={e => setNoteInput({ ...noteInput, content: e.target.value })} />
-                  <button onClick={onAddNote} className="bg-blue-600 text-white px-3 py-1 rounded text-xs font-bold hover:bg-blue-500 transition-colors">Add</button>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-
         {/* Task 3: Move Archive Customer Button to bottom */}
         <div className="space-y-3 mt-4">
           <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded border border-slate-600">
@@ -286,15 +246,15 @@ export const EditSiteModal = ({
                 {siteForm.active !== false ? 'Currently Active' : 'Currently Archived'}
               </div>
             </div>
-            
+
             {/* ARCHIVE BUTTON WITH CONFIRMATION */}
             <button
               onClick={() => {
                 const isArchiving = siteForm.active !== false;
-                const message = isArchiving 
-                  ? "Are you sure you want to archive this customer?" 
+                const message = isArchiving
+                  ? "Are you sure you want to archive this customer?"
                   : "Are you sure you want to restore this customer?";
-                
+
                 if (window.confirm(message)) {
                   onToggleStatus(siteForm);
                 }
@@ -380,14 +340,14 @@ export const ContactModal = ({ site, onClose }) => {
 // ==========================================
 // SITE NOTES MODAL - Full notes management
 // ==========================================
-export const SiteNotesModal = ({ 
-  isOpen, 
-  onClose, 
-  site, 
-  onAddNote, 
-  onUpdateNote, 
-  onDeleteNote, 
-  onArchiveNote 
+export const SiteNotesModal = ({
+  isOpen,
+  onClose,
+  site,
+  onAddNote,
+  onUpdateNote,
+  onDeleteNote,
+  onArchiveNote
 }) => {
   const [newNoteContent, setNewNoteContent] = useState('');
   const [newNoteAuthor, setNewNoteAuthor] = useState('');
@@ -400,7 +360,7 @@ export const SiteNotesModal = ({
   if (!isOpen || !site) return null;
 
   const notes = site.notes || [];
-  
+
   // Filter and sort notes
   const filteredNotes = notes
     .filter(note => showArchived || !note.archived)
@@ -415,7 +375,7 @@ export const SiteNotesModal = ({
 
   const handleAddNote = () => {
     if (!newNoteContent.trim()) return;
-    
+
     onAddNote(site.id, {
       id: `note-${Date.now()}`,
       content: newNoteContent.trim(),
@@ -423,7 +383,7 @@ export const SiteNotesModal = ({
       timestamp: new Date().toISOString(),
       archived: false
     });
-    
+
     setNewNoteContent('');
     setNewNoteAuthor('');
   };
@@ -436,13 +396,13 @@ export const SiteNotesModal = ({
 
   const handleSaveEdit = () => {
     if (!editingNote || !editContent.trim()) return;
-    
+
     onUpdateNote(site.id, editingNote.id, {
       content: editContent.trim(),
       author: editAuthor.trim() || editingNote.author,
       timestamp: new Date().toISOString() // Update timestamp on edit
     });
-    
+
     setEditingNote(null);
     setEditContent('');
     setEditAuthor('');
@@ -479,7 +439,7 @@ export const SiteNotesModal = ({
               <div className="text-[10px] text-slate-400 uppercase">Archived</div>
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
@@ -490,11 +450,10 @@ export const SiteNotesModal = ({
             </button>
             <button
               onClick={() => setShowArchived(!showArchived)}
-              className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${
-                showArchived 
-                  ? 'bg-slate-700 text-white border-slate-600' 
-                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-              }`}
+              className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${showArchived
+                ? 'bg-slate-700 text-white border-slate-600'
+                : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                }`}
             >
               {showArchived ? 'Hide Archived' : 'Show Archived'}
             </button>
@@ -521,8 +480,8 @@ export const SiteNotesModal = ({
               rows={3}
               className={`${inputClass} resize-none`}
             />
-            <Button 
-              onClick={handleAddNote} 
+            <Button
+              onClick={handleAddNote}
               disabled={!newNoteContent.trim()}
               className="w-full justify-center"
             >
@@ -543,13 +502,12 @@ export const SiteNotesModal = ({
             </div>
           ) : (
             filteredNotes.map((note) => (
-              <div 
-                key={note.id} 
-                className={`p-3 rounded-lg border transition-all ${
-                  note.archived 
-                    ? 'bg-slate-900/30 border-slate-800 opacity-60' 
-                    : 'bg-slate-800 border-slate-700'
-                } ${editingNote?.id === note.id ? 'ring-2 ring-blue-500' : ''}`}
+              <div
+                key={note.id}
+                className={`p-3 rounded-lg border transition-all ${note.archived
+                  ? 'bg-slate-900/30 border-slate-800 opacity-60'
+                  : 'bg-slate-800 border-slate-700'
+                  } ${editingNote?.id === note.id ? 'ring-2 ring-blue-500' : ''}`}
               >
                 {editingNote?.id === note.id ? (
                   // Edit Mode
@@ -589,7 +547,7 @@ export const SiteNotesModal = ({
                       <span className="text-[10px] text-slate-500">{formatDate(note.timestamp, true)}</span>
                     </div>
                     <p className="text-slate-300 text-sm mb-3 whitespace-pre-wrap">{note.content}</p>
-                    
+
                     {/* Action Buttons */}
                     <div className="flex gap-1 pt-2 border-t border-slate-700">
                       <button
@@ -600,11 +558,10 @@ export const SiteNotesModal = ({
                       </button>
                       <button
                         onClick={() => handleArchive(note.id, note.archived)}
-                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-colors ${
-                          note.archived 
-                            ? 'text-green-400 hover:bg-green-900/30' 
-                            : 'text-orange-400 hover:bg-orange-900/30'
-                        }`}
+                        className={`flex-1 flex items-center justify-center gap-1 px-2 py-1 text-xs rounded transition-colors ${note.archived
+                          ? 'text-green-400 hover:bg-green-900/30'
+                          : 'text-orange-400 hover:bg-orange-900/30'
+                          }`}
                       >
                         {note.archived ? <><Icons.RotateCcw size={12} /> Restore</> : <><Icons.Archive size={12} /> Archive</>}
                       </button>

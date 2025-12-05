@@ -9,6 +9,7 @@ interface Asset {
   dueDate: string;
   remaining: number;
   opStatus?: string;
+  opNote?: string;
   active?: boolean;
 }
 
@@ -121,16 +122,28 @@ const styles = StyleSheet.create({
   }
 });
 
-const getStatusStyle = (remaining: number) => {
-  if (remaining < 0) return styles.statusCritical;
-  if (remaining < 30) return styles.statusWarning;
+const getStatusStyle = (asset: Asset) => {
+  // Priority 1: Check opStatus first
+  if (asset.opStatus === 'Down') return styles.statusCritical;
+  if (asset.opStatus === 'Warning') return styles.statusWarning;
+
+  // Priority 2: Fall back to remaining days
+  if (asset.remaining < 0) return styles.statusCritical;
+  if (asset.remaining < 30) return styles.statusWarning;
+
   return styles.statusGood;
 };
 
-const getStatusText = (remaining: number) => {
-  if (remaining < 0) return 'CRITICAL';
-  if (remaining < 30) return 'DUE SOON';
-  return 'HEALTHY';
+const getStatusText = (asset: Asset) => {
+  // Priority 1: Check opStatus first
+  if (asset.opStatus === 'Down') return 'DOWN/CRITICAL';
+  if (asset.opStatus === 'Warning') return 'WARNING';
+
+  // Priority 2: Fall back to remaining days
+  if (asset.remaining < 0) return 'OVERDUE';
+  if (asset.remaining < 30) return 'DUE SOON';
+
+  return 'OPERATIONAL';
 };
 
 interface Asset {
@@ -155,9 +168,9 @@ interface MaintenanceReportPDFProps {
   generatedDate: string;
 }
 
-export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({ 
-  site, 
-  generatedDate 
+export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
+  site,
+  generatedDate
 }) => {
   const allAssets = [...(site.serviceData || []), ...(site.rollerData || [])]
     .filter(asset => asset.active !== false);
@@ -171,8 +184,8 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Image 
-            src="/logos/ai-logo.png" 
+          <Image
+            src="/logos/ai-logo.png"
             style={styles.logo}
           />
           <View style={styles.titleContainer}>
@@ -180,7 +193,7 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
             <Text style={styles.subtitle}>Maintenance Report</Text>
           </View>
         </View>
-        
+
         {/* Site Information */}
         <View style={styles.summaryBox}>
           <Text style={styles.summaryText}>Customer: {site.customer}</Text>
@@ -209,6 +222,7 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
               <Text style={styles.headerCell}>Due Date</Text>
               <Text style={styles.headerCell}>Days Remaining</Text>
               <Text style={styles.headerCell}>Status</Text>
+              <Text style={styles.headerCell}>Comment</Text>
             </View>
             {site.serviceData
               .filter(asset => asset.active !== false)
@@ -219,8 +233,11 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
                   <Text style={styles.cell}>{asset.lastCal}</Text>
                   <Text style={styles.cell}>{asset.dueDate}</Text>
                   <Text style={styles.cell}>{asset.remaining}</Text>
-                  <Text style={[styles.cell, getStatusStyle(asset.remaining)]}>
-                    {getStatusText(asset.remaining)}
+                  <Text style={[styles.cell, getStatusStyle(asset)]}>
+                    {getStatusText(asset)}
+                  </Text>
+                  <Text style={styles.cell}>
+                    {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote ? asset.opNote : '-'}
                   </Text>
                 </View>
               ))}
@@ -238,6 +255,7 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
               <Text style={styles.headerCell}>Due Date</Text>
               <Text style={styles.headerCell}>Days Remaining</Text>
               <Text style={styles.headerCell}>Status</Text>
+              <Text style={styles.headerCell}>Comment</Text>
             </View>
             {site.rollerData
               .filter(asset => asset.active !== false)
@@ -248,8 +266,11 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
                   <Text style={styles.cell}>{asset.lastCal}</Text>
                   <Text style={styles.cell}>{asset.dueDate}</Text>
                   <Text style={styles.cell}>{asset.remaining}</Text>
-                  <Text style={[styles.cell, getStatusStyle(asset.remaining)]}>
-                    {getStatusText(asset.remaining)}
+                  <Text style={[styles.cell, getStatusStyle(asset)]}>
+                    {getStatusText(asset)}
+                  </Text>
+                  <Text style={styles.cell}>
+                    {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote ? asset.opNote : '-'}
                   </Text>
                 </View>
               ))}
