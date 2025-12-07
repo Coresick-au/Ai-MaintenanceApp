@@ -153,22 +153,7 @@ export default function App() {
     isDirtyRef.current = isDirty;
   }, [isDirty]);
 
-  useEffect(() => {
-    const handleCloseRequest = () => {
-      const hasUnsavedChanges = isDirtyRef.current;
-
-      if (!hasUnsavedChanges) {
-        window.electronAPI?.sendAppCloseApproved();
-      } else {
-        const shouldClose = window.electronAPI?.promptClose(true);
-        if (shouldClose) {
-          window.electronAPI?.sendAppCloseApproved();
-        }
-      }
-    };
-
-    window.electronAPI?.onAppCloseRequest(handleCloseRequest);
-  }, []);
+  // Removed Electron window close handlers (web-only app)
 
   const printMenuRef = useRef(null);
 
@@ -1285,7 +1270,7 @@ export default function App() {
             </h3>
 
             {/* Database Status */}
-            {window.electronAPI && (
+            {false && (
               <div className={`mb-4 p-3 rounded-lg border ${isDbReady
                 ? 'bg-green-900/20 border-green-800/50'
                 : 'bg-orange-900/20 border-orange-800/50'
@@ -1318,7 +1303,7 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  {window.electronAPI ? (
+                  {false ? (
                     <>Configure a database location to enable automatic saving and OneDrive sync.</>
                   ) : (
                     <>This application is currently running in browser mode. Your data is stored in <strong>localStorage</strong> (temporary).</>
@@ -1329,7 +1314,7 @@ export default function App() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               {/* Left Column: Database Mode */}
-              {window.electronAPI && (
+              {false && (
                 <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 h-full flex flex-col justify-center">
                   <strong className="text-amber-600 text-amber-300 block mb-2 flex items-center gap-2 text-base">
                     <Icons.Database size={16} />
