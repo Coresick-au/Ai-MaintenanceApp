@@ -75,7 +75,8 @@ export default function App() {
 
     handleFileChange, uploadServiceReport, deleteServiceReport,
     dbPath, isDbReady, handleDatabaseSelected,
-    employees, handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee
+    employees, handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee,
+    todos, handleAddTodo, handleUpdateTodo, handleDeleteTodo
   } = useSiteContext();
 
   const {
