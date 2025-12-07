@@ -101,7 +101,13 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
 
     // Filter for active sites only - MUST BE BEFORE EARLY RETURN
     const activeSites = useMemo(() => {
-        return (sites || []).filter(site => site.active !== false);
+        const allSites = sites || [];
+        // Try to filter for active sites
+        const filtered = allSites.filter(site => site.active !== false);
+        // If we have active sites, show them. usage of length > 0 ensures we don't show empty list if we have candidates.
+        // If filtered is empty but allSites is not (meaning all sites are archived?), show allSites to be safe.
+        // If allSites is empty, well, we return [] anyway.
+        return filtered.length > 0 ? filtered : allSites;
     }, [sites]);
 
     if (!isOpen) return null;
