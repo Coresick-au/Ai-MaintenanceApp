@@ -28,6 +28,7 @@ export const SiteProvider = ({ children }) => {
     const [sites, setSites] = useState([]);
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
+    const [employees, setEmployees] = useState([]);
 
     // Database State
     const [dbPath, setDbPath] = useState(null);
@@ -722,6 +723,54 @@ export const SiteProvider = ({ children }) => {
         setSites(updatedSites);
     };
 
+    // --- EMPLOYEE ACTIONS ---
+    const handleAddEmployee = (empData) => {
+        const newEmp = {
+            id: `emp-${Date.now()}`,
+            name: empData.name,
+            role: empData.role || 'Technician',
+            email: empData.email || '',
+            phone: empData.phone || '',
+            active: true,
+            certifications: [],
+            inductions: []
+        };
+
+        setEmployees(prev => [...prev, newEmp]);
+        addUndoAction({
+            description: `Add Employee: ${newEmp.name}`,
+            undo: () => setEmployees(prev => prev.filter(e => e.id !== newEmp.id)),
+            redo: () => setEmployees(prev => [...prev, newEmp])
+        });
+    };
+
+    const handleUpdateEmployee = (empId, updates) => {
+        const oldEmployees = employees;
+        const newEmployees = employees.map(e => e.id === empId ? { ...e, ...updates } : e);
+
+        setEmployees(newEmployees);
+        addUndoAction({
+            description: `Update Employee`,
+            undo: () => setEmployees(oldEmployees),
+            redo: () => setEmployees(newEmployees)
+        });
+    };
+
+    const handleDeleteEmployee = (empId) => {
+        const employee = employees.find(e => e.id === empId);
+        if (!employee) return;
+
+        const oldEmployees = employees;
+        const newEmployees = employees.filter(e => e.id !== empId);
+
+        setEmployees(newEmployees);
+        addUndoAction({
+            description: `Delete Employee: ${employee.name}`,
+            undo: () => setEmployees(oldEmployees),
+            redo: () => setEmployees(newEmployees)
+        });
+    };
+
     return (
         <SiteContext.Provider value={{
             sites, setSites,
@@ -766,7 +815,13 @@ export const SiteProvider = ({ children }) => {
             dbPath,
             isDbReady,
             handleDatabaseSelected,
-            reloadFromDatabase
+            reloadFromDatabase,
+
+            // Employee Exports
+            employees,
+            handleAddEmployee,
+            handleUpdateEmployee,
+            handleDeleteEmployee
         }}>
             {children}
         </SiteContext.Provider>

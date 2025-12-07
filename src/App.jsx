@@ -45,6 +45,7 @@ import { ServiceReportDocument } from './components/reports/ServiceReportDocumen
 import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
 import { ReportWizardModal } from './components/ReportWizardModal';
 import { ContextWizardModal } from './components/ContextWizardModal';
+import { EmployeeManager } from './components/EmployeeManager';
 import { DatabaseSettingsModal } from './components/DatabaseSettingsModal';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
@@ -68,7 +69,8 @@ export default function App() {
     handleAddSiteNote, handleUpdateSiteNote, handleDeleteSiteNote, handleArchiveSiteNote,
 
     handleFileChange, uploadServiceReport, deleteServiceReport,
-    dbPath, isDbReady, handleDatabaseSelected
+    dbPath, isDbReady, handleDatabaseSelected,
+    employees, handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee
   } = useSiteContext();
 
   const {
@@ -109,6 +111,7 @@ export default function App() {
   // Universal Action Wizard State
   const [wizardAction, setWizardAction] = useState(null); // 'analytics', 'report', 'specs'
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
+  const [isEmployeeManagerOpen, setIsEmployeeManagerOpen] = useState(false);
 
   const toggleCardExpansion = (e, siteId) => {
     e.stopPropagation();
@@ -981,6 +984,19 @@ export default function App() {
             >
               <Icons.Zap size={18} />
               <span>Add Demo Site</span>
+            </button>
+
+            <div className="border-t border-slate-700 my-3"></div>
+            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Tools</div>
+
+            {/* Technicians & Training */}
+            <button
+              type="button"
+              onClick={() => setIsEmployeeManagerOpen(true)}
+              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 text-slate-300 hover:text-white hover:bg-slate-700"
+            >
+              <Icons.Users size={18} />
+              <span>Technicians & Training</span>
             </button>
 
             <div className="border-t border-slate-700 my-3"></div>
@@ -2455,6 +2471,15 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* EMPLOYEE MANAGER MODAL */}
+      <EmployeeManager
+        isOpen={isEmployeeManagerOpen}
+        onClose={() => setIsEmployeeManagerOpen(false)}
+        employees={employees}
+        onAddEmployee={handleAddEmployee}
+        onUpdateEmployee={handleUpdateEmployee}
+      />
 
     </div >
   );
