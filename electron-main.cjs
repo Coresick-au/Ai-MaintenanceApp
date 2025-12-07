@@ -477,9 +477,13 @@ ipcMain.handle('db-save-site', (event, siteData) => {
       (siteData.serviceData || []).forEach(asset => {
         assetStmt.run(
           asset.id, siteData.id, 'service', asset.name, asset.code,
-          asset.weigher, asset.lastCal, asset.frequency, asset.dueDate,
-          asset.remaining, asset.active ? 1 : 0, asset.opStatus,
-          asset.opNote, asset.opNoteTimestamp
+          asset.weigher || null, asset.lastCal || null,
+          asset.frequency ? parseInt(asset.frequency) : null,
+          asset.dueDate || null,
+          asset.remaining !== undefined && asset.remaining !== null ? parseInt(asset.remaining) : null,
+          asset.active ? 1 : 0,
+          asset.opStatus || null,
+          asset.opNote || null, asset.opNoteTimestamp || null
         );
 
         // Save asset history
@@ -489,7 +493,7 @@ ipcMain.handle('db-save-site', (event, siteData) => {
         `);
         (asset.history || []).forEach((h, idx) => {
           const historyId = `${asset.id}-h-${idx}`;
-          historyStmt.run(historyId, asset.id, h.date, h.action, h.user);
+          historyStmt.run(historyId, asset.id, h.date, h.action, h.user || null);
         });
 
         // Save asset reports
@@ -509,9 +513,13 @@ ipcMain.handle('db-save-site', (event, siteData) => {
       (siteData.rollerData || []).forEach(asset => {
         assetStmt.run(
           asset.id, siteData.id, 'roller', asset.name, asset.code,
-          asset.weigher, asset.lastCal, asset.frequency, asset.dueDate,
-          asset.remaining, asset.active ? 1 : 0, asset.opStatus,
-          asset.opNote, asset.opNoteTimestamp
+          asset.weigher || null, asset.lastCal || null,
+          asset.frequency ? parseInt(asset.frequency) : null,
+          asset.dueDate || null,
+          asset.remaining !== undefined && asset.remaining !== null ? parseInt(asset.remaining) : null,
+          asset.active ? 1 : 0,
+          asset.opStatus || null,
+          asset.opNote || null, asset.opNoteTimestamp || null
         );
 
         // Save asset history
@@ -521,7 +529,7 @@ ipcMain.handle('db-save-site', (event, siteData) => {
         `);
         (asset.history || []).forEach((h, idx) => {
           const historyId = `${asset.id}-h-${idx}`;
-          historyStmt.run(historyId, asset.id, h.date, h.action, h.user);
+          historyStmt.run(historyId, asset.id, h.date, h.action, h.user || null);
         });
 
         // Save asset reports
@@ -603,9 +611,9 @@ ipcMain.handle('db-save-site', (event, siteData) => {
     if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED' || error.message.includes('locked')) {
       dialog.showErrorBox('Database Error', 'The database file is locked. This might be caused by OneDrive syncing. Please wait a moment and try again.\n\nError: ' + error.message);
     } else {
-      // Only show specific errors to avoid spamming, or show all for now debugging?
-      // Let's show all save errors during this debug phase
-      dialog.showErrorBox('Save Error', 'Failed to save data.\n\nError: ' + error.message);
+      // Suppress generic "datatype mismatch" dialogs for background saves, but log them
+      // We only show critical DB errors
+      console.warn('[DB] Save failed (suppressing dialog):', error.message);
     }
 
     return { success: false, error: error.message };
