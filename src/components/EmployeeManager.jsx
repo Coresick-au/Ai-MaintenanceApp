@@ -72,8 +72,8 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
                                         <td className="px-4 py-2 text-slate-400 font-mono text-xs">{formatDate(item.expiry)}</td>
                                         <td className="px-4 py-2">
                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${item.status === 'expired'
-                                                    ? 'text-red-400 bg-red-900/20 border-red-900/50'
-                                                    : 'text-yellow-400 bg-yellow-900/20 border-yellow-900/50'
+                                                ? 'text-red-400 bg-red-900/20 border-red-900/50'
+                                                : 'text-yellow-400 bg-yellow-900/20 border-yellow-900/50'
                                                 }`}>
                                                 {item.status}
                                             </span>
@@ -99,12 +99,12 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
     const [editingCertId, setEditingCertId] = useState(null);
     const [editCertForm, setEditCertForm] = useState({ name: '', provider: '', expiry: '' });
 
-    if (!isOpen) return null;
-
-    // Filter for active sites only
+    // Filter for active sites only - MUST BE BEFORE EARLY RETURN
     const activeSites = useMemo(() => {
         return (sites || []).filter(site => site.active !== false);
     }, [sites]);
+
+    if (!isOpen) return null;
 
     // Helper to get status color
     const getStatusColor = (status) => {
@@ -138,8 +138,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                             <button
                                 onClick={() => setSelectedEmp(null)}
                                 className={`w-full px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-left ${selectedEmp === null
-                                        ? 'bg-purple-600 text-white shadow-lg'
-                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                                    ? 'bg-purple-600 text-white shadow-lg'
+                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                                     }`}
                             >
                                 <Icons.Activity size={16} /> Compliance Overview
@@ -147,8 +147,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                             <button
                                 onClick={() => setSelectedEmp('new')}
                                 className={`w-full px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-left ${selectedEmp === 'new'
-                                        ? 'bg-cyan-600 text-white shadow-lg'
-                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                                    ? 'bg-cyan-600 text-white shadow-lg'
+                                    : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                                     }`}
                             >
                                 <Icons.Plus size={16} /> Add Technician
@@ -168,8 +168,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                         key={emp.id}
                                         onClick={() => setSelectedEmp(emp)}
                                         className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedEmp?.id === emp.id
-                                                ? 'bg-cyan-900/30 border-cyan-500'
-                                                : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-700/50'
+                                            ? 'bg-cyan-900/30 border-cyan-500'
+                                            : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-700/50'
                                             }`}
                                     >
                                         <div className="flex justify-between items-start">
