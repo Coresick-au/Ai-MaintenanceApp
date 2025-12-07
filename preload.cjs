@@ -52,6 +52,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadSites: () => ipcRenderer.invoke('db-get-all-sites'),
   saveSite: (siteData) => ipcRenderer.invoke('db-save-site', siteData),
   deleteSite: (siteId) => ipcRenderer.invoke('db-delete-site', siteId),
+
+  // Photo Management API
+  saveReportPhoto: (sourcePath) => ipcRenderer.invoke('save-report-photo', sourcePath),
+  openFileLocation: (relativePath) => ipcRenderer.invoke('open-file-location', relativePath),
 });
 
 // DOM Content Loaded handler (optional - for displaying version info)

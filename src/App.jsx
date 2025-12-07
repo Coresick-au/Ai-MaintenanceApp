@@ -374,6 +374,9 @@ export default function App() {
       setEditingReportId(null);
       setServiceReportInitialData(null);
       setServiceReportReadOnly(false);
+
+      // Open History Modal (Workflow Improvement)
+      setIsReportHistoryOpen(true);
     } catch (error) {
       console.error('Error generating service report:', error);
       alert('Failed to generate service report. Please try again.');
@@ -1349,6 +1352,16 @@ export default function App() {
           onUpdateNote={handleUpdateSiteNote}
           onDeleteNote={handleDeleteSiteNote}
           onArchiveNote={handleArchiveSiteNote}
+        />
+
+        {/* EMPLOYEE MANAGER MODAL (Landing Page) */}
+        <EmployeeManager
+          isOpen={isEmployeeManagerOpen}
+          onClose={() => setIsEmployeeManagerOpen(false)}
+          employees={employees}
+          onAddEmployee={handleAddEmployee}
+          onUpdateEmployee={handleUpdateEmployee}
+          onDeleteEmployee={handleDeleteEmployee}
         />
 
         {/* DATABASE SETTINGS MODAL */}
@@ -2394,6 +2407,10 @@ export default function App() {
           onRegeneratePDF={handleRegeneratePDF}
           onViewReport={handleViewReport}
           onEditReport={handleEditReport}
+          onNewReport={() => {
+            setIsReportHistoryOpen(false);
+            setReportFormState({ site: selectedSite, asset: selectedAsset });
+          }}
         />
       )}
 

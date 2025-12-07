@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const url = require('url');
 const fs = require('fs');
@@ -21,7 +21,7 @@ if (isDev) {
       electron: path.join(__dirname, 'node_modules', '.bin', 'electron'),
       hardResetMethod: 'exit',
       // Watch main process files
-      ignored: /node_modules|[\\/\\]\\.|dist|build/
+      ignored: /node_modules|[\\/\\]\\.|dist|build|Report_Photos|.*\.db|.*\.sqlite|.*\.log|.*\.jpg|.*\.png|.*\.jpeg/
     });
   } catch (err) {
     console.log('electron-reload not available');
@@ -594,10 +594,20 @@ ipcMain.handle('db-save-site', (event, siteData) => {
     });
 
     transaction();
-    console.log('[DB] Site saved successfully:', siteData.id);
+    console.log(`[DB] Site saved successfully: ${siteData.id} (${siteData.reports?.length || 0} reports)`);
     return { success: true };
   } catch (error) {
     console.error('[DB] Error saving site:', error);
+
+    // Show error to user if it's a locking issue or similar
+    if (error.code === 'SQLITE_BUSY' || error.code === 'SQLITE_LOCKED' || error.message.includes('locked')) {
+      dialog.showErrorBox('Database Error', 'The database file is locked. This might be caused by OneDrive syncing. Please wait a moment and try again.\n\nError: ' + error.message);
+    } else {
+      // Only show specific errors to avoid spamming, or show all for now debugging?
+      // Let's show all save errors during this debug phase
+      dialog.showErrorBox('Save Error', 'Failed to save data.\n\nError: ' + error.message);
+    }
+
     return { success: false, error: error.message };
   }
 });
@@ -617,6 +627,82 @@ ipcMain.handle('db-delete-site', (event, siteId) => {
     return { success: false, error: error.message };
   }
 });
+
+// ----------------------------------------------------
+// Photo Management IPC Handlers
+// ----------------------------------------------------
+
+// Handle Photo Copying to OneDrive folder
+ipcMain.handle('save-report-photo', async (event, sourcePath) => {
+  try {
+    // 1. Get the path where the database is stored
+    // NOTE: This uses the same path as the database for consistency
+    const dbPath = store.get('dbPath', null);
+    if (!dbPath) {
+      return { success: false, error: 'Database path not set. Please select a database location first.' };
+    }
+
+    // Get the directory containing the database
+    const dbDir = path.dirname(dbPath);
+    const photosDir = path.join(dbDir, 'Report_Photos');
+
+    // 2. Ensure directory exists
+    if (!fs.existsSync(photosDir)) {
+      await fs.promises.mkdir(photosDir, { recursive: true });
+      console.log('[Photos] Created directory:', photosDir);
+    }
+
+    // 3. Generate a unique filename to prevent overwrites
+    const ext = path.extname(sourcePath);
+    const uniqueName = `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}${ext}`;
+    const destPath = path.join(photosDir, uniqueName);
+
+    // 4. Copy the file
+    await fs.promises.copyFile(sourcePath, destPath);
+    console.log('[Photos] Copied photo:', sourcePath, '->', destPath);
+
+    // 5. Return the 'Relative Path' (This is what gets saved to the DB)
+    const relativePath = `Report_Photos/${uniqueName}`;
+    return { success: true, path: relativePath, fullPath: destPath };
+
+  } catch (error) {
+    console.error('[Photos] Save error:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Handle opening file/folder location in Windows Explorer
+ipcMain.handle('open-file-location', async (event, relativePath) => {
+  try {
+    // 1. Get the base path (same as database location)
+    const dbPath = store.get('dbPath', null);
+    if (!dbPath) {
+      return { success: false, error: 'Database path not set.' };
+    }
+
+    const dbDir = path.dirname(dbPath);
+    const fullPath = path.join(dbDir, relativePath);
+
+    // 2. Check if the file/folder exists
+    if (!fs.existsSync(fullPath)) {
+      console.warn('[Photos] File not found:', fullPath);
+      return { success: false, error: 'File not found: ' + fullPath };
+    }
+
+    // 3. Open the folder and highlight the file
+    // If it's a folder, it opens it. If it's a file, it opens the folder and selects the file.
+    shell.showItemInFolder(fullPath);
+    console.log('[Photos] Opened location:', fullPath);
+    return { success: true };
+  } catch (error) {
+    console.error('[Photos] Error opening file location:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// ----------------------------------------------------
+// App Lifecycle Handlers
+// ----------------------------------------------------
 
 let isQuitting = false;
 

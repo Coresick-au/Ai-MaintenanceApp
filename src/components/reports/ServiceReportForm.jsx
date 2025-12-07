@@ -24,7 +24,8 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = 
             serviceDate: new Date().toISOString().split('T')[0],
             nextServiceDate: asset?.dueDate || '',
             technicians: '',
-            comments: ''
+            comments: '',
+            photos: [] // Array to store photo metadata
         },
         // Backward compatibility: keep old calibration structure
         calibration: {
@@ -80,12 +81,32 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = 
     useEffect(() => {
         if (asset?.id && !readOnly && !initialData) {
             const draftKey = `serviceReportDraft_${asset.id}`;
-            localStorage.setItem(draftKey, JSON.stringify(formData));
-            setDraftSaved(true);
 
-            // Clear indicator after 2 seconds
-            const timer = setTimeout(() => setDraftSaved(false), 2000);
-            return () => clearTimeout(timer);
+            // Create a clean copy for storage (remove large photo previews)
+            const storageData = {
+                ...formData,
+                general: {
+                    ...formData.general,
+                    photos: (formData.general.photos || []).map(p => ({
+                        ...p,
+                        preview: null, // Don't save base64 to localStorage
+                        file: null     // Don't save File object
+                    }))
+                }
+            };
+
+            try {
+                localStorage.setItem(draftKey, JSON.stringify(storageData));
+                setDraftSaved(true);
+                const timer = setTimeout(() => setDraftSaved(false), 2000);
+                return () => clearTimeout(timer);
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    console.warn('Local storage quota exceeded. Draft not saved.');
+                } else {
+                    console.error('Error saving draft:', error);
+                }
+            }
         }
     }, [formData, asset?.id, readOnly, initialData]);
 

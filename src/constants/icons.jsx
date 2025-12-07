@@ -66,7 +66,8 @@ import {
     Check,
     FileSpreadsheet as FileCsv,
     ExternalLink,
-    Info
+    Info,
+    Eye
 } from 'lucide-react';
 
 export const Icons = {
@@ -136,5 +137,6 @@ export const Icons = {
     FileCsv,
     ExternalLink,
     Info,
-    XCircle
+    XCircle,
+    Eye
 };

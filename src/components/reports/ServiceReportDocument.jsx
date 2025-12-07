@@ -75,30 +75,65 @@ export const ServiceReportDocument = ({ data }) => {
                 {/* CRITICAL CALIBRATION RESULTS */}
                 <Text style={styles.sectionTitle}>Critical Calibration Results</Text>
                 <View style={styles.tableHeader}>
-                    <Text style={{ width: '25%' }}>Parameter</Text>
-                    <Text style={{ width: '25%', textAlign: 'center' }}>Old (As Found)</Text>
-                    <Text style={{ width: '25%', textAlign: 'center' }}>New (As Left)</Text>
-                    <Text style={{ width: '25%', textAlign: 'center' }}>% Change</Text>
+                    <Text style={{ width: data.showPercentChange !== false ? '25%' : '35%' }}>Parameter</Text>
+                    <Text style={{ width: data.showPercentChange !== false ? '25%' : '32.5%', textAlign: 'center' }}>Old (As Found)</Text>
+                    <Text style={{ width: data.showPercentChange !== false ? '25%' : '32.5%', textAlign: 'center' }}>New (As Left)</Text>
+                    {data.showPercentChange !== false && <Text style={{ width: '25%', textAlign: 'center' }}>% Change</Text>}
                 </View>
 
-                <View style={styles.gridRow}>
-                    <Text style={styles.gridColLabel}>Tare (kg/m)</Text>
-                    <Text style={styles.gridColVal}>{calibration.oldTare}</Text>
-                    <Text style={styles.gridColVal}>{calibration.newTare}</Text>
-                    <Text style={styles.gridColDiff}>{calibration.tareChange}%</Text>
-                </View>
-                <View style={styles.gridRow}>
-                    <Text style={styles.gridColLabel}>Span / Factor</Text>
-                    <Text style={styles.gridColVal}>{calibration.oldSpan}</Text>
-                    <Text style={styles.gridColVal}>{calibration.newSpan}</Text>
-                    <Text style={styles.gridColDiff}>{calibration.spanChange}%</Text>
-                </View>
-                <View style={styles.gridRow}>
-                    <Text style={styles.gridColLabel}>Belt Speed (m/s)</Text>
-                    <Text style={styles.gridColVal}>{calibration.oldSpeed}</Text>
-                    <Text style={styles.gridColVal}>{calibration.newSpeed}</Text>
-                    <Text style={styles.gridColDiff}>{calibration.speedChange}%</Text>
-                </View>
+                {(data.calibrationRows || []).map((row, i) => {
+                    // Calculate percent if not manual/provided
+                    let displayPercent = row.percentChange;
+                    if (displayPercent === null || displayPercent === undefined) {
+                        const o = parseFloat(row.oldValue);
+                        const n = parseFloat(row.newValue);
+                        if (!o || o === 0) displayPercent = '0.00';
+                        else displayPercent = (((n - o) / o) * 100).toFixed(2);
+                    }
+
+                    const percentValue = parseFloat(displayPercent);
+                    const isHighChange = Math.abs(percentValue) > 1;
+
+                    return (
+                        <View key={i} style={styles.gridRow}>
+                            <Text style={styles.gridColLabel}>{row.parameter}</Text>
+                            <Text style={styles.gridColVal}>{row.oldValue}</Text>
+                            <Text style={styles.gridColVal}>{row.newValue}</Text>
+                            {data.showPercentChange !== false && (
+                                <Text style={{
+                                    ...styles.gridColDiff,
+                                    color: isHighChange ? '#dc2626' : '#666'
+                                }}>
+                                    {displayPercent}%
+                                </Text>
+                            )}
+                        </View>
+                    );
+                })}
+
+                {/* Fallback for legacy data if calibrationRows is missing */}
+                {(!data.calibrationRows || data.calibrationRows.length === 0) && (
+                    <>
+                        <View style={styles.gridRow}>
+                            <Text style={styles.gridColLabel}>Tare (kg/m)</Text>
+                            <Text style={styles.gridColVal}>{calibration.oldTare}</Text>
+                            <Text style={styles.gridColVal}>{calibration.newTare}</Text>
+                            {data.showPercentChange !== false && <Text style={styles.gridColDiff}>{calibration.tareChange}%</Text>}
+                        </View>
+                        <View style={styles.gridRow}>
+                            <Text style={styles.gridColLabel}>Span / Factor</Text>
+                            <Text style={styles.gridColVal}>{calibration.oldSpan}</Text>
+                            <Text style={styles.gridColVal}>{calibration.newSpan}</Text>
+                            {data.showPercentChange !== false && <Text style={styles.gridColDiff}>{calibration.spanChange}%</Text>}
+                        </View>
+                        <View style={styles.gridRow}>
+                            <Text style={styles.gridColLabel}>Belt Speed (m/s)</Text>
+                            <Text style={styles.gridColVal}>{calibration.oldSpeed}</Text>
+                            <Text style={styles.gridColVal}>{calibration.newSpeed}</Text>
+                            {data.showPercentChange !== false && <Text style={styles.gridColDiff}>{calibration.speedChange}%</Text>}
+                        </View>
+                    </>
+                )}
 
                 {/* INTEGRATOR DATA (Comparison Table) */}
                 <Text style={styles.sectionTitle}>Integrator Data & Checks</Text>

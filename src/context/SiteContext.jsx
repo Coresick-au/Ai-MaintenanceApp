@@ -24,7 +24,7 @@ const formatFullLocation = (siteForm) => {
 
 export { SiteContext };
 export const SiteProvider = ({ children }) => {
-    const { addUndoAction, clearDirty } = useUndo();
+    const { addUndoAction } = useUndo();
     const [sites, setSites] = useState([]);
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
@@ -110,37 +110,36 @@ export const SiteProvider = ({ children }) => {
 
         const saveData = async () => {
             // 1. Always save to localStorage as backup/cache
-            localStorage.setItem('app_data', JSON.stringify(sites));
+            // CHANGE: Wrapped in try/catch to prevent QuotaExceededError from stopping the DB save
+            try {
+                localStorage.setItem('app_data', JSON.stringify(sites));
+            } catch (error) {
+                // If local storage is full, we log it but allow the function to continue
+                // so the Database save still happens.
+                console.warn('[SiteContext] LocalStorage backup failed (likely full). Proceeding to DB save.', error);
+            }
 
             // 2. If Database is ready, save there too
             if (isDbReady && window.electronAPI) {
-                // We save site-by-site or all? Use saveSite for individual updates if optimized, 
-                // but for now let's just save the changed sites? 
-                // Actually, simplest is to loop and save, or let the backend handle "save-site".
-                // BUT, sending ALL sites on every change is heavy.
-                // Ideally we track 'dirty' sites.
-                // For now, let's just rely on the fact that 'updateSiteData' updates 'sites'.
-                // Let's implement a bulk save or individual save if we knew which one changed.
-
-                // Strategy: The backend 'db-save-site' saves one site.
-                // We can iterate and save all? Or just trust the `updateSiteData` to call save?
-                // No, updateSiteData updates React state.
-                // Let's just iterate and save all for safety for now (debounce this in production).
-
-                // Better: We should only save the changed site.
-                // But we don't know which one changed here easily without tracking.
-                // Let's iterate. It's SQLite, it's fast enough for < 100 sites.
-
+                // Iterate and save all sites
                 for (const site of sites) {
-                    await window.electronAPI.saveSite(site);
+                    try {
+                        await window.electronAPI.saveSite(site);
+                    } catch (dbError) {
+                        console.error(`[SiteContext] Failed to save site ${site.id} to DB:`, dbError);
+                    }
                 }
             }
 
             // 3. Save employees to localStorage (database integration pending)
             if (employees && employees.length > 0) {
-                localStorage.setItem('app_employees', JSON.stringify(employees));
+                try {
+                    localStorage.setItem('app_employees', JSON.stringify(employees));
+                } catch (e) {
+                    console.warn('[SiteContext] Failed to save employees to LocalStorage', e);
+                }
             } else {
-                localStorage.removeItem('app_employees'); // Clean up if empty
+                localStorage.removeItem('app_employees');
             }
         };
 
@@ -595,8 +594,10 @@ export const SiteProvider = ({ children }) => {
         updateSiteData(selectedSiteId, { specData: currentSpecData.map(s => s.id === selectedSpecs.id ? updatedSpec : s) });
     };
 
-    const uploadServiceReport = (assetId, reportData) => {
-        // Use functional state update to prevent stale data issues during rapid uploads
+    const uploadServiceReport = async (assetId, reportData) => {
+        // We need to capture the updated site to save it immediately
+        let siteToSave = null;
+
         setSites(prevSites => {
             return prevSites.map(site => {
                 if (site.id !== selectedSiteId) return site; // Only update selected site
@@ -609,27 +610,61 @@ export const SiteProvider = ({ children }) => {
                     return asset;
                 });
 
-                return {
+                const updatedSite = {
                     ...site,
                     serviceData: updateList(site.serviceData || []),
                     rollerData: updateList(site.rollerData || [])
                 };
+
+                siteToSave = updatedSite;
+                return updatedSite;
             });
         });
+
+        // Immediate Save to Database
+        if (siteToSave && window.electronAPI && isDbReady) {
+            try {
+                console.log('[SiteContext] saving report immediately...');
+                await window.electronAPI.saveSite(siteToSave);
+            } catch (error) {
+                console.error('[SiteContext] Failed to save report immediately:', error);
+                alert('Warning: Failed to save report to database. Please check your connection.');
+            }
+        }
     };
 
-    const deleteServiceReport = (assetId, reportId) => {
-        const updateList = (list) => list.map(a => {
-            if (a.id === assetId) {
-                return { ...a, reports: (a.reports || []).filter(r => r.id !== reportId) };
-            }
-            return a;
+    const deleteServiceReport = async (assetId, reportId) => {
+        let siteToSave = null;
+
+        setSites(prevSites => {
+            return prevSites.map(site => {
+                if (site.id !== selectedSiteId) return site;
+
+                const updateList = (list) => list.map(a => {
+                    if (a.id === assetId) {
+                        return { ...a, reports: (a.reports || []).filter(r => r.id !== reportId) };
+                    }
+                    return a;
+                });
+
+                const updatedSite = {
+                    ...site,
+                    serviceData: updateList(site.serviceData || []),
+                    rollerData: updateList(site.rollerData || [])
+                };
+
+                siteToSave = updatedSite;
+                return updatedSite;
+            });
         });
 
-        updateSiteData(selectedSiteId, {
-            serviceData: updateList(currentServiceData),
-            rollerData: updateList(currentRollerData)
-        }, 'Delete Service Report');
+        if (siteToSave && window.electronAPI && isDbReady) {
+            try {
+                await window.electronAPI.saveSite(siteToSave);
+            } catch (error) {
+                console.error('[SiteContext] Failed to save deletion immediately:', error);
+            }
+        }
     };
 
     const handleFileChange = (e) => {
@@ -828,7 +863,6 @@ export const SiteProvider = ({ children }) => {
             handleClearAllHistory,
             handleAddSiteNote,
             handleUpdateSiteNote,
-            handleDeleteSiteNote,
             handleDeleteSiteNote,
             handleArchiveSiteNote,
 

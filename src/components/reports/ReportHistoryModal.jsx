@@ -3,7 +3,7 @@ import { Icons } from '../../constants/icons';
 import { Button } from '../UIComponents';
 import { formatDate } from '../../utils/helpers';
 
-export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewReport, onEditReport }) => {
+export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewReport, onEditReport, onNewReport }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const reports = asset?.reports || [];
 
@@ -38,12 +38,22 @@ export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewRepo
                                 {asset?.name} ({asset?.code}) - {reports.length} report{reports.length !== 1 ? 's' : ''}
                             </p>
                         </div>
-                        <button
-                            onClick={onClose}
-                            className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded"
-                        >
-                            <Icons.X size={20} />
-                        </button>
+                        <div className="flex items-center gap-2">
+                            {onNewReport && (
+                                <button
+                                    onClick={onNewReport}
+                                    className="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold uppercase rounded flex items-center gap-2 transition-colors"
+                                >
+                                    <Icons.Plus size={14} /> New Report
+                                </button>
+                            )}
+                            <button
+                                onClick={onClose}
+                                className="text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-700 rounded"
+                            >
+                                <Icons.X size={20} />
+                            </button>
+                        </div>
                     </div>
 
                     {/* Search */}

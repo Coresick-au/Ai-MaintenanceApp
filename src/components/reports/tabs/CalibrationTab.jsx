@@ -63,10 +63,30 @@ export const CalibrationTab = ({ formData, onChange, readOnly = false }) => {
         onChange('calibrationRows', updatedRows);
     };
 
+    // Default to true if not set
+    const showPercentChange = formData.showPercentChange !== false;
+
     return (
         <fieldset disabled={readOnly} className="max-w-5xl mx-auto bg-slate-800 p-6 rounded-lg border border-slate-700 block">
             <div className="flex justify-between items-center mb-6">
-                <h3 className="text-lg font-bold text-white">Critical Calibration Results</h3>
+                <div className="flex items-center gap-4">
+                    <h3 className="text-lg font-bold text-white">Critical Calibration Results</h3>
+
+                    {/* Toggle % Change Visibility */}
+                    <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer bg-slate-900 px-3 py-1 rounded border border-slate-700 hover:border-slate-500 transition-all">
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${showPercentChange ? 'bg-cyan-600 border-cyan-500' : 'border-slate-500'}`}>
+                            {showPercentChange && <Icons.Check size={12} className="text-white" />}
+                        </div>
+                        <input
+                            type="checkbox"
+                            className="hidden"
+                            checked={showPercentChange}
+                            onChange={(e) => onChange('showPercentChange', e.target.checked)}
+                        />
+                        Include % Change
+                    </label>
+                </div>
+
                 {!readOnly && (
                     <button
                         type="button"
@@ -79,11 +99,11 @@ export const CalibrationTab = ({ formData, onChange, readOnly = false }) => {
             </div>
 
             {/* Table Header */}
-            <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 mb-2 text-xs font-bold text-slate-400 uppercase">
+            <div className={`grid ${showPercentChange ? 'grid-cols-[2fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_auto]'} gap-4 mb-2 text-xs font-bold text-slate-400 uppercase`}>
                 <div>Parameter</div>
                 <div>Old (As Found)</div>
                 <div>New (As Left)</div>
-                <div>% Change</div>
+                {showPercentChange && <div>% Change</div>}
                 <div className="w-10"></div>
             </div>
 
@@ -96,7 +116,7 @@ export const CalibrationTab = ({ formData, onChange, readOnly = false }) => {
                     const isHighChange = Math.abs(percentValue) > 1;
 
                     return (
-                        <div key={row.id} className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-center">
+                        <div key={row.id} className={`grid ${showPercentChange ? 'grid-cols-[2fr_1fr_1fr_1fr_auto]' : 'grid-cols-[2fr_1fr_1fr_auto]'} gap-4 items-center`}>
                             {/* Parameter Name */}
                             <input
                                 type="text"
@@ -125,27 +145,29 @@ export const CalibrationTab = ({ formData, onChange, readOnly = false }) => {
                             />
 
                             {/* % Change (Editable) */}
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    className={`w-full bg-slate-900 border rounded p-2 font-mono font-bold ${isHighChange ? 'text-red-400 border-red-600' : 'text-green-400 border-slate-600'
-                                        } ${row.isManual ? 'border-blue-500' : ''}`}
-                                    value={displayPercent}
-                                    onChange={e => handleRowChange(row.id, 'percentChange', e.target.value)}
-                                    title={row.isManual ? 'Manual override active' : 'Auto-calculated'}
-                                />
-                                {row.isManual && (
-                                    <button
-                                        type="button"
-                                        onClick={() => clearManualOverride(row.id)}
-                                        className="absolute -right-2 -top-2 bg-blue-600 text-white rounded-full p-0.5 hover:bg-blue-500"
-                                        title="Clear manual override"
-                                    >
-                                        <Icons.RotateCcw size={12} />
-                                    </button>
-                                )}
-                            </div>
+                            {showPercentChange && (
+                                <div className="relative">
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        className={`w-full bg-slate-900 border rounded p-2 font-mono font-bold ${isHighChange ? 'text-red-400 border-red-600' : 'text-green-400 border-slate-600'
+                                            } ${row.isManual ? 'border-blue-500' : ''}`}
+                                        value={displayPercent}
+                                        onChange={e => handleRowChange(row.id, 'percentChange', e.target.value)}
+                                        title={row.isManual ? 'Manual override active' : 'Auto-calculated'}
+                                    />
+                                    {row.isManual && (
+                                        <button
+                                            type="button"
+                                            onClick={() => clearManualOverride(row.id)}
+                                            className="absolute -right-2 -top-2 bg-blue-600 text-white rounded-full p-0.5 hover:bg-blue-500"
+                                            title="Clear manual override"
+                                        >
+                                            <Icons.RotateCcw size={12} />
+                                        </button>
+                                    )}
+                                </div>
+                            )}
 
                             {/* Delete Button */}
                             <div className="w-10">
