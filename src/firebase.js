@@ -5,14 +5,15 @@ import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
+// Keys are loaded from environment variables (.env file)
 const firebaseConfig = {
-    apiKey: "AIzaSyAcXwlK_851kGBtp_khuFh3w3fSuFkGZxA",
-    authDomain: "accurate-industries-database.firebaseapp.com",
-    projectId: "accurate-industries-database",
-    storageBucket: "accurate-industries-database.firebasestorage.app",
-    messagingSenderId: "838257999536",
-    appId: "1:838257999536:web:7f93b7417ddaada1ee0575",
-    measurementId: "G-4JENK2898F"
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
