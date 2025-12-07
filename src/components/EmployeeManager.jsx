@@ -5,10 +5,11 @@ import { Icons } from '../constants/icons';
 import { formatDate } from '../utils/helpers';
 import { getExpiryStatus, getStatusColorClasses } from '../utils/employeeUtils';
 
-export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onUpdateEmployee }) => {
+export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmployee, onUpdateEmployee }) => {
     const [selectedEmp, setSelectedEmp] = useState(null);
     const [newEmpForm, setNewEmpForm] = useState({ name: '', role: 'Technician', email: '', phone: '' });
     const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', cost: '' });
+    const [newInductionForm, setNewInductionForm] = useState({ siteId: '', expiry: '' });
 
     if (!isOpen) return null;
 
@@ -49,10 +50,15 @@ export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onU
 
                         <div className="space-y-2 overflow-y-auto flex-1">
                             {employees.map(emp => {
-                                const hasIssues = emp.certifications?.some(cert => {
+                                const hasCertIssues = emp.certifications?.some(cert => {
                                     const status = getExpiryStatus(cert.expiry);
                                     return status === 'expired' || status === 'warning';
                                 });
+                                const hasInductionIssues = emp.inductions?.some(ind => {
+                                    const status = getExpiryStatus(ind.expiry);
+                                    return status === 'expired' || status === 'warning';
+                                });
+                                const hasIssues = hasCertIssues || hasInductionIssues;
 
                                 return (
                                     <div
@@ -68,15 +74,15 @@ export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onU
 
                                         {/* Mini Status Dots */}
                                         {hasIssues && (
-                                            <div className="flex gap-1 mt-2">
-                                                {emp.certifications.map(cert => {
-                                                    const status = getExpiryStatus(cert.expiry);
+                                            <div className="flex gap-1 mt-2 flex-wrap">
+                                                {[...(emp.certifications || []), ...(emp.inductions || [])].map(item => {
+                                                    const status = getExpiryStatus(item.expiry);
                                                     if (status === 'valid') return null;
                                                     return (
                                                         <div
-                                                            key={cert.id}
+                                                            key={item.id}
                                                             className={`w-2 h-2 rounded-full ${status === 'expired' ? 'bg-red-500' : 'bg-yellow-500'}`}
-                                                            title={`${cert.name} ${status}`}
+                                                            title={`${item.name} ${status}`}
                                                         />
                                                     );
                                                 })}
@@ -233,6 +239,104 @@ export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onU
                                             })}
                                             {(!selectedEmp.certifications || selectedEmp.certifications.length === 0) && (
                                                 <tr><td colSpan="4" className="p-4 text-center text-slate-500 italic">No certifications yet. Add one above.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {/* SITE INDUCTIONS TABLE */}
+                                <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                                    <div className="p-4 bg-slate-900/50 border-b border-slate-700 flex justify-between items-center">
+                                        <h3 className="font-bold text-slate-200">Site Inductions</h3>
+                                    </div>
+
+                                    {/* Add Induction Form (Inline) */}
+                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700 grid grid-cols-5 gap-2">
+                                        <select
+                                            className="col-span-3 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={newInductionForm.siteId}
+                                            onChange={e => setNewInductionForm({ ...newInductionForm, siteId: e.target.value })}
+                                        >
+                                            <option value="">Select Site...</option>
+                                            {(sites || []).map(site => (
+                                                <option key={site.id} value={site.id}>
+                                                    {site.customer} - {site.location}
+                                                </option>
+                                            ))}
+                                        </select>
+
+                                        <input
+                                            type="date"
+                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={newInductionForm.expiry}
+                                            onChange={e => setNewInductionForm({ ...newInductionForm, expiry: e.target.value })}
+                                            title="Expiry Date"
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                if (!newInductionForm.siteId) return;
+
+                                                const selectedSite = sites.find(s => s.id === newInductionForm.siteId);
+                                                const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.location}` : 'Unknown Site';
+
+                                                const updatedInductions = [...(selectedEmp.inductions || []), {
+                                                    id: `ind-${Date.now()}`,
+                                                    siteId: newInductionForm.siteId,
+                                                    name: siteName,
+                                                    expiry: newInductionForm.expiry,
+                                                    date: new Date().toISOString().split('T')[0]
+                                                }];
+
+                                                onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
+                                                setNewInductionForm({ siteId: '', expiry: '' });
+                                                // Update local state
+                                                setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
+                                            }}
+                                            className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
+                                        >
+                                            + Add
+                                        </button>
+                                    </div>
+
+                                    <table className="w-full text-sm text-left">
+                                        <thead className="text-xs text-slate-500 uppercase bg-slate-900">
+                                            <tr>
+                                                <th className="px-4 py-2">Site / Induction</th>
+                                                <th className="px-4 py-2">Expiry</th>
+                                                <th className="px-4 py-2">Status</th>
+                                                <th className="px-4 py-2 w-10"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-slate-700">
+                                            {(selectedEmp.inductions || []).map(ind => {
+                                                const status = getExpiryStatus(ind.expiry);
+                                                return (
+                                                    <tr key={ind.id} className="hover:bg-slate-700/50">
+                                                        <td className="px-4 py-2 font-medium text-slate-200">{ind.name}</td>
+                                                        <td className="px-4 py-2 text-slate-300">{ind.expiry ? formatDate(ind.expiry) : '-'}</td>
+                                                        <td className="px-4 py-2">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
+                                                                {status === 'valid' ? 'Active' : status}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-center">
+                                                            <button
+                                                                className="text-slate-500 hover:text-red-400"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    const updatedInductions = selectedEmp.inductions.filter(i => i.id !== ind.id);
+                                                                    onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
+                                                                    setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
+                                                                }}
+                                                            >
+                                                                <Icons.Trash size={14} />
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                            {(!selectedEmp.inductions || selectedEmp.inductions.length === 0) && (
+                                                <tr><td colSpan="4" className="p-4 text-center text-slate-500 italic">No inductions recorded. Add one above.</td></tr>
                                             )}
                                         </tbody>
                                     </table>
