@@ -23,6 +23,7 @@ import {
 } from './components/UIComponents';
 import { Icons } from './constants/icons.jsx';
 import { formatDate } from './utils/helpers';
+import { getExpiryStatus } from './utils/employeeUtils';
 import { SiteHealthCircle } from './components/SiteHealthCircle';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
@@ -1107,6 +1108,20 @@ export default function App() {
               const activeIssuesCount = (site.issues || []).filter(issue => issue.status === 'Open').length;
               const cardOpacity = site.active === false ? 'opacity-60 grayscale' : '';
 
+              // --- NEW: Calculate Induction Status for this Site ---
+              const inductionStatus = employees.reduce((status, emp) => {
+                // Find inductions for this specific site
+                const siteInductions = (emp.inductions || []).filter(i => i.siteId === site.id);
+
+                const hasExpired = siteInductions.some(i => getExpiryStatus(i.expiry) === 'expired');
+                const hasWarning = siteInductions.some(i => getExpiryStatus(i.expiry) === 'warning');
+
+                if (hasExpired) return 'expired';
+                if (hasWarning && status !== 'expired') return 'warning';
+                return status;
+              }, 'valid');
+              // ----------------------------------------------------
+
               return (
                 <div key={site.id} onClick={() => { setSelectedSiteId(site.id); setIsAppHistoryOpen(false); }} className={`bg-slate-800 rounded-xl shadow-lg border border-slate-700 p-6 hover:shadow-2xl hover:bg-slate-700 transition-all duration-300 hover:-translate-y-2 relative overflow-hidden group cursor-pointer ${cardOpacity}`}>
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
@@ -1117,7 +1132,29 @@ export default function App() {
                   <div className="mb-5 flex items-center justify-start h-16">
                     {site.logo ? <img src={site.logo} alt="Logo" className="h-full w-auto object-contain max-w-[150px] drop-shadow" /> : <div className="h-12 w-12 bg-slate-800 bg-slate-700 rounded-lg flex items-center justify-center text-slate-400 text-2xl shadow-inner"><Icons.Building /></div>}
                   </div>
-                  {site.customer && <div className="text-xs font-bold text-blue-600 text-blue-400 uppercase mb-1 tracking-widest">{site.customer}</div>}
+
+                  {/* --- MODIFIED: Customer Name Area with Induction Warning --- */}
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    {site.customer && (
+                      <div className="text-xs font-bold text-blue-400 uppercase tracking-widest">
+                        {site.customer}
+                      </div>
+                    )}
+
+                    {inductionStatus !== 'valid' && (
+                      <div
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border transition-colors ${inductionStatus === 'expired'
+                            ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'
+                            : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                          }`}
+                        title={inductionStatus === 'expired' ? 'Technician Induction Expired' : 'Technician Induction Due Soon'}
+                      >
+                        <Icons.Users size={10} />
+                        <span>{inductionStatus === 'expired' ? 'Induction Expired' : 'Induction Due'}</span>
+                      </div>
+                    )}
+                  </div>
+                  {/* --------------------------------------------------------- */}
                   <h2 className="2xl font-bold text-slate-200 text-slate-100 mb-2 leading-tight">
                     {site.name} {site.active === false && <span className="text-sm font-normal text-slate-400">(Archived)</span>}
                   </h2>

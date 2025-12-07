@@ -1,9 +1,93 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import * as ReactDOM from 'react-dom';
 import { Modal, Button } from './UIComponents';
 import { Icons } from '../constants/icons';
 import { formatDate } from '../utils/helpers';
 import { getExpiryStatus, getStatusColorClasses } from '../utils/employeeUtils';
+
+// --- NEW COMPONENT: Compliance Overview Dashboard ---
+const ComplianceDashboard = ({ employees, onSelectEmp }) => {
+    const expiringItems = useMemo(() => {
+        const items = [];
+        employees.forEach(emp => {
+            // Check Certifications
+            (emp.certifications || []).forEach(c => {
+                const s = getExpiryStatus(c.expiry);
+                if (s !== 'valid') items.push({ ...c, type: 'Certification', empName: emp.name, status: s, emp });
+            });
+            // Check Inductions
+            (emp.inductions || []).forEach(i => {
+                const s = getExpiryStatus(i.expiry);
+                if (s !== 'valid') items.push({ ...i, type: 'Induction', empName: emp.name, status: s, emp });
+            });
+        });
+        // Sort by expiry date (soonest first)
+        return items.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+    }, [employees]);
+
+    return (
+        <div className="h-full flex flex-col animate-in fade-in duration-300">
+            <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
+                <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                    <Icons.Activity className="text-cyan-400" />
+                    Compliance Dashboard
+                </h3>
+                <p className="text-slate-400 text-sm">
+                    Overview of all expiring certifications and site inductions across the team.
+                </p>
+            </div>
+
+            <div className="flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden flex flex-col">
+                <div className="p-4 border-b border-slate-700 bg-slate-900/30 flex justify-between items-center">
+                    <span className="font-bold text-slate-200">Attention Required ({expiringItems.length})</span>
+                </div>
+
+                <div className="overflow-y-auto flex-1">
+                    {expiringItems.length === 0 ? (
+                        <div className="h-full flex flex-col items-center justify-center text-slate-500 italic">
+                            <Icons.CheckCircle size={48} className="mb-4 text-green-500/20" />
+                            <p>All technicians are fully compliant!</p>
+                        </div>
+                    ) : (
+                        <table className="w-full text-sm text-left">
+                            <thead className="text-xs text-slate-500 uppercase bg-slate-900 sticky top-0">
+                                <tr>
+                                    <th className="px-4 py-2">Technician</th>
+                                    <th className="px-4 py-2">Type</th>
+                                    <th className="px-4 py-2">Item</th>
+                                    <th className="px-4 py-2">Expiry</th>
+                                    <th className="px-4 py-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700">
+                                {expiringItems.map((item, idx) => (
+                                    <tr
+                                        key={idx}
+                                        className="hover:bg-slate-700/50 cursor-pointer transition-colors"
+                                        onClick={() => onSelectEmp(item.emp)}
+                                    >
+                                        <td className="px-4 py-2 font-medium text-slate-200">{item.empName}</td>
+                                        <td className="px-4 py-2 text-slate-400">{item.type}</td>
+                                        <td className="px-4 py-2 text-slate-300">{item.name}</td>
+                                        <td className="px-4 py-2 text-slate-400 font-mono text-xs">{formatDate(item.expiry)}</td>
+                                        <td className="px-4 py-2">
+                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${item.status === 'expired'
+                                                    ? 'text-red-400 bg-red-900/20 border-red-900/50'
+                                                    : 'text-yellow-400 bg-yellow-900/20 border-yellow-900/50'
+                                                }`}>
+                                                {item.status}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
 
 export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmployee, onUpdateEmployee }) => {
     const [selectedEmp, setSelectedEmp] = useState(null);
@@ -25,7 +109,9 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
             <div className="w-full max-w-7xl h-[90vh] bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl flex flex-col">
                 {/* Header */}
                 <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
-                    <h2 className="text-xl font-bold text-white">Technician & Training Tracker</h2>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Icons.Users /> Technician & Training Tracker
+                    </h2>
                     <button
                         onClick={onClose}
                         className="p-2 hover:bg-slate-700 rounded-lg transition-colors text-slate-400 hover:text-white"
@@ -37,27 +123,35 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                 {/* Content */}
                 <div className="flex flex-1 gap-6 p-6 overflow-hidden">
 
-                    {/* LEFT: EMPLOYEE LIST */}
+                    {/* LEFT: EMPLOYEE LIST & LEGEND */}
                     <div className="w-1/3 border-r border-slate-700 pr-4 flex flex-col">
-                        <div className="mb-4">
+                        <div className="mb-4 space-y-2">
+                            <button
+                                onClick={() => setSelectedEmp(null)}
+                                className={`w-full px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-left ${selectedEmp === null
+                                        ? 'bg-purple-600 text-white shadow-lg'
+                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                                    }`}
+                            >
+                                <Icons.Activity size={16} /> Compliance Overview
+                            </button>
                             <button
                                 onClick={() => setSelectedEmp('new')}
-                                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg font-medium flex items-center justify-center gap-2 transition-colors"
+                                className={`w-full px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-left ${selectedEmp === 'new'
+                                        ? 'bg-cyan-600 text-white shadow-lg'
+                                        : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                                    }`}
                             >
                                 <Icons.Plus size={16} /> Add Technician
                             </button>
                         </div>
 
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Technicians</div>
+
                         <div className="space-y-2 overflow-y-auto flex-1">
                             {employees.map(emp => {
-                                const hasCertIssues = emp.certifications?.some(cert => {
-                                    const status = getExpiryStatus(cert.expiry);
-                                    return status === 'expired' || status === 'warning';
-                                });
-                                const hasInductionIssues = emp.inductions?.some(ind => {
-                                    const status = getExpiryStatus(ind.expiry);
-                                    return status === 'expired' || status === 'warning';
-                                });
+                                const hasCertIssues = emp.certifications?.some(cert => ['expired', 'warning'].includes(getExpiryStatus(cert.expiry)));
+                                const hasInductionIssues = emp.inductions?.some(ind => ['expired', 'warning'].includes(getExpiryStatus(ind.expiry)));
                                 const hasIssues = hasCertIssues || hasInductionIssues;
 
                                 return (
@@ -65,38 +159,41 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                         key={emp.id}
                                         onClick={() => setSelectedEmp(emp)}
                                         className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedEmp?.id === emp.id
-                                            ? 'bg-cyan-900/30 border-cyan-500'
-                                            : 'bg-slate-800 border-slate-700 hover:border-slate-500'
+                                                ? 'bg-cyan-900/30 border-cyan-500'
+                                                : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-700/50'
                                             }`}
                                     >
-                                        <div className="font-bold text-slate-200">{emp.name}</div>
+                                        <div className="flex justify-between items-start">
+                                            <div className="font-bold text-slate-200">{emp.name}</div>
+                                            {hasIssues && <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>}
+                                        </div>
                                         <div className="text-xs text-slate-400">{emp.role}</div>
-
-                                        {/* Mini Status Dots */}
-                                        {hasIssues && (
-                                            <div className="flex gap-1 mt-2 flex-wrap">
-                                                {[...(emp.certifications || []), ...(emp.inductions || [])].map(item => {
-                                                    const status = getExpiryStatus(item.expiry);
-                                                    if (status === 'valid') return null;
-                                                    return (
-                                                        <div
-                                                            key={item.id}
-                                                            className={`w-2 h-2 rounded-full ${status === 'expired' ? 'bg-red-500' : 'bg-yellow-500'}`}
-                                                            title={`${item.name} ${status}`}
-                                                        />
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })}
-                            {employees.length === 0 && (
-                                <div className="text-center text-slate-500 italic py-8">
-                                    No technicians yet. Click "Add Technician" to get started.
-                                </div>
-                            )}
                         </div>
+
+                        {/* --- NEW: INFO PANEL / LEGEND --- */}
+                        <div className="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-400 bg-slate-900/50 p-3 rounded-lg">
+                            <h4 className="font-bold text-slate-300 mb-2 flex items-center gap-2">
+                                <Icons.Info size={12} /> Status Guide
+                            </h4>
+                            <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                                    <span>Valid (30+ Days)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                                    <span>Due Soon (&lt; 30 Days)</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                                    <span>Expired</span>
+                                </div>
+                            </div>
+                        </div>
+                        {/* ---------------------------------- */}
                     </div>
 
                     {/* RIGHT: DETAILS PANEL */}
@@ -344,10 +441,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
 
                             </div>
                         ) : (
-                            <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                                <Icons.Users size={48} className="mb-4 opacity-20" />
-                                <p>Select a technician to view details</p>
-                            </div>
+                            /* --- CHANGED: SHOW DASHBOARD INSTEAD OF EMPTY STATE --- */
+                            <ComplianceDashboard employees={employees} onSelectEmp={setSelectedEmp} />
                         )}
                     </div>
                 </div>
