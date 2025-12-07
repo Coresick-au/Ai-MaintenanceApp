@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import * as ReactDOM from 'react-dom';
 import { Modal, Button } from './UIComponents';
 import { Icons } from '../constants/icons';
 import { formatDate } from '../utils/helpers';
@@ -18,7 +19,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onU
         return 'text-green-400 bg-green-900/20 border-green-900';
     };
 
-    return (
+    const content = (
         <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
             <div className="w-full max-w-7xl h-[90vh] bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl flex flex-col">
                 {/* Header */}
@@ -249,4 +250,6 @@ export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onU
             </div>
         </div>
     );
+
+    return ReactDOM.createPortal(content, document.body);
 };
