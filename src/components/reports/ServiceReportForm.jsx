@@ -112,86 +112,88 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = 
     };
 
     return (
-        <div className="flex flex-col h-full bg-slate-900 text-slate-100">
-            {/* Header */}
-            <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800">
-                <div>
-                    <h2 className="text-xl font-bold flex items-center gap-2">
-                        <Icons.FileText className="text-cyan-400" />
-                        {readOnly ? 'View Service Report' : 'New Service Report'}
-                    </h2>
-                    <div className="flex items-center gap-3">
-                        <p className="text-xs text-slate-400">
-                            {readOnly ? `Report ID: ${formData.general.reportId}` : `Generating for: ${asset?.name}`}
-                        </p>
-                        {draftSaved && (
-                            <span className="text-xs text-green-400 flex items-center gap-1 animate-in fade-in duration-200">
-                                <Icons.Check size={12} /> Draft saved
-                            </span>
+        <div className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
+            <div className="w-full max-w-7xl h-[95vh] flex flex-col bg-slate-900 text-slate-100 rounded-xl border border-slate-700 shadow-2xl overflow-hidden">
+                {/* Header */}
+                <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800 flex-shrink-0">
+                    <div>
+                        <h2 className="text-xl font-bold flex items-center gap-2">
+                            <Icons.FileText className="text-cyan-400" />
+                            {readOnly ? 'View Service Report' : 'New Service Report'}
+                        </h2>
+                        <div className="flex items-center gap-3">
+                            <p className="text-xs text-slate-400">
+                                {readOnly ? `Report ID: ${formData.general.reportId}` : `Generating for: ${asset?.name}`}
+                            </p>
+                            {draftSaved && (
+                                <span className="text-xs text-green-400 flex items-center gap-1 animate-in fade-in duration-200">
+                                    <Icons.Check size={12} /> Draft saved
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <div className="flex gap-2">
+                        <Button variant="secondary" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</Button>
+                        {!readOnly && (
+                            <>
+                                <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500" onClick={() => onSave({ ...formData, download: false })}>
+                                    <Icons.Save size={16} /> Save Record
+                                </Button>
+                                <Button variant="primary" onClick={() => onSave({ ...formData, download: true })}>
+                                    <Icons.Download size={16} /> Save & PDF
+                                </Button>
+                            </>
                         )}
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button variant="secondary" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</Button>
-                    {!readOnly && (
-                        <>
-                            <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500" onClick={() => onSave({ ...formData, download: false })}>
-                                <Icons.Save size={16} /> Save Record
-                            </Button>
-                            <Button variant="primary" onClick={() => onSave({ ...formData, download: true })}>
-                                <Icons.Download size={16} /> Save & PDF
-                            </Button>
-                        </>
+
+                {/* Tabs */}
+                <div className="flex border-b border-slate-700 bg-slate-800 flex-shrink-0">
+                    {['general', 'calibration', 'integrator'].map(tab => (
+                        <button
+                            key={tab}
+                            onClick={() => setActiveTab(tab)}
+                            className={`px-6 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === tab
+                                ? 'text-cyan-400 border-b-2 border-cyan-400 bg-slate-700/50'
+                                : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                                }`}
+                        >
+                            {tab === 'integrator' ? 'Integrator Data' : tab}
+                        </button>
+                    ))}
+                </div>
+
+                {/* Form Content */}
+                <div className="flex-1 overflow-y-auto p-6">
+                    {/* TAB: GENERAL */}
+                    {activeTab === 'general' && (
+                        <GeneralTab
+                            formData={formData.general}
+                            onChange={handleGeneralChange}
+                            site={site}
+                            asset={asset}
+                            readOnly={readOnly}
+                        />
+                    )}
+
+                    {/* TAB: CALIBRATION */}
+                    {activeTab === 'calibration' && (
+                        <CalibrationTab
+                            formData={formData}
+                            onChange={handleCalibrationChange}
+                            readOnly={readOnly}
+                        />
+                    )}
+
+                    {/* TAB: INTEGRATOR */}
+                    {activeTab === 'integrator' && (
+                        <IntegratorTab
+                            formData={formData}
+                            onChange={handleIntegratorChange}
+                            readOnly={readOnly}
+                        />
                     )}
                 </div>
-            </div>
-
-            {/* Tabs */}
-            <div className="flex border-b border-slate-700 bg-slate-800">
-                {['general', 'calibration', 'integrator'].map(tab => (
-                    <button
-                        key={tab}
-                        onClick={() => setActiveTab(tab)}
-                        className={`px-6 py-3 text-sm font-bold uppercase tracking-wider transition-colors ${activeTab === tab
-                            ? 'text-cyan-400 border-b-2 border-cyan-400 bg-slate-700/50'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-700'
-                            }`}
-                    >
-                        {tab === 'integrator' ? 'Integrator Data' : tab}
-                    </button>
-                ))}
-            </div>
-
-            {/* Form Content */}
-            <div className="flex-1 overflow-y-auto p-6">
-                {/* TAB: GENERAL */}
-                {activeTab === 'general' && (
-                    <GeneralTab
-                        formData={formData.general}
-                        onChange={handleGeneralChange}
-                        site={site}
-                        asset={asset}
-                        readOnly={readOnly}
-                    />
-                )}
-
-                {/* TAB: CALIBRATION */}
-                {activeTab === 'calibration' && (
-                    <CalibrationTab
-                        formData={formData}
-                        onChange={handleCalibrationChange}
-                        readOnly={readOnly}
-                    />
-                )}
-
-                {/* TAB: INTEGRATOR */}
-                {activeTab === 'integrator' && (
-                    <IntegratorTab
-                        formData={formData}
-                        onChange={handleIntegratorChange}
-                        readOnly={readOnly}
-                    />
-                )}
             </div>
         </div>
     );
