@@ -1818,7 +1818,7 @@ export default function App() {
                         <th className="px-4 py-2 cursor-pointer hover:bg-slate-700 min-w-[120px] whitespace-nowrap" onClick={() => { handleSort('dueDate'); setSelectedRowIds(new Set()); }}>Cal Due {getSortIcon('dueDate')}</th>
                         <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
                         <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
-                        <th className="px-4 py-2 text-center min-w-[100px]">Op Status</th>
+                        <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[100px]" onClick={() => { handleSort('opStatus'); setSelectedRowIds(new Set()); }}>Op Status {getSortIcon('opStatus')}</th>
                         <th className="px-3 py-2 text-center no-print text-xs">Reports / Analytics</th>
                         <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
                         <th className="px-3 py-2 text-center no-print text-xs">Edit</th>

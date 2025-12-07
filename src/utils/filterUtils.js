@@ -12,7 +12,7 @@ export const sortSitesByRisk = (sites) => {
 
 export const filterMaintenanceData = (data, searchTerm, filterStatus, showArchived) => {
     if (!data) return [];
-    
+
     let filteredData = data.filter(item => showArchived ? true : item.active !== false);
 
     filteredData = filteredData.filter(item =>
@@ -30,14 +30,21 @@ export const filterMaintenanceData = (data, searchTerm, filterStatus, showArchiv
 
 export const sortMaintenanceData = (data, sortConfig) => {
     if (!sortConfig.key) return data;
-    
+
     return data.sort((a, b) => {
         let aVal = a[sortConfig.key];
         let bVal = b[sortConfig.key];
 
-        if (sortConfig.key === 'dueDate') {
-            aVal = new Date(a.dueDate).getTime();
-            bVal = new Date(b.dueDate).getTime();
+        // Special handling for opStatus - sort by severity
+        if (sortConfig.key === 'opStatus') {
+            const weights = { 'Down': 3, 'Warning': 2, 'Operational': 1, '': 0 };
+            aVal = weights[a.opStatus] || 0;
+            bVal = weights[b.opStatus] || 0;
+        }
+        // Special handling for dates
+        else if (sortConfig.key === 'dueDate' || sortConfig.key === 'lastCal') {
+            aVal = new Date(aVal).getTime();
+            bVal = new Date(bVal).getTime();
         }
 
         if (aVal < bVal) {
@@ -52,12 +59,12 @@ export const sortMaintenanceData = (data, sortConfig) => {
 
 export const calculateMaintenanceStats = (data) => {
     if (!data) return { overdue: 0, dueSoon: 0, total: 0, healthy: 0 };
-    
+
     const activeData = data.filter(d => d.active !== false);
     const total = activeData.length;
     const overdue = activeData.filter(d => d.remaining < 0).length;
     const dueSoon = activeData.filter(d => d.remaining >= 0 && d.remaining < 30).length;
     const healthy = activeData.filter(d => d.remaining >= 30).length;
-    
+
     return { total, overdue, dueSoon, healthy };
 };
