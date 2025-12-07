@@ -40,6 +40,9 @@ import { MasterListPDFPreview } from './components/MasterListPDFPreview';
 import { FullDashboardPDF } from './components/FullDashboardPDF';
 import { ScheduleChartPDF } from './components/ScheduleChartPDF';
 import { AssetSpecsPDF } from './components/AssetSpecsPDF';
+import { ServiceReportForm } from './components/reports/ServiceReportForm';
+import { ServiceReportDocument } from './components/reports/ServiceReportDocument';
+import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 
@@ -185,6 +188,10 @@ export default function App() {
   const [opStatusAsset, setOpStatusAsset] = useState(null);
   const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
 
+  // --- SERVICE REPORT MODAL STATE ---
+  const [isServiceReportOpen, setIsServiceReportOpen] = useState(false);
+  const [isReportHistoryOpen, setIsReportHistoryOpen] = useState(false);
+
   // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -213,9 +220,9 @@ export default function App() {
   const selectedAsset = React.useMemo(() => (filteredData || []).find(i => i.id === selectedAssetId), [filteredData, selectedAssetId]);
   const selectedSpecs = React.useMemo(() => {
     if (!selectedAsset) return null;
-    return (currentSpecData || []).find(s => 
-      s.weigher === selectedAsset.weigher || 
-      s.altCode === selectedAsset.code || 
+    return (currentSpecData || []).find(s =>
+      s.weigher === selectedAsset.weigher ||
+      s.altCode === selectedAsset.code ||
       s.weigher === selectedAsset.code
     );
   }, [selectedAsset, currentSpecData]);
@@ -276,6 +283,63 @@ export default function App() {
     setOpStatusAsset(null);
   };
 
+  const handleGenerateReport = async (reportData) => {
+    if (!selectedAsset) return;
+
+    // Validate job number
+    if (!reportData.general.jobNumber || reportData.general.jobNumber.trim() === '') {
+      alert('Please enter a Job Number before generating the report.');
+      return;
+    }
+
+    try {
+      // 1. Generate PDF Blob
+      const blob = await pdf(<ServiceReportDocument data={reportData} />).toBlob();
+
+      // 2. Create filename: YYYY.MM.DD-CALR-[jobNumber]-[AssetName]
+      const date = new Date(reportData.general.serviceDate);
+      const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+      const jobNumber = reportData.general.jobNumber.trim();
+      const assetName = (reportData.general.assetName || selectedAsset.name).replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${dateStr}-CALR-${jobNumber}-${assetName}.pdf`;
+
+      // 3. Save File
+      saveAs(blob, fileName);
+
+      // 4. Save to App History (using existing context method)
+      handleSaveReport(selectedAssetId, {
+        id: Date.now(),
+        date: new Date().toISOString(),
+        type: 'Full Service',
+        fileName: fileName,
+        jobNumber: jobNumber,
+        data: reportData
+      });
+
+      // 5. Clear draft from localStorage
+      const draftKey = `serviceReportDraft_${selectedAssetId}`;
+      localStorage.removeItem(draftKey);
+
+      setIsServiceReportOpen(false);
+    } catch (error) {
+      console.error('Error generating service report:', error);
+      alert('Failed to generate service report. Please try again.');
+    }
+  };
+
+  const handleRegeneratePDF = async (report) => {
+    try {
+      // 1. Generate PDF Blob from saved data
+      const blob = await pdf(<ServiceReportDocument data={report.data} />).toBlob();
+
+      // 2. Save File with original filename
+      saveAs(blob, report.fileName);
+    } catch (error) {
+      console.error('Error regenerating PDF:', error);
+      alert('Failed to regenerate PDF. Please try again.');
+    }
+  };
+
   const handleDownloadData = () => {
     const now = new Date();
     const year = now.getFullYear();
@@ -333,7 +397,7 @@ export default function App() {
 
   const handlePrint = (mode) => {
     setIsPrintMenuOpen(false);
-    
+
     if (mode === 'full') {
       // Open Full Dashboard Preview
       setIsFullDashboardPreviewOpen(true);
@@ -346,27 +410,27 @@ export default function App() {
         alert('Please select one or more assets using the checkboxes to generate specifications.');
         return;
       }
-      
+
       const selectedAssets = filteredData.filter(asset => selectedRowIds.has(asset.id));
       const assetsWithSpecs = selectedAssets.map(asset => {
-        const specs = (currentSpecData || []).find(s => 
-          s.weigher === asset.weigher || 
-          s.altCode === asset.code || 
+        const specs = (currentSpecData || []).find(s =>
+          s.weigher === asset.weigher ||
+          s.altCode === asset.code ||
           s.weigher === asset.code
         );
         return { asset, specs };
       }).filter(item => item.specs); // Only include assets that have specs
-      
+
       if (assetsWithSpecs.length === 0) {
         alert('No specifications found for any of the selected assets. Please select assets that have matching spec data.');
         return;
       }
-      
+
       if (assetsWithSpecs.length < selectedRowIds.size) {
         const skipped = selectedRowIds.size - assetsWithSpecs.length;
         alert(`Warning: ${skipped} selected asset(s) don't have specifications. Generating PDF for ${assetsWithSpecs.length} asset(s) with specs.`);
       }
-      
+
       // Open Asset Specs Preview with the filtered assets
       setIsAssetSpecsPreviewOpen(true);
     } else if (mode === 'master') {
@@ -376,11 +440,11 @@ export default function App() {
       // Fallback to original print method for other modes
       const body = document.body;
       body.classList.remove('print-schedule', 'print-specs', 'print-master');
-      
+
       if (mode === 'schedule') body.classList.add('print-schedule');
       if (mode === 'specs') body.classList.add('print-specs');
       if (mode === 'master') body.classList.add('print-master');
-      
+
       setTimeout(() => {
         window.print();
       }, 100);
@@ -1639,7 +1703,29 @@ export default function App() {
                 <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-between items-center">
                   <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
                   {selectedAsset && (
-                    <div className="no-print mr-8">
+                    <div className="no-print mr-8 flex gap-2">
+                      <Button
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeFullscreen();
+                          setIsReportHistoryOpen(true);
+                          setSelectedRowIds(new Set());
+                        }}
+                      >
+                        <Icons.History size={16} /> View Reports
+                      </Button>
+                      <Button
+                        variant="primary"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeFullscreen();
+                          setIsServiceReportOpen(true);
+                          setSelectedRowIds(new Set());
+                        }}
+                      >
+                        <Icons.FileText size={16} /> New Service Report
+                      </Button>
                       <Button
                         variant={activeTab === 'service' ? 'secondary' : 'orange'}
                         onClick={(e) => {
@@ -1860,9 +1946,9 @@ export default function App() {
           if (selectedRowIds.size === 0) return [];
           const selectedAssets = filteredData.filter(asset => selectedRowIds.has(asset.id));
           return selectedAssets.map(asset => {
-            const specs = (currentSpecData || []).find(s => 
-              s.weigher === asset.weigher || 
-              s.altCode === asset.code || 
+            const specs = (currentSpecData || []).find(s =>
+              s.weigher === asset.weigher ||
+              s.altCode === asset.code ||
               s.weigher === asset.code
             );
             return { asset, specs };
@@ -1897,6 +1983,29 @@ export default function App() {
         onSave={handleSaveOpStatus}
         asset={opStatusAsset}
       />
+
+      {/* SERVICE REPORT MODAL */}
+      {isServiceReportOpen && (
+        <div className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-slate-900 w-full max-w-6xl h-[90vh] rounded-xl border border-slate-700 overflow-hidden shadow-2xl">
+            <ServiceReportForm
+              site={selectedSite}
+              asset={selectedAsset}
+              onClose={() => setIsServiceReportOpen(false)}
+              onSave={handleGenerateReport}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* REPORT HISTORY MODAL */}
+      {isReportHistoryOpen && selectedAsset && (
+        <ReportHistoryModal
+          asset={selectedAsset}
+          onClose={() => setIsReportHistoryOpen(false)}
+          onRegeneratePDF={handleRegeneratePDF}
+        />
+      )}
 
       {/* EASTER EGG OVERLAY */}
       {isCooked && (
