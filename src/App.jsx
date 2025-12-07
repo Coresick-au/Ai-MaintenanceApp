@@ -48,6 +48,7 @@ import { ServiceReportForm } from './components/reports/ServiceReportForm';
 import { ServiceReportDocument } from './components/reports/ServiceReportDocument';
 import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
 import { ReportWizardModal } from './components/ReportWizardModal';
+import { ToDoWidget } from './components/ToDoWidget';
 import { ContextWizardModal } from './components/ContextWizardModal';
 import { EmployeeManager } from './components/EmployeeManager';
 import { DatabaseSettingsModal } from './components/DatabaseSettingsModal';
