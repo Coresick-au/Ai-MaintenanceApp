@@ -6,20 +6,20 @@ import { SiteContext } from './SiteContext.context';
 
 // Helper function to format full location string
 const formatFullLocation = (siteForm) => {
-  const parts = [];
-  
-  if (siteForm.streetAddress) parts.push(siteForm.streetAddress);
-  if (siteForm.city) parts.push(siteForm.city);
-  if (siteForm.state) parts.push(siteForm.state);
-  if (siteForm.postcode) parts.push(siteForm.postcode);
-  if (siteForm.country && siteForm.country !== 'Australia') parts.push(siteForm.country);
-  
-  // If no detailed address, fallback to location name
-  if (parts.length === 0 && siteForm.location) {
-    return siteForm.location;
-  }
-  
-  return parts.join(', ') || '';
+    const parts = [];
+
+    if (siteForm.streetAddress) parts.push(siteForm.streetAddress);
+    if (siteForm.city) parts.push(siteForm.city);
+    if (siteForm.state) parts.push(siteForm.state);
+    if (siteForm.postcode) parts.push(siteForm.postcode);
+    if (siteForm.country && siteForm.country !== 'Australia') parts.push(siteForm.country);
+
+    // If no detailed address, fallback to location name
+    if (parts.length === 0 && siteForm.location) {
+        return siteForm.location;
+    }
+
+    return parts.join(', ') || '';
 };
 
 export { SiteContext };
@@ -29,28 +29,103 @@ export const SiteProvider = ({ children }) => {
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
 
+    // Database State
+    const [dbPath, setDbPath] = useState(null);
+    const [isDbReady, setIsDbReady] = useState(false);
+
     // --- PERSISTENCE ---
     useEffect(() => {
         // Load Sites asynchronously (no longer load selectedSiteId)
+        // Load Sites asynchronously
         const loadData = async () => {
-            const loadedSites = loadSitesFromStorage();
-            
-            // Use setTimeout to defer state updates and avoid cascading renders
-            setTimeout(() => {
-                setSites(loadedSites);
-                setIsDataLoaded(true);
-            }, 0);
+            // Check if running in Electron environment
+            if (window.electronAPI) {
+                try {
+                    // Try to get existing DB path
+                    const path = await window.electronAPI.getDbPath();
+                    if (path) {
+                        setDbPath(path);
+                        setIsDbReady(true);
+
+                        // Load sites from DB
+                        const dbSites = await window.electronAPI.loadSites();
+                        if (dbSites && Array.isArray(dbSites)) {
+                            console.log('[SiteContext] Loaded sites from DB:', dbSites.length);
+                            setSites(dbSites);
+                        }
+                    } else {
+                        console.log('[SiteContext] No DB path configured.');
+                        // Fallback to localStorage for initial view or empty state
+                        const localData = localStorage.getItem('app_data');
+                        if (localData) {
+                            try {
+                                setSites(JSON.parse(localData));
+                            } catch (e) { console.error(e); }
+                        }
+                    }
+                } catch (error) {
+                    console.error('[SiteContext] Failed to initialize DB:', error);
+                } finally {
+                    setIsDataLoaded(true);
+                }
+                return;
+            }
+
+            // Browser Mode (Fallback)
+            console.log('[SiteContext] Running in browser mode, using localStorage');
+            const localData = localStorage.getItem('app_data');
+            if (localData) {
+                try {
+                    const parsed = JSON.parse(localData);
+                    setSites(Array.isArray(parsed) ? parsed : []);
+                } catch (err) {
+                    console.error('[SiteContext] Error parsing localStorage:', err);
+                    setSites([]);
+                }
+            }
+            setIsDataLoaded(true);
         };
-        
+
         loadData();
     }, []);
 
+    // --- AUTO-SAVE (Database & LocalStorage) ---
     useEffect(() => {
-        if (isDataLoaded) {
+        if (!isDataLoaded) return;
+
+        const saveData = async () => {
+            // 1. Always save to localStorage as backup/cache
             localStorage.setItem('app_data', JSON.stringify(sites));
-            clearDirty();
-        }
-    }, [sites, isDataLoaded, clearDirty]);
+
+            // 2. If Database is ready, save there too
+            if (isDbReady && window.electronAPI) {
+                // We save site-by-site or all? Use saveSite for individual updates if optimized, 
+                // but for now let's just save the changed sites? 
+                // Actually, simplest is to loop and save, or let the backend handle "save-site".
+                // BUT, sending ALL sites on every change is heavy.
+                // Ideally we track 'dirty' sites.
+                // For now, let's just rely on the fact that 'updateSiteData' updates 'sites'.
+                // Let's implement a bulk save or individual save if we knew which one changed.
+
+                // Strategy: The backend 'db-save-site' saves one site.
+                // We can iterate and save all? Or just trust the `updateSiteData` to call save?
+                // No, updateSiteData updates React state.
+                // Let's just iterate and save all for safety for now (debounce this in production).
+
+                // Better: We should only save the changed site.
+                // But we don't know which one changed here easily without tracking.
+                // Let's iterate. It's SQLite, it's fast enough for < 100 sites.
+
+                for (const site of sites) {
+                    await window.electronAPI.saveSite(site);
+                }
+            }
+        };
+
+        const timeoutId = setTimeout(saveData, 1000); // Debounce 1s
+        return () => clearTimeout(timeoutId);
+
+    }, [sites, isDataLoaded, isDbReady]);
 
     // --- DERIVED STATE ---
     const selectedSite = useMemo(() => sites.find(s => s.id === selectedSiteId), [sites, selectedSiteId]);
@@ -122,7 +197,7 @@ export const SiteProvider = ({ children }) => {
 
     const handleGenerateSample = () => {
         const sample = generateSampleSite();
-        
+
         // Clear all service reports from existing sites
         const sitesWithoutReports = sites.map(site => ({
             ...site,
@@ -131,7 +206,7 @@ export const SiteProvider = ({ children }) => {
                 reports: [] // Clear all service reports
             }))
         }));
-        
+
         setSites([sample, ...sitesWithoutReports]);
     };
 
@@ -348,7 +423,7 @@ export const SiteProvider = ({ children }) => {
 
     const handleSaveEditedAsset = (editingAsset, activeTab) => {
         if (!editingAsset) return;
-        
+
         // 1. Calculate updates for the asset being edited
         const updatedPrimary = recalculateRow(editingAsset);
         const newHistory = { date: new Date().toISOString(), action: 'Details Updated', user: 'User' };
@@ -372,7 +447,7 @@ export const SiteProvider = ({ children }) => {
         if (baseId) {
             const counterpartPrefix = activeTab === 'service' ? 'r-' : 's-';
             const counterpartId = `${counterpartPrefix}${baseId}`;
-            
+
             // Define which fields should stay in sync across both views
             const sharedUpdates = {
                 name: updatedPrimary.name,
@@ -383,10 +458,10 @@ export const SiteProvider = ({ children }) => {
 
             const updateCounterpartList = (list) => list.map(item => {
                 if (item.id === counterpartId) {
-                    return { 
-                        ...item, 
-                        ...sharedUpdates, 
-                        history: [...(item.history || []), newHistory] 
+                    return {
+                        ...item,
+                        ...sharedUpdates,
+                        history: [...(item.history || []), newHistory]
                     };
                 }
                 return item;
@@ -400,9 +475,9 @@ export const SiteProvider = ({ children }) => {
         }
 
         // 5. Save BOTH lists to ensuring they stay in sync
-        updateSiteData(selectedSiteId, { 
-            serviceData: newServiceData, 
-            rollerData: newRollerData 
+        updateSiteData(selectedSiteId, {
+            serviceData: newServiceData,
+            rollerData: newRollerData
         }, 'Update Asset Details');
     };
 
@@ -450,8 +525,8 @@ export const SiteProvider = ({ children }) => {
             if (!isIndependentField) {
                 updatedCounterpartList = counterpartList.map(item => {
                     if (item.id === counterpartId) {
-                        return { 
-                            ...item, 
+                        return {
+                            ...item,
                             [field]: val,
                             history: [...(item.history || []), { date: new Date().toISOString(), action: `${field} changed to ${val} (synced)`, user: 'User' }]
                         };
@@ -556,7 +631,7 @@ export const SiteProvider = ({ children }) => {
     const handleAddSiteNote = (siteId, noteData) => {
         const site = sites.find(s => s.id === siteId);
         if (!site) return;
-        
+
         const updatedNotes = [...(site.notes || []), noteData];
         updateSiteData(siteId, { notes: updatedNotes }, 'Add Site Note');
     };
@@ -564,8 +639,8 @@ export const SiteProvider = ({ children }) => {
     const handleUpdateSiteNote = (siteId, noteId, updates) => {
         const site = sites.find(s => s.id === siteId);
         if (!site) return;
-        
-        const updatedNotes = (site.notes || []).map(note => 
+
+        const updatedNotes = (site.notes || []).map(note =>
             note.id === noteId ? { ...note, ...updates } : note
         );
         updateSiteData(siteId, { notes: updatedNotes }, 'Update Site Note');
@@ -574,16 +649,44 @@ export const SiteProvider = ({ children }) => {
     const handleDeleteSiteNote = (siteId, noteId) => {
         const site = sites.find(s => s.id === siteId);
         if (!site) return;
-        
+
         const updatedNotes = (site.notes || []).filter(note => note.id !== noteId);
         updateSiteData(siteId, { notes: updatedNotes }, 'Delete Site Note');
+    };
+
+    // --- DATABASE ACTIONS ---
+    const handleDatabaseSelected = async (path) => {
+        if (!window.electronAPI) return;
+        try {
+            console.log('[SiteContext] Selecting database:', path);
+            const success = await window.electronAPI.selectDbLocation(path);
+            if (success) {
+                setDbPath(path);
+                setIsDbReady(true);
+                // Reload sites from the new DB
+                const dbSites = await window.electronAPI.loadSites();
+                if (dbSites) setSites(dbSites);
+            }
+        } catch (error) {
+            console.error('[SiteContext] Failed to select database:', error);
+        }
+    };
+
+    const reloadFromDatabase = async () => {
+        if (!isDbReady || !window.electronAPI) return;
+        try {
+            const dbSites = await window.electronAPI.loadSites();
+            if (dbSites) setSites(dbSites);
+        } catch (e) {
+            console.error('Failed to reload from DB:', e);
+        }
     };
 
     const handleArchiveSiteNote = (siteId, noteId, archived) => {
         const site = sites.find(s => s.id === siteId);
         if (!site) return;
-        
-        const updatedNotes = (site.notes || []).map(note => 
+
+        const updatedNotes = (site.notes || []).map(note =>
             note.id === noteId ? { ...note, archived } : note
         );
         updateSiteData(siteId, { notes: updatedNotes }, archived ? 'Archive Site Note' : 'Restore Site Note');
@@ -656,7 +759,14 @@ export const SiteProvider = ({ children }) => {
             handleAddSiteNote,
             handleUpdateSiteNote,
             handleDeleteSiteNote,
-            handleArchiveSiteNote
+            handleDeleteSiteNote,
+            handleArchiveSiteNote,
+
+            // Database Exports
+            dbPath,
+            isDbReady,
+            handleDatabaseSelected,
+            reloadFromDatabase
         }}>
             {children}
         </SiteContext.Provider>

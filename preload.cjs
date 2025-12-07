@@ -45,6 +45,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // App Close Coordination
   onAppCloseRequest: (callback) => ipcRenderer.on('app-close-request', (event, ...args) => callback(...args)),
   sendAppCloseApproved: () => ipcRenderer.send('app-close-approved'),
+
+  // Database API
+  getDbPath: () => ipcRenderer.invoke('get-db-path'),
+  selectDbPath: () => ipcRenderer.invoke('select-db-location'),
+  loadSites: () => ipcRenderer.invoke('db-get-all-sites'),
+  saveSite: (siteData) => ipcRenderer.invoke('db-save-site', siteData),
+  deleteSite: (siteId) => ipcRenderer.invoke('db-delete-site', siteId),
 });
 
 // DOM Content Loaded handler (optional - for displaying version info)

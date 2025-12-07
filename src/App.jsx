@@ -43,6 +43,7 @@ import { AssetSpecsPDF } from './components/AssetSpecsPDF';
 import { ServiceReportForm } from './components/reports/ServiceReportForm';
 import { ServiceReportDocument } from './components/reports/ServiceReportDocument';
 import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
+import { DatabaseSettingsModal } from './components/DatabaseSettingsModal';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 
@@ -64,7 +65,8 @@ export default function App() {
     handleAddSpecNote, handleDeleteSpecNote, saveEditedNote,
     handleAddSiteNote, handleUpdateSiteNote, handleDeleteSiteNote, handleArchiveSiteNote,
 
-    handleFileChange, uploadServiceReport, deleteServiceReport
+    handleFileChange, uploadServiceReport, deleteServiceReport,
+    dbPath, isDbReady, handleDatabaseSelected
   } = useSiteContext();
 
   const {
@@ -97,6 +99,7 @@ export default function App() {
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
   const [localViewMode, setLocalViewMode] = useState('list');
   const [commentsExpanded, setCommentsExpanded] = useState(true); // Comments section starts expanded
+  const [isDbSettingsOpen, setIsDbSettingsOpen] = useState(false); // Database settings modal
   // Actually, let's just use local state for now.
 
 
@@ -887,6 +890,23 @@ export default function App() {
                 <span>Complete App History</span>
               </button>
             </div>
+
+            {/* Database Settings */}
+            <div className="px-3 mb-2">
+              <button
+                type="button"
+                onClick={() => { setIsDbSettingsOpen(true); setSelectedRowIds(new Set()); }}
+                className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isDbReady
+                  ? 'text-green-400 hover:text-white hover:bg-slate-700'
+                  : 'text-orange-400 hover:text-white hover:bg-slate-700'
+                  }`}
+                title={isDbReady ? `Database: ${dbPath}` : 'No database configured'}
+              >
+                <Icons.Database size={18} />
+                <span>Database Settings</span>
+                {isDbReady && <span className="ml-auto text-xs text-green-400">●</span>}
+              </button>
+            </div>
           </div>
         </aside>
 
@@ -1030,19 +1050,81 @@ export default function App() {
           {/* Data Persistence Info */}
           <div className="mt-12 p-6 bg-amber-900/20 border border-amber-800/50 rounded-xl no-print">
             <h3 className="text-lg font-bold text-amber-700 text-amber-200 mb-2 flex items-center gap-2">
-              <span className="text-xl">⚠️</span> Important: Data Persistence Guide
+              <span className="text-xl">💾</span> Data Persistence Guide
             </h3>
-            <p className="text-amber-600 text-amber-300 mb-4 text-sm">
-              This application is currently running in a temporary environment. Your data is <strong>not automatically saved</strong> to a cloud server.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-              <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <strong className="text-amber-600 text-amber-300 block mb-1">How to Save:</strong>
-                Use the <strong>Backup Data</strong> button in the left sidebar (under Data) to download a <code>.json</code> file of your current data.
+
+            {/* Database Status */}
+            {window.electronAPI && (
+              <div className={`mb-4 p-3 rounded-lg border ${isDbReady
+                ? 'bg-green-900/20 border-green-800/50'
+                : 'bg-orange-900/20 border-orange-800/50'
+                }`}>
+                <div className="flex items-center gap-2 text-sm">
+                  {isDbReady ? (
+                    <>
+                      <Icons.CheckCircle className="text-green-400" size={16} />
+                      <span className="text-green-300 font-medium">
+                        Database Connected: <code className="text-xs bg-slate-800 px-2 py-0.5 rounded">{dbPath}</code>
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <Icons.AlertCircle className="text-orange-400" size={16} />
+                      <span className="text-orange-300 font-medium">
+                        No database configured - Using localStorage (temporary)
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
-                <strong className="text-amber-600 text-amber-300 block mb-1">How to Load:</strong>
-                Use the <strong>Restore Data</strong> link in the left sidebar (under Data) to upload a previously saved <code>.json</code> file to continue your work.
+            )}
+
+            <p className="text-amber-600 text-amber-300 mb-4 text-sm">
+              {isDbReady ? (
+                <>
+                  Your data is <strong>automatically saved</strong> to the SQLite database every second.
+                  Changes persist across sessions and can be synced via OneDrive.
+                </>
+              ) : (
+                <>
+                  {window.electronAPI ? (
+                    <>Configure a database location to enable automatic saving and OneDrive sync.</>
+                  ) : (
+                    <>This application is currently running in browser mode. Your data is stored in <strong>localStorage</strong> (temporary).</>
+                  )}
+                </>
+              )}
+            </p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              {/* Left Column: Database Mode */}
+              {window.electronAPI && (
+                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 h-full flex flex-col justify-center">
+                  <strong className="text-amber-600 text-amber-300 block mb-2 flex items-center gap-2 text-base">
+                    <Icons.Database size={16} />
+                    Database Mode (Recommended):
+                  </strong>
+                  <p className="text-slate-300 mb-3 leading-relaxed">
+                    Click <strong>Database Settings</strong> in the sidebar to configure a database location.
+                  </p>
+                  <ul className="text-xs text-slate-400 space-y-2 list-disc ml-4">
+                    <li>Auto-saves every second</li>
+                    <li>Supports OneDrive sync</li>
+                    <li>Multi-device access</li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Right Column: Stacked Backup & Restore */}
+              <div className="flex flex-col gap-4 h-full justify-center">
+                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <strong className="text-amber-600 text-amber-300 block mb-1">Manual Backup:</strong>
+                  Use the <strong>Backup Data</strong> button in the left sidebar to download a <code>.json</code> file of your current data.
+                </div>
+                <div className="bg-slate-800 p-4 rounded-lg border border-slate-700">
+                  <strong className="text-amber-600 text-amber-300 block mb-1">Restore Data:</strong>
+                  Use the <strong>Restore Data</strong> link in the left sidebar to upload a previously saved <code>.json</code> file to continue your work.
+                </div>
               </div>
             </div>
           </div>
@@ -1092,6 +1174,14 @@ export default function App() {
           onDeleteNote={handleDeleteSiteNote}
           onArchiveNote={handleArchiveSiteNote}
         />
+
+        {/* DATABASE SETTINGS MODAL */}
+        {isDbSettingsOpen && (
+          <DatabaseSettingsModal
+            onClose={() => setIsDbSettingsOpen(false)}
+            onDatabaseSelected={handleDatabaseSelected}
+          />
+        )}
       </div >
     );
   }
