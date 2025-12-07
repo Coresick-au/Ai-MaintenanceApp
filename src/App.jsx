@@ -44,6 +44,7 @@ import { ServiceReportForm } from './components/reports/ServiceReportForm';
 import { ServiceReportDocument } from './components/reports/ServiceReportDocument';
 import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
 import { ReportWizardModal } from './components/ReportWizardModal';
+import { ContextWizardModal } from './components/ContextWizardModal';
 import { DatabaseSettingsModal } from './components/DatabaseSettingsModal';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
@@ -104,6 +105,10 @@ export default function App() {
   const [commentsExpanded, setCommentsExpanded] = useState(true); // Comments section starts expanded
   const [isDbSettingsOpen, setIsDbSettingsOpen] = useState(false); // Database settings modal
   const [expandedSiteCards, setExpandedSiteCards] = useState({});
+
+  // Universal Action Wizard State
+  const [wizardAction, setWizardAction] = useState(null); // 'analytics', 'report', 'specs'
+  const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
 
   const toggleCardExpansion = (e, siteId) => {
     e.stopPropagation();
@@ -1419,6 +1424,84 @@ export default function App() {
           </button>
 
           <div className="border-t border-slate-700 my-3"></div>
+
+          {/* === UNIVERSAL ACTIONS MENU === */}
+          <div className="relative mb-4">
+            <button
+              onClick={() => setIsActionMenuOpen(!isActionMenuOpen)}
+              className="w-full bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white p-3 rounded-xl shadow-lg shadow-cyan-900/20 flex items-center justify-between font-bold transition-all border border-cyan-400/20"
+            >
+              <div className="flex items-center gap-2">
+                <Icons.Grid size={20} />
+                <span>Actions Menu</span>
+              </div>
+              <Icons.ChevronDown className={`transition-transform ${isActionMenuOpen ? 'rotate-180' : ''}`} size={16} />
+            </button>
+
+            {isActionMenuOpen && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl overflow-hidden z-50 animate-in slide-in-from-top-2 fade-in duration-200">
+
+                {/* 1. VIEW ANALYTICS */}
+                <button
+                  onClick={() => { setIsActionMenuOpen(false); setWizardAction('analytics'); }}
+                  className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 border-b border-slate-700 group"
+                >
+                  <div className="bg-purple-500/20 text-purple-400 p-2 rounded-lg group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                    <Icons.Activity size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-200">View Analytics</div>
+                    <div className="text-[10px] text-slate-400">Charts, Trends & History</div>
+                  </div>
+                </button>
+
+                {/* 2. NEW REPORT */}
+                <button
+                  onClick={() => { setIsActionMenuOpen(false); setWizardAction('report'); }}
+                  className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 border-b border-slate-700 group"
+                >
+                  <div className="bg-green-500/20 text-green-400 p-2 rounded-lg group-hover:bg-green-500 group-hover:text-white transition-colors">
+                    <Icons.FileText size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-200">New Service Report</div>
+                    <div className="text-[10px] text-slate-400">Create Digital Report</div>
+                  </div>
+                </button>
+
+                {/* 3. MANAGE SPECS */}
+                <button
+                  onClick={() => { setIsActionMenuOpen(false); setWizardAction('specs'); }}
+                  className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 border-b border-slate-700 group"
+                >
+                  <div className="bg-orange-500/20 text-orange-400 p-2 rounded-lg group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                    <Icons.Settings size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-200">Edit Specs</div>
+                    <div className="text-[10px] text-slate-400">Update Asset Details</div>
+                  </div>
+                </button>
+
+                {/* 4. VIEW TIMELINE */}
+                <button
+                  onClick={() => { setIsActionMenuOpen(false); setLocalViewMode('timeline'); }}
+                  className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 group"
+                >
+                  <div className="bg-blue-500/20 text-blue-400 p-2 rounded-lg group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                    <Icons.Clock size={18} />
+                  </div>
+                  <div>
+                    <div className="font-bold text-slate-200">Global Timeline</div>
+                    <div className="text-[10px] text-slate-400">View All Schedules</div>
+                  </div>
+                </button>
+
+              </div>
+            )}
+          </div>
+
+          <div className="border-t border-slate-700 my-3"></div>
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Views</div>
 
           {/* Service Schedule */}
@@ -2242,6 +2325,39 @@ export default function App() {
         onSelectAsset={(site, asset) => {
           setIsReportWizardOpen(false);
           setReportFormState({ site, asset }); // Open the actual form
+        }}
+      />
+
+      {/* UNIVERSAL CONTEXT WIZARD */}
+      <ContextWizardModal
+        isOpen={!!wizardAction}
+        onClose={() => setWizardAction(null)}
+        sites={sites}
+        actionTitle={
+          wizardAction === 'analytics' ? 'View Analytics For...' :
+            wizardAction === 'report' ? 'Create Report For...' :
+              wizardAction === 'specs' ? 'Edit Specs For...' : 'Select Asset'
+        }
+        onComplete={(site, asset) => {
+          // 1. Set the global Site/Asset Context first
+          setSelectedSiteId(site.id);
+          setSelectedAssetId(asset.id);
+          setWizardAction(null); // Close wizard
+
+          // 2. Perform the Specific Action
+          if (wizardAction === 'analytics') {
+            setViewAnalyticsAsset(asset);
+          } else if (wizardAction === 'report') {
+            setReportFormState({ site, asset });
+          } else if (wizardAction === 'specs') {
+            // Find specs for this asset
+            const specs = (site.specData || []).find(s =>
+              s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code
+            );
+            setEditingAsset(asset);
+            setEditingSpecs(specs || null);
+            setIsAssetEditModalOpen(true);
+          }
         }}
       />
 
