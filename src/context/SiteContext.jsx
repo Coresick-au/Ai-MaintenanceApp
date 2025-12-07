@@ -526,11 +526,20 @@ export const SiteProvider = ({ children }) => {
     };
 
     // --- MISC ---
-    const handleGenerateSample = () => {
-        // Just creates a sample in memory, but we could add it to cloud
+    const handleGenerateSample = async () => {
+        // Generate the sample data object
         const sample = generateSampleSite();
-        // Don't sync sample automatically to keep DB clean unless user wants
-        setSites([sample, ...sites]);
+
+        try {
+            // Save it to Firebase (Firestore)
+            // The 'onSnapshot' listener will automatically detect this new document and update the UI
+            await setDoc(doc(db, "sites", sample.id), sample);
+
+            console.log(`[Cloud] Demo site generated: ${sample.name}`);
+        } catch (error) {
+            console.error("Error creating demo site:", error);
+            alert("Failed to save demo site to the database.");
+        }
     };
     const handleClearAllHistory = () => { alert("Global history clear not implemented for Cloud DB"); };
 
