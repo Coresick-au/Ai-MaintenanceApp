@@ -95,7 +95,16 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
     const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', cost: '' });
     const [newInductionForm, setNewInductionForm] = useState({ siteId: '', expiry: '' });
 
+    // NEW: Edit states
+    const [editingCertId, setEditingCertId] = useState(null);
+    const [editCertForm, setEditCertForm] = useState({ name: '', provider: '', expiry: '' });
+
     if (!isOpen) return null;
+
+    // Filter for active sites only
+    const activeSites = useMemo(() => {
+        return (sites || []).filter(site => site.active !== false);
+    }, [sites]);
 
     // Helper to get status color
     const getStatusColor = (status) => {
@@ -173,7 +182,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                             })}
                         </div>
 
-                        {/* --- NEW: INFO PANEL / LEGEND --- */}
+                        {/* --- INFO PANEL / LEGEND --- */}
                         <div className="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-400 bg-slate-900/50 p-3 rounded-lg">
                             <h4 className="font-bold text-slate-300 mb-2 flex items-center gap-2">
                                 <Icons.Info size={12} /> Status Guide
@@ -193,7 +202,6 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                 </div>
                             </div>
                         </div>
-                        {/* ---------------------------------- */}
                     </div>
 
                     {/* RIGHT: DETAILS PANEL */}
@@ -300,7 +308,6 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 }];
                                                 onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
                                                 setNewCertForm({ name: '', provider: '', expiry: '', cost: '' });
-                                                // Update local state
                                                 setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
                                             }}
                                             className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
@@ -316,26 +323,113 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 <th className="px-4 py-2">Provider</th>
                                                 <th className="px-4 py-2">Expiry</th>
                                                 <th className="px-4 py-2">Status</th>
+                                                <th className="px-4 py-2 w-20">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-700">
                                             {(selectedEmp.certifications || []).map(cert => {
                                                 const status = getExpiryStatus(cert.expiry);
+                                                const isEditing = editingCertId === cert.id;
+
                                                 return (
                                                     <tr key={cert.id} className="hover:bg-slate-700/50">
-                                                        <td className="px-4 py-2 font-medium text-slate-200">{cert.name}</td>
-                                                        <td className="px-4 py-2 text-slate-400">{cert.provider || '-'}</td>
-                                                        <td className="px-4 py-2 text-slate-300">{cert.expiry ? formatDate(cert.expiry) : '-'}</td>
-                                                        <td className="px-4 py-2">
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
-                                                                {status === 'valid' ? 'Active' : status}
-                                                            </span>
-                                                        </td>
+                                                        {isEditing ? (
+                                                            <>
+                                                                <td className="px-4 py-2">
+                                                                    <input
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editCertForm.name}
+                                                                        onChange={e => setEditCertForm({ ...editCertForm, name: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-2">
+                                                                    <input
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editCertForm.provider}
+                                                                        onChange={e => setEditCertForm({ ...editCertForm, provider: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-2">
+                                                                    <input
+                                                                        type="date"
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editCertForm.expiry}
+                                                                        onChange={e => setEditCertForm({ ...editCertForm, expiry: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-2"></td>
+                                                                <td className="px-4 py-2">
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const updatedCerts = selectedEmp.certifications.map(c =>
+                                                                                    c.id === cert.id ? { ...c, ...editCertForm } : c
+                                                                                );
+                                                                                onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
+                                                                                setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
+                                                                                setEditingCertId(null);
+                                                                            }}
+                                                                            className="text-green-400 hover:text-green-300"
+                                                                            title="Save"
+                                                                        >
+                                                                            <Icons.Check size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingCertId(null)}
+                                                                            className="text-slate-400 hover:text-slate-300"
+                                                                            title="Cancel"
+                                                                        >
+                                                                            <Icons.X size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-4 py-2 font-medium text-slate-200">{cert.name}</td>
+                                                                <td className="px-4 py-2 text-slate-400">{cert.provider || '-'}</td>
+                                                                <td className="px-4 py-2 text-slate-300">{cert.expiry ? formatDate(cert.expiry) : '-'}</td>
+                                                                <td className="px-4 py-2">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
+                                                                        {status === 'valid' ? 'Active' : status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-2">
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingCertId(cert.id);
+                                                                                setEditCertForm({
+                                                                                    name: cert.name,
+                                                                                    provider: cert.provider || '',
+                                                                                    expiry: cert.expiry || ''
+                                                                                });
+                                                                            }}
+                                                                            className="text-blue-400 hover:text-blue-300"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Icons.Edit size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const updatedCerts = selectedEmp.certifications.filter(c => c.id !== cert.id);
+                                                                                onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
+                                                                                setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
+                                                                            }}
+                                                                            className="text-red-400 hover:text-red-300"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Icons.Trash size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}
                                             {(!selectedEmp.certifications || selectedEmp.certifications.length === 0) && (
-                                                <tr><td colSpan="4" className="p-4 text-center text-slate-500 italic">No certifications yet. Add one above.</td></tr>
+                                                <tr><td colSpan="5" className="p-4 text-center text-slate-500 italic">No certifications yet. Add one above.</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -355,7 +449,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                             onChange={e => setNewInductionForm({ ...newInductionForm, siteId: e.target.value })}
                                         >
                                             <option value="">Select Site...</option>
-                                            {(sites || []).map(site => (
+                                            {activeSites.map(site => (
                                                 <option key={site.id} value={site.id}>
                                                     {site.customer} - {site.location}
                                                 </option>
@@ -373,7 +467,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                             onClick={() => {
                                                 if (!newInductionForm.siteId) return;
 
-                                                const selectedSite = sites.find(s => s.id === newInductionForm.siteId);
+                                                const selectedSite = activeSites.find(s => s.id === newInductionForm.siteId);
                                                 const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.location}` : 'Unknown Site';
 
                                                 const updatedInductions = [...(selectedEmp.inductions || []), {
@@ -386,7 +480,6 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
 
                                                 onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
                                                 setNewInductionForm({ siteId: '', expiry: '' });
-                                                // Update local state
                                                 setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
                                             }}
                                             className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
@@ -418,13 +511,14 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                         </td>
                                                         <td className="px-4 py-2 text-center">
                                                             <button
-                                                                className="text-slate-500 hover:text-red-400"
+                                                                className="text-red-400 hover:text-red-300"
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
                                                                     const updatedInductions = selectedEmp.inductions.filter(i => i.id !== ind.id);
                                                                     onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
                                                                     setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
                                                                 }}
+                                                                title="Delete"
                                                             >
                                                                 <Icons.Trash size={14} />
                                                             </button>
@@ -441,7 +535,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
 
                             </div>
                         ) : (
-                            /* --- CHANGED: SHOW DASHBOARD INSTEAD OF EMPTY STATE --- */
+                            /* COMPLIANCE DASHBOARD */
                             <ComplianceDashboard employees={employees} onSelectEmp={setSelectedEmp} />
                         )}
                     </div>
