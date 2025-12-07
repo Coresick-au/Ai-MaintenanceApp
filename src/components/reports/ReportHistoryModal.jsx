@@ -3,7 +3,7 @@ import { Icons } from '../../constants/icons';
 import { Button } from '../UIComponents';
 import { formatDate } from '../../utils/helpers';
 
-export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF }) => {
+export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewReport, onEditReport }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const reports = asset?.reports || [];
 
@@ -121,8 +121,25 @@ export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF }) => {
                                                 variant="primary"
                                                 className="text-xs"
                                                 onClick={() => onRegeneratePDF(report)}
+                                                title="Re-download PDF"
                                             >
-                                                <Icons.Download size={14} /> Regenerate PDF
+                                                <Icons.Download size={14} /> Only PDF
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                className="text-xs"
+                                                onClick={() => onViewReport(report)}
+                                                title="View Report Details"
+                                            >
+                                                <Icons.Eye size={14} /> View
+                                            </Button>
+                                            <Button
+                                                variant="secondary"
+                                                className="text-xs text-orange-400 hover:text-orange-300"
+                                                onClick={() => onEditReport(report)}
+                                                title="Edit Report (Warning: Modifying finalized report)"
+                                            >
+                                                <Icons.Edit size={14} /> Edit
                                             </Button>
                                         </div>
                                     </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Icons } from '../../constants/icons';
 import { Button } from '../UIComponents';
 
-export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
+export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = null, readOnly = false }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [draftSaved, setDraftSaved] = useState(false);
 
@@ -12,6 +12,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
             reportId: `${new Date().getFullYear()}.${String(new Date().getMonth() + 1).padStart(2, '0')}.${String(new Date().getDate()).padStart(2, '0')}-CALR-${asset?.code || 'UNK'}`,
             jobNumber: '',
             customerName: site?.customer || '',
+            customerLogo: site?.logo || null,
             siteLocation: site?.location || '',
             contactName: site?.contactName || '',
             contactEmail: site?.contactEmail || '',
@@ -37,26 +38,40 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
         ]
     });
 
-    // --- LOAD DRAFT ON MOUNT ---
+    // --- LOAD DATA ON MOUNT ---
     useEffect(() => {
-        if (asset?.id) {
+        if (initialData) {
+            setFormData({
+                ...initialData,
+                general: {
+                    ...initialData.general,
+                    customerLogo: initialData.general.customerLogo || site?.logo
+                }
+            });
+        } else if (asset?.id) {
             const draftKey = `serviceReportDraft_${asset.id}`;
             const savedDraft = localStorage.getItem(draftKey);
             if (savedDraft) {
                 try {
                     const parsedDraft = JSON.parse(savedDraft);
-                    setFormData(parsedDraft);
+                    setFormData({
+                        ...parsedDraft,
+                        general: {
+                            ...parsedDraft.general,
+                            customerLogo: parsedDraft.general.customerLogo || site?.logo
+                        }
+                    });
                     setDraftSaved(true);
                 } catch (error) {
                     console.error('Error loading draft:', error);
                 }
             }
         }
-    }, [asset?.id]);
+    }, [asset?.id, initialData, site?.logo]);
 
     // --- AUTO-SAVE DRAFT ---
     useEffect(() => {
-        if (asset?.id) {
+        if (asset?.id && !readOnly && !initialData) {
             const draftKey = `serviceReportDraft_${asset.id}`;
             localStorage.setItem(draftKey, JSON.stringify(formData));
             setDraftSaved(true);
@@ -65,7 +80,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
             const timer = setTimeout(() => setDraftSaved(false), 2000);
             return () => clearTimeout(timer);
         }
-    }, [formData, asset?.id]);
+    }, [formData, asset?.id, readOnly, initialData]);
 
     // --- AUTO CALCULATIONS ---
     // Updates the "Difference" or "% Change" whenever inputs change
@@ -166,10 +181,17 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
                     </div>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="secondary" onClick={onClose}>Cancel</Button>
-                    <Button variant="primary" onClick={() => onSave(formData)}>
-                        <Icons.Save size={16} /> Save & Generate PDF
-                    </Button>
+                    <Button variant="secondary" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</Button>
+                    {!readOnly && (
+                        <>
+                            <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500" onClick={() => onSave({ ...formData, download: false })}>
+                                <Icons.Save size={16} /> Save Record
+                            </Button>
+                            <Button variant="primary" onClick={() => onSave({ ...formData, download: true })}>
+                                <Icons.Download size={16} /> Save & PDF
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 
@@ -194,7 +216,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
 
                 {/* TAB: GENERAL */}
                 {activeTab === 'general' && (
-                    <div className="grid grid-cols-2 gap-6 max-w-4xl mx-auto">
+                    <fieldset disabled={readOnly} className="grid grid-cols-2 gap-6 max-w-4xl mx-auto block">
                         <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 space-y-4">
                             <h3 className="text-cyan-400 font-bold mb-4 uppercase text-xs">Customer Info</h3>
                             <div>
@@ -272,12 +294,12 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
                                 />
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
                 )}
 
                 {/* TAB: CALIBRATION */}
                 {activeTab === 'calibration' && (
-                    <div className="max-w-4xl mx-auto bg-slate-800 p-6 rounded-lg border border-slate-700">
+                    <fieldset disabled={readOnly} className="max-w-4xl mx-auto bg-slate-800 p-6 rounded-lg border border-slate-700 block">
                         <h3 className="text-lg font-bold text-white mb-6">Critical Calibration Results</h3>
 
                         {/* Custom Grid Header */}
@@ -353,12 +375,12 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
                                 {formData.calibration.speedChange}%
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
                 )}
 
                 {/* TAB: INTEGRATOR */}
                 {activeTab === 'integrator' && (
-                    <div className="max-w-5xl mx-auto">
+                    <fieldset disabled={readOnly} className="max-w-5xl mx-auto block">
                         <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-slate-900 text-slate-400 uppercase text-xs">
@@ -374,7 +396,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
                                         <tr key={row.id} className="hover:bg-slate-700/50">
                                             <td className="p-3 font-medium text-slate-200">
                                                 <input
-                                                    className="bg-transparent w-full focus:outline-none text-white"
+                                                    className="bg-slate-900 border border-slate-700/50 focus:border-blue-500 rounded px-2 py-1 w-full focus:outline-none text-white transition-colors"
                                                     value={row.label}
                                                     onChange={e => updateIntegratorRow(row.id, 'label', e.target.value)}
                                                 />
@@ -410,7 +432,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave }) => {
                                 </Button>
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
                 )}
             </div>
         </div>

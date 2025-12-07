@@ -43,6 +43,7 @@ import { AssetSpecsPDF } from './components/AssetSpecsPDF';
 import { ServiceReportForm } from './components/reports/ServiceReportForm';
 import { ServiceReportDocument } from './components/reports/ServiceReportDocument';
 import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
+import { ReportWizardModal } from './components/ReportWizardModal';
 import { DatabaseSettingsModal } from './components/DatabaseSettingsModal';
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
@@ -98,8 +99,16 @@ export default function App() {
 
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
   const [localViewMode, setLocalViewMode] = useState('list');
+  const [isReportWizardOpen, setIsReportWizardOpen] = useState(false);
+  const [reportFormState, setReportFormState] = useState(null); // { site, asset }
   const [commentsExpanded, setCommentsExpanded] = useState(true); // Comments section starts expanded
   const [isDbSettingsOpen, setIsDbSettingsOpen] = useState(false); // Database settings modal
+  const [expandedSiteCards, setExpandedSiteCards] = useState({});
+
+  const toggleCardExpansion = (e, siteId) => {
+    e.stopPropagation();
+    setExpandedSiteCards(prev => ({ ...prev, [siteId]: !prev[siteId] }));
+  };
   // Actually, let's just use local state for now.
 
 
@@ -159,10 +168,23 @@ export default function App() {
 
     // 2. Update Local State (Immediate UI Feedback)
     if (viewAnalyticsAsset && viewAnalyticsAsset.id === assetId) {
-      setViewAnalyticsAsset(prev => ({
-        ...prev,
-        reports: [...(prev.reports || []), reportData]
-      }));
+      setViewAnalyticsAsset(prev => {
+        const reports = prev.reports || [];
+        const existingIndex = reports.findIndex(r => r.id === reportData.id);
+
+        let updatedReports;
+        if (existingIndex >= 0) {
+          updatedReports = [...reports];
+          updatedReports[existingIndex] = reportData;
+        } else {
+          updatedReports = [...reports, reportData];
+        }
+
+        return {
+          ...prev,
+          reports: updatedReports
+        };
+      });
     }
   };
 
@@ -194,6 +216,9 @@ export default function App() {
   // --- SERVICE REPORT MODAL STATE ---
   const [isServiceReportOpen, setIsServiceReportOpen] = useState(false);
   const [isReportHistoryOpen, setIsReportHistoryOpen] = useState(false);
+  const [editingReportId, setEditingReportId] = useState(null);
+  const [serviceReportInitialData, setServiceReportInitialData] = useState(null);
+  const [serviceReportReadOnly, setServiceReportReadOnly] = useState(false);
 
   // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
   useEffect(() => {
@@ -286,8 +311,10 @@ export default function App() {
     setOpStatusAsset(null);
   };
 
-  const handleGenerateReport = async (reportData) => {
-    if (!selectedAsset) return;
+  const handleGenerateReport = async (reportData, assetOverride = null) => {
+    const targetAsset = assetOverride || selectedAsset;
+    if (!targetAsset) return;
+    const targetAssetId = targetAsset.id;
 
     // Validate job number
     if (!reportData.general.jobNumber || reportData.general.jobNumber.trim() === '') {
@@ -303,15 +330,24 @@ export default function App() {
       const date = new Date(reportData.general.serviceDate);
       const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
       const jobNumber = reportData.general.jobNumber.trim();
-      const assetName = (reportData.general.assetName || selectedAsset.name).replace(/[^a-zA-Z0-9]/g, '_');
-      const fileName = `${dateStr}-CALR-${jobNumber}-${assetName}.pdf`;
+      const assetName = (reportData.general.assetName || targetAsset.name).replace(/[^a-zA-Z0-9]/g, '_');
+      const fileName = `${dateStr}-CALR${jobNumber}-${assetName}.pdf`;
 
-      // 3. Save File
-      saveAs(blob, fileName);
+      // 3. Save File (If requested)
+      const shouldDownload = reportData.download !== false;
+      if (shouldDownload) {
+        saveAs(blob, fileName);
+      }
 
       // 4. Save to App History (using existing context method)
-      handleSaveReport(selectedAssetId, {
-        id: Date.now(),
+      // 4. Save to App History (using existing context method)
+      // If editing, delete old record first to ensure clean update (simulated update)
+      if (editingReportId) {
+        deleteServiceReport(targetAssetId, editingReportId);
+      }
+
+      handleSaveReport(targetAssetId, {
+        id: editingReportId || Date.now(),
         date: new Date().toISOString(),
         type: 'Full Service',
         fileName: fileName,
@@ -320,10 +356,16 @@ export default function App() {
       });
 
       // 5. Clear draft from localStorage
-      const draftKey = `serviceReportDraft_${selectedAssetId}`;
+      const draftKey = `serviceReportDraft_${targetAssetId}`;
       localStorage.removeItem(draftKey);
 
       setIsServiceReportOpen(false);
+      setReportFormState(null); // Also close the wizard form if open
+
+      // Reset Edit State
+      setEditingReportId(null);
+      setServiceReportInitialData(null);
+      setServiceReportReadOnly(false);
     } catch (error) {
       console.error('Error generating service report:', error);
       alert('Failed to generate service report. Please try again.');
@@ -340,6 +382,24 @@ export default function App() {
     } catch (error) {
       console.error('Error regenerating PDF:', error);
       alert('Failed to regenerate PDF. Please try again.');
+    }
+  };
+
+  const handleViewReport = (report) => {
+    setEditingReportId(report.id);
+    setServiceReportInitialData(report.data);
+    setServiceReportReadOnly(true);
+    setIsServiceReportOpen(true);
+    setIsReportHistoryOpen(false);
+  };
+
+  const handleEditReport = (report) => {
+    if (window.confirm("WARNING: You are about to edit a finalized service report.\n\nChanges will overwrite the existing record history.\n\nAre you sure you want to proceed?")) {
+      setEditingReportId(report.id);
+      setServiceReportInitialData(report.data);
+      setServiceReportReadOnly(false);
+      setIsServiceReportOpen(true);
+      setIsReportHistoryOpen(false);
     }
   };
 
@@ -840,6 +900,19 @@ export default function App() {
               <span>Add Demo Site</span>
             </button>
 
+            {/* Reports Action */}
+            <button
+              type="button"
+              onClick={() => {
+                closeFullscreen();
+                setIsReportWizardOpen(true);
+              }}
+              className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 bg-gradient-to-r from-cyan-900/50 to-transparent border border-cyan-800/50 text-cyan-100 hover:border-cyan-500 mt-2"
+            >
+              <Icons.FileText size={18} className="text-cyan-400" />
+              <span>New Report</span>
+            </button>
+
             <div className="border-t border-slate-700 my-3"></div>
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Data</div>
 
@@ -961,87 +1034,104 @@ export default function App() {
                   </h2>
                   <div className="flex items-center text-slate-400 text-sm mb-5"><span className="mr-1"><Icons.MapPin /></span> {getDisplayLocation(selectedSite)}</div>
 
-                  <div className="mb-4 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Service Assets</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-red-900/40 p-2 rounded text-center border border-red-900/60">
-                        <div className="text-lg font-bold text-red-400">{serviceStats.critical}</div>
-                        <div className="text-[9px] text-red-300 uppercase">Critical</div>
-                      </div>
-                      <div className="bg-yellow-900/40 p-2 rounded text-center border border-yellow-900/60">
-                        <div className="text-lg font-bold text-yellow-400">{serviceStats.dueSoon}</div>
-                        <div className="text-[9px] text-yellow-300 uppercase">Due Soon</div>
-                      </div>
-                      <div className="bg-green-900/40 p-2 rounded text-center border border-green-900/60">
-                        <div className="text-lg font-bold text-green-400">{serviceStats.healthy}</div>
-                        <div className="text-[9px] text-green-300 uppercase">Healthy</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
-                    <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Roller Assets</div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-red-900/40 p-2 rounded text-center border border-red-900/60">
-                        <div className="text-lg font-bold text-red-400">{rollerStats.critical}</div>
-                        <div className="text-[9px] text-red-300 uppercase">Critical</div>
-                      </div>
-                      <div className="bg-yellow-900/40 p-2 rounded text-center border border-yellow-900/60">
-                        <div className="text-lg font-bold text-yellow-400">{rollerStats.dueSoon}</div>
-                        <div className="text-[9px] text-yellow-300 uppercase">Due Soon</div>
-                      </div>
-                      <div className="bg-green-900/40 p-2 rounded text-center border border-green-900/60">
-                        <div className="text-lg font-bold text-green-400">{rollerStats.healthy}</div>
-                        <div className="text-[9px] text-green-300 uppercase">Healthy</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700 flex items-center justify-between">
-                    <span className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2"><Icons.AlertTriangle /> Active Issues</span>
-                    <span className="text-2xl font-bold text-red-500 text-red-400">{activeIssuesCount}</span>
-                  </div>
-
                   {/* Full-width Health Bar */}
                   <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
                     <SiteHealthCircle site={site} fullWidth={true} />
                   </div>
 
                   <button
-                    type="button"
-                    className="flex flex-col gap-1 bg-slate-900/50 p-3 rounded-lg border border-slate-700 min-h-[90px] mt-auto cursor-pointer hover:bg-slate-800/50 hover:border-slate-600 transition-colors text-left w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeFullscreen();
-                      setNotesModalSite(site);
-                      setIsNotesModalOpen(true);
-                    }}
-                    title="Click to manage notes"
+                    onClick={(e) => toggleCardExpansion(e, site.id)}
+                    className="w-full py-2 bg-slate-900/40 hover:bg-slate-800 text-slate-400 text-xs font-bold uppercase tracking-wider rounded border border-slate-700 mb-4 transition-colors flex items-center justify-center gap-2"
                   >
-                    <div className="text-xs text-slate-400 font-medium uppercase tracking-wider mb-1 flex items-center gap-1 justify-between">
-                      <span className="flex items-center gap-1"><Icons.FileText /> Latest Note</span>
-                      <Icons.ChevronRight size={14} className="text-slate-500" />
-                    </div>
-                    {(() => {
-                      // Get the most recent non-archived note
-                      const activeNotes = (site.notes || []).filter(n => !n.archived);
-                      const latestNote = activeNotes.length > 0
-                        ? activeNotes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))[0]
-                        : null;
-
-                      return latestNote ? (
-                        <>
-                          <p className="text-sm text-slate-300 line-clamp-2">{latestNote.content}</p>
-                          <div className="mt-auto pt-2 text-[10px] text-slate-400 text-right flex justify-between items-center">
-                            <span className="text-slate-500">👤 {latestNote.author}</span>
-                            <span>{formatDate(latestNote.timestamp, true)}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <p className="text-sm text-slate-400 italic">No notes. Click to add one.</p>
-                      );
-                    })()}
+                    <span>{expandedSiteCards[site.id] ? 'Hide Breakdown' : 'Show Asset Breakdown'}</span>
+                    <Icons.ChevronDown className={`transition-transform duration-300 ${expandedSiteCards[site.id] ? 'rotate-180' : ''}`} size={16} />
                   </button>
+
+                  {expandedSiteCards[site.id] && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="mb-4 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Service Assets</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-red-900/40 p-2 rounded text-center border border-red-900/60">
+                            <div className="text-lg font-bold text-red-400">{serviceStats.critical}</div>
+                            <div className="text-[9px] text-red-300 uppercase">Critical</div>
+                          </div>
+                          <div className="bg-yellow-900/40 p-2 rounded text-center border border-yellow-900/60">
+                            <div className="text-lg font-bold text-yellow-400">{serviceStats.dueSoon}</div>
+                            <div className="text-[9px] text-yellow-300 uppercase">Due Soon</div>
+                          </div>
+                          <div className="bg-green-900/40 p-2 rounded text-center border border-green-900/60">
+                            <div className="text-lg font-bold text-green-400">{serviceStats.healthy}</div>
+                            <div className="text-[9px] text-green-300 uppercase">Healthy</div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase mb-2 tracking-wide">Roller Assets</div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-red-900/40 p-2 rounded text-center border border-red-900/60">
+                            <div className="text-lg font-bold text-red-400">{rollerStats.critical}</div>
+                            <div className="text-[9px] text-red-300 uppercase">Critical</div>
+                          </div>
+                          <div className="bg-yellow-900/40 p-2 rounded text-center border border-yellow-900/60">
+                            <div className="text-lg font-bold text-yellow-400">{rollerStats.dueSoon}</div>
+                            <div className="text-[9px] text-yellow-300 uppercase">Due Soon</div>
+                          </div>
+                          <div className="bg-green-900/40 p-2 rounded text-center border border-green-900/60">
+                            <div className="text-lg font-bold text-green-400">{rollerStats.healthy}</div>
+                            <div className="text-[9px] text-green-300 uppercase">Healthy</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {activeIssuesCount > 0 && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedSiteId(site.id);
+                        setActiveTab('issues');
+                        setIsAppHistoryOpen(false);
+                      }}
+                      className="mb-6 p-3 bg-slate-900/40 rounded-lg border border-slate-700 flex items-center justify-between cursor-pointer hover:bg-slate-800 transition-colors"
+                    >
+                      <span className="text-sm font-bold text-slate-400 uppercase flex items-center gap-2"><Icons.AlertTriangle /> Active Issues</span>
+                      <span className="text-2xl font-bold text-red-500 text-red-400">{activeIssuesCount}</span>
+                    </div>
+                  )}
+
+                  {(() => {
+                    // Get the count of non-archived notes
+                    const activeNotes = (site.notes || []).filter(n => !n.archived);
+                    const noteCount = activeNotes.length;
+
+                    return (
+                      <button
+                        type="button"
+                        className="flex items-center justify-between bg-slate-900/50 p-3 rounded-lg border border-slate-700 mt-auto cursor-pointer hover:bg-slate-800/50 hover:border-slate-600 transition-colors w-full focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          closeFullscreen();
+                          setNotesModalSite(site);
+                          setIsNotesModalOpen(true);
+                        }}
+                        title="Click to manage notes"
+                      >
+                        <span className="text-xs text-slate-400 font-medium uppercase tracking-wider flex items-center gap-2">
+                          <Icons.FileText size={16} /> Notes
+                        </span>
+                        {noteCount > 0 ? (
+                          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-cyan-600 text-white text-xs font-bold">
+                            {noteCount}
+                          </span>
+                        ) : (
+                          <Icons.ChevronRight size={14} className="text-slate-500" />
+                        )}
+                      </button>
+                    );
+                  })()}
                 </div>
               );
             })}
@@ -1181,6 +1271,30 @@ export default function App() {
             onClose={() => setIsDbSettingsOpen(false)}
             onDatabaseSelected={handleDatabaseSelected}
           />
+        )}
+
+        <ReportWizardModal
+          isOpen={isReportWizardOpen}
+          onClose={() => setIsReportWizardOpen(false)}
+          sites={sites}
+          onSelectAsset={(site, asset) => {
+            setIsReportWizardOpen(false);
+            setReportFormState({ site, asset }); // Open the actual form
+          }}
+        />
+
+        {/* The actual Report Form (Full Screen Overlay) */}
+        {reportFormState && (
+          <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200">
+            <div className="w-full max-w-7xl h-[95vh] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col">
+              <ServiceReportForm
+                site={reportFormState.site}
+                asset={reportFormState.asset}
+                onClose={() => setReportFormState(null)}
+                onSave={(data) => handleGenerateReport(data, reportFormState.asset)}
+              />
+            </div>
+          </div>
         )}
       </div >
     );
@@ -1430,6 +1544,19 @@ export default function App() {
 
           <div className="border-t border-slate-700 my-3"></div>
           <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Actions</div>
+
+          {/* Reports Action */}
+          <button
+            type="button"
+            onClick={() => {
+              closeFullscreen();
+              setIsReportWizardOpen(true);
+            }}
+            className="w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 bg-gradient-to-r from-cyan-900/50 to-transparent border border-cyan-800/50 text-cyan-100 hover:border-cyan-500 mb-2"
+          >
+            <Icons.FileText size={18} className="text-cyan-400" />
+            <span>New Report</span>
+          </button>
 
           {/* Master List */}
           <button
@@ -2081,8 +2208,15 @@ export default function App() {
             <ServiceReportForm
               site={selectedSite}
               asset={selectedAsset}
-              onClose={() => setIsServiceReportOpen(false)}
-              onSave={handleGenerateReport}
+              onClose={() => {
+                setIsServiceReportOpen(false);
+                setEditingReportId(null);
+                setServiceReportInitialData(null);
+                setServiceReportReadOnly(false);
+              }}
+              onSave={(data) => handleGenerateReport(data)}
+              initialData={serviceReportInitialData}
+              readOnly={serviceReportReadOnly}
             />
           </div>
         </div>
@@ -2094,10 +2228,37 @@ export default function App() {
           asset={selectedAsset}
           onClose={() => setIsReportHistoryOpen(false)}
           onRegeneratePDF={handleRegeneratePDF}
+          onViewReport={handleViewReport}
+          onEditReport={handleEditReport}
         />
       )}
 
       {/* EASTER EGG OVERLAY */}
+
+      <ReportWizardModal
+        isOpen={isReportWizardOpen}
+        onClose={() => setIsReportWizardOpen(false)}
+        sites={sites}
+        onSelectAsset={(site, asset) => {
+          setIsReportWizardOpen(false);
+          setReportFormState({ site, asset }); // Open the actual form
+        }}
+      />
+
+      {/* The actual Report Form (Full Screen Overlay) */}
+      {reportFormState && (
+        <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-7xl h-[95vh] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col">
+            <ServiceReportForm
+              site={reportFormState.site}
+              asset={reportFormState.asset}
+              onClose={() => setReportFormState(null)}
+              onSave={(data) => handleGenerateReport(data, reportFormState.asset)}
+            />
+          </div>
+        </div>
+      )}
+
       {isCooked && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/95 animate-in fade-in duration-300 cursor-pointer" onClick={() => setIsCooked(false)}>
           <div className="text-center">

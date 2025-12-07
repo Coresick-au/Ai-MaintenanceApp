@@ -1,12 +1,12 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 
 // Define styles to match Accurate Industries branding
 const styles = StyleSheet.create({
     page: { padding: 30, fontFamily: 'Helvetica', fontSize: 9, color: '#333' },
     header: { flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#ccc', paddingBottom: 10 },
-    logoSection: { width: '30%' },
-    titleSection: { width: '70%', textAlign: 'right' },
+    logoSection: { width: '40%' },
+    titleSection: { width: '60%', textAlign: 'right', alignItems: 'flex-end' },
     companyName: { fontSize: 14, fontWeight: 'bold', color: '#2c3e50' },
     reportTitle: { fontSize: 18, fontWeight: 'bold', color: '#e67e22', marginTop: 5 },
 
@@ -43,6 +43,12 @@ export const ServiceReportDocument = ({ data }) => {
                         <Text style={{ fontSize: 8, marginTop: 4 }}>ABN 99 657 158 524</Text>
                     </View>
                     <View style={styles.titleSection}>
+                        {general.customerLogo && (
+                            <Image
+                                src={general.customerLogo}
+                                style={{ height: 40, marginBottom: 5 }}
+                            />
+                        )}
                         <Text style={styles.reportTitle}>Belt Weigher Report</Text>
                         <Text style={{ fontSize: 10, color: '#666' }}>{general.reportId}</Text>
                     </View>

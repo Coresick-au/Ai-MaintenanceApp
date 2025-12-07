@@ -240,7 +240,18 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  // Install React DevTools in Development
+  if (isDev) {
+    try {
+      const { default: installExtension, REACT_DEVELOPER_TOOLS } = require('electron-devtools-installer');
+      const name = await installExtension(REACT_DEVELOPER_TOOLS);
+      console.log(`[DevTools] Added Extension: ${name}`);
+    } catch (err) {
+      console.log('[DevTools] Error loading React DevTools:', err);
+    }
+  }
+
   // Initialize database if path is saved
   const dbPath = store.get('dbPath');
   if (dbPath) {
