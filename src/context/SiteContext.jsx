@@ -12,7 +12,9 @@ import {
     doc,
     setDoc,
     deleteDoc,
-    updateDoc
+    updateDoc,
+    query,
+    orderBy
 } from 'firebase/firestore';
 
 // Helper function to format full location string
@@ -38,6 +40,7 @@ export const SiteProvider = ({ children }) => {
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [employees, setEmployees] = useState([]);
+    const [todos, setTodos] = useState([]);
 
     // --- FIREBASE SYNC (Replaces Persistence & Auto-Save) ---
     useEffect(() => {
@@ -79,9 +82,20 @@ export const SiteProvider = ({ children }) => {
             console.error("Error fetching employees from Firebase:", error);
         });
 
+        // 3. Sync To-Dos
+        const unsubscribeTodos = onSnapshot(
+            query(collection(db, "todos"), orderBy("timestamp", "desc")),
+            (snapshot) => {
+                const cloudTodos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setTodos(cloudTodos);
+            },
+            (error) => { console.error("Error fetching todos:", error); }
+        );
+
         return () => {
             unsubscribeSites();
             unsubscribeEmps();
+            unsubscribeTodos();
         };
     }, []);
 
@@ -543,6 +557,26 @@ export const SiteProvider = ({ children }) => {
     };
     const handleClearAllHistory = () => { alert("Global history clear not implemented for Cloud DB"); };
 
+    // --- TODO ACTIONS ---
+    const handleAddTodo = async (todoData) => {
+        const id = `todo-${Date.now()}`;
+        try {
+            await setDoc(doc(db, "todos", id), { id, ...todoData });
+        } catch (e) { console.error("Error adding todo:", e); }
+    };
+
+    const handleUpdateTodo = async (id, updates) => {
+        try {
+            await updateDoc(doc(db, "todos", id), updates);
+        } catch (e) { console.error("Error updating todo:", e); }
+    };
+
+    const handleDeleteTodo = async (id) => {
+        try {
+            await deleteDoc(doc(db, "todos", id));
+        } catch (e) { console.error("Error deleting todo:", e); }
+    };
+
     return (
         <SiteContext.Provider value={{
             sites, setSites,
@@ -572,7 +606,13 @@ export const SiteProvider = ({ children }) => {
 
             // Employee Actions
             employees, setEmployees,
-            handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee
+            handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee,
+
+            // To-Do Actions
+            todos,
+            handleAddTodo,
+            handleUpdateTodo,
+            handleDeleteTodo
         }}>
             {children}
         </SiteContext.Provider>
