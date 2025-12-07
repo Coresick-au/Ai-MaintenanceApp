@@ -119,6 +119,16 @@ export const GeneralTab = ({ formData, onChange, site, asset, readOnly = false }
                     />
                 </div>
                 <div>
+                    <label className="text-xs text-amber-500 block mb-1 font-bold">Internal Comments (Not on PDF)</label>
+                    <textarea
+                        rows={2}
+                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white focus:outline-none focus:border-amber-500 transition-colors"
+                        value={formData.internalComments || ''}
+                        onChange={e => handleChange('internalComments', e.target.value)}
+                        placeholder="Private notes for team..."
+                    />
+                </div>
+                <div>
                     <label className="text-xs text-slate-400 block mb-1">Comments / Recommendations</label>
                     <textarea
                         rows={4}

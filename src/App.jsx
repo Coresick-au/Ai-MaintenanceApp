@@ -1,6 +1,9 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 // IMPORT DATA & HELPER
 import { recalculateRow } from './data/mockData';
+// IMPORT FIREBASE STORAGE
+import { storage } from './firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 // IMPORT CONTEXTS
 import { useSiteContext } from './hooks/useSiteContext';
 import { useUIContext } from './hooks/useUIContext';
@@ -342,14 +345,25 @@ export default function App() {
       const assetName = (reportData.general.assetName || targetAsset.name).replace(/[^a-zA-Z0-9]/g, '_');
       const fileName = `${dateStr}-CALR${jobNumber}-${assetName}.pdf`;
 
-      // 3. Save File (If requested)
+      // 3. Save File Locally (Always offer download)
       const shouldDownload = reportData.download !== false;
       if (shouldDownload) {
         saveAs(blob, fileName);
       }
 
-      // 4. Save to App History (using existing context method)
-      // 4. Save to App History (using existing context method)
+      // 4. Upload to Firebase Storage
+      let downloadURL = null;
+      try {
+        const storageRef = ref(storage, `reports/${targetAssetId}/${fileName}`);
+        const snapshot = await uploadBytes(storageRef, blob);
+        downloadURL = await getDownloadURL(snapshot.ref);
+        console.log('Uploaded report to:', downloadURL);
+      } catch (uploadError) {
+        console.error("Firebase upload failed:", uploadError);
+        alert("Warning: PDF upload to Cloud failed. Report data will still be saved locally/offline.");
+      }
+
+      // 5. Save to App History (using existing context method)
       // If editing, delete old record first to ensure clean update (simulated update)
       if (editingReportId) {
         deleteServiceReport(targetAssetId, editingReportId);
@@ -360,11 +374,12 @@ export default function App() {
         date: new Date().toISOString(),
         type: 'Full Service',
         fileName: fileName,
+        storageUrl: downloadURL, // Save the cloud URL
         jobNumber: jobNumber,
         data: reportData
       });
 
-      // 5. Clear draft from localStorage
+      // 6. Clear draft from localStorage
       const draftKey = `serviceReportDraft_${targetAssetId}`;
       localStorage.removeItem(draftKey);
 
@@ -1144,8 +1159,8 @@ export default function App() {
                     {inductionStatus !== 'valid' && (
                       <div
                         className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase border transition-colors ${inductionStatus === 'expired'
-                            ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'
-                            : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                          ? 'bg-red-500/20 text-red-400 border-red-500/50 animate-pulse'
+                          : 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
                           }`}
                         title={inductionStatus === 'expired' ? 'Technician Induction Expired' : 'Technician Induction Due Soon'}
                       >

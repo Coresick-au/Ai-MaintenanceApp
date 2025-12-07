@@ -7,18 +7,18 @@ import { validateSiteForm, sanitizeInput } from '../utils/validation';
 // Helper function to format full location string
 const formatFullLocation = (siteForm) => {
   const parts = [];
-  
+
   if (siteForm.streetAddress) parts.push(siteForm.streetAddress);
   if (siteForm.city) parts.push(siteForm.city);
   if (siteForm.state) parts.push(siteForm.state);
   if (siteForm.postcode) parts.push(siteForm.postcode);
   if (siteForm.country && siteForm.country !== 'Australia') parts.push(siteForm.country);
-  
+
   // If no detailed address, fallback to location name
   if (parts.length === 0 && siteForm.location) {
     return siteForm.location;
   }
-  
+
   return parts.join(', ') || 'Location will appear here...';
 };
 
@@ -186,6 +186,11 @@ export const AddSiteModal = ({
           </div>
         </div>
 
+        <div className={sectionClass}>
+          <label className={labelClass}>Photo Folder Link</label>
+          <input className={`${inputClass} mb-2`} placeholder="https://onedrive..." value={siteForm.photoFolderLink || ''} onChange={e => setSiteForm({ ...siteForm, photoFolderLink: e.target.value })} />
+        </div>
+
         <div><label className={labelClass}>Logo</label><input type="file" accept="image/*" onChange={onLogoUpload} className="text-slate-400 text-xs" /></div>
 
         <div className={sectionClass}>
@@ -227,22 +232,22 @@ export const EditSiteModal = ({
             <TypeSelect value={siteForm.type} onChange={e => setSiteForm({ ...siteForm, type: e.target.value })} />
             <div>
               <label className={labelClass}>Location Name</label>
-              <input 
-                className={inputClass} 
-                placeholder="e.g., Townsville Plant" 
-                value={siteForm.location || ''} 
+              <input
+                className={inputClass}
+                placeholder="e.g., Townsville Plant"
+                value={siteForm.location || ''}
                 onChange={e => {
                   const newLocation = e.target.value;
-                  setSiteForm({ 
-                    ...siteForm, 
+                  setSiteForm({
+                    ...siteForm,
                     location: newLocation,
                     // Update full location string when location name changes
                     fullLocation: formatFullLocation({
                       ...siteForm,
                       location: newLocation
                     })
-                  }); 
-                }} 
+                  });
+                }}
               />
               <p className="text-xs text-slate-500 mt-1">Primary location name (displayed in reports)</p>
             </div>
@@ -251,25 +256,25 @@ export const EditSiteModal = ({
           {/* Enhanced Location Details */}
           <div className="mt-4 p-4 bg-slate-800/50 rounded-lg border border-slate-700">
             <h4 className="text-xs font-bold uppercase text-blue-400 mb-3">Detailed Address Information</h4>
-            
+
             <div className="grid grid-cols-1 gap-4">
               {/* Street Address */}
               <div>
                 <label className={labelClass}>Street Address</label>
-                <input 
-                  className={inputClass} 
-                  placeholder="123 Main Street" 
-                  value={siteForm.streetAddress || ''} 
+                <input
+                  className={inputClass}
+                  placeholder="123 Main Street"
+                  value={siteForm.streetAddress || ''}
                   onChange={e => {
-                    setSiteForm({ 
-                      ...siteForm, 
+                    setSiteForm({
+                      ...siteForm,
                       streetAddress: e.target.value,
                       fullLocation: formatFullLocation({
                         ...siteForm,
                         streetAddress: e.target.value
                       })
-                    }); 
-                  }} 
+                    });
+                  }}
                 />
               </div>
 
@@ -277,38 +282,38 @@ export const EditSiteModal = ({
                 {/* City */}
                 <div>
                   <label className={labelClass}>City/Suburb</label>
-                  <input 
-                    className={inputClass} 
-                    placeholder="Townsville" 
-                    value={siteForm.city || ''} 
+                  <input
+                    className={inputClass}
+                    placeholder="Townsville"
+                    value={siteForm.city || ''}
                     onChange={e => {
-                      setSiteForm({ 
-                        ...siteForm, 
+                      setSiteForm({
+                        ...siteForm,
                         city: e.target.value,
                         fullLocation: formatFullLocation({
                           ...siteForm,
                           city: e.target.value
                         })
-                      }); 
-                    }} 
+                      });
+                    }}
                   />
                 </div>
 
                 {/* State */}
                 <div>
                   <label className={labelClass}>State</label>
-                  <select 
+                  <select
                     className={`${inputClass} cursor-pointer`}
-                    value={siteForm.state || ''} 
+                    value={siteForm.state || ''}
                     onChange={e => {
-                      setSiteForm({ 
-                        ...siteForm, 
+                      setSiteForm({
+                        ...siteForm,
                         state: e.target.value,
                         fullLocation: formatFullLocation({
                           ...siteForm,
                           state: e.target.value
                         })
-                      }); 
+                      });
                     }}
                   >
                     <option value="">Select State</option>
@@ -326,21 +331,21 @@ export const EditSiteModal = ({
                 {/* Postcode */}
                 <div>
                   <label className={labelClass}>Postcode</label>
-                  <input 
-                    className={inputClass} 
-                    placeholder="4810" 
-                    value={siteForm.postcode || ''} 
+                  <input
+                    className={inputClass}
+                    placeholder="4810"
+                    value={siteForm.postcode || ''}
                     onChange={e => {
                       const value = e.target.value.replace(/\D/g, '').slice(0, 4);
-                      setSiteForm({ 
-                        ...siteForm, 
+                      setSiteForm({
+                        ...siteForm,
                         postcode: value,
                         fullLocation: formatFullLocation({
                           ...siteForm,
                           postcode: value
                         })
-                      }); 
-                    }} 
+                      });
+                    }}
                   />
                 </div>
               </div>
@@ -349,31 +354,31 @@ export const EditSiteModal = ({
                 {/* Country */}
                 <div>
                   <label className={labelClass}>Country</label>
-                  <input 
-                    className={inputClass} 
-                    placeholder="Australia" 
-                    value={siteForm.country || 'Australia'} 
+                  <input
+                    className={inputClass}
+                    placeholder="Australia"
+                    value={siteForm.country || 'Australia'}
                     onChange={e => {
-                      setSiteForm({ 
-                        ...siteForm, 
+                      setSiteForm({
+                        ...siteForm,
                         country: e.target.value,
                         fullLocation: formatFullLocation({
                           ...siteForm,
                           country: e.target.value
                         })
-                      }); 
-                    }} 
+                      });
+                    }}
                   />
                 </div>
 
                 {/* Google Maps Link */}
                 <div>
                   <label className={labelClass}>Google Maps Link</label>
-                  <input 
-                    className={inputClass} 
-                    placeholder="-19.2590, 146.8169" 
-                    value={siteForm.gpsCoordinates || ''} 
-                    onChange={e => setSiteForm({ ...siteForm, gpsCoordinates: e.target.value })} 
+                  <input
+                    className={inputClass}
+                    placeholder="-19.2590, 146.8169"
+                    value={siteForm.gpsCoordinates || ''}
+                    onChange={e => setSiteForm({ ...siteForm, gpsCoordinates: e.target.value })}
                   />
                   {siteForm.gpsCoordinates && (
                     <div className="mt-2">
@@ -389,6 +394,30 @@ export const EditSiteModal = ({
                     </div>
                   )}
                   <p className="text-xs text-slate-500 mt-1">Latitude, Longitude</p>
+                </div>
+
+                {/* Photo Folder Link */}
+                <div className="span-col-2">
+                  <label className={labelClass}>Photo Folder Link (OneDrive)</label>
+                  <input
+                    className={inputClass}
+                    placeholder="https://..."
+                    value={siteForm.photoFolderLink || ''}
+                    onChange={e => setSiteForm({ ...siteForm, photoFolderLink: e.target.value })}
+                  />
+                  {siteForm.photoFolderLink && (
+                    <div className="mt-2">
+                      <a
+                        href={siteForm.photoFolderLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 text-xs text-blue-400 hover:text-blue-300 hover:underline transition-colors"
+                      >
+                        <Icons.Folder size={12} />
+                        Open Folder
+                      </a>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -697,8 +726,8 @@ export const SiteNotesModal = ({
               <div
                 key={note.id}
                 className={`group rounded-lg border transition-all ${note.archived
-                    ? 'bg-slate-900/30 border-slate-800 opacity-60'
-                    : 'bg-slate-700/50 border-slate-600 hover:border-blue-500/50'
+                  ? 'bg-slate-900/30 border-slate-800 opacity-60'
+                  : 'bg-slate-700/50 border-slate-600 hover:border-blue-500/50'
                   } p-3`}
               >
                 {editingNote?.id === note.id ? (
