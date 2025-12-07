@@ -54,6 +54,20 @@ export const SiteProvider = ({ children }) => {
                             console.log('[SiteContext] Loaded sites from DB:', dbSites.length);
                             setSites(dbSites);
                         }
+
+                        // Load employees from localStorage (database integration pending)
+                        const employeeData = localStorage.getItem('app_employees');
+                        if (employeeData) {
+                            try {
+                                const parsedEmployees = JSON.parse(employeeData);
+                                if (Array.isArray(parsedEmployees)) {
+                                    console.log('[SiteContext] Loaded employees from localStorage:', parsedEmployees.length);
+                                    setEmployees(parsedEmployees);
+                                }
+                            } catch (e) {
+                                console.error('[SiteContext] Error parsing employee data:', e);
+                            }
+                        }
                     } else {
                         console.log('[SiteContext] No DB path configured.');
                         // Fallback to localStorage for initial view or empty state
@@ -121,12 +135,19 @@ export const SiteProvider = ({ children }) => {
                     await window.electronAPI.saveSite(site);
                 }
             }
+
+            // 3. Save employees to localStorage (database integration pending)
+            if (employees && employees.length > 0) {
+                localStorage.setItem('app_employees', JSON.stringify(employees));
+            } else {
+                localStorage.removeItem('app_employees'); // Clean up if empty
+            }
         };
 
         const timeoutId = setTimeout(saveData, 1000); // Debounce 1s
         return () => clearTimeout(timeoutId);
 
-    }, [sites, isDataLoaded, isDbReady]);
+    }, [sites, employees, isDataLoaded, isDbReady]);
 
     // --- DERIVED STATE ---
     const selectedSite = useMemo(() => sites.find(s => s.id === selectedSiteId), [sites, selectedSiteId]);

@@ -112,7 +112,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = 
     };
 
     return (
-        <div className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
             <div className="w-full max-w-7xl h-[95vh] flex flex-col bg-slate-900 text-slate-100 rounded-xl border border-slate-700 shadow-2xl overflow-hidden">
                 {/* Header */}
                 <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-800 flex-shrink-0">
