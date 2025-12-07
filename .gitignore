@@ -27,3 +27,21 @@ dist-ssr
 .env*.local
 
 release
+
+# Lint outputs and reports
+lint_output*.txt
+lint_report.json
+
+# Test results
+test-results/
+playwright-report/
+
+# Backups
+backups/
+
+# Generated artifacts and installers
+*Installer*/
+*Downloader*.html
+Download_and_Setup*.bat
+SHARE_THIS_APP*.md
+
