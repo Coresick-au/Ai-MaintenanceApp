@@ -19,7 +19,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, onAddEmployee, onU
     };
 
     return (
-        <div className="fixed inset-0 z-[100] bg-black/80 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4">
             <div className="w-full max-w-7xl h-[90vh] bg-slate-900 rounded-xl border border-slate-700 overflow-hidden shadow-2xl flex flex-col">
                 {/* Header */}
                 <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
