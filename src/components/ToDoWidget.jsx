@@ -46,8 +46,8 @@ export const ToDoWidget = ({ todos, onAdd, onUpdate, onDelete }) => {
                             <button
                                 onClick={() => onUpdate(todo.id, { completed: !todo.completed })}
                                 className={`mt-1 flex-shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${todo.completed
-                                        ? 'bg-green-500/20 border-green-500 text-green-500'
-                                        : 'border-slate-600 hover:border-cyan-500 text-transparent'
+                                    ? 'bg-green-500/20 border-green-500 text-green-500'
+                                    : 'border-slate-600 hover:border-cyan-500 text-transparent'
                                     }`}
                             >
                                 <Icons.CheckCircle size={14} />
@@ -72,7 +72,10 @@ export const ToDoWidget = ({ todos, onAdd, onUpdate, onDelete }) => {
                         </div>
 
                         <button
-                            onClick={() => onDelete(todo.id)}
+                            onClick={() => {
+                                if (!window.confirm('Are you sure you want to delete this task?')) return;
+                                onDelete(todo.id);
+                            }}
                             className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 p-1 hover:bg-red-900/30 text-slate-500 hover:text-red-400 rounded transition-all"
                             title="Delete Task"
                         >

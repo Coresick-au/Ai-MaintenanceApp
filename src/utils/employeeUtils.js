@@ -11,7 +11,7 @@ export const getExpiryStatus = (expiryDate) => {
     const days = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
 
     if (days < 0) return 'expired';
-    if (days < 30) return 'warning';
+    if (days < 60) return 'warning';
     return 'valid';
 };
 

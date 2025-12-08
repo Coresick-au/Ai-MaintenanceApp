@@ -177,6 +177,10 @@ export const SiteProvider = ({ children }) => {
     };
 
     const handleDeleteSite = async (siteId) => {
+        const site = sites.find(s => s.id === siteId);
+        const siteName = site ? site.name : 'this site';
+        if (!window.confirm(`Are you sure you want to delete "${siteName}"? This action cannot be undone.`)) return;
+
         try {
             await deleteDoc(doc(db, "sites", siteId));
             if (selectedSiteId === siteId) {
@@ -258,6 +262,10 @@ export const SiteProvider = ({ children }) => {
     const handleDeleteIssue = (siteId, issueId) => {
         const site = sites.find(s => s.id === siteId);
         if (!site) return;
+        const issue = site.issues?.find(i => i.id === issueId);
+        const issueTitle = issue ? issue.title : 'this issue';
+        if (!window.confirm(`Are you sure you want to delete the issue "${issueTitle}"?`)) return;
+
         updateSiteData(siteId, {
             issues: (site.issues || []).filter(i => i.id !== issueId)
         }, 'Delete Issue');
@@ -337,6 +345,9 @@ export const SiteProvider = ({ children }) => {
 
     const handleDeleteAsset = (editingAsset) => {
         if (!editingAsset || !selectedSite) return;
+        const assetName = editingAsset.name || 'this asset';
+        if (!window.confirm(`Are you sure you want to delete "${assetName}" (${editingAsset.code})? This will remove it from both Service and Roller schedules.`)) return;
+
         const idParts = editingAsset.id.split('-');
         const baseId = idParts.length > 1 ? idParts[1] : null;
 
@@ -451,6 +462,8 @@ export const SiteProvider = ({ children }) => {
         updateSiteData(selectedSiteId, { specData: currentSpecData.map(s => s.id === selectedSpecs.id ? updatedSpec : s) });
     };
     const handleDeleteSpecNote = (noteId, selectedSpecs) => {
+        if (!window.confirm('Are you sure you want to delete this comment?')) return;
+
         const updatedSpec = { ...selectedSpecs, notes: selectedSpecs.notes.filter(n => n.id !== noteId) };
         updateSiteData(selectedSiteId, { specData: currentSpecData.map(s => s.id === selectedSpecs.id ? updatedSpec : s) });
     };
@@ -519,7 +532,10 @@ export const SiteProvider = ({ children }) => {
     };
 
     const handleDeleteEmployee = async (empId) => {
-        // Maybe just soft delete? But keeping generic delete for now.
+        const emp = employees.find(e => e.id === empId);
+        const empName = emp ? emp.name : 'this technician';
+        if (!window.confirm(`Are you sure you want to delete "${empName}"? All certifications and inductions will be permanently removed.`)) return;
+
         try {
             await deleteDoc(doc(db, "employees", empId));
         } catch (e) { console.error("Error deleting employee:", e); }
@@ -572,6 +588,8 @@ export const SiteProvider = ({ children }) => {
     };
 
     const handleDeleteTodo = async (id) => {
+        if (!window.confirm('Are you sure you want to delete this to-do item?')) return;
+
         try {
             await deleteDoc(doc(db, "todos", id));
         } catch (e) { console.error("Error deleting todo:", e); }

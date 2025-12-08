@@ -98,6 +98,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
     // NEW: Edit states
     const [editingCertId, setEditingCertId] = useState(null);
     const [editCertForm, setEditCertForm] = useState({ name: '', provider: '', expiry: '' });
+    const [editingInductionId, setEditingInductionId] = useState(null);
+    const [editInductionForm, setEditInductionForm] = useState({ siteId: '', expiry: '' });
 
     // Filter for active sites only - MUST BE BEFORE EARLY RETURN
     const activeSites = useMemo(() => {
@@ -196,11 +198,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                             <div className="space-y-1.5">
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                                    <span>Valid (30+ Days)</span>
+                                    <span>Valid (60+ Days)</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
-                                    <span>Due Soon (&lt; 30 Days)</span>
+                                    <span>Due Soon (&lt; 60 Days)</span>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <div className="w-2 h-2 rounded-full bg-red-500"></div>
@@ -418,6 +420,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                         </button>
                                                                         <button
                                                                             onClick={() => {
+                                                                                if (!window.confirm(`Are you sure you want to delete the certification "${cert.name}"?`)) return;
                                                                                 const updatedCerts = selectedEmp.certifications.filter(c => c.id !== cert.id);
                                                                                 onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
                                                                                 setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
@@ -500,35 +503,116 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 <th className="px-4 py-2">Site / Induction</th>
                                                 <th className="px-4 py-2">Expiry</th>
                                                 <th className="px-4 py-2">Status</th>
-                                                <th className="px-4 py-2 w-10"></th>
+                                                <th className="px-4 py-2 w-20">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-700">
                                             {(selectedEmp.inductions || []).map(ind => {
                                                 const status = getExpiryStatus(ind.expiry);
+                                                const isEditing = editingInductionId === ind.id;
+
                                                 return (
                                                     <tr key={ind.id} className="hover:bg-slate-700/50">
-                                                        <td className="px-4 py-2 font-medium text-slate-200">{ind.name}</td>
-                                                        <td className="px-4 py-2 text-slate-300">{ind.expiry ? formatDate(ind.expiry) : '-'}</td>
-                                                        <td className="px-4 py-2">
-                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
-                                                                {status === 'valid' ? 'Active' : status}
-                                                            </span>
-                                                        </td>
-                                                        <td className="px-4 py-2 text-center">
-                                                            <button
-                                                                className="text-red-400 hover:text-red-300"
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    const updatedInductions = selectedEmp.inductions.filter(i => i.id !== ind.id);
-                                                                    onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
-                                                                    setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
-                                                                }}
-                                                                title="Delete"
-                                                            >
-                                                                <Icons.Trash size={14} />
-                                                            </button>
-                                                        </td>
+                                                        {isEditing ? (
+                                                            <>
+                                                                <td className="px-4 py-2">
+                                                                    <select
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editInductionForm.siteId}
+                                                                        onChange={e => setEditInductionForm({ ...editInductionForm, siteId: e.target.value })}
+                                                                    >
+                                                                        <option value="">Select Site...</option>
+                                                                        {activeSites.map(site => (
+                                                                            <option key={site.id} value={site.id}>
+                                                                                {site.customer} - {site.location}
+                                                                            </option>
+                                                                        ))}
+                                                                    </select>
+                                                                </td>
+                                                                <td className="px-4 py-2">
+                                                                    <input
+                                                                        type="date"
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editInductionForm.expiry}
+                                                                        onChange={e => setEditInductionForm({ ...editInductionForm, expiry: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-2"></td>
+                                                                <td className="px-4 py-2">
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const selectedSite = activeSites.find(s => s.id === editInductionForm.siteId);
+                                                                                const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.location}` : ind.name;
+
+                                                                                const updatedInductions = selectedEmp.inductions.map(i =>
+                                                                                    i.id === ind.id ? {
+                                                                                        ...i,
+                                                                                        siteId: editInductionForm.siteId,
+                                                                                        name: siteName,
+                                                                                        expiry: editInductionForm.expiry
+                                                                                    } : i
+                                                                                );
+                                                                                onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
+                                                                                setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
+                                                                                setEditingInductionId(null);
+                                                                            }}
+                                                                            className="text-green-400 hover:text-green-300"
+                                                                            title="Save"
+                                                                        >
+                                                                            <Icons.Check size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingInductionId(null)}
+                                                                            className="text-slate-400 hover:text-slate-300"
+                                                                            title="Cancel"
+                                                                        >
+                                                                            <Icons.X size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-4 py-2 font-medium text-slate-200">{ind.name}</td>
+                                                                <td className="px-4 py-2 text-slate-300">{ind.expiry ? formatDate(ind.expiry) : '-'}</td>
+                                                                <td className="px-4 py-2">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
+                                                                        {status === 'valid' ? 'Active' : status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-4 py-2">
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingInductionId(ind.id);
+                                                                                setEditInductionForm({
+                                                                                    siteId: ind.siteId || '',
+                                                                                    expiry: ind.expiry || ''
+                                                                                });
+                                                                            }}
+                                                                            className="text-blue-400 hover:text-blue-300"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Icons.Edit size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            className="text-red-400 hover:text-red-300"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                if (!window.confirm(`Are you sure you want to delete the induction for \"${ind.name}\"?`)) return;
+                                                                                const updatedInductions = selectedEmp.inductions.filter(i => i.id !== ind.id);
+                                                                                onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
+                                                                                setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
+                                                                            }}
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Icons.Trash size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        )}
                                                     </tr>
                                                 );
                                             })}

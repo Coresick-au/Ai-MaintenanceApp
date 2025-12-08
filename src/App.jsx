@@ -1295,6 +1295,7 @@ export default function App() {
           isOpen={isEmployeeManagerOpen}
           onClose={() => setIsEmployeeManagerOpen(false)}
           employees={employees}
+          sites={sites}
           onAddEmployee={handleAddEmployee}
           onUpdateEmployee={handleUpdateEmployee}
           onDeleteEmployee={handleDeleteEmployee}
