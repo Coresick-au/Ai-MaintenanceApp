@@ -51,7 +51,7 @@ import { ReportWizardModal } from './components/ReportWizardModal';
 import { ToDoWidget } from './components/ToDoWidget';
 import { ContextWizardModal } from './components/ContextWizardModal';
 import { EmployeeManager } from './components/EmployeeManager';
-import { DatabaseSettingsModal } from './components/DatabaseSettingsModal';
+
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
 
@@ -111,7 +111,7 @@ export default function App() {
   const [isReportWizardOpen, setIsReportWizardOpen] = useState(false);
   const [reportFormState, setReportFormState] = useState(null); // { site, asset }
   const [commentsExpanded, setCommentsExpanded] = useState(true); // Comments section starts expanded
-  const [isDbSettingsOpen, setIsDbSettingsOpen] = useState(false); // Database settings modal
+
   const [expandedSiteCards, setExpandedSiteCards] = useState({});
 
   // Universal Action Wizard State
@@ -1038,22 +1038,7 @@ export default function App() {
               </button>
             </div>
 
-            {/* Database Settings */}
-            <div className="px-3 mb-2">
-              <button
-                type="button"
-                onClick={() => { setIsDbSettingsOpen(true); setSelectedRowIds(new Set()); }}
-                className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center gap-3 ${isDbReady
-                  ? 'text-green-400 hover:text-white hover:bg-slate-700'
-                  : 'text-orange-400 hover:text-white hover:bg-slate-700'
-                  }`}
-                title={isDbReady ? `Database: ${dbPath}` : 'No database configured'}
-              >
-                <Icons.Database size={18} />
-                <span>Database Settings</span>
-                {isDbReady && <span className="ml-auto text-xs text-green-400">●</span>}
-              </button>
-            </div>
+
           </div>
         </aside>
 
@@ -1074,6 +1059,16 @@ export default function App() {
 
           {/* Site Cards Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {/* Developer To-Do List Widget */}
+            <div className="h-96 md:h-auto">
+              <ToDoWidget
+                todos={todos}
+                onAdd={handleAddTodo}
+                onUpdate={handleUpdateTodo}
+                onDelete={handleDeleteTodo}
+              />
+            </div>
+
             {filteredSites.map(site => {
               const serviceAssets = (site.serviceData || []).filter(a => a.active !== false);
               const rollerAssets = (site.rollerData || []).filter(a => a.active !== false);
@@ -1305,13 +1300,7 @@ export default function App() {
           onDeleteEmployee={handleDeleteEmployee}
         />
 
-        {/* DATABASE SETTINGS MODAL */}
-        {isDbSettingsOpen && (
-          <DatabaseSettingsModal
-            onClose={() => setIsDbSettingsOpen(false)}
-            onDatabaseSelected={handleDatabaseSelected}
-          />
-        )}
+
 
         <ReportWizardModal
           isOpen={isReportWizardOpen}
