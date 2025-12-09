@@ -853,7 +853,7 @@ export function App() {
             />
           </div>
           {!isSidebarCollapsed && (
-            <h2 className="text-center text-lg font-bold text-slate-100 uppercase tracking-wide animate-in fade-in duration-300 whitespace-nowrap">AIMM</h2>
+            <h2 className="text-center text-sm font-bold text-slate-100 uppercase tracking-wide animate-in fade-in duration-300">Accurate Industries Maintenance Management</h2>
           )}
         </div>
 
@@ -938,16 +938,8 @@ export function App() {
                 {!isSidebarCollapsed && <span>Issue Tracker</span>}
               </button>
 
-              {/* 5. Customer Notes */}
-              <button
-                type="button"
-                onClick={() => { setNotesModalSite(selectedSite); setIsNotesModalOpen(true); }}
-                className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} text-slate-300 hover:text-white hover:bg-slate-700`}
-                title="Customer Notes"
-              >
-                <Icons.StickyNote size={20} />
-                {!isSidebarCollapsed && <span>Customer Notes</span>}
-              </button>
+              {/* Customer Notes - MOVED TO CUSTOMER PORTAL */}
+              {/* Removed: Customer notes functionality has been moved to the Customer Portal app */}
 
               {/* 6. Equipment List */}
               <button

@@ -66,16 +66,6 @@ export default function CustomerDashboard({
         handleSelect(newCustomer);
     };
 
-    const handleSave = () => {
-        if (!selectedId) return;
-        saveCustomer({
-            id: selectedId,
-            name: editName,
-            rates: editRates,
-            contacts: editContacts,
-        });
-        alert('Customer saved!');
-    };
 
     const addContact = () => {
         if (newContactName.trim()) {
@@ -184,15 +174,50 @@ export default function CustomerDashboard({
                                         type="text"
                                         value={editName}
                                         onChange={(e) => setEditName(e.target.value)}
-                                        className="w-full text-xl font-semibold border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none py-2 px-3"
+                                        disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
+                                        className={`w-full text-xl font-semibold border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none py-2 px-3 ${savedCustomers.find(c => c.id === selectedId)?.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         placeholder="Enter customer name"
                                     />
                                 </div>
                                 <button
-                                    onClick={handleSave}
-                                    className="bg-green-600 text-white px-6 py-2 rounded shadow hover:bg-green-700 flex items-center gap-2 font-medium"
+                                    onClick={() => {
+                                        const customer = savedCustomers.find(c => c.id === selectedId);
+                                        if (customer) {
+                                            if (customer.isLocked) {
+                                                // Unlock
+                                                saveCustomer({ ...customer, isLocked: false });
+                                            } else {
+                                                // Save and lock
+                                                saveCustomer({
+                                                    id: selectedId,
+                                                    name: editName,
+                                                    rates: editRates,
+                                                    contacts: editContacts,
+                                                    customerNotes: customer.customerNotes,
+                                                    isLocked: true
+                                                });
+                                                alert('Customer saved and locked!');
+                                            }
+                                        }
+                                    }}
+                                    className={`px-6 py-2 rounded shadow flex items-center gap-2 font-medium transition-colors ${savedCustomers.find(c => c.id === selectedId)?.isLocked
+                                        ? 'bg-amber-600 text-white hover:bg-amber-700'
+                                        : 'bg-green-600 text-white hover:bg-green-700'
+                                        }`}
                                 >
-                                    <Save size={18} /> Save Changes
+                                    {savedCustomers.find(c => c.id === selectedId)?.isLocked ? (
+                                        <>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
+                                                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
+                                            </svg>
+                                            Unlock to Edit
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={18} /> Save Changes
+                                        </>
+                                    )}
                                 </button>
                             </div>
 
@@ -211,12 +236,14 @@ export default function CustomerDashboard({
                                             <div key={index} className="bg-gray-700 p-3 rounded border border-gray-600">
                                                 <div className="flex justify-between items-start mb-1">
                                                     <span className="text-sm font-semibold text-slate-200">{contact.name}</span>
-                                                    <button
-                                                        onClick={() => removeContact(index)}
-                                                        className="text-slate-400 hover:text-red-400"
-                                                    >
-                                                        <X size={14} />
-                                                    </button>
+                                                    {!savedCustomers.find(c => c.id === selectedId)?.isLocked && (
+                                                        <button
+                                                            onClick={() => removeContact(index)}
+                                                            className="text-slate-400 hover:text-red-400"
+                                                        >
+                                                            <X size={14} />
+                                                        </button>
+                                                    )}
                                                 </div>
                                                 {contact.phone && (
                                                     <div className="text-xs text-slate-400">📞 {contact.phone}</div>
@@ -229,49 +256,57 @@ export default function CustomerDashboard({
                                     </div>
 
                                     {/* Add New Contact Form */}
-                                    <div className="space-y-2 p-3 bg-gray-700/50 rounded border border-gray-600">
-                                        <input
-                                            type="text"
-                                            value={newContactName}
-                                            onChange={(e) => setNewContactName(e.target.value)}
-                                            placeholder="Name *"
-                                            className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
-                                        />
-                                        <input
-                                            type="tel"
-                                            value={newContactPhone}
-                                            onChange={(e) => setNewContactPhone(e.target.value)}
-                                            placeholder="Phone"
-                                            className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
-                                        />
-                                        <input
-                                            type="email"
-                                            value={newContactEmail}
-                                            onChange={(e) => setNewContactEmail(e.target.value)}
-                                            placeholder="Email"
-                                            className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
-                                        />
-                                        <button
-                                            onClick={addContact}
-                                            className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
-                                            title="Add Contact"
-                                        >
-                                            <Plus size={18} /> Add Contact
-                                        </button>
-                                    </div>
+                                    {!savedCustomers.find(c => c.id === selectedId)?.isLocked && (
+                                        <div className="space-y-2 p-3 bg-gray-700/50 rounded border border-gray-600">
+                                            <input
+                                                type="text"
+                                                value={newContactName}
+                                                onChange={(e) => setNewContactName(e.target.value)}
+                                                placeholder="Name *"
+                                                className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
+                                            />
+                                            <input
+                                                type="tel"
+                                                value={newContactPhone}
+                                                onChange={(e) => setNewContactPhone(e.target.value)}
+                                                placeholder="Phone"
+                                                className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
+                                            />
+                                            <input
+                                                type="email"
+                                                value={newContactEmail}
+                                                onChange={(e) => setNewContactEmail(e.target.value)}
+                                                placeholder="Email"
+                                                className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
+                                            />
+                                            <button
+                                                onClick={addContact}
+                                                className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
+                                                title="Add Contact"
+                                            >
+                                                <Plus size={18} /> Add Contact
+                                            </button>
+                                        </div>
+                                    )}
                                 </div>
 
-                                {/* Rate Notes */}
+                                {/* Customer Notes */}
                                 <div>
                                     <label className="block text-sm text-slate-300 mb-1">
-                                        Rate Notes (e.g., Charge Origin)
+                                        Customer Notes
                                     </label>
                                     <textarea
                                         rows={4}
-                                        value={editRates.rateNotes}
-                                        onChange={(e) => setEditRates({ ...editRates, rateNotes: e.target.value })}
-                                        className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-none"
-                                        placeholder="E.g., All travel calculated Ex Rockhampton Office"
+                                        value={savedCustomers.find(c => c.id === selectedId)?.customerNotes || ''}
+                                        onChange={(e) => {
+                                            const updatedCustomer = savedCustomers.find(c => c.id === selectedId);
+                                            if (updatedCustomer && !updatedCustomer.isLocked) {
+                                                saveCustomer({ ...updatedCustomer, customerNotes: e.target.value });
+                                            }
+                                        }}
+                                        disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
+                                        className={`w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-none ${savedCustomers.find(c => c.id === selectedId)?.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                        placeholder="1. Special billing requirements&#10;2. Contact preferences&#10;3. Payment terms"
                                     />
                                 </div>
                             </div>

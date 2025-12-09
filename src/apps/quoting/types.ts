@@ -29,6 +29,8 @@ export interface Customer {
     name: string;
     rates: Rates;
     contacts: Contact[]; // List of main contacts with name, phone, email
+    customerNotes?: string; // Notes about the customer (e.g., special requirements, billing info)
+    isLocked?: boolean; // Lock state for customer editing
 }
 
 export interface JobDetails {

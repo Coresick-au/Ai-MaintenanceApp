@@ -3,6 +3,7 @@ import { Modal, Button, UniversalDatePicker, SecureDeleteButton } from './UIComp
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { validateSiteForm, sanitizeInput } from '../utils/validation';
+import { useGlobalData } from '../context/GlobalDataContext';
 
 // Helper function to format full location string
 const formatFullLocation = (siteForm) => {
@@ -54,7 +55,10 @@ export const AddSiteModal = ({
   setNoteInput,
   onLogoUpload
 }) => {
+  const { customers, addCustomer } = useGlobalData();
   const [validationErrors, setValidationErrors] = useState({});
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [quickAddName, setQuickAddName] = useState('');
 
   const handleSave = () => {
     // Sanitize inputs
@@ -112,12 +116,75 @@ export const AddSiteModal = ({
           </div>
           <div>
             <label className={labelClass}>Customer *</label>
-            <input
-              className={`${inputClass} ${getErrorClass('customer')}`}
-              placeholder="Customer Name"
-              value={siteForm.customer || ''}
-              onChange={e => setSiteForm({ ...siteForm, customer: e.target.value })}
-            />
+            <div className="flex gap-2">
+              <select
+                className={`flex-1 ${inputClass} ${getErrorClass('customer')}`}
+                value={siteForm.customerId || ''}
+                onChange={e => {
+                  const customerId = e.target.value;
+                  const customer = customers.find(c => c.id === customerId);
+                  setSiteForm({
+                    ...siteForm,
+                    customerId: customerId,
+                    customer: customer ? customer.name : ''
+                  });
+                }}
+              >
+                <option value="">Select Customer...</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowQuickAdd(!showQuickAdd)}
+                className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm font-bold transition flex items-center gap-1"
+                title="Quick Add Customer"
+              >
+                <Icons.Plus size={14} /> Quick Add
+              </button>
+            </div>
+            {showQuickAdd && (
+              <div className="mt-2 p-3 bg-slate-800/50 rounded border border-purple-500/30">
+                <div className="flex gap-2">
+                  <input
+                    className={inputClass}
+                    placeholder="New customer name..."
+                    value={quickAddName}
+                    onChange={e => setQuickAddName(e.target.value)}
+                    onKeyDown={async (e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        if (quickAddName.trim()) {
+                          const newId = await addCustomer({ name: quickAddName.trim() });
+                          if (newId) {
+                            setSiteForm({ ...siteForm, customerId: newId, customer: quickAddName.trim() });
+                            setQuickAddName('');
+                            setShowQuickAdd(false);
+                          }
+                        }
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      if (quickAddName.trim()) {
+                        const newId = await addCustomer({ name: quickAddName.trim() });
+                        if (newId) {
+                          setSiteForm({ ...siteForm, customerId: newId, customer: quickAddName.trim() });
+                          setQuickAddName('');
+                          setShowQuickAdd(false);
+                        }
+                      }
+                    }}
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded text-sm font-bold transition"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            )}
             {getErrorMessage('customer')}
           </div>
         </div>

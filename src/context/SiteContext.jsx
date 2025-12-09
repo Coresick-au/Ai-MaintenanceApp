@@ -137,8 +137,9 @@ export const SiteProvider = ({ children }) => {
 
         const newSite = {
             id: newSiteId,
+            customerId: siteForm.customerId || null, // NEW: Link to customer
             name: siteForm.name,
-            customer: siteForm.customer,
+            customer: siteForm.customer, // Keep for backward compatibility
             location: siteForm.location,
             fullLocation: formatFullLocation(siteForm),
             streetAddress: siteForm.streetAddress || '',

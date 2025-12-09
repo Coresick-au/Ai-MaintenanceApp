@@ -95,6 +95,34 @@ export default function Summary({ quote }: SummaryProps) {
             summary += `  ${dayName} ${day}${suffix} - ${techCount} tech${techCount > 1 ? 's' : ''}\n`;
         });
 
+        // Add extras and expenses section
+        const vehicleCount = shifts.filter(s => s.vehicle).length;
+        const perDiemCount = shifts.filter(s => s.perDiem).length;
+        const hasExtras = extras.filter(e => (e.cost || 0) > 0).length > 0;
+        const hasAllowances = vehicleCount > 0 || perDiemCount > 0 || reportingCost > 0 || travelChargeCost > 0;
+
+        if (hasAllowances || hasExtras) {
+            summary += '\nExtras & Expenses:\n';
+
+            if (vehicleCount > 0) {
+                summary += `  Vehicle Allowance: ${vehicleCount}x @ ${formatMoney(rates.vehicle)} = ${formatMoney(vehicleCount * rates.vehicle)}\n`;
+            }
+            if (perDiemCount > 0) {
+                summary += `  Per Diem: ${perDiemCount}x @ ${formatMoney(rates.perDiem)} = ${formatMoney(perDiemCount * rates.perDiem)}\n`;
+            }
+            if (reportingCost > 0) {
+                summary += `  Reporting Time: ${jobDetails.reportingTime}h @ ${formatMoney(rates.siteNormal)} = ${formatMoney(reportingCost)}\n`;
+            }
+            if (travelChargeCost > 0) {
+                summary += `  Travel Charge: ${formatMoney(travelChargeCost)}\n`;
+            }
+
+            // Add individual extras
+            extras.filter(e => (e.cost || 0) > 0).forEach(extra => {
+                summary += `  ${extra.description || 'Extra Item'}: ${formatMoney(parseFloat(extra.cost as any) || 0)}\n`;
+            });
+        }
+
         summary += '\nClick "See Full Breakdown" for detailed hour-by-hour breakdown.';
 
         return summary;

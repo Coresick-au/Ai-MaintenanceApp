@@ -16,6 +16,8 @@ export default function JobDetails({
     jobDetails, setJobDetails, isLocked, savedCustomers, setRates, renameTechnician, highlightMissingFields
 }: JobDetailsProps) {
 
+    const selectedCustomer = savedCustomers.find(c => c.name === jobDetails.customer);
+
     const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = e.target.value;
         setJobDetails({ ...jobDetails, customer: value });
@@ -71,6 +73,30 @@ export default function JobDetails({
                             <option key={c.id} value={c.name} />
                         ))}
                     </datalist>
+                    {/* Customer Notes Display */}
+                    {selectedCustomer?.customerNotes && (
+                        <div className="mt-2 text-xs text-cyan-400">
+                            <div className="flex items-start gap-1">
+                                <span className="flex-shrink-0">📝</span>
+                                <div className="flex-1">
+                                    {selectedCustomer.customerNotes.split('\n').map((line, idx) => {
+                                        // Check if line starts with number pattern like "1.", "2.", etc.
+                                        const numberedMatch = line.match(/^(\d+)\.\s*(.+)$/);
+                                        if (numberedMatch) {
+                                            return (
+                                                <div key={idx} className="flex gap-1">
+                                                    <span className="font-semibold">{numberedMatch[1]}.</span>
+                                                    <span>{numberedMatch[2]}</span>
+                                                </div>
+                                            );
+                                        }
+                                        // Regular line
+                                        return line.trim() ? <div key={idx} className="italic">{line}</div> : null;
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div>

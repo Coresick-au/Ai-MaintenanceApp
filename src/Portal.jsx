@@ -2,12 +2,22 @@ import React, { useState } from 'react';
 import { MaintenanceWrapper } from './apps/MaintenanceWrapper';
 import { InventoryApp } from './apps/InventoryApp';
 import { QuotingWrapper } from './apps/quoting/QuotingWrapper';
+import { CustomerApp } from './apps/CustomerPortal/CustomerApp';
 
 const Portal = () => {
     const [activeApp, setActiveApp] = useState(null); // null = Portal Home
 
     // Define your apps here
     const APPS = [
+        {
+            id: 'customer_portal',
+            name: 'Customer Portal',
+            fullName: 'Master Data Management',
+            description: 'Manage customers, contacts, and global site lists.',
+            icon: '🗂️',
+            color: 'purple',
+            component: <CustomerApp onBack={() => setActiveApp(null)} />
+        },
         {
             id: 'aimm',
             name: 'AIMM',
