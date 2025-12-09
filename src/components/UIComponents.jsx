@@ -59,6 +59,33 @@ export const Button = ({ children, onClick, disabled, className = "", variant = 
   return <button type={type} onClick={onClick} disabled={disabled} className={`${baseStyle} ${className}`}>{children}</button>;
 };
 
+export const SelectInput = ({ value, onChange, options = [], placeholder = "Select...", className = "", icon: Icon }) => {
+  return (
+    <div className={`relative ${className}`}>
+      {Icon && (
+        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none text-slate-400">
+          <Icon size={18} />
+        </div>
+      )}
+      <select
+        value={value}
+        onChange={onChange}
+        className={`w-full bg-slate-900 border border-slate-600 hover:border-cyan-500 text-slate-100 text-sm rounded-lg focus:ring-2 focus:ring-cyan-500/50 focus:border-cyan-500 block p-2.5 outline-none transition-all cursor-pointer appearance-none ${Icon ? 'pl-10' : ''}`}
+      >
+        <option value="" disabled>{placeholder}</option>
+        {options.map((opt) => (
+          <option key={opt.value} value={opt.value}>
+            {opt.label}
+          </option>
+        ))}
+      </select>
+      <div className="absolute inset-y-0 right-0 flex items-center px-2 pointer-events-none text-slate-400">
+        <Icons.ChevronDown size={16} />
+      </div>
+    </div>
+  );
+};
+
 // FullScreenContainer Component
 export const FullScreenContainer = ({ children, className = "", title, onClose, isOpen, onToggle }) => {
   const [internalFullScreen, setInternalFullScreen] = useState(false);
