@@ -1,49 +1,170 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { PartCatalogTable } from '../components/inventory/PartCatalogTable';
+import { PartCatalogModal } from '../components/inventory/PartCatalogModal';
+import { LocationManager } from '../components/inventory/LocationManager';
+import { SupplierManager } from '../components/inventory/SupplierManager';
+import { StockOverview } from '../components/inventory/StockOverview';
+import { StockAdjustmentModal } from '../components/inventory/StockAdjustmentModal';
+import { SerializedAssetsView } from '../components/inventory/SerializedAssetsView';
+import { StockMovementHistory } from '../components/inventory/StockMovementHistory';
+import { StockTakeMode } from '../components/inventory/StockTakeMode';
+import { CategoryManager } from '../components/inventory/CategoryManager';
+import { initializeInventorySystem } from '../services/initInventory';
+import { Icons } from '../constants/icons';
 
-export const InventoryApp = ({ onBack }) => {
+export function InventoryApp() {
+    const [activeTab, setActiveTab] = useState('catalog');
+    const [isPartModalOpen, setIsPartModalOpen] = useState(false);
+    const [editingPart, setEditingPart] = useState(null);
+    const [isStockAdjustmentOpen, setIsStockAdjustmentOpen] = useState(false);
+    const [adjustingPart, setAdjustingPart] = useState(null);
+    const [initializing, setInitializing] = useState(false);
+
+    const handleAddPart = () => {
+        setEditingPart(null);
+        setIsPartModalOpen(true);
+    };
+
+    const handleEditPart = (part) => {
+        setEditingPart(part);
+        setIsPartModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsPartModalOpen(false);
+        setEditingPart(null);
+    };
+
+    const handleAdjustStock = (part) => {
+        setAdjustingPart(part);
+        setIsStockAdjustmentOpen(true);
+    };
+
+    const handleCloseStockAdjustment = () => {
+        setIsStockAdjustmentOpen(false);
+        setAdjustingPart(null);
+    };
+
+    const handleInitialize = async () => {
+        if (!confirm('Initialize default categories and Warehouse - Banyo location?')) return;
+
+        setInitializing(true);
+        try {
+            await initializeInventorySystem();
+            alert('✅ Inventory system initialized successfully!');
+        } catch (err) {
+            alert('❌ Initialization failed: ' + err.message);
+        } finally {
+            setInitializing(false);
+        }
+    };
+
+    const tabs = [
+        { id: 'catalog', label: 'Part Catalog', icon: Icons.Package },
+        { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
+        { id: 'serialized', label: 'Serialized Assets', icon: Icons.Barcode },
+        { id: 'categories', label: 'Categories', icon: Icons.FolderTree },
+        { id: 'locations', label: 'Locations', icon: Icons.MapPin },
+        { id: 'suppliers', label: 'Suppliers', icon: Icons.Truck },
+        { id: 'stocktake', label: 'Stock Take', icon: Icons.ClipboardList },
+        { id: 'history', label: 'Movement History', icon: Icons.History }
+    ];
+
     return (
-        <div className="min-h-screen bg-slate-900 text-slate-100 p-8 flex flex-col items-center justify-center">
-            <div className="max-w-2xl w-full bg-slate-800 border border-slate-700 rounded-xl p-8 shadow-2xl">
-                <div className="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
-                    <h1 className="text-3xl font-bold text-emerald-400">Inventory Control</h1>
-                    <button
-                        onClick={onBack}
-                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-slate-300 rounded-lg transition-colors"
-                    >
-                        Exit to Portal
-                    </button>
+        <div className="min-h-screen bg-slate-900 text-slate-100 flex flex-col">
+            {/* Header */}
+            <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
+                <div className="flex items-center justify-between">
+                    <div>
+                        <h1 className="text-2xl font-bold text-white">Inventory Management</h1>
+                        <p className="text-sm text-slate-400 mt-1">Track parts, stock levels, and serialized assets</p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                        <button
+                            onClick={handleInitialize}
+                            disabled={initializing}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                            title="Initialize default categories and location"
+                        >
+                            <Icons.Zap size={18} />
+                            {initializing ? 'Initializing...' : 'Initialize System'}
+                        </button>
+                        <button
+                            onClick={() => window.location.href = '/'}
+                            className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                        >
+                            <Icons.ArrowLeft size={18} />
+                            Return to Portal
+                        </button>
+                    </div>
                 </div>
+            </header>
 
-                <p className="text-slate-400 mb-6">
-                    This is a placeholder for your second business application.
-                    Notice it maintains the same styling DNA as AIMM.
-                </p>
+            {/* Tab Navigation */}
+            <div className="bg-slate-800/60 border-b border-slate-700 px-6">
+                <div className="flex gap-1 overflow-x-auto">
+                    {tabs.map(tab => {
+                        const Icon = tab.icon;
+                        const isActive = activeTab === tab.id;
 
-                <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700 border-dashed flex flex-col items-center justify-center h-32 text-slate-500">
-                        <span className="text-3xl mb-2">📦</span>
-                        <span className="text-sm">Stock Levels</span>
-                    </div>
-                    <div className="p-4 bg-slate-900/50 rounded-lg border border-slate-700 border-dashed flex flex-col items-center justify-center h-32 text-slate-500">
-                        <span className="text-3xl mb-2">🚚</span>
-                        <span className="text-sm">Incoming Orders</span>
-                    </div>
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex items-center gap-2 px-4 py-3 font-medium transition-all whitespace-nowrap ${isActive
+                                    ? 'text-cyan-400 border-b-2 border-cyan-400 bg-slate-700/50'
+                                    : 'text-slate-400 hover:text-slate-300 hover:bg-slate-700/30'
+                                    }`}
+                            >
+                                <Icon size={18} />
+                                {tab.label}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
-            {/* Floating Home Button - Bottom Right */}
-            <button
-                onClick={onBack}
-                className="fixed bottom-4 right-4 z-[9999] p-3 bg-slate-800 border border-slate-600 rounded-full shadow-2xl text-cyan-400 hover:bg-slate-700 hover:text-white transition-all hover:scale-110"
-                title="Return to App Portal"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="7" height="7" x="3" y="3" rx="1" />
-                    <rect width="7" height="7" x="14" y="3" rx="1" />
-                    <rect width="7" height="7" x="14" y="14" rx="1" />
-                    <rect width="7" height="7" x="3" y="14" rx="1" />
-                </svg>
-            </button>
+            {/* Main Content */}
+            <main className="flex-1 p-6">
+                <div className="max-w-7xl mx-auto h-full">
+                    {activeTab === 'catalog' && (
+                        <PartCatalogTable
+                            onAddPart={handleAddPart}
+                            onEditPart={handleEditPart}
+                        />
+                    )}
+
+                    {activeTab === 'stock' && (
+                        <StockOverview onAdjustStock={handleAdjustStock} />
+                    )}
+
+                    {activeTab === 'serialized' && <SerializedAssetsView />}
+
+                    {activeTab === 'categories' && <CategoryManager />}
+
+                    {activeTab === 'locations' && <LocationManager />}
+
+                    {activeTab === 'suppliers' && <SupplierManager />}
+
+                    {activeTab === 'stocktake' && <StockTakeMode />}
+
+                    {activeTab === 'history' && <StockMovementHistory />}
+                </div>
+            </main>
+
+            {/* Modals */}
+            <PartCatalogModal
+                isOpen={isPartModalOpen}
+                onClose={handleCloseModal}
+                editingPart={editingPart}
+            />
+            <StockAdjustmentModal
+                isOpen={isStockAdjustmentOpen}
+                onClose={handleCloseStockAdjustment}
+                part={adjustingPart}
+            />
         </div>
     );
-};
+}

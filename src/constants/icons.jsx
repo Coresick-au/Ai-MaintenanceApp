@@ -69,7 +69,11 @@ import {
     Info,
     Eye,
     ClipboardList,
-    StickyNote
+    StickyNote,
+    Package,
+    Barcode,
+    Truck,
+    ChevronsUpDown
 } from 'lucide-react';
 
 export const Icons = {
@@ -142,5 +146,10 @@ export const Icons = {
     XCircle,
     Eye,
     ClipboardList,
-    StickyNote
+    StickyNote,
+    Package,
+    Barcode,
+    Truck,
+    Tool: Wrench, // Alias for installation/maintenance
+    ChevronsUpDown
 };

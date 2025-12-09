@@ -177,6 +177,66 @@ export const SiteProvider = ({ children }) => {
         return newSite;
     };
 
+    const handleGenerateSample = async (siteName) => {
+        const sampleSite = generateSampleSite();
+        const baseLocation = siteName ? siteName : "Sample Location";
+        const newId = `site-${Date.now()}`;
+
+        // 1. Ensure "Sample Customer" exists
+        const sampleCustomerName = "Sample Customer";
+        let customerId = null;
+
+        try {
+            const q = query(collection(db, "customers"), where("name", "==", sampleCustomerName));
+            const querySnapshot = await getDocs(q);
+
+            if (!querySnapshot.empty) {
+                customerId = querySnapshot.docs[0].id;
+            } else {
+                // Create Sample Customer
+                const newCustId = `cust-sample-${Date.now()}`;
+                await setDoc(doc(db, "customers", newCustId), {
+                    id: newCustId,
+                    name: sampleCustomerName,
+                    address: "123 Sample St, Testville",
+                    createdAt: new Date().toISOString(),
+                    active: true,
+                    contacts: []
+                });
+                customerId = newCustId;
+                console.log("Created new Sample Customer:", newCustId);
+            }
+        } catch (e) {
+            console.error("Error ensuring sample customer:", e);
+        }
+
+        const newSite = {
+            ...sampleSite,
+            id: newId,
+            customerId: customerId, // LINKED!
+            name: baseLocation,
+            customer: sampleCustomerName,
+            location: 'Test Facility',
+            fullLocation: '123 Test St, Testville',
+            active: true,
+            notes: [{
+                id: `n-${Date.now()}`,
+                content: 'Automated Sample Site',
+                author: 'System',
+                timestamp: new Date().toISOString()
+            }]
+        };
+
+        // Add to Cloud
+        try {
+            await setDoc(doc(db, "sites", newId), newSite);
+            setSelectedSiteId(newId);
+        } catch (e) {
+            console.error("Error creating sample site:", e);
+            alert("Failed to create sample site.");
+        }
+    };
+
     const handleDeleteSite = async (siteId) => {
         const site = sites.find(s => s.id === siteId);
         const siteName = site ? site.name : 'this site';
@@ -599,54 +659,7 @@ export const SiteProvider = ({ children }) => {
     };
 
     // --- MISC ---
-    const handleGenerateSample = async () => {
-        // Generate the sample data object
-        const sample = generateSampleSite();
 
-        try {
-            // 1. Create a corresponding TEST CUSTOMER
-            const customerId = `cust-sample-${Date.now()}`;
-            const testCustomerName = `TEST - ${sample.customer}`;
-
-            const newCustomer = {
-                id: customerId,
-                name: testCustomerName,
-                contacts: [{
-                    id: `cont-${Date.now()}`,
-                    name: sample.contactName,
-                    email: sample.contactEmail,
-                    position: sample.contactPosition,
-                    phone: sample.contactPhone1
-                }],
-                createdAt: new Date().toISOString(),
-                notes: [{
-                    id: `n-${Date.now()}`,
-                    content: 'This is an auto-generated test customer for demonstration purposes.',
-                    author: 'System',
-                    timestamp: new Date().toISOString()
-                }]
-            };
-
-            // Save Customer to Firebase
-            await setDoc(doc(db, "customers", customerId), newCustomer);
-            console.log(`[Cloud] Demo customer generated: ${testCustomerName}`);
-
-            // 2. Link Site to this new Customer and update names
-            sample.customerId = customerId;
-            sample.customer = testCustomerName;
-            sample.name = `TEST - ${sample.name}`; // Ensure site name also says TEST
-
-            // Save Site to Firebase
-            await setDoc(doc(db, "sites", sample.id), sample);
-
-            console.log(`[Cloud] Demo site generated: ${sample.name}`);
-            alert(`Generated Test Customer: ${testCustomerName}\nGenerated Test Site: ${sample.name}`);
-
-        } catch (error) {
-            console.error("Error creating demo data:", error);
-            alert("Failed to save demo data to the database.");
-        }
-    };
     const handleClearAllHistory = () => { alert("Global history clear not implemented for Cloud DB"); };
 
     // --- TODO ACTIONS ---

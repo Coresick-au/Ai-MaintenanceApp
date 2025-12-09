@@ -10,6 +10,8 @@ export const GlobalDataProvider = ({ children }) => {
     const [employees, setEmployees] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const [isRepairing, setIsRepairing] = useState(false);
+
     // --- SYNC FROM FIREBASE ---
     useEffect(() => {
         console.log('[GlobalDataContext] Initializing Firebase Listeners...');
@@ -61,6 +63,70 @@ export const GlobalDataProvider = ({ children }) => {
             unsubEmployees();
         };
     }, []);
+
+    // --- AUTO-REPAIR ORPHANED SITES ---
+    // This finds sites that have a 'customer' name string but no 'customerId' link
+    // and automatically creates or links the customer.
+    useEffect(() => {
+        if (loading || sites.length === 0 || isRepairing) return;
+
+        const repairOrphans = async () => {
+            const orphans = sites.filter(s => !s.customerId && s.customer);
+
+            if (orphans.length === 0) return;
+
+            console.log(`[GlobalData] Found ${orphans.length} orphaned sites. Starting repair...`);
+            setIsRepairing(true);
+
+            // Group orphans by customer name to avoid creating duplicates
+            const orphansByCustomer = orphans.reduce((acc, site) => {
+                const name = site.customer.trim();
+                if (!acc[name]) acc[name] = [];
+                acc[name].push(site);
+                return acc;
+            }, {});
+
+            for (const [customerName, siteList] of Object.entries(orphansByCustomer)) {
+                try {
+                    // 1. Check if customer already exists (case-insensitive)
+                    let targetCustomer = customers.find(c =>
+                        c.name.toLowerCase() === customerName.toLowerCase()
+                    );
+
+                    // 2. If not, create it
+                    if (!targetCustomer) {
+                        const newId = `cust-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+                        const newCustomer = {
+                            id: newId,
+                            name: customerName,
+                            contacts: [],
+                            createdAt: new Date().toISOString(),
+                            autoCreated: true // Flag to know it was auto-generated
+                        };
+                        await setDoc(doc(db, 'customers', newId), newCustomer);
+                        targetCustomer = newCustomer;
+                        console.log(`[GlobalData] Auto-created customer: ${customerName}`);
+                    }
+
+                    // 3. Link all sites to this customer
+                    for (const site of siteList) {
+                        await updateDoc(doc(db, 'sites', site.id), {
+                            customerId: targetCustomer.id,
+                            customer: targetCustomer.name // Ensure name matches exactly
+                        });
+                        console.log(`[GlobalData] Linked site ${site.name} to customer ${targetCustomer.name}`);
+                    }
+                } catch (error) {
+                    console.error(`[GlobalData] Error repairing customer ${customerName}:`, error);
+                }
+            }
+            setIsRepairing(false);
+        };
+
+        // Run repair with a small delay to ensure state is stable
+        const timer = setTimeout(repairOrphans, 2000);
+        return () => clearTimeout(timer);
+    }, [sites.length, customers.length, loading]);
 
     // --- CUSTOMER ACTIONS ---
 
