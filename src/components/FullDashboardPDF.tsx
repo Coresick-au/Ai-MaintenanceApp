@@ -127,6 +127,10 @@ const styles = StyleSheet.create({
     color: '#059669',
     fontWeight: 'bold',
   },
+  statusService: {
+    color: '#4B5563',
+    fontWeight: 'bold',
+  },
   summaryBox: {
     backgroundColor: '#F3F4F6',
     padding: 10,
@@ -223,14 +227,16 @@ const styles = StyleSheet.create({
 const getStatusStyle = (asset: Asset) => {
   if (asset.opStatus === 'Down') return styles.statusCritical;
   if (asset.opStatus === 'Warning') return styles.statusWarning;
+  if (asset.opStatus === 'Out of Service') return styles.statusService;
   if (asset.remaining < 0) return styles.statusCritical;
   if (asset.remaining < 30) return styles.statusWarning;
   return styles.statusGood;
 };
 
 const getStatusText = (asset: Asset) => {
-  if (asset.opStatus === 'Down') return 'DOWN/CRITICAL';
+  if (asset.opStatus === 'Down') return 'CRITICAL';
   if (asset.opStatus === 'Warning') return 'WARNING';
+  if (asset.opStatus === 'Out of Service') return 'OUT OF SERVICE';
   if (asset.remaining < 0) return 'OVERDUE';
   if (asset.remaining < 30) return 'DUE SOON';
   return 'OPERATIONAL';
@@ -351,7 +357,7 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
                       {getStatusText(asset)}
                     </Text>
                   </View>
-                  {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote && (
+                  {(asset.opStatus === 'Down' || asset.opStatus === 'Warning' || asset.opStatus === 'Out of Service') && asset.opNote && (
                     <View style={styles.commentRow}>
                       <Text style={styles.commentLabel}>Comment:</Text>
                       <Text style={styles.commentText}>{asset.opNote}</Text>
@@ -388,7 +394,7 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
                       {getStatusText(asset)}
                     </Text>
                   </View>
-                  {(asset.opStatus === 'Down' || asset.opStatus === 'Warning') && asset.opNote && (
+                  {(asset.opStatus === 'Down' || asset.opStatus === 'Warning' || asset.opStatus === 'Out of Service') && asset.opNote && (
                     <View style={styles.commentRow}>
                       <Text style={styles.commentLabel}>Comment:</Text>
                       <Text style={styles.commentText}>{asset.opNote}</Text>

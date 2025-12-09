@@ -66,7 +66,7 @@ export const ScheduleChartPDFPreview = ({
     <div ref={modalContainerRef} className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
       {/* --- PREVIEW CONTAINER (Screen Mode) --- */}
       <div className="print-content-inner bg-slate-800 w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl overflow-auto flex flex-col print:h-auto print:shadow-none print:rounded-none print:w-full print:max-w-none print:bg-white">
-        
+
         {/* --- MODAL HEADER (Hidden on Print) --- */}
         <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 print:hidden">
           <div>
@@ -87,7 +87,7 @@ export const ScheduleChartPDFPreview = ({
         <div ref={reportContentRef} className="bg-white text-black flex-1 overflow-auto">
           <div className="p-8">
             <div className="max-w-4xl mx-auto">
-              
+
               {/* DOCUMENT HEADER */}
               <header className="border-b-2 border-gray-300 pb-6 mb-8">
                 <h1 className="text-3xl font-black uppercase tracking-wider text-black mb-2">Schedule & Chart Report</h1>
@@ -133,31 +133,34 @@ export const ScheduleChartPDFPreview = ({
               {/* VISUAL CHART REPRESENTATION */}
               <section className="mb-8">
                 <h2 className="text-xl font-bold text-black border-b border-gray-300 pb-2 mb-4">Asset Status Chart</h2>
+                {[...sortedService, ...sortedRoller].length > 20 && (
+                  <div className="mb-2 text-xs text-gray-600 text-center">
+                    Showing top 20 most critical assets (out of {[...sortedService, ...sortedRoller].length} total)
+                  </div>
+                )}
                 <div className="p-6 border border-gray-300 rounded bg-gray-50">
                   <div className="space-y-2">
-                    {[...sortedService, ...sortedRoller].map((item, index) => (
+                    {[...sortedService, ...sortedRoller].slice(0, 20).map((item, index) => (
                       <div key={item.id} className="flex items-center gap-4">
                         <div className="w-32 text-sm font-medium truncate">{item.name}</div>
                         <div className="flex-1">
                           <div className="h-6 bg-gray-200 rounded-full overflow-hidden">
-                            <div 
-                              className={`h-full ${
-                                item.remaining < 0 ? 'bg-red-500' : 
-                                item.remaining < 30 ? 'bg-amber-500' : 
-                                'bg-green-500'
-                              }`}
-                              style={{ 
-                                width: `${Math.max(5, Math.min(100, item.remaining < 0 ? 100 : item.remaining))}%` 
+                            <div
+                              className={`h-full ${item.remaining < 0 ? 'bg-red-500' :
+                                  item.remaining < 30 ? 'bg-amber-500' :
+                                    'bg-green-500'
+                                }`}
+                              style={{
+                                width: `${Math.max(5, Math.min(100, item.remaining < 0 ? 100 : item.remaining))}%`
                               }}
                             ></div>
                           </div>
                         </div>
                         <div className="w-20 text-sm text-right">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            item.remaining < 0 ? 'bg-red-100 text-red-800' : 
-                            item.remaining < 30 ? 'bg-amber-100 text-amber-800' : 
-                            'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
+                            }`}>
                             {item.remaining}d
                           </span>
                         </div>
@@ -170,7 +173,7 @@ export const ScheduleChartPDFPreview = ({
               {/* DETAILED SCHEDULE */}
               <section className="mb-8">
                 <h2 className="text-xl font-bold text-black border-b border-gray-300 pb-2 mb-4">Detailed Schedule</h2>
-                
+
                 {/* Service Schedule */}
                 <div className="mb-6">
                   <h3 className="text-lg font-semibold text-black mb-3">Service Equipment</h3>
@@ -194,14 +197,13 @@ export const ScheduleChartPDFPreview = ({
                           <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
                           <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
                           <td className="py-3 text-black">
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${
-                              item.remaining < 0 ? 'bg-red-100 text-red-800' : 
-                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' : 
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {item.remaining < 0 ? 'OVERDUE' : 
-                               item.remaining < 30 ? 'DUE SOON' : 
-                               'OPERATIONAL'}
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                                item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                  'bg-green-100 text-green-800'
+                              }`}>
+                              {item.remaining < 0 ? 'OVERDUE' :
+                                item.remaining < 30 ? 'DUE SOON' :
+                                  'OPERATIONAL'}
                             </span>
                           </td>
                         </tr>
@@ -233,14 +235,13 @@ export const ScheduleChartPDFPreview = ({
                           <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
                           <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
                           <td className="py-3 text-black">
-                            <span className={`px-2 py-1 rounded text-xs font-bold ${
-                              item.remaining < 0 ? 'bg-red-100 text-red-800' : 
-                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' : 
-                              'bg-green-100 text-green-800'
-                            }`}>
-                              {item.remaining < 0 ? 'OVERDUE' : 
-                               item.remaining < 30 ? 'DUE SOON' : 
-                               'OPERATIONAL'}
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                                item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                  'bg-green-100 text-green-800'
+                              }`}>
+                              {item.remaining < 0 ? 'OVERDUE' :
+                                item.remaining < 30 ? 'DUE SOON' :
+                                  'OPERATIONAL'}
                             </span>
                           </td>
                         </tr>

@@ -235,6 +235,48 @@ export const SiteProvider = ({ children }) => {
         return isActivating;
     };
 
+    // --- SITE NOTE ACTIONS ---
+    const handleAddSiteNote = (siteId, content, author) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        const newNote = {
+            id: `n-${Date.now()}`,
+            content: content,
+            author: author || 'User',
+            timestamp: new Date().toISOString(),
+            archived: false
+        };
+        updateSiteData(siteId, {
+            notes: [...(site.notes || []), newNote]
+        }, 'Add Site Note');
+    };
+
+    const handleUpdateSiteNote = (siteId, noteId, newContent) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        const updatedNotes = (site.notes || []).map(n =>
+            n.id === noteId ? { ...n, content: newContent, timestamp: new Date().toISOString() } : n
+        );
+        updateSiteData(siteId, { notes: updatedNotes }, 'Update Site Note');
+    };
+
+    const handleDeleteSiteNote = (siteId, noteId) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        if (!window.confirm('Are you sure you want to delete this note?')) return;
+        const updatedNotes = (site.notes || []).filter(n => n.id !== noteId);
+        updateSiteData(siteId, { notes: updatedNotes }, 'Delete Site Note');
+    };
+
+    const handleArchiveSiteNote = (siteId, noteId, currentStatus) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+        const updatedNotes = (site.notes || []).map(n =>
+            n.id === noteId ? { ...n, archived: !currentStatus } : n
+        );
+        updateSiteData(siteId, { notes: updatedNotes }, currentStatus ? 'Restore Site Note' : 'Archive Site Note');
+    };
+
     // --- ISSUE ACTIONS ---
     const handleAddIssue = (siteId, newIssue) => {
         const site = sites.find(s => s.id === siteId);
@@ -618,6 +660,7 @@ export const SiteProvider = ({ children }) => {
             handleAddIssue, handleDeleteIssue, handleToggleIssueStatus, handleUpdateIssue, handleCopyIssue,
             handleAddAsset, handleDeleteAsset, handleSaveEditedAsset, handleInlineUpdate,
             handleSaveEditedSpecs, handleAddSpecNote, handleDeleteSpecNote, saveEditedNote,
+            handleAddSiteNote, handleUpdateSiteNote, handleDeleteSiteNote, handleArchiveSiteNote,
 
             // Report Actions
             uploadServiceReport, deleteServiceReport,

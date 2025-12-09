@@ -67,7 +67,9 @@ import {
     FileSpreadsheet as FileCsv,
     ExternalLink,
     Info,
-    Eye
+    Eye,
+    ClipboardList,
+    StickyNote
 } from 'lucide-react';
 
 export const Icons = {
@@ -138,5 +140,7 @@ export const Icons = {
     ExternalLink,
     Info,
     XCircle,
-    Eye
+    Eye,
+    ClipboardList,
+    StickyNote
 };

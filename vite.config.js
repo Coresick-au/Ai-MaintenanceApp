@@ -6,10 +6,10 @@ import { fileURLToPath, URL } from 'node:url'
 // https://vitejs.dev/config/
 export default defineConfig(({ command, mode }) => {
   const isElectronBuild = mode === 'electron'
-  
+
   return {
     plugins: [
-      react(), 
+      react(),
       isElectronBuild && viteSingleFile(),
     ].filter(Boolean),
     resolve: {
@@ -18,7 +18,7 @@ export default defineConfig(({ command, mode }) => {
       },
     },
     server: {
-      port: 5173,
+      port: 3000,
       host: true
     },
     build: {
@@ -33,6 +33,6 @@ export default defineConfig(({ command, mode }) => {
         }
       }
     },
-    base: './', 
+    base: './',
   }
 })

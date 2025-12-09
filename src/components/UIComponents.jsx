@@ -288,55 +288,74 @@ export const SimpleBarChart = ({ data }) => {
     );
   }
 
+  // 2. Limit to top 20 most critical assets (sorted by remaining days, ascending)
+  const sortedData = [...data]
+    .filter(item => item.active !== false) // Filter out archived assets
+    .sort((a, b) => a.remaining - b.remaining)
+    .slice(0, 20);
+
+  if (sortedData.length === 0) {
+    return (
+      <div className="h-64 w-full flex flex-col items-center justify-center text-slate-400 border-2 border-dashed border-slate-700 rounded-lg">
+        <Icons.Scale className="h-8 w-8 mb-2 opacity-50" />
+        <span className="text-sm">No active assets to display</span>
+      </div>
+    );
+  }
+
   return (
-    // 2. IMPORTANT: Increased height to accommodate rotated labels
-    <div className="h-80 w-full mt-4">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+    <div className="w-full">
+      {data.length > 20 && (
+        <div className="mb-2 text-xs text-slate-400 text-center">
+          Showing top 20 most critical assets (out of {data.filter(item => item.active !== false).length} active)
+        </div>
+      )}
+      <div className="h-80 w-full mt-4">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={sortedData} margin={{ top: 5, right: 30, left: 20, bottom: 80 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
 
-          <XAxis
-            dataKey="name"
-            stroke="#94a3b8"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-            interval={0}
-            angle={-45}
-            textAnchor="end"
-            height={80}
-          />
+            <XAxis
+              dataKey="name"
+              stroke="#94a3b8"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+              interval={0}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
 
-          <YAxis
-            stroke="#94a3b8"
-            fontSize={12}
-            tickLine={false}
-            axisLine={false}
-          />
+            <YAxis
+              stroke="#94a3b8"
+              fontSize={12}
+              tickLine={false}
+              axisLine={false}
+            />
 
-          <Tooltip
-            cursor={{ fill: '#334155', opacity: 0.4 }}
-            contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
-            itemStyle={{ color: '#f1f5f9' }}
-            labelStyle={{ color: '#94a3b8', marginBottom: '0.5rem' }}
-          />
+            <Tooltip
+              cursor={{ fill: '#334155', opacity: 0.4 }}
+              contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#f1f5f9', borderRadius: '8px' }}
+              itemStyle={{ color: '#f1f5f9' }}
+              labelStyle={{ color: '#94a3b8', marginBottom: '0.5rem' }}
+            />
 
-          <Bar
-            dataKey="remaining"
-            radius={[4, 4, 0, 0]}
-          // onClick={onBarClick} // Removed unused prop
-          // cursor={onBarClick ? 'pointer' : 'default'}
-          >
-            {/* 3. Color Logic: Red (Overdue), Amber (Due Soon), Emerald (Good) */}
-            {data.map((entry, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={entry.remaining < 0 ? '#dc2626' : entry.remaining < 30 ? '#f59e0b' : '#10b981'}
-              />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+            <Bar
+              dataKey="remaining"
+              radius={[4, 4, 0, 0]}
+            >
+              {/* Color Logic: Red (Overdue), Amber (Due Soon), Emerald (Good) */}
+              {sortedData.map((entry, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={entry.remaining < 0 ? '#dc2626' : entry.remaining < 30 ? '#f59e0b' : '#10b981'}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 };

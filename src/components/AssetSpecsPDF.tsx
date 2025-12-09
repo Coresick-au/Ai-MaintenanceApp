@@ -200,6 +200,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#D1FAE5',
     color: '#059669',
   },
+  statusService: {
+    backgroundColor: '#E5E7EB',
+    color: '#4B5563',
+  },
   codeBlock: {
     backgroundColor: '#F3F4F6',
     padding: 8,
@@ -216,14 +220,16 @@ const styles = StyleSheet.create({
 const getStatusStyle = (asset: Asset) => {
   if (asset.opStatus === 'Down') return styles.statusCritical;
   if (asset.opStatus === 'Warning') return styles.statusWarning;
+  if (asset.opStatus === 'Out of Service') return styles.statusService;
   if (asset.remaining < 0) return styles.statusCritical;
   if (asset.remaining < 30) return styles.statusWarning;
   return styles.statusGood;
 };
 
 const getStatusText = (asset: Asset) => {
-  if (asset.opStatus === 'Down') return 'DOWN/CRITICAL';
+  if (asset.opStatus === 'Down') return 'CRITICAL';
   if (asset.opStatus === 'Warning') return 'WARNING';
+  if (asset.opStatus === 'Out of Service') return 'OUT OF SERVICE';
   if (asset.remaining < 0) return 'OVERDUE';
   if (asset.remaining < 30) return 'DUE SOON';
   return 'OPERATIONAL';

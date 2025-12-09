@@ -73,9 +73,9 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
                                         <td className="px-4 py-2">
                                             <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${item.status === 'expired'
                                                 ? 'text-red-400 bg-red-900/20 border-red-900/50'
-                                                : 'text-yellow-400 bg-yellow-900/20 border-yellow-900/50'
+                                                : 'text-amber-400 bg-amber-900/20 border-amber-900/50'
                                                 }`}>
-                                                {item.status}
+                                                {item.status === 'expired' ? 'Expired' : item.status === 'warning' ? 'Due Soon' : 'Active'}
                                             </span>
                                         </td>
                                     </tr>
@@ -117,7 +117,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
     // Helper to get status color
     const getStatusColor = (status) => {
         if (status === 'expired') return 'text-red-400 bg-red-900/20 border-red-900';
-        if (status === 'warning') return 'text-yellow-400 bg-yellow-900/20 border-yellow-900';
+        if (status === 'warning') return 'text-amber-400 bg-amber-900/20 border-amber-900';
         return 'text-green-400 bg-green-900/20 border-green-900';
     };
 
@@ -399,7 +399,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                 <td className="px-4 py-2 text-slate-300">{cert.expiry ? formatDate(cert.expiry) : '-'}</td>
                                                                 <td className="px-4 py-2">
                                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
-                                                                        {status === 'valid' ? 'Active' : status}
+                                                                        {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-2">
@@ -578,7 +578,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                 <td className="px-4 py-2 text-slate-300">{ind.expiry ? formatDate(ind.expiry) : '-'}</td>
                                                                 <td className="px-4 py-2">
                                                                     <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
-                                                                        {status === 'valid' ? 'Active' : status}
+                                                                        {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
                                                                     </span>
                                                                 </td>
                                                                 <td className="px-4 py-2">

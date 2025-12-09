@@ -597,13 +597,7 @@ export const SiteNotesModal = ({
   const handleAddNote = () => {
     if (!newNoteContent.trim()) return;
 
-    onAddNote(site.id, {
-      id: `note-${Date.now()}`,
-      content: newNoteContent.trim(),
-      author: newNoteAuthor.trim() || 'Unknown',
-      timestamp: new Date().toISOString(),
-      archived: false
-    });
+    onAddNote(site.id, newNoteContent.trim(), newNoteAuthor.trim() || 'Unknown');
 
     setNewNoteContent('');
     setNewNoteAuthor('');
@@ -618,11 +612,7 @@ export const SiteNotesModal = ({
   const handleSaveEdit = () => {
     if (!editingNote || !editContent.trim()) return;
 
-    onUpdateNote(site.id, editingNote.id, {
-      content: editContent.trim(),
-      author: editAuthor.trim() || editingNote.author,
-      timestamp: new Date().toISOString() // Update timestamp on edit
-    });
+    onUpdateNote(site.id, editingNote.id, editContent.trim());
 
     setEditingNote(null);
     setEditContent('');
@@ -642,7 +632,7 @@ export const SiteNotesModal = ({
   };
 
   const handleArchive = (noteId, isArchived) => {
-    onArchiveNote(site.id, noteId, !isArchived);
+    onArchiveNote(site.id, noteId, isArchived);
   };
 
   return (
@@ -778,10 +768,17 @@ export const SiteNotesModal = ({
                   </div>
                 ) : (
                   // DISPLAY STATE (Refined: Clickable content, hover buttons)
-                  <button
-                    type="button"
+                  <div
+                    role="button"
+                    tabIndex={0}
                     onClick={() => handleStartEdit(note)}
-                    className="w-full text-left space-y-2 p-0 relative focus:outline-none rounded-lg group-hover:scale-[1.005] transition-transform duration-200"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleStartEdit(note);
+                      }
+                    }}
+                    className="w-full text-left space-y-2 p-0 relative focus:outline-none rounded-lg group-hover:scale-[1.005] transition-transform duration-200 cursor-pointer"
                     title="Click to edit note"
                   >
                     <div className="flex justify-between items-start mb-1 relative pr-16">
@@ -827,9 +824,9 @@ export const SiteNotesModal = ({
 
                     {/* Note Content */}
                     <p className={`text-sm text-slate-300 whitespace-pre-wrap leading-relaxed ${note.archived ? 'line-through opacity-70' : ''}`}>
-                      {note.content}
+                      {typeof note.content === 'string' ? note.content : (note.content?.content || 'Error: Invalid Note Data')}
                     </p>
-                  </button>
+                  </div>
                 )}
               </div>
             ))

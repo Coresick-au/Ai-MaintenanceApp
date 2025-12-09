@@ -87,13 +87,13 @@ export const EditAssetModal = ({
 }) => {
   const [showRollerHelper, setShowRollerHelper] = useState(false);
   const [rollerHelperData, setRollerHelperData] = useState({
-  diameter: '',
-  face: '',
-  b2b: '',
-  totalLength: '',
-  shaftSize: '',
-  slotSize: ''
-});
+    diameter: '',
+    face: '',
+    b2b: '',
+    totalLength: '',
+    shaftSize: '',
+    slotSize: ''
+  });
 
   if (!isOpen || !editingAsset) return null;
 
@@ -412,7 +412,7 @@ export const EditAssetModal = ({
         <Modal title="Roller Size Entry Helper" onClose={() => setShowRollerHelper(false)}>
           <div className="space-y-4">
             <p className="text-sm text-slate-300">Enter roller dimensions in millimeters (mm):</p>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">Diameter (mm)</label>
@@ -537,7 +537,8 @@ export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
   const statusOptions = [
     { value: 'Operational', label: 'Operational', color: 'bg-green-600', hoverColor: 'hover:bg-green-700', borderColor: 'border-green-500' },
     { value: 'Warning', label: 'Warning', color: 'bg-yellow-600', hoverColor: 'hover:bg-yellow-700', borderColor: 'border-yellow-500' },
-    { value: 'Down', label: 'Down/Critical', color: 'bg-red-600', hoverColor: 'hover:bg-red-700', borderColor: 'border-red-500' }
+    { value: 'Down', label: 'Critical', color: 'bg-red-600', hoverColor: 'hover:bg-red-700', borderColor: 'border-red-500' },
+    { value: 'Out of Service', label: 'Out of Service', color: 'bg-slate-700', hoverColor: 'hover:bg-slate-600', borderColor: 'border-slate-500' }
   ];
 
   return (

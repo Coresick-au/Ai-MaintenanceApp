@@ -53,14 +53,16 @@ export const AssetSpecsPDFPreview = ({
   const getStatusStyle = (asset) => {
     if (asset.opStatus === 'Down') return 'bg-red-100 text-red-800';
     if (asset.opStatus === 'Warning') return 'bg-amber-100 text-amber-800';
+    if (asset.opStatus === 'Out of Service') return 'bg-gray-200 text-gray-700';
     if (asset.remaining < 0) return 'bg-red-100 text-red-800';
     if (asset.remaining < 30) return 'bg-amber-100 text-amber-800';
     return 'bg-green-100 text-green-800';
   };
 
   const getStatusText = (asset) => {
-    if (asset.opStatus === 'Down') return 'DOWN/CRITICAL';
+    if (asset.opStatus === 'Down') return 'CRITICAL';
     if (asset.opStatus === 'Warning') return 'WARNING';
+    if (asset.opStatus === 'Out of Service') return 'OUT OF SERVICE';
     if (asset.remaining < 0) return 'OVERDUE';
     if (asset.remaining < 30) return 'DUE SOON';
     return 'OPERATIONAL';
@@ -70,7 +72,7 @@ export const AssetSpecsPDFPreview = ({
     <div ref={modalContainerRef} className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
       {/* --- PREVIEW CONTAINER (Screen Mode) --- */}
       <div className="print-content-inner bg-slate-800 w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl overflow-auto flex flex-col print:h-auto print:shadow-none print:rounded-none print:w-full print:max-w-none print:bg-white">
-        
+
         {/* --- MODAL HEADER (Hidden on Print) --- */}
         <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 print:hidden">
           <div>
@@ -91,7 +93,7 @@ export const AssetSpecsPDFPreview = ({
         <div ref={reportContentRef} className="bg-white text-black flex-1 overflow-auto">
           <div className="p-8">
             <div className="max-w-4xl mx-auto">
-              
+
               {/* DOCUMENT HEADER */}
               <header className="border-b-2 border-gray-300 pb-6 mb-8">
                 <h1 className="text-3xl font-black uppercase tracking-wider text-black mb-2">Asset Specifications</h1>
@@ -106,7 +108,7 @@ export const AssetSpecsPDFPreview = ({
               {/* ASSET LIST */}
               {assets.map((assetWithSpecs, index) => (
                 <section key={assetWithSpecs.asset.id} className={`mb-12 ${index < assets.length - 1 ? 'border-b border-gray-300 pb-8' : ''}`}>
-                  
+
                   {/* Page break indicator */}
                   {index > 0 && (
                     <div className="text-center text-sm text-gray-500 mb-4 print:mb-8">
@@ -119,7 +121,7 @@ export const AssetSpecsPDFPreview = ({
                     <h2 className="text-xl font-bold text-black mb-4">
                       {assetWithSpecs.asset.name} ({assetWithSpecs.asset.code})
                     </h2>
-                    
+
                     <div className="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-50 rounded">
                       <div>
                         <div className="text-xs font-bold text-gray-600 uppercase">Asset Code</div>
