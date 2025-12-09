@@ -73,6 +73,10 @@ export const CustomerApp = ({ onBack }) => {
     const [showArchived, setShowArchived] = useState(false);
     const [sortOrder, setSortOrder] = useState('desc');
 
+    // Sidebar collapse state
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+    const sidebarWidth = isSidebarCollapsed ? 'w-20' : 'w-80';
+
     const selectedCustomer = customers.find(c => c.id === selectedCustId);
     const customerSites = selectedCustId ? getSitesByCustomer(selectedCustId) : [];
 
@@ -316,8 +320,17 @@ export const CustomerApp = ({ onBack }) => {
 
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar: Customer List */}
-                <aside className="w-80 bg-slate-900/50 border-r border-slate-800 flex flex-col overflow-y-auto">
-                    <div className="p-4">
+                <aside className={`${sidebarWidth} bg-slate-900/50 border-r border-slate-800 flex flex-col transition-all duration-300 relative overflow-visible`}>
+                    {/* Toggle Button */}
+                    <button
+                        onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                        className="absolute top-4 -right-3 z-50 bg-slate-700 text-slate-300 rounded-full p-1.5 border border-slate-600 shadow-lg hover:bg-slate-600 hover:text-white transition-colors"
+                        title={isSidebarCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
+                    >
+                        {isSidebarCollapsed ? <Icons.ChevronRight size={16} /> : <Icons.ChevronLeft size={16} />}
+                    </button>
+
+                    <div className={`p-4 ${isSidebarCollapsed ? 'hidden' : ''}`}>
                         <div className="relative">
                             <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                             <input
@@ -329,7 +342,7 @@ export const CustomerApp = ({ onBack }) => {
                             />
                         </div>
                     </div>
-                    <div className="flex-1 px-2 space-y-1 pb-4">
+                    <div className="flex-1 px-2 space-y-1 pb-4 overflow-y-auto">
                         {filteredCustomers.length === 0 && (
                             <div className="text-center text-slate-500 py-10 text-sm">
                                 {searchQuery ? 'No customers found' : 'No customers yet. Create one to get started!'}
@@ -340,16 +353,25 @@ export const CustomerApp = ({ onBack }) => {
                                 key={cust.id}
                                 onClick={() => setSelectedCustId(cust.id)}
                                 className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${selectedCustId === cust.id ? 'bg-purple-900/40 border border-purple-500/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                                title={isSidebarCollapsed ? cust.name : ''}
                             >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    <span className="font-bold truncate">{cust.name}</span>
-                                    {cust.active === false && (
-                                        <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">Archived</span>
+                                    {isSidebarCollapsed ? (
+                                        <span className="font-bold text-lg">{cust.name.charAt(0)}</span>
+                                    ) : (
+                                        <>
+                                            <span className="font-bold truncate">{cust.name}</span>
+                                            {cust.active === false && (
+                                                <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">Archived</span>
+                                            )}
+                                        </>
                                     )}
                                 </div>
-                                <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
-                                    {getSitesByCustomer(cust.id).length}
-                                </span>
+                                {!isSidebarCollapsed && (
+                                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
+                                        {getSitesByCustomer(cust.id).length}
+                                    </span>
+                                )}
                             </button>
                         ))}
                     </div>
@@ -399,8 +421,8 @@ export const CustomerApp = ({ onBack }) => {
                                         <button
                                             onClick={handleArchiveCustomer}
                                             className={`px-3 py-1.5 border rounded-lg text-sm font-bold transition flex items-center gap-1 ${selectedCustomer.active === false
-                                                    ? 'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/50'
-                                                    : 'bg-slate-800 text-orange-400 border-orange-900 hover:bg-orange-900/20'
+                                                ? 'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/50'
+                                                : 'bg-slate-800 text-orange-400 border-orange-900 hover:bg-orange-900/20'
                                                 }`}
                                         >
                                             <Icons.Archive size={14} /> {selectedCustomer.active === false ? 'Restore' : 'Archive'}
@@ -1050,6 +1072,20 @@ export const CustomerApp = ({ onBack }) => {
                     </div>
                 </Modal>
             )}
+
+            {/* Floating Return to Portal Button - Bottom Right */}
+            <button
+                onClick={onBack}
+                className="fixed bottom-4 right-4 z-[9999] p-3 bg-slate-800 border border-slate-600 rounded-full shadow-2xl text-cyan-400 hover:bg-slate-700 hover:text-white transition-all hover:scale-110"
+                title="Return to App Portal"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect width="7" height="7" x="3" y="3" rx="1"></rect>
+                    <rect width="7" height="7" x="14" y="3" rx="1"></rect>
+                    <rect width="7" height="7" x="14" y="14" rx="1"></rect>
+                    <rect width="7" height="7" x="3" y="14" rx="1"></rect>
+                </svg>
+            </button>
 
         </div>
     );

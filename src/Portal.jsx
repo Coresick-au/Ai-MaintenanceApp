@@ -71,7 +71,7 @@ const Portal = () => {
                         <img
                             src="./logos/ai-logo.png"
                             alt="Accurate Industries"
-                            className="h-32 w-auto object-contain"
+                            className="h-64 w-auto object-contain"
                         />
                     </div>
                     <h1 className="text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-slate-100 to-slate-400 mb-4">
