@@ -280,6 +280,43 @@ export const GlobalDataProvider = ({ children }) => {
         }
     };
 
+    const deleteSite = async (siteId) => {
+        const site = sites.find(s => s.id === siteId);
+        const siteName = site ? site.name : 'this site';
+        if (!window.confirm(`Are you sure you want to delete "${siteName}"? This action cannot be undone.`)) return;
+
+        try {
+            await deleteDoc(doc(db, 'sites', siteId));
+            console.log('[GlobalDataContext] Site deleted:', siteId);
+        } catch (e) {
+            console.error('Error deleting site:', e);
+            alert('Failed to delete site.');
+        }
+    };
+
+    const toggleSiteStatus = async (siteId) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site) return;
+
+        const isArchiving = site.active !== false;
+        const message = isArchiving
+            ? `Are you sure you want to archive "${site.name}"?\n\nArchived sites are hidden by default but can be restored.`
+            : `Are you sure you want to restore "${site.name}"?`;
+
+        if (!window.confirm(message)) return;
+
+        try {
+            await updateDoc(doc(db, 'sites', siteId), {
+                active: !isArchiving,
+                archivedAt: isArchiving ? new Date().toISOString() : null
+            });
+            console.log('[GlobalDataContext] Site status toggled:', siteId);
+        } catch (e) {
+            console.error('Error toggling site status:', e);
+            alert('Failed to update site status.');
+        }
+    };
+
     const addCustomerNote = async (customerId, noteContent, noteAuthor) => {
         const customer = customers.find(c => c.id === customerId);
         if (!customer) {
@@ -374,6 +411,8 @@ export const GlobalDataProvider = ({ children }) => {
             deleteCustomerContact,
             addSite,
             updateSite,
+            deleteSite,
+            toggleSiteStatus,
             addCustomerNote,
             updateCustomerNote,
             deleteCustomerNote,

@@ -43,6 +43,8 @@ export const CustomerApp = ({ onBack }) => {
         archiveCustomerNote,
         addSite,
         updateSite,
+        deleteSite,
+        toggleSiteStatus,
         getSitesByCustomer
     } = useGlobalData();
 
@@ -451,8 +453,8 @@ export const CustomerApp = ({ onBack }) => {
                                     <div
                                         onClick={(e) => toggleLogoBg(e, selectedCustomer.id)}
                                         className={`w-20 h-20 rounded flex items-center justify-center text-slate-600 text-xs text-center overflow-hidden cursor-pointer transition-colors ${logoBackgrounds[selectedCustomer.id] === 'light'
-                                                ? 'bg-white border border-slate-200'
-                                                : 'bg-slate-800'
+                                            ? 'bg-white border border-slate-200'
+                                            : 'bg-slate-800'
                                             }`}
                                         title="Click to toggle background"
                                     >
@@ -559,23 +561,35 @@ export const CustomerApp = ({ onBack }) => {
                                                         )}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
-                                                        <div className="font-bold text-sm text-slate-200 truncate">{site.name}</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-bold text-sm text-slate-200 truncate">{site.name}</div>
+                                                            {site.active === false && (
+                                                                <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">Archived</span>
+                                                            )}
+                                                        </div>
                                                         <div className="text-xs text-slate-400 truncate">{site.location || "No Location"}</div>
                                                     </div>
-                                                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                         <button
                                                             onClick={() => handleEditSite(site)}
-                                                            className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
-                                                            title="Edit Site Details"
+                                                            className="text-blue-400 hover:text-blue-300 transition p-1"
+                                                            title="Edit site"
                                                         >
-                                                            <Icons.Edit size={16} />
+                                                            <Icons.Edit size={14} />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleViewSiteContacts(site)}
-                                                            className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
-                                                            title="View Contact Info"
+                                                            onClick={() => toggleSiteStatus(site.id)}
+                                                            className={`transition p-1 ${site.active === false ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'}`}
+                                                            title={site.active === false ? "Restore site" : "Archive site"}
                                                         >
-                                                            <Icons.Contact size={16} />
+                                                            {site.active === false ? <Icons.RotateCcw size={14} /> : <Icons.Archive size={14} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => deleteSite(site.id)}
+                                                            className="text-red-400 hover:text-red-300 transition p-1"
+                                                            title="Delete site"
+                                                        >
+                                                            <Icons.Trash size={14} />
                                                         </button>
                                                     </div>
                                                 </div>

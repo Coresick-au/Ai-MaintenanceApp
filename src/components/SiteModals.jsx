@@ -525,53 +525,7 @@ export const EditSiteModal = ({
           </div>
         </div>
 
-        {/* Task 3: Move Archive Customer Button to bottom */}
-        <div className="space-y-3 mt-4">
-          <div className="flex justify-between items-center p-3 bg-slate-700/30 rounded border border-slate-600">
-            <div>
-              <div className="text-sm font-bold text-slate-300">Customer Status</div>
-              <div className="text-xs text-slate-400">
-                {siteForm.active !== false ? 'Currently Active' : 'Currently Archived'}
-              </div>
-            </div>
-
-            {/* ARCHIVE BUTTON WITH CONFIRMATION */}
-            <button
-              onClick={() => {
-                const isArchiving = siteForm.active !== false;
-                const message = isArchiving
-                  ? "Are you sure you want to archive this customer?"
-                  : "Are you sure you want to restore this customer?";
-
-                if (window.confirm(message)) {
-                  onToggleStatus(siteForm);
-                }
-              }}
-              className={`px-3 py-1 text-xs font-bold rounded border ${siteForm.active !== false ? 'bg-slate-800 text-orange-400 border-orange-900 hover:bg-orange-900/20' : 'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/50'}`}
-            >
-              {siteForm.active !== false ? 'Archive Customer' : 'Restore Customer'}
-            </button>
-          </div>
-
-          <div className="flex gap-2">
-            {/* DOUBLE CONFIRMATION DELETE BUTTON */}
-            <button
-              onClick={() => {
-                if (window.confirm(`WARNING: You are about to delete ${siteForm.name}.\n\nAre you sure?`)) {
-                  if (window.confirm("This action cannot be undone.\n\nPress OK to permanently delete this site and all its data.")) {
-                    onDelete(siteForm.id);
-                    onClose(); // <--- ADD THIS to close the modal
-                  }
-                }
-              }}
-              className="flex-1 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-4 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
-            >
-              <Icons.Trash size={16} /> Delete Site
-            </button>
-
-            <Button onClick={() => onSave(siteForm)} className="flex-[2] justify-center">Save Changes</Button>
-          </div>
-        </div>
+        <Button onClick={() => onSave(siteForm)} className="w-full justify-center">Save Changes</Button>
       </div>
     </Modal>
   );

@@ -1289,6 +1289,29 @@ export function App() {
                 return archivedCount > 0 ? ` (${archivedCount} archived)` : '';
               })()}
             </p>
+
+            {/* Show Archived Toggle */}
+            <div className="mt-3 flex items-center justify-center gap-3">
+              <button
+                onClick={() => setShowArchived(!showArchived)}
+                className={`px-4 py-2 text-sm font-bold rounded-lg border transition-all flex items-center gap-2 ${showArchived
+                  ? 'bg-slate-700 text-white border-slate-600 shadow-md'
+                  : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white hover:border-slate-600'
+                  }`}
+              >
+                <Icons.Archive size={16} />
+                {showArchived ? 'Hide Archived Sites' : 'Show Archived Sites'}
+                {!showArchived && (() => {
+                  const totalArchivedCount = sites.filter(s => s.active === false).length;
+                  return totalArchivedCount > 0 ? (
+                    <span className="ml-1 px-1.5 py-0.5 bg-orange-500/20 text-orange-400 rounded text-xs">
+                      {totalArchivedCount}
+                    </span>
+                  ) : null;
+                })()}
+              </button>
+            </div>
+
             {/* Navigation Hint */}
             <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-xs text-cyan-400">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1353,9 +1376,11 @@ export function App() {
                   }}
                   className={`
                       relative overflow-hidden group cursor-pointer transition-all duration-300
-                      bg-slate-800/60 backdrop-blur-md border border-slate-700/50 hover:border-cyan-500/50 
-                      rounded-2xl p-6 hover:shadow-2xl hover:shadow-cyan-900/10 hover:-translate-y-1
+                      bg-slate-800/60 backdrop-blur-md border rounded-2xl p-6 hover:shadow-2xl hover:shadow-cyan-900/10 hover:-translate-y-1
                       flex flex-col
+                      ${site.active === false
+                      ? 'opacity-60 border-orange-500/30 hover:border-orange-500/50'
+                      : 'border-slate-700/50 hover:border-cyan-500/50'}
                     `}
                 >
                   {/* Decorative Top Gradient */}
@@ -1387,7 +1412,15 @@ export function App() {
                             {site.customer}
                           </div>
                         )}
-                        <h3 className="font-bold text-xl text-white group-hover:text-cyan-400 transition-colors">{site.name}</h3>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-xl text-white group-hover:text-cyan-400 transition-colors">{site.name}</h3>
+                          {site.active === false && (
+                            <span className="px-2 py-0.5 text-[10px] bg-orange-900/30 text-orange-400 rounded border border-orange-900/50 flex items-center gap-1">
+                              <Icons.Archive size={10} />
+                              Archived
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-slate-400 flex items-center gap-1">
                           <Icons.MapPin size={12} />
                           {getDisplayLocation(site)}
