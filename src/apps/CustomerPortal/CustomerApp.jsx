@@ -58,6 +58,7 @@ export const CustomerApp = ({ onBack }) => {
     const [isEditSiteOpen, setIsEditSiteOpen] = useState(false);
     const [isNotesOpen, setIsNotesOpen] = useState(false);
     const [isViewContactsOpen, setIsViewContactsOpen] = useState(false);
+    const [logoBackgrounds, setLogoBackgrounds] = useState({}); // Track logo bg per site
 
     // Temporary Form Data
     const [formData, setFormData] = useState({});
@@ -98,6 +99,16 @@ export const CustomerApp = ({ onBack }) => {
             };
             reader.readAsDataURL(file);
         }
+    }
+
+
+    // Toggle Logo Background
+    const toggleLogoBg = (e, id) => {
+        if (e) e.stopPropagation();
+        setLogoBackgrounds(prev => ({
+            ...prev,
+            [id]: prev[id] === 'light' ? 'dark' : 'light'
+        }));
     };
 
     const handleCreateCustomer = async () => {
@@ -437,9 +448,16 @@ export const CustomerApp = ({ onBack }) => {
                                 </div>
 
                                 <div className="bg-slate-900 p-2 rounded border border-slate-800">
-                                    <div className="w-20 h-20 bg-slate-800 rounded flex items-center justify-center text-slate-600 text-xs text-center overflow-hidden">
+                                    <div
+                                        onClick={(e) => toggleLogoBg(e, selectedCustomer.id)}
+                                        className={`w-20 h-20 rounded flex items-center justify-center text-slate-600 text-xs text-center overflow-hidden cursor-pointer transition-colors ${logoBackgrounds[selectedCustomer.id] === 'light'
+                                                ? 'bg-white border border-slate-200'
+                                                : 'bg-slate-800'
+                                            }`}
+                                        title="Click to toggle background"
+                                    >
                                         {selectedCustomer.logo ? (
-                                            <img src={selectedCustomer.logo} className="w-full h-full object-contain" alt="Logo" />
+                                            <img src={selectedCustomer.logo} className="w-full h-full object-contain p-1" alt="Logo" />
                                         ) : (
                                             "No Logo"
                                         )}
@@ -526,8 +544,19 @@ export const CustomerApp = ({ onBack }) => {
                                         {customerSites.map(site => (
                                             <div key={site.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700/50 hover:border-emerald-500/30 transition-colors group">
                                                 <div className="flex items-center gap-3">
-                                                    <div className="bg-emerald-500/10 text-emerald-500 p-2 rounded-lg flex-shrink-0">
-                                                        <Icons.Building size={16} />
+                                                    <div
+                                                        onClick={(e) => toggleLogoBg(e, site.id)}
+                                                        className={`rounded-lg flex-shrink-0 w-8 h-8 flex items-center justify-center overflow-hidden cursor-pointer transition-colors ${logoBackgrounds[site.id] === 'light'
+                                                            ? 'bg-white border border-slate-200'
+                                                            : 'bg-emerald-500/10 text-emerald-500'
+                                                            }`}
+                                                        title="Toggle logo background (Light/Dark)"
+                                                    >
+                                                        {site.logo ? (
+                                                            <img src={site.logo} alt={site.name} className="w-full h-full object-contain p-0.5" />
+                                                        ) : (
+                                                            <Icons.Building size={16} />
+                                                        )}
                                                     </div>
                                                     <div className="flex-1 min-w-0">
                                                         <div className="font-bold text-sm text-slate-200 truncate">{site.name}</div>

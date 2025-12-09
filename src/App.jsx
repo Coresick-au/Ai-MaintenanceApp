@@ -118,6 +118,8 @@ export function App() {
   const sidebarWidth = isSidebarCollapsed ? 'w-20' : 'w-64';
 
   const [expandedSiteCards, setExpandedSiteCards] = useState({});
+  const [isAddSiteInstructionsOpen, setIsAddSiteInstructionsOpen] = useState(false);
+  const [logoBackgrounds, setLogoBackgrounds] = useState({}); // Track logo bg per site card
 
   // Universal Action Wizard State
   const [wizardAction, setWizardAction] = useState(null); // 'analytics', 'report', 'specs'
@@ -127,9 +129,21 @@ export function App() {
 
   const toggleCardExpansion = (e, siteId) => {
     e.stopPropagation();
-    setExpandedSiteCards(prev => ({ ...prev, [siteId]: !prev[siteId] }));
+    setExpandedSiteCards(prev => ({
+      ...prev,
+      [siteId]: !prev[siteId]
+    }));
   };
-  // Actually, let's just use local state for now.
+
+  // Toggle Logo Background
+  const toggleLogoBg = (e, siteId) => {
+    if (e) e.stopPropagation();
+    setLogoBackgrounds(prev => ({
+      ...prev,
+      [siteId]: prev[siteId] === 'light' ? 'dark' : 'light'
+    }));
+  };
+
 
   // Calculate count of certifications/inductions needing attention
   const complianceIssuesCount = useMemo(() => {
@@ -1183,10 +1197,10 @@ export function App() {
                 <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Site Management</div>
               )}
 
-              {/* Add Site */}
+              {/* Add Site (Instructions Only) */}
               <button
                 type="button"
-                onClick={() => { closeFullscreen(); setSiteForm({ id: null, name: '', customer: '', location: '', fullLocation: '', streetAddress: '', city: '', state: '', postcode: '', country: 'Australia', gpsCoordinates: '', contactName: '', contactEmail: '', contactPosition: '', contactPhone1: '', contactPhone2: '', active: true, notes: [], logo: null }); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); setSelectedRowIds(new Set()); }}
+                onClick={() => { closeFullscreen(); setIsAddSiteInstructionsOpen(true); }}
                 className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} bg-cyan-600 hover:bg-cyan-500 text-white shadow-md`}
                 title={isSidebarCollapsed ? "Add New Site" : ""}
               >
@@ -1325,6 +1339,11 @@ export function App() {
               // For now, we check if site.issues exists. 
               const activeIssuesCount = (site.issues || []).filter(i => i.status !== 'Closed').length;
 
+              // Calculate combined or service-based counts for the display
+              const criticalCount = serviceStats.critical;
+              const warningCount = serviceStats.dueSoon;
+              const healthyCount = serviceStats.healthy;
+
               return (
                 <div
                   key={site.id}
@@ -1346,16 +1365,28 @@ export function App() {
                     <div className="flex items-center gap-4">
                       {/* Site Logo or Initial */}
                       {site.logo ? (
-                        <div className="w-12 h-12 rounded-lg bg-white p-1 shadow-md">
+                        <div
+                          onClick={(e) => toggleLogoBg(e, site.id)}
+                          className={`w-16 h-16 rounded-lg p-0.5 shadow-md cursor-pointer transition-colors flex items-center justify-center flex-shrink-0 ${logoBackgrounds[site.id] === 'light'
+                            ? 'bg-white'
+                            : 'bg-slate-800 border border-slate-700'
+                            }`}
+                          title="Click to toggle background (Light/Dark)"
+                        >
                           <img src={site.logo} alt="Logo" className="w-full h-full object-contain" />
                         </div>
                       ) : (
-                        <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-xl font-bold text-white shadow-lg">
+                        <div className="w-16 h-16 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg flex-shrink-0">
                           {site.name[0]}
                         </div>
                       )}
 
                       <div>
+                        {site.customer && (
+                          <div className="text-xs text-cyan-400 font-bold uppercase tracking-wider mb-0.5">
+                            {site.customer}
+                          </div>
+                        )}
                         <h3 className="font-bold text-xl text-white group-hover:text-cyan-400 transition-colors">{site.name}</h3>
                         <p className="text-sm text-slate-400 flex items-center gap-1">
                           <Icons.MapPin size={12} />
@@ -1395,20 +1426,27 @@ export function App() {
                     </div>
                   )}
 
-                  {/* Quick Stats Grid - Glass Pills */}
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/50 flex flex-col items-center">
-                      <span className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Service</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-white">{(site.serviceData || []).length}</span>
-                        <span className="text-xs text-slate-500">Assets</span>
+                  {/* Health Breakdown Grid */}
+                  <div className="grid grid-cols-3 gap-2 mb-4">
+                    {/* Critical */}
+                    <div className="bg-red-500/10 rounded-lg p-2 border border-red-500/30 flex flex-col items-center">
+                      <span className="text-xs text-red-400 uppercase font-bold tracking-wider mb-1">Critical</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-lg font-bold text-red-400">{criticalCount}</span>
                       </div>
                     </div>
-                    <div className="bg-slate-900/40 rounded-lg p-2 border border-slate-700/50 flex flex-col items-center">
-                      <span className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Rollers</span>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold text-white">{(site.rollerData || []).length}</span>
-                        <span className="text-xs text-slate-500">Assets</span>
+                    {/* Due Soon */}
+                    <div className="bg-amber-500/10 rounded-lg p-2 border border-amber-500/30 flex flex-col items-center">
+                      <span className="text-xs text-amber-400 uppercase font-bold tracking-wider mb-1">Due Soon</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-lg font-bold text-amber-400">{warningCount}</span>
+                      </div>
+                    </div>
+                    {/* Healthy */}
+                    <div className="bg-emerald-500/10 rounded-lg p-2 border border-emerald-500/30 flex flex-col items-center">
+                      <span className="text-xs text-emerald-400 uppercase font-bold tracking-wider mb-1">Healthy</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-lg font-bold text-emerald-400">{healthyCount}</span>
                       </div>
                     </div>
                   </div>
@@ -2043,6 +2081,43 @@ export function App() {
               <div>
                 <h4 className="font-bold text-slate-200 mb-2">Support</h4>
                 <p className="text-slate-300 text-sm">Contact BL if you find issues with the app so he can fix them.</p>
+              </div>
+            </div>
+          </Modal>
+        )
+      }
+
+      {/* INSTRUCTIONS MODAL FOR ADDING SITES */}
+      {
+        isAddSiteInstructionsOpen && (
+          <Modal title="How to Add a New Site" onClose={() => setIsAddSiteInstructionsOpen(false)}>
+            <div className="space-y-4">
+              <div className="bg-blue-500/10 border border-blue-500/20 text-blue-400 p-4 rounded-lg flex gap-3 text-sm">
+                <Icons.Info size={24} className="flex-shrink-0" />
+                <div>
+                  <p className="font-bold mb-1">Process Update</p>
+                  <p>To ensure data consistency, site management is now handled through the Customer details.</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-slate-300 text-sm">
+                <p>Please follow these steps to add a new site:</p>
+                <ol className="list-decimal pl-5 space-y-2 marker:text-cyan-500">
+                  <li>Return to the <strong>App Portal</strong>.</li>
+                  <li>Open the <strong>Customer Portal</strong> (CRM).</li>
+                  <li>Select the relevant <strong>Customer</strong> from the sidebar.</li>
+                  <li>Use the <strong>"Add Site"</strong> button within their profile.</li>
+                </ol>
+                <p className="pt-2 text-slate-400 text-xs">This ensures the site is correctly linked to the parent entity for reporting and billing.</p>
+              </div>
+
+              <div className="flex justify-end pt-4">
+                <button
+                  onClick={() => setIsAddSiteInstructionsOpen(false)}
+                  className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  Understood
+                </button>
               </div>
             </div>
           </Modal>

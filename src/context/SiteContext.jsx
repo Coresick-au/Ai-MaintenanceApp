@@ -604,14 +604,47 @@ export const SiteProvider = ({ children }) => {
         const sample = generateSampleSite();
 
         try {
-            // Save it to Firebase (Firestore)
-            // The 'onSnapshot' listener will automatically detect this new document and update the UI
+            // 1. Create a corresponding TEST CUSTOMER
+            const customerId = `cust-sample-${Date.now()}`;
+            const testCustomerName = `TEST - ${sample.customer}`;
+
+            const newCustomer = {
+                id: customerId,
+                name: testCustomerName,
+                contacts: [{
+                    id: `cont-${Date.now()}`,
+                    name: sample.contactName,
+                    email: sample.contactEmail,
+                    position: sample.contactPosition,
+                    phone: sample.contactPhone1
+                }],
+                createdAt: new Date().toISOString(),
+                notes: [{
+                    id: `n-${Date.now()}`,
+                    content: 'This is an auto-generated test customer for demonstration purposes.',
+                    author: 'System',
+                    timestamp: new Date().toISOString()
+                }]
+            };
+
+            // Save Customer to Firebase
+            await setDoc(doc(db, "customers", customerId), newCustomer);
+            console.log(`[Cloud] Demo customer generated: ${testCustomerName}`);
+
+            // 2. Link Site to this new Customer and update names
+            sample.customerId = customerId;
+            sample.customer = testCustomerName;
+            sample.name = `TEST - ${sample.name}`; // Ensure site name also says TEST
+
+            // Save Site to Firebase
             await setDoc(doc(db, "sites", sample.id), sample);
 
             console.log(`[Cloud] Demo site generated: ${sample.name}`);
+            alert(`Generated Test Customer: ${testCustomerName}\nGenerated Test Site: ${sample.name}`);
+
         } catch (error) {
-            console.error("Error creating demo site:", error);
-            alert("Failed to save demo site to the database.");
+            console.error("Error creating demo data:", error);
+            alert("Failed to save demo data to the database.");
         }
     };
     const handleClearAllHistory = () => { alert("Global history clear not implemented for Cloud DB"); };

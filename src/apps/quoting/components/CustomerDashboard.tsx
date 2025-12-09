@@ -48,7 +48,7 @@ export default function CustomerDashboard({
     const handleSelect = (customer: Customer) => {
         setSelectedId(customer.id);
         setEditName(customer.name);
-        setEditRates(customer.rates);
+        setEditRates(customer.rates || savedDefaultRates);
         setEditContacts(customer.contacts || []);
     };
 

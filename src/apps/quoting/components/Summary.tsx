@@ -1,6 +1,7 @@
 import { Copy, Eye, ExternalLink, X, Plus, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { useQuote } from '../hooks/useQuote';
+import ProfitabilityChart from './ProfitabilityChart';
 
 interface SummaryProps {
     quote: ReturnType<typeof useQuote>;
@@ -129,16 +130,22 @@ export default function Summary({ quote }: SummaryProps) {
     };
 
     const generateInvoiceString = () => {
-        // Calculate Totals - Unified labor costs
+        // Calculate Totals - Unified labor costs with proper rounding
         const totalNTCost = shifts.reduce((acc, s) => {
             const { breakdown } = calculateShiftBreakdown(s);
-            return acc + ((breakdown.siteNT + breakdown.travelInNT + breakdown.travelOutNT) * rates.siteNormal);
+            // Round each component to 2 decimal places before multiplying
+            const siteNTCost = Math.round(breakdown.siteNT * 100) / 100 * rates.siteNormal;
+            const travelNTCost = (Math.round(breakdown.travelInNT * 100) / 100 + Math.round(breakdown.travelOutNT * 100) / 100) * rates.siteNormal;
+            return acc + siteNTCost + travelNTCost;
         }, 0);
 
         const totalOTCost = shifts.reduce((acc, s) => {
             const { breakdown } = calculateShiftBreakdown(s);
             const rate = s.dayType === 'publicHoliday' ? rates.publicHoliday : (s.dayType === 'weekend' ? rates.weekend : rates.siteOvertime);
-            return acc + ((breakdown.siteOT + breakdown.travelInOT + breakdown.travelOutOT) * rate);
+            // Round each component to 2 decimal places before multiplying
+            const siteOTCost = Math.round(breakdown.siteOT * 100) / 100 * rate;
+            const travelOTCost = (Math.round(breakdown.travelInOT * 100) / 100 + Math.round(breakdown.travelOutOT * 100) / 100) * rate;
+            return acc + siteOTCost + travelOTCost;
         }, 0);
 
         const vehicleCost = shifts.filter(s => s.vehicle).length * rates.vehicle;
@@ -317,25 +324,52 @@ export default function Summary({ quote }: SummaryProps) {
 
                     <div className="space-y-3">
                         <div className="flex justify-between py-2 border-b border-gray-700">
-                            <span className="text-slate-300">Labor (Normal) ({totalNTHrs.toFixed(2)}h)</span>
+                            <span className="text-slate-300">Labor (Normal) ({totalNTHrs.toFixed(2)}h @ {formatMoney(rates.siteNormal)}/hr)</span>
                             <span className="font-mono">
                                 {formatMoney(shifts.reduce((acc, s) => {
                                     const { breakdown } = calculateShiftBreakdown(s);
-                                    const siteNTCost = breakdown.siteNT * rates.siteNormal;
-                                    const travelNTCost = (breakdown.travelInNT + breakdown.travelOutNT) * rates.siteNormal;
+                                    // Round each component to 2 decimal places before multiplying
+                                    const siteNTCost = Math.round(breakdown.siteNT * 100) / 100 * rates.siteNormal;
+                                    const travelNTCost = (Math.round(breakdown.travelInNT * 100) / 100 + Math.round(breakdown.travelOutNT * 100) / 100) * rates.siteNormal;
                                     return acc + siteNTCost + travelNTCost;
                                 }, 0))}
                             </span>
                         </div>
                         <div className="flex justify-between py-2 border-b border-gray-700">
-                            <span className="text-slate-300">Labor (Overtime) ({totalOTHrs.toFixed(2)}h)</span>
+                            <span className="text-slate-300">
+                                Labor (Overtime) ({totalOTHrs.toFixed(2)}h{
+                                    (() => {
+                                        // Check if all OT shifts use the same rate
+                                        const otRates = new Set();
+                                        shifts.forEach(s => {
+                                            const { breakdown } = calculateShiftBreakdown(s);
+                                            const otHours = breakdown.siteOT + breakdown.travelInOT + breakdown.travelOutOT;
+                                            // Use threshold to avoid floating-point precision issues
+                                            if (otHours > 0.01) {
+                                                const rate = s.dayType === 'publicHoliday' ? rates.publicHoliday : (s.dayType === 'weekend' ? rates.weekend : rates.siteOvertime);
+                                                otRates.add(rate);
+                                            }
+                                        });
+                                        if (otRates.size === 1) {
+                                            const rate = Array.from(otRates)[0] as number;
+                                            return ` @ ${formatMoney(rate)}/hr`;
+                                        } else if (otRates.size > 1) {
+                                            const sortedRates = Array.from(otRates).sort((a, b) => (a as number) - (b as number));
+                                            const rateString = sortedRates.map(r => formatMoney(r as number)).join(', ');
+                                            return ` @ Mixed (${rateString})`;
+                                        }
+                                        return '';
+                                    })()
+                                })
+                            </span>
                             <span className="font-mono">
                                 {formatMoney(shifts.reduce((acc, s) => {
                                     const { breakdown } = calculateShiftBreakdown(s);
                                     const siteOTRate = s.dayType === 'publicHoliday' ? rates.publicHoliday : (s.dayType === 'weekend' ? rates.weekend : rates.siteOvertime);
-                                    const siteOTCost = breakdown.siteOT * siteOTRate;
+                                    // Round each component to 2 decimal places before multiplying
+                                    const siteOTCost = Math.round(breakdown.siteOT * 100) / 100 * siteOTRate;
                                     const travelOTRate = s.dayType === 'publicHoliday' ? rates.publicHoliday : (s.dayType === 'weekend' ? rates.weekend : rates.siteOvertime);
-                                    const travelOTCost = (breakdown.travelInOT + breakdown.travelOutOT) * travelOTRate;
+                                    const travelOTCost = (Math.round(breakdown.travelInOT * 100) / 100 + Math.round(breakdown.travelOutOT * 100) / 100) * travelOTRate;
                                     return acc + siteOTCost + travelOTCost;
                                 }, 0))}
                             </span>
@@ -509,6 +543,15 @@ export default function Summary({ quote }: SummaryProps) {
                                 ></div>
                             </div>
                         </div>
+                    </div>
+
+                    {/* Visualization Graph */}
+                    <div className="mt-4 pt-4 border-t border-gray-700/50">
+                        <ProfitabilityChart
+                            revenue={totalCost}
+                            cost={internalLaborCost + totalInternalExpenses}
+                            profit={grossProfit}
+                        />
                     </div>
                 </div>
 

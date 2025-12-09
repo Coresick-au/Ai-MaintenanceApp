@@ -37,7 +37,8 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
             breakdown.travelOutOT = shift.travelOut;
 
             // Unified cost: Travel charged at same rate as Site
-            const totalOT = shift.travelIn + siteHours + shift.travelOut;
+            // Round each component to 2 decimal places before multiplying
+            const totalOT = Math.round(shift.travelIn * 100) / 100 + Math.round(siteHours * 100) / 100 + Math.round(shift.travelOut * 100) / 100;
             cost += totalOT * rates.siteOvertime;
         } else {
             let hoursConsumed = 0;
@@ -48,28 +49,30 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
             const travelInOT = shift.travelIn - travelInNT;
             hoursConsumed += shift.travelIn;
 
-            breakdown.travelInNT = travelInNT;
-            breakdown.travelInOT = travelInOT;
+            breakdown.travelInNT = Math.round(travelInNT * 100) / 100;
+            breakdown.travelInOT = Math.round(travelInOT * 100) / 100;
 
             // 2. Site Time
             const siteNT = Math.max(0, Math.min(siteHours, ntLimit - hoursConsumed));
             const siteOT = siteHours - siteNT;
             hoursConsumed += siteHours;
 
-            breakdown.siteNT = siteNT;
-            breakdown.siteOT = siteOT;
+            // Round breakdown values to 2 decimal places for precision
+            breakdown.siteNT = Math.round(siteNT * 100) / 100;
+            breakdown.siteOT = Math.round(siteOT * 100) / 100;
 
             // 3. Travel Out
             const travelOutNT = Math.max(0, Math.min(shift.travelOut, ntLimit - hoursConsumed));
             const travelOutOT = shift.travelOut - travelOutNT;
             hoursConsumed += shift.travelOut;
 
-            breakdown.travelOutNT = travelOutNT;
-            breakdown.travelOutOT = travelOutOT;
+            breakdown.travelOutNT = Math.round(travelOutNT * 100) / 100;
+            breakdown.travelOutOT = Math.round(travelOutOT * 100) / 100;
 
             // Unified cost calculation: Travel charged at same rate as Site
-            const totalNT = travelInNT + siteNT + travelOutNT;
-            const totalOT = travelInOT + siteOT + travelOutOT;
+            // Round each component to 2 decimal places before multiplying
+            const totalNT = Math.round(travelInNT * 100) / 100 + Math.round(siteNT * 100) / 100 + Math.round(travelOutNT * 100) / 100;
+            const totalOT = Math.round(travelInOT * 100) / 100 + Math.round(siteOT * 100) / 100 + Math.round(travelOutOT * 100) / 100;
 
             cost += totalNT * rates.siteNormal;
             cost += totalOT * rates.siteOvertime;
@@ -82,7 +85,8 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
         breakdown.travelOutOT = shift.travelOut;
 
         // Unified cost: All hours at weekend rate
-        const totalHours = siteHours + shift.travelIn + shift.travelOut;
+        // Round each component to 2 decimal places before multiplying
+        const totalHours = Math.round(siteHours * 100) / 100 + Math.round(shift.travelIn * 100) / 100 + Math.round(shift.travelOut * 100) / 100;
         cost += totalHours * rates.weekend;
 
     } else if (shift.dayType === 'publicHoliday') {
@@ -92,7 +96,8 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
         breakdown.travelOutNT = shift.travelOut;
 
         // Unified cost: All hours at public holiday rate
-        const totalHours = siteHours + shift.travelIn + shift.travelOut;
+        // Round each component to 2 decimal places before multiplying
+        const totalHours = Math.round(siteHours * 100) / 100 + Math.round(shift.travelIn * 100) / 100 + Math.round(shift.travelOut * 100) / 100;
         cost += totalHours * rates.publicHoliday;
     }
 
