@@ -2,7 +2,7 @@ import { Download, Upload } from 'lucide-react';
 
 interface BackupRestoreProps {
     exportState: () => void;
-    importState: (fileContent: string) => boolean;
+    importState: (fileContent: string) => Promise<boolean>;
 }
 
 export default function BackupRestore({ exportState, importState }: BackupRestoreProps) {
@@ -11,13 +11,18 @@ export default function BackupRestore({ exportState, importState }: BackupRestor
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const content = event.target?.result as string;
-            const success = importState(content);
-            if (success) {
-                alert('Data imported successfully!');
-            } else {
-                alert('Failed to import data. Please check the file format.');
+            try {
+                const success = await importState(content);
+                if (success) {
+                    alert('Data imported successfully! Quotes have been saved to the cloud.');
+                } else {
+                    alert('Failed to import data. Please check the file format.');
+                }
+            } catch (error) {
+                console.error('Import error:', error);
+                alert('Failed to import data. Error: ' + error);
             }
         };
         reader.readAsText(file);

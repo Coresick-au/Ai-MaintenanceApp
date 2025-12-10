@@ -1219,26 +1219,7 @@ export function App() {
                 {!isSidebarCollapsed && <span>Add Demo Site</span>}
               </button>
 
-              <div className="border-t border-slate-700 my-3"></div>
-              {!isSidebarCollapsed && (
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-wider px-3 py-2">Tools</div>
-              )}
-
-              {/* Technicians & Training */}
-              <button
-                type="button"
-                onClick={() => setIsEmployeeManagerOpen(true)}
-                className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} text-slate-300 hover:text-white hover:bg-slate-700 relative`}
-                title={isSidebarCollapsed ? "Technicians & Training" : ""}
-              >
-                <Icons.Users size={18} />
-                {!isSidebarCollapsed && <span>Technicians & Training</span>}
-                {complianceIssuesCount > 0 && (
-                  <span className={`${isSidebarCollapsed ? 'absolute -top-1 -right-1' : 'ml-auto'} bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1`}>
-                    {complianceIssuesCount}
-                  </span>
-                )}
-              </button>
+              {/* Tools section removed - Employee Management is now a standalone app */}
             </>
           )}
         </nav>
@@ -2245,6 +2226,7 @@ export function App() {
               <ServiceReportForm
                 site={selectedSite}
                 asset={selectedAsset}
+                employees={employees}
                 onClose={() => {
                   setIsServiceReportOpen(false);
                   setEditingReportId(null);
@@ -2356,15 +2338,7 @@ export function App() {
         )
       }
 
-      {/* EMPLOYEE MANAGER MODAL */}
-      <EmployeeManager
-        isOpen={isEmployeeManagerOpen}
-        onClose={() => setIsEmployeeManagerOpen(false)}
-        employees={employees}
-        sites={sites}
-        onAddEmployee={handleAddEmployee}
-        onUpdateEmployee={handleUpdateEmployee}
-      />
+      {/* EMPLOYEE MANAGER MODAL - Removed, now a standalone app */}
 
     </div >
   );

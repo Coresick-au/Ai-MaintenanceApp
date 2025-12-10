@@ -5,7 +5,7 @@ import { GeneralTab } from './tabs/GeneralTab';
 import { CalibrationTab } from './tabs/CalibrationTab';
 import { IntegratorTab } from './tabs/IntegratorTab';
 
-export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = null, readOnly = false }) => {
+export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave, initialData = null, readOnly = false }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [draftSaved, setDraftSaved] = useState(false);
 
@@ -193,6 +193,7 @@ export const ServiceReportForm = ({ site, asset, onClose, onSave, initialData = 
                             onChange={handleGeneralChange}
                             site={site}
                             asset={asset}
+                            employees={employees}
                             readOnly={readOnly}
                         />
                     )}

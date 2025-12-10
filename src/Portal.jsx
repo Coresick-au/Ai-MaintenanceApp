@@ -3,6 +3,7 @@ import { MaintenanceWrapper } from './apps/MaintenanceWrapper';
 import { InventoryApp } from './apps/InventoryApp';
 import { QuotingWrapper } from './apps/quoting/QuotingWrapper';
 import { CustomerApp } from './apps/CustomerPortal/CustomerApp';
+import { EmployeeApp } from './apps/employees/EmployeeApp';
 
 const Portal = () => {
     const [activeApp, setActiveApp] = useState(null); // null = Portal Home
@@ -26,6 +27,15 @@ const Portal = () => {
             icon: '🛠️',
             color: 'cyan',
             component: <MaintenanceWrapper onBack={() => setActiveApp(null)} />
+        },
+        {
+            id: 'employees',
+            name: 'Team Management',
+            fullName: 'Employee & Training Manager',
+            description: 'Manage employees, certifications, site access, and compliance tracking.',
+            icon: '👥',
+            color: 'blue',
+            component: <EmployeeApp onBack={() => setActiveApp(null)} />
         },
         {
             id: 'inventory',

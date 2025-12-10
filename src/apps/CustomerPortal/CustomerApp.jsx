@@ -197,7 +197,8 @@ export const CustomerApp = ({ onBack }) => {
             role: contact.role || '',
             email: contact.email || '',
             phone: contact.phone || '',
-            sendReports: contact.sendReports || false
+            sendReports: contact.sendReports || false,
+            managedSites: contact.managedSites || [] // NEW
         });
         setIsEditContactOpen(true);
     };
@@ -517,6 +518,20 @@ export const CustomerApp = ({ onBack }) => {
                                                 <div className="mt-2 text-xs text-slate-500 space-y-1">
                                                     {contact.email && <div>✉️ {contact.email}</div>}
                                                     {contact.phone && <div>📞 {contact.phone}</div>}
+                                                    {/* NEW: Managed Sites */}
+                                                    {contact.managedSites && contact.managedSites.length > 0 && (
+                                                        <div className="flex flex-wrap gap-1 mt-2">
+                                                            <span className="text-slate-400">Manages:</span>
+                                                            {contact.managedSites.map(siteId => {
+                                                                const site = sites.find(s => s.id === siteId);
+                                                                return site ? (
+                                                                    <span key={siteId} className="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded text-[10px] border border-emerald-800">
+                                                                        {site.name}
+                                                                    </span>
+                                                                ) : null;
+                                                            })}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
                                         ))}
@@ -739,6 +754,36 @@ export const CustomerApp = ({ onBack }) => {
                                 <div className="text-xs text-slate-400">Enable to include in site reporting lists</div>
                             </div>
                         </label>
+
+                        {/* NEW: Managed Sites Multi-Select */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                                {customerSites.length === 0 ? (
+                                    <div className="text-xs text-slate-500 italic">No sites available for this customer</div>
+                                ) : (
+                                    customerSites.map(site => (
+                                        <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
+                                            <input
+                                                type="checkbox"
+                                                checked={(formData.managedSites || []).includes(site.id)}
+                                                onChange={(e) => {
+                                                    const current = formData.managedSites || [];
+                                                    const updated = e.target.checked
+                                                        ? [...current, site.id]
+                                                        : current.filter(id => id !== site.id);
+                                                    setFormData({ ...formData, managedSites: updated });
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500"
+                                            />
+                                            <span className="text-sm text-slate-300">{site.name}</span>
+                                        </label>
+                                    ))
+                                )}
+                            </div>
+                            <div className="text-xs text-slate-400">Select which sites this contact manages</div>
+                        </div>
+
                         <button
                             onClick={handleCreateContact}
                             className="w-full bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold transition"
@@ -791,6 +836,36 @@ export const CustomerApp = ({ onBack }) => {
                                 <div className="text-xs text-slate-400">Enable to include in site reporting lists</div>
                             </div>
                         </label>
+
+                        {/* NEW: Managed Sites Multi-Select */}
+                        <div className="space-y-2">
+                            <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
+                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                                {sites.length === 0 ? (
+                                    <div className="text-xs text-slate-500 italic">No sites available</div>
+                                ) : (
+                                    sites.map(site => (
+                                        <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
+                                            <input
+                                                type="checkbox"
+                                                checked={(formData.managedSites || []).includes(site.id)}
+                                                onChange={(e) => {
+                                                    const current = formData.managedSites || [];
+                                                    const updated = e.target.checked
+                                                        ? [...current, site.id]
+                                                        : current.filter(id => id !== site.id);
+                                                    setFormData({ ...formData, managedSites: updated });
+                                                }}
+                                                className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500"
+                                            />
+                                            <span className="text-sm text-slate-300">{site.name}</span>
+                                        </label>
+                                    ))
+                                )}
+                            </div>
+                            <div className="text-xs text-slate-400">Select which sites this contact manages</div>
+                        </div>
+
                         <button
                             onClick={handleUpdateContact}
                             className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"

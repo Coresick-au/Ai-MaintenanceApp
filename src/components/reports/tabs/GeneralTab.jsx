@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const GeneralTab = ({ formData, onChange, site, asset, readOnly = false }) => {
+export const GeneralTab = ({ formData, onChange, site, asset, employees = [], readOnly = false }) => {
     const handleChange = (field, value) => {
         onChange(field, value);
     };
@@ -75,7 +75,12 @@ export const GeneralTab = ({ formData, onChange, site, asset, readOnly = false }
                     />
                 </div>
                 <div>
-                    <label className="text-xs text-slate-400 block mb-1">Next Service Date</label>
+                    <label className="text-xs text-slate-400 block mb-1">
+                        Next Service Date
+                        {asset?.serviceSchedule && (
+                            <span className="text-slate-500"> ({asset.serviceSchedule})</span>
+                        )}
+                    </label>
                     <input
                         type="date"
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
@@ -112,11 +117,26 @@ export const GeneralTab = ({ formData, onChange, site, asset, readOnly = false }
                 <div>
                     <label className="text-xs text-slate-400 block mb-1">Technicians</label>
                     <input
+                        type="text"
                         className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
                         value={formData.technicians}
                         onChange={e => handleChange('technicians', e.target.value)}
-                        placeholder="e.g., Tech A, Tech B"
+                        placeholder="e.g., John Doe, Jane Smith"
+                        list="technician-suggestions"
                     />
+                    <datalist id="technician-suggestions">
+                        {employees.map(emp => (
+                            <option
+                                key={emp.id}
+                                value={`${emp.name}${emp.phone ? ` (${emp.phone})` : ''}${emp.email ? ` | ${emp.email}` : ''}`}
+                            >
+                                {emp.name} - {emp.role || 'No role'}
+                            </option>
+                        ))}
+                    </datalist>
+                    <p className="text-xs text-slate-500 mt-1">
+                        Type to search employees or enter custom names (comma-separated)
+                    </p>
                 </div>
                 <div>
                     <label className="text-xs text-amber-500 block mb-1 font-bold">Internal Comments (Not on PDF)</label>

@@ -153,4 +153,32 @@ export class CustomerRepository extends BaseRepository {
         await this.update(customerId, { notes: updatedNotes });
         return true;
     }
+
+    /**
+     * Archive a customer (soft delete)
+     * @param {string} customerId - Customer ID
+     * @returns {Promise<Object>} Updated customer
+     */
+    async archiveCustomer(customerId) {
+        return this.update(customerId, { status: 'archived' });
+    }
+
+    /**
+     * Restore an archived customer
+     * @param {string} customerId - Customer ID
+     * @returns {Promise<Object>} Updated customer
+     */
+    async restoreCustomer(customerId) {
+        return this.update(customerId, { status: 'active' });
+    }
+
+    /**
+     * Delete a customer permanently
+     * WARNING: This permanently deletes the customer and all associated data
+     * @param {string} customerId - Customer ID
+     * @returns {Promise<boolean>} True if successful
+     */
+    async deleteCustomer(customerId) {
+        return this.delete(customerId);
+    }
 }

@@ -41,7 +41,7 @@ const generateSampleReports = (startDate, numReports = 4) => {
     const oldTare = (1000 + Math.random() * 500).toFixed(1);
     const newTare = (parseFloat(oldTare) + (Math.random() * 20 - 10)).toFixed(1);
     const tareChange = ((parseFloat(newTare) - parseFloat(oldTare)) / parseFloat(oldTare) * 100).toFixed(2);
-    
+
     const oldSpan = (5000 + Math.random() * 1000).toFixed(1);
     const newSpan = (parseFloat(oldSpan) + (Math.random() * 50 - 25)).toFixed(1);
     const spanChange = ((parseFloat(newSpan) - parseFloat(oldSpan)) / parseFloat(oldSpan) * 100).toFixed(2);
@@ -109,11 +109,11 @@ const generateSampleReports = (startDate, numReports = 4) => {
       }
     ] : [];
 
-    const techNames = ["C. Bateman", "J. Smith", "M. Johnson", "A. Williams", "R. Brown"];
+    // Use generic system identifier instead of hardcoded employee names
     const jobNumbers = ["251486", "251487", "251488", "251489", "251490"];
     const jobCodes = ["cv06", "cv07", "cv08", "cv09", "cv10"];
 
-    const selectedTech = techNames[Math.floor(Math.random() * techNames.length)];
+    const selectedTech = "System Generated"; // Generic identifier instead of employee names
     const selectedJobNumber = jobNumbers[Math.floor(Math.random() * jobNumbers.length)];
     const selectedJobCode = jobCodes[Math.floor(Math.random() * jobCodes.length)];
     const dateStr = date.toISOString().split('T')[0].replace(/-/g, '.');
@@ -123,32 +123,32 @@ const generateSampleReports = (startDate, numReports = 4) => {
       date: date.toISOString().split('T')[0],
       fileName: `${dateStr}-CALR-${selectedJobNumber}-${selectedJobCode}.pdf`,
       technician: selectedTech,
-      
+
       // Basic Info
       scaleCondition: scaleConditions[Math.floor(Math.random() * scaleConditions.length)],
-      
+
       // Tare/Zero
       oldTare: oldTare,
       newTare: newTare,
       tareChange: parseFloat(tareChange),
       tareRepeatability: tareRepeatability,
-      
+
       // Span
       oldSpan: oldSpan,
       newSpan: newSpan,
       spanChange: parseFloat(spanChange),
       spanRepeatability: spanRepeatability,
-      
+
       // Load Cell
       lcMvZero: lcMvZero,
       lcMvSpan: lcMvSpan,
-      
+
       // Belt & Speed
       beltSpeed: parseFloat(beltSpeed),
       beltLength: parseFloat(beltLength),
       testLength: parseFloat(testLength),
       testTime: parseFloat(testTime),
-      
+
       // System Tests
       totaliserAsLeft: totaliserAsLeft,
       revTime: parseFloat(revTime),
@@ -157,15 +157,15 @@ const generateSampleReports = (startDate, numReports = 4) => {
       simulatedRate: parseFloat(simulatedRate),
       targetWeight: parseFloat(targetWeight),
       totaliser: totaliser,
-      
+
       // Comments and Recommendations
       comments: comments,
       recommendations: recommendationOptions[Math.floor(Math.random() * recommendationOptions.length)],
-      
+
       // File naming
       jobNumber: selectedJobNumber,
       jobCode: selectedJobCode,
-      
+
       // Legacy fields for compatibility
       zeroMV: lcMvZero,
       spanMV: lcMvSpan,

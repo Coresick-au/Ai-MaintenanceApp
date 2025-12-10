@@ -5,6 +5,15 @@ import { Icons } from '../constants/icons';
 import { formatDate } from '../utils/helpers';
 import { getExpiryStatus, getStatusColorClasses } from '../utils/employeeUtils';
 
+// Define the Roles based on professional standards
+const ROLES = [
+    'Service Technician',
+    'Office Manager',
+    'General Manager',
+    'Service Manager',
+    'Projects Manager'
+];
+
 // --- NEW COMPONENT: Compliance Overview Dashboard ---
 const ComplianceDashboard = ({ employees, onSelectEmp }) => {
     const expiringItems = useMemo(() => {
@@ -91,13 +100,22 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
 
 export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmployee, onUpdateEmployee }) => {
     const [selectedEmp, setSelectedEmp] = useState(null);
-    const [newEmpForm, setNewEmpForm] = useState({ name: '', role: 'Technician', email: '', phone: '' });
-    const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', cost: '' });
+    const [newEmpForm, setNewEmpForm] = useState({
+        name: '',
+        role: 'Service Technician',
+        email: '',
+        phone: '',
+        address: '',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        status: 'active'
+    });
+    const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '' });
     const [newInductionForm, setNewInductionForm] = useState({ siteId: '', expiry: '' });
 
     // NEW: Edit states
     const [editingCertId, setEditingCertId] = useState(null);
-    const [editCertForm, setEditCertForm] = useState({ name: '', provider: '', expiry: '' });
+    const [editCertForm, setEditCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '' });
     const [editingInductionId, setEditingInductionId] = useState(null);
     const [editInductionForm, setEditInductionForm] = useState({ siteId: '', expiry: '' });
 
@@ -166,7 +184,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                         <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Technicians</div>
 
                         <div className="space-y-2 overflow-y-auto flex-1">
-                            {employees.map(emp => {
+                            {employees.filter(emp => emp.status !== 'archived').map(emp => {
                                 const hasCertIssues = emp.certifications?.some(cert => ['expired', 'warning'].includes(getExpiryStatus(cert.expiry)));
                                 const hasInductionIssues = emp.inductions?.some(ind => ['expired', 'warning'].includes(getExpiryStatus(ind.expiry)));
                                 const hasIssues = hasCertIssues || hasInductionIssues;
@@ -189,6 +207,28 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                 );
                             })}
                         </div>
+
+                        {/* Option to show Archived employees */}
+                        <details className="mt-2 text-sm">
+                            <summary className="text-slate-400 cursor-pointer hover:text-slate-200 px-1">
+                                View Archived Technicians ({employees.filter(emp => emp.status === 'archived').length})
+                            </summary>
+                            <div className="space-y-2 mt-2">
+                                {employees.filter(emp => emp.status === 'archived').map(emp => (
+                                    <div
+                                        key={emp.id}
+                                        onClick={() => setSelectedEmp(emp)}
+                                        className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedEmp?.id === emp.id
+                                            ? 'bg-purple-900/30 border-purple-500'
+                                            : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-700/50 opacity-70'
+                                            }`}
+                                    >
+                                        <div className="font-bold text-slate-400">{emp.name} (ARCHIVED)</div>
+                                        <div className="text-xs text-slate-500">{emp.role}</div>
+                                    </div>
+                                ))}
+                            </div>
+                        </details>
 
                         {/* --- INFO PANEL / LEGEND --- */}
                         <div className="mt-4 pt-4 border-t border-slate-700 text-xs text-slate-400 bg-slate-900/50 p-3 rounded-lg">
@@ -220,41 +260,84 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                 <h3 className="text-lg font-bold text-white mb-4">Onboard New Team Member</h3>
                                 <div className="space-y-4">
                                     <input
-                                        placeholder="Full Name"
+                                        placeholder="Full Name (Mandatory)"
                                         className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
                                         value={newEmpForm.name}
                                         onChange={e => setNewEmpForm({ ...newEmpForm, name: e.target.value })}
                                     />
                                     <input
-                                        placeholder="Role (e.g. Lead Tech)"
+                                        type="text"
+                                        placeholder="Role/Title (e.g., Service Technician, Office Manager, etc.)"
                                         className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
                                         value={newEmpForm.role}
                                         onChange={e => setNewEmpForm({ ...newEmpForm, role: e.target.value })}
+                                        list="role-suggestions"
                                     />
+                                    <datalist id="role-suggestions">
+                                        {ROLES.map(role => (
+                                            <option key={role} value={role} />
+                                        ))}
+                                    </datalist>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <input
-                                            placeholder="Phone"
+                                            placeholder="Primary Phone"
                                             className="bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
                                             value={newEmpForm.phone}
                                             onChange={e => setNewEmpForm({ ...newEmpForm, phone: e.target.value })}
                                         />
                                         <input
-                                            placeholder="Email"
+                                            placeholder="Primary Email (Mandatory, Unique)"
                                             className="bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
                                             value={newEmpForm.email}
                                             onChange={e => setNewEmpForm({ ...newEmpForm, email: e.target.value })}
                                         />
                                     </div>
+
+                                    {/* NEW: Address Field */}
+                                    <input
+                                        placeholder="Residential Address"
+                                        className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
+                                        value={newEmpForm.address}
+                                        onChange={e => setNewEmpForm({ ...newEmpForm, address: e.target.value })}
+                                    />
+
+                                    {/* NEW: Emergency Contact Fields */}
+                                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-700">
+                                        <input
+                                            placeholder="Emergency Contact Name"
+                                            className="bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
+                                            value={newEmpForm.emergencyContactName}
+                                            onChange={e => setNewEmpForm({ ...newEmpForm, emergencyContactName: e.target.value })}
+                                        />
+                                        <input
+                                            placeholder="Emergency Contact Phone"
+                                            className="bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
+                                            value={newEmpForm.emergencyContactPhone}
+                                            onChange={e => setNewEmpForm({ ...newEmpForm, emergencyContactPhone: e.target.value })}
+                                        />
+                                    </div>
+
                                     <button
                                         onClick={() => {
-                                            if (!newEmpForm.name) return;
+                                            if (!newEmpForm.name || !newEmpForm.email) return window.alert("Name and Email are mandatory fields.");
+
                                             onAddEmployee(newEmpForm);
                                             setSelectedEmp(null);
-                                            setNewEmpForm({ name: '', role: 'Technician', email: '', phone: '' });
+                                            setNewEmpForm({
+                                                name: '',
+                                                role: 'Service Technician',
+                                                email: '',
+                                                phone: '',
+                                                address: '',
+                                                emergencyContactName: '',
+                                                emergencyContactPhone: '',
+                                                status: 'active'
+                                            });
                                         }}
                                         className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-3 rounded-lg font-medium transition-colors"
                                     >
-                                        Save Technician
+                                        Save New Employee
                                     </button>
                                 </div>
                             </div>
@@ -269,14 +352,49 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                             <span>{selectedEmp.role}</span>
                                             {selectedEmp.phone && <span>• {selectedEmp.phone}</span>}
                                             {selectedEmp.email && <span>• {selectedEmp.email}</span>}
+                                            {selectedEmp.status === 'archived' && <span className="text-red-500 font-bold">• ARCHIVED</span>}
                                         </div>
                                     </div>
-                                    <button
-                                        onClick={() => setSelectedEmp(null)}
-                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                                    >
-                                        Close
-                                    </button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => {
+                                                const newStatus = selectedEmp.status === 'active' ? 'archived' : 'active';
+                                                onUpdateEmployee(selectedEmp.id, { status: newStatus });
+                                                setSelectedEmp({ ...selectedEmp, status: newStatus });
+                                            }}
+                                            className={`px-4 py-2 text-sm rounded-lg transition-colors ${selectedEmp.status === 'active'
+                                                ? 'bg-red-700 hover:bg-red-600 text-white'
+                                                : 'bg-green-700 hover:bg-green-600 text-white'}`}
+                                        >
+                                            {selectedEmp.status === 'active' ? 'Archive Employee' : 'Restore Employee'}
+                                        </button>
+                                        <button
+                                            onClick={() => setSelectedEmp(null)}
+                                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                        >
+                                            Close
+                                        </button>
+                                    </div>
+                                </div>
+
+                                {/* NEW: Personnel Details Card */}
+                                <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                                    <h3 className="font-bold text-slate-200 mb-3">Personnel Details</h3>
+                                    <div className="grid grid-cols-2 gap-y-2 text-sm">
+                                        <div className="text-slate-500">Address:</div>
+                                        <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
+
+                                        <div className="text-slate-500">Emergency Contact Name:</div>
+                                        <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
+
+                                        <div className="text-slate-500">Emergency Contact Phone:</div>
+                                        <div className="text-slate-300">{selectedEmp.emergencyContactPhone || 'N/A'}</div>
+
+                                        <div className="text-slate-500">Status:</div>
+                                        <div className={`font-bold uppercase text-xs ${selectedEmp.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
+                                            {selectedEmp.status || 'active'}
+                                        </div>
+                                    </div>
                                 </div>
 
                                 {/* CERTIFICATIONS TABLE */}
@@ -286,7 +404,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                     </div>
 
                                     {/* Add Cert Form (Inline) */}
-                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700 grid grid-cols-5 gap-2">
+                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700 grid grid-cols-6 gap-2">
                                         <input
                                             placeholder="Name (e.g. First Aid)"
                                             className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
@@ -306,6 +424,13 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                             onChange={e => setNewCertForm({ ...newCertForm, expiry: e.target.value })}
                                             title="Expiry Date"
                                         />
+                                        <input
+                                            placeholder="PDF Link (OneDrive)"
+                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={newCertForm.pdfUrl}
+                                            onChange={e => setNewCertForm({ ...newCertForm, pdfUrl: e.target.value })}
+                                            title="OneDrive PDF Link"
+                                        />
                                         <button
                                             onClick={() => {
                                                 if (!newCertForm.name) return;
@@ -315,7 +440,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                     date: new Date().toISOString().split('T')[0]
                                                 }];
                                                 onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
-                                                setNewCertForm({ name: '', provider: '', expiry: '', cost: '' });
+                                                setNewCertForm({ name: '', provider: '', expiry: '', pdfUrl: '' });
                                                 setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
                                             }}
                                             className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
@@ -331,6 +456,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 <th className="px-4 py-2">Provider</th>
                                                 <th className="px-4 py-2">Expiry</th>
                                                 <th className="px-4 py-2">Status</th>
+                                                <th className="px-4 py-2 w-12">PDF</th>
                                                 <th className="px-4 py-2 w-20">Actions</th>
                                             </tr>
                                         </thead>
@@ -367,6 +493,14 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                 </td>
                                                                 <td className="px-4 py-2"></td>
                                                                 <td className="px-4 py-2">
+                                                                    <input
+                                                                        placeholder="PDF URL"
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editCertForm.pdfUrl}
+                                                                        onChange={e => setEditCertForm({ ...editCertForm, pdfUrl: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-4 py-2">
                                                                     <div className="flex gap-1">
                                                                         <button
                                                                             onClick={() => {
@@ -402,6 +536,21 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                         {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
                                                                     </span>
                                                                 </td>
+                                                                <td className="px-4 py-2 text-center">
+                                                                    {cert.pdfUrl ? (
+                                                                        <a
+                                                                            href={cert.pdfUrl}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-blue-400 hover:text-blue-300 transition-colors inline-block"
+                                                                            title="View Certificate PDF"
+                                                                        >
+                                                                            <Icons.ExternalLink size={14} />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="text-slate-600">-</span>
+                                                                    )}
+                                                                </td>
                                                                 <td className="px-4 py-2">
                                                                     <div className="flex gap-1">
                                                                         <button
@@ -410,7 +559,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                                 setEditCertForm({
                                                                                     name: cert.name,
                                                                                     provider: cert.provider || '',
-                                                                                    expiry: cert.expiry || ''
+                                                                                    expiry: cert.expiry || '',
+                                                                                    pdfUrl: cert.pdfUrl || ''
                                                                                 });
                                                                             }}
                                                                             className="text-blue-400 hover:text-blue-300"

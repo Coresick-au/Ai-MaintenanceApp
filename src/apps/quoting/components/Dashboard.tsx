@@ -21,7 +21,7 @@ interface DashboardProps {
     resetToDefaults: () => void;
     savedDefaultRates: Rates;
     exportState: () => void;
-    importState: (fileContent: string) => boolean;
+    importState: (fileContent: string) => Promise<boolean>;
 }
 
 export default function Dashboard({
@@ -45,13 +45,18 @@ export default function Dashboard({
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onload = (e) => {
+            reader.onload = async (e) => {
                 const content = e.target?.result as string;
-                const success = importState(content);
-                if (success) {
-                    alert('State imported successfully!');
-                } else {
-                    alert('Failed to import state. Please check the file format.');
+                try {
+                    const success = await importState(content);
+                    if (success) {
+                        alert('State imported successfully! Quotes have been saved to the cloud.');
+                    } else {
+                        alert('Failed to import state. Please check the file format.');
+                    }
+                } catch (error) {
+                    console.error('Import error:', error);
+                    alert('Failed to import state. Error: ' + error);
                 }
             };
             reader.readAsText(file);
@@ -283,7 +288,7 @@ export default function Dashboard({
                             <h2 className="text-xl font-semibold text-slate-200 mb-2">Backup & Restore</h2>
                             <p className="text-sm text-slate-400">Save and restore your complete application data including quotes, customers, and default rates.</p>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
                                 <h3 className="text-xl font-bold uppercase text-slate-100 tracking-wider mb-3 flex items-center gap-2">
@@ -294,11 +299,10 @@ export default function Dashboard({
                                 </p>
                                 <button
                                     onClick={handleBackup}
-                                    className={`w-full px-4 py-2 rounded font-medium transition-colors flex items-center justify-center gap-2 ${
-                                        backupSuccess 
-                                            ? 'bg-success text-white' 
+                                    className={`w-full px-4 py-2 rounded font-medium transition-colors flex items-center justify-center gap-2 ${backupSuccess
+                                            ? 'bg-success text-white'
                                             : 'bg-gray-600 text-white hover:bg-gray-500'
-                                    }`}
+                                        }`}
                                 >
                                     {backupSuccess ? (
                                         <>
@@ -311,7 +315,7 @@ export default function Dashboard({
                                     )}
                                 </button>
                             </div>
-                            
+
                             <div className="bg-gray-700 p-4 rounded-lg border border-gray-600">
                                 <h3 className="text-xl font-bold uppercase text-slate-100 tracking-wider mb-3 flex items-center gap-2">
                                     <Upload size={18} /> Import Data
@@ -334,7 +338,7 @@ export default function Dashboard({
                                 </button>
                             </div>
                         </div>
-                        
+
                         <div className="mt-6 p-4 bg-amber-900/20 border border-amber-700 rounded-lg">
                             <p className="text-sm text-amber-300">
                                 <strong>Warning:</strong> Importing data will overwrite all existing quotes, customers, and settings. Consider creating a backup before importing.

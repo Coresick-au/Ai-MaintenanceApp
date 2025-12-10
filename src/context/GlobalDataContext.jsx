@@ -329,6 +329,39 @@ export const GlobalDataProvider = ({ children }) => {
 
     const getCustomerById = (customerId) => customers.find(c => c.id === customerId);
 
+    // --- EMPLOYEE ACTIONS ---
+
+    const addEmployee = async (data) => {
+        const id = `emp-${Date.now()}`;
+        const newEmployee = {
+            id,
+            ...data,
+            status: data.status || 'active',
+            certifications: data.certifications || [],
+            siteInductions: data.siteInductions || [],
+            createdAt: new Date().toISOString()
+        };
+        try {
+            await employeeRepository.create(id, newEmployee);
+            console.log('[GlobalDataContext] Employee created:', id);
+            return id;
+        } catch (e) {
+            console.error('Error creating employee:', e);
+            alert('Failed to create employee.');
+            return null;
+        }
+    };
+
+    const updateEmployee = async (id, data) => {
+        try {
+            await employeeRepository.update(id, data);
+            console.log('[GlobalDataContext] Employee updated:', id);
+        } catch (e) {
+            console.error('Error updating employee:', e);
+            alert('Failed to update employee.');
+        }
+    };
+
     return (
         <GlobalDataContext.Provider value={{
             customers,
@@ -350,7 +383,9 @@ export const GlobalDataProvider = ({ children }) => {
             deleteCustomerNote,
             archiveCustomerNote,
             getSitesByCustomer,
-            getCustomerById
+            getCustomerById,
+            addEmployee,
+            updateEmployee
         }}>
             {children}
         </GlobalDataContext.Provider>

@@ -91,6 +91,48 @@ export class BaseRepository {
     }
 
     /**
+     * Save a document (create or update with auto-ID generation)
+     * Best practice method that handles both create and update operations
+     * @param {Object} data - Document data (with or without id field)
+     * @returns {Promise<Object>} Saved document with ID and timestamps
+     */
+    async save(data) {
+        try {
+            const now = new Date().toISOString();
+            let docRef;
+            let docId;
+            let docData;
+
+            if (data.id) {
+                // Update existing document
+                docId = data.id;
+                docRef = doc(db, this.collectionName, docId);
+                const { id, createdAt, ...restData } = data;
+                docData = {
+                    ...restData,
+                    updatedAt: now
+                };
+                await setDoc(docRef, docData, { merge: true });
+            } else {
+                // Create new document with auto-generated ID
+                docRef = doc(collection(db, this.collectionName));
+                docId = docRef.id;
+                docData = {
+                    ...data,
+                    createdAt: now,
+                    updatedAt: now
+                };
+                await setDoc(docRef, docData);
+            }
+
+            return { id: docId, ...docData };
+        } catch (error) {
+            console.error(`Error saving ${this.collectionName}:`, error);
+            throw error;
+        }
+    }
+
+    /**
      * Delete a document
      * @param {string} id - Document ID
      * @returns {Promise<boolean>} True if successful
