@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { db } from '../firebase';
-import { collection, onSnapshot, doc, setDoc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { customerRepository, siteRepository, employeeRepository } from '../repositories';
 
 const GlobalDataContext = createContext();
 
@@ -12,15 +11,14 @@ export const GlobalDataProvider = ({ children }) => {
 
     const [isRepairing, setIsRepairing] = useState(false);
 
-    // --- SYNC FROM FIREBASE ---
+    // --- SYNC FROM FIREBASE USING REPOSITORIES ---
     useEffect(() => {
-        console.log('[GlobalDataContext] Initializing Firebase Listeners...');
+        console.log('[GlobalDataContext] Initializing Repository Listeners...');
 
         // 1. Sync Customers
-        const unsubCustomers = onSnapshot(
-            collection(db, 'customers'),
-            (snap) => {
-                const cloudCustomers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const unsubCustomers = customerRepository.subscribe(
+            [],
+            (cloudCustomers) => {
                 console.log('[GlobalDataContext] Synced customers:', cloudCustomers.length);
                 setCustomers(cloudCustomers);
             },
@@ -30,10 +28,9 @@ export const GlobalDataProvider = ({ children }) => {
         );
 
         // 2. Sync Sites
-        const unsubSites = onSnapshot(
-            collection(db, 'sites'),
-            (snap) => {
-                const cloudSites = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const unsubSites = siteRepository.subscribe(
+            [],
+            (cloudSites) => {
                 console.log('[GlobalDataContext] Synced sites:', cloudSites.length);
                 setSites(cloudSites);
             },
@@ -43,10 +40,9 @@ export const GlobalDataProvider = ({ children }) => {
         );
 
         // 3. Sync Employees
-        const unsubEmployees = onSnapshot(
-            collection(db, 'employees'),
-            (snap) => {
-                const cloudEmployees = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const unsubEmployees = employeeRepository.subscribe(
+            [],
+            (cloudEmployees) => {
                 console.log('[GlobalDataContext] Synced employees:', cloudEmployees.length);
                 setEmployees(cloudEmployees);
             },
@@ -89,9 +85,7 @@ export const GlobalDataProvider = ({ children }) => {
             for (const [customerName, siteList] of Object.entries(orphansByCustomer)) {
                 try {
                     // 1. Check if customer already exists (case-insensitive)
-                    let targetCustomer = customers.find(c =>
-                        c.name.toLowerCase() === customerName.toLowerCase()
-                    );
+                    let targetCustomer = await customerRepository.findByName(customerName);
 
                     // 2. If not, create it
                     if (!targetCustomer) {
@@ -103,17 +97,14 @@ export const GlobalDataProvider = ({ children }) => {
                             createdAt: new Date().toISOString(),
                             autoCreated: true // Flag to know it was auto-generated
                         };
-                        await setDoc(doc(db, 'customers', newId), newCustomer);
+                        await customerRepository.create(newId, newCustomer);
                         targetCustomer = newCustomer;
                         console.log(`[GlobalData] Auto-created customer: ${customerName}`);
                     }
 
                     // 3. Link all sites to this customer
                     for (const site of siteList) {
-                        await updateDoc(doc(db, 'sites', site.id), {
-                            customerId: targetCustomer.id,
-                            customer: targetCustomer.name // Ensure name matches exactly
-                        });
+                        await siteRepository.linkToCustomer(site.id, targetCustomer.id, targetCustomer.name);
                         console.log(`[GlobalData] Linked site ${site.name} to customer ${targetCustomer.name}`);
                     }
                 } catch (error) {
@@ -139,7 +130,7 @@ export const GlobalDataProvider = ({ children }) => {
             createdAt: new Date().toISOString()
         };
         try {
-            await setDoc(doc(db, 'customers', id), newCustomer);
+            await customerRepository.create(id, newCustomer);
             console.log('[GlobalDataContext] Customer created:', id);
             return id;
         } catch (e) {
@@ -151,7 +142,7 @@ export const GlobalDataProvider = ({ children }) => {
 
     const updateCustomer = async (id, data) => {
         try {
-            await updateDoc(doc(db, 'customers', id), data);
+            await customerRepository.update(id, data);
             console.log('[GlobalDataContext] Customer updated:', id);
         } catch (e) {
             console.error('Error updating customer:', e);
@@ -172,7 +163,7 @@ export const GlobalDataProvider = ({ children }) => {
         if (!window.confirm(`Are you sure you want to delete "${customerName}"? This action cannot be undone.`)) return;
 
         try {
-            await deleteDoc(doc(db, 'customers', id));
+            await customerRepository.delete(id);
             console.log('[GlobalDataContext] Customer deleted:', id);
         } catch (e) {
             console.error('Error deleting customer:', e);
@@ -183,21 +174,8 @@ export const GlobalDataProvider = ({ children }) => {
     // --- CONTACT ACTIONS (Sub-entity of Customer) ---
 
     const addContactToCustomer = async (customerId, contactData) => {
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) {
-            console.error('Customer not found:', customerId);
-            return;
-        }
-
-        const newContact = {
-            id: `cont-${Date.now()}`,
-            siteIds: [], // Track which sites this contact manages
-            ...contactData
-        };
-        const updatedContacts = [...(customer.contacts || []), newContact];
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { contacts: updatedContacts });
+            await customerRepository.addContact(customerId, contactData);
             console.log('[GlobalDataContext] Contact added to customer:', customerId);
         } catch (e) {
             console.error('Error adding contact:', e);
@@ -206,15 +184,8 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const updateCustomerContact = async (customerId, contactId, updatedData) => {
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-
-        const updatedContacts = (customer.contacts || []).map(c =>
-            c.id === contactId ? { ...c, ...updatedData } : c
-        );
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { contacts: updatedContacts });
+            await customerRepository.updateContact(customerId, contactId, updatedData);
             console.log('[GlobalDataContext] Contact updated:', contactId);
         } catch (e) {
             console.error('Error updating contact:', e);
@@ -230,10 +201,8 @@ export const GlobalDataProvider = ({ children }) => {
         const contactName = contact ? contact.name : 'this contact';
         if (!window.confirm(`Are you sure you want to delete "${contactName}"?`)) return;
 
-        const updatedContacts = (customer.contacts || []).filter(c => c.id !== contactId);
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { contacts: updatedContacts });
+            await customerRepository.deleteContact(customerId, contactId);
             console.log('[GlobalDataContext] Contact deleted:', contactId);
         } catch (e) {
             console.error('Error deleting contact:', e);
@@ -260,7 +229,7 @@ export const GlobalDataProvider = ({ children }) => {
         };
 
         try {
-            await setDoc(doc(db, 'sites', id), newSite);
+            await siteRepository.create(id, newSite);
             console.log('[GlobalDataContext] Site created:', id);
             return id;
         } catch (e) {
@@ -272,7 +241,7 @@ export const GlobalDataProvider = ({ children }) => {
 
     const updateSite = async (siteId, data) => {
         try {
-            await updateDoc(doc(db, 'sites', siteId), data);
+            await siteRepository.update(siteId, data);
             console.log('[GlobalDataContext] Site updated:', siteId);
         } catch (e) {
             console.error('Error updating site:', e);
@@ -286,7 +255,7 @@ export const GlobalDataProvider = ({ children }) => {
         if (!window.confirm(`Are you sure you want to delete "${siteName}"? This action cannot be undone.`)) return;
 
         try {
-            await deleteDoc(doc(db, 'sites', siteId));
+            await siteRepository.delete(siteId);
             console.log('[GlobalDataContext] Site deleted:', siteId);
         } catch (e) {
             console.error('Error deleting site:', e);
@@ -306,10 +275,7 @@ export const GlobalDataProvider = ({ children }) => {
         if (!window.confirm(message)) return;
 
         try {
-            await updateDoc(doc(db, 'sites', siteId), {
-                active: !isArchiving,
-                archivedAt: isArchiving ? new Date().toISOString() : null
-            });
+            await siteRepository.toggleStatus(siteId);
             console.log('[GlobalDataContext] Site status toggled:', siteId);
         } catch (e) {
             console.error('Error toggling site status:', e);
@@ -318,23 +284,8 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const addCustomerNote = async (customerId, noteContent, noteAuthor) => {
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) {
-            console.error('Customer not found:', customerId);
-            return;
-        }
-
-        const newNote = {
-            id: `note-${Date.now()}`,
-            content: noteContent,
-            author: noteAuthor || 'Unknown',
-            timestamp: new Date().toISOString(),
-            archived: false
-        };
-        const updatedNotes = [...(customer.notes || []), newNote];
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { notes: updatedNotes });
+            await customerRepository.addNote(customerId, noteContent, noteAuthor);
             console.log('[GlobalDataContext] Note added to customer:', customerId);
         } catch (e) {
             console.error('Error adding note:', e);
@@ -343,15 +294,8 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const updateCustomerNote = async (customerId, noteId, updatedContent) => {
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-
-        const updatedNotes = (customer.notes || []).map(n =>
-            n.id === noteId ? { ...n, content: updatedContent, lastEdited: new Date().toISOString() } : n
-        );
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { notes: updatedNotes });
+            await customerRepository.updateNote(customerId, noteId, updatedContent);
             console.log('[GlobalDataContext] Note updated:', noteId);
         } catch (e) {
             console.error('Error updating note:', e);
@@ -360,15 +304,10 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const deleteCustomerNote = async (customerId, noteId) => {
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-
         if (!window.confirm('Are you sure you want to delete this note? This action cannot be undone.')) return;
 
-        const updatedNotes = (customer.notes || []).filter(n => n.id !== noteId);
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { notes: updatedNotes });
+            await customerRepository.deleteNote(customerId, noteId);
             console.log('[GlobalDataContext] Note deleted:', noteId);
         } catch (e) {
             console.error('Error deleting note:', e);
@@ -377,15 +316,8 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const archiveCustomerNote = async (customerId, noteId, isArchived) => {
-        const customer = customers.find(c => c.id === customerId);
-        if (!customer) return;
-
-        const updatedNotes = (customer.notes || []).map(n =>
-            n.id === noteId ? { ...n, archived: !isArchived } : n
-        );
-
         try {
-            await updateDoc(doc(db, 'customers', customerId), { notes: updatedNotes });
+            await customerRepository.toggleNoteArchive(customerId, noteId, isArchived);
             console.log('[GlobalDataContext] Note archived status toggled:', noteId);
         } catch (e) {
             console.error('Error archiving note:', e);

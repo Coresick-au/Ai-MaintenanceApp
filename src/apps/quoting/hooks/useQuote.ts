@@ -3,6 +3,8 @@ import type { Rates, JobDetails, Shift, ExtraItem, Quote, Customer, Status, Inte
 import { calculateShiftBreakdown as calculateLogic } from '../logic';
 // @ts-ignore
 import { useGlobalData } from '../../../context/GlobalDataContext';
+// @ts-ignore
+import { quoteRepository } from '../../../repositories';
 
 
 export const DEFAULT_RATES: Rates = {
@@ -55,7 +57,7 @@ const DEFAULT_SHIFTS: Shift[] = [
     }
 ];
 
-const QUOTES_STORAGE_KEY = 'service-quoter-quotes';
+// const QUOTES_STORAGE_KEY = 'service-quoter-quotes'; // Removed
 // const CUSTOMERS_STORAGE_KEY = 'service-quoter-customers'; // Removed
 const TECHNICIANS_STORAGE_KEY = 'service-quoter-technicians';
 const DEFAULT_RATES_STORAGE_KEY = 'service-quoter-default-rates';
@@ -84,51 +86,36 @@ export function useQuote() {
     const [extras, setExtras] = useState<ExtraItem[]>([{ id: 1, description: 'Accommodation', cost: 0 }]);
     const [internalExpenses, setInternalExpenses] = useState<InternalExpense[]>([]);
 
-    // Load from local storage on mount (Quotes, Techs, Default Rates only)
+    // --- REPOSITORY INTEGRATION ---
+    // 1. Sync Saved Quotes from Firestore using Repository
     useEffect(() => {
-        const savedQ = localStorage.getItem(QUOTES_STORAGE_KEY);
-        // const savedC = localStorage.getItem(CUSTOMERS_STORAGE_KEY); // Removed
+        const unsubscribe = quoteRepository.subscribeToQuotes(
+            (cloudQuotes: any) => {
+                setSavedQuotes(cloudQuotes as Quote[]);
+                setIsLoaded(true);
+            },
+            (error: any) => {
+                console.error("Error fetching quotes:", error);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
+    // Load from local storage (Technicians & Default Rates only - kept local for user preference)
+    useEffect(() => {
         const savedT = localStorage.getItem(TECHNICIANS_STORAGE_KEY);
         const savedDR = localStorage.getItem(DEFAULT_RATES_STORAGE_KEY);
 
-        if (savedQ) {
-            try {
-                setSavedQuotes(JSON.parse(savedQ));
-            } catch (e) {
-                console.error("Failed to load quotes", e);
-            }
-        }
-
-        // Customers loaded via GlobalContext
-
         if (savedT) {
-            try {
-                setSavedTechnicians(JSON.parse(savedT));
-            } catch (e) {
-                console.error("Failed to load technicians", e);
-            }
+            try { setSavedTechnicians(JSON.parse(savedT)); } catch (e) { console.error(e); }
         }
-
         if (savedDR) {
-            try {
-                const loadedRates = JSON.parse(savedDR);
-                setSavedDefaultRates(loadedRates);
-            } catch (e) {
-                console.error("Failed to load default rates", e);
-            }
+            try { setSavedDefaultRates(JSON.parse(savedDR)); } catch (e) { console.error(e); }
         }
-
-        setIsLoaded(true);
     }, []);
 
-    // Save lists to local storage
-    useEffect(() => {
-        if (!isLoaded) return;
-        localStorage.setItem(QUOTES_STORAGE_KEY, JSON.stringify(savedQuotes));
-    }, [savedQuotes, isLoaded]);
-
-    // Customers saved via GlobalContext
-
+    // Save Technicians & Rates to local storage
     useEffect(() => {
         if (!isLoaded) return;
         localStorage.setItem(TECHNICIANS_STORAGE_KEY, JSON.stringify(savedTechnicians));
@@ -139,18 +126,35 @@ export function useQuote() {
         localStorage.setItem(DEFAULT_RATES_STORAGE_KEY, JSON.stringify(savedDefaultRates));
     }, [savedDefaultRates, isLoaded]);
 
-    // Auto-save active quote to list
+    // 2. Auto-save Active Quote to Firestore using Repository
     useEffect(() => {
         if (!activeQuoteId || !isLoaded) return;
 
-        setSavedQuotes(prev => prev.map(q =>
-            q.id === activeQuoteId
-                ? { ...q, status, rates, jobDetails, shifts, extras, internalExpenses, lastModified: Date.now() }
-                : q
-        ));
+        const saveToCloud = async () => {
+            const updates = {
+                status,
+                rates,
+                jobDetails,
+                shifts,
+                extras,
+                internalExpenses,
+                lastModified: Date.now()
+            };
+
+            try {
+                await quoteRepository.update(activeQuoteId, updates);
+            } catch (e) {
+                console.error("Error auto-saving quote:", e);
+            }
+        };
+
+        // Use a timeout to debounce updates (prevent too many writes)
+        const timer = setTimeout(saveToCloud, 1000);
+        return () => clearTimeout(timer);
+
     }, [status, rates, jobDetails, shifts, extras, internalExpenses, activeQuoteId, isLoaded]);
 
-    const createNewQuote = () => {
+    const createNewQuote = async () => {
         const newId = crypto.randomUUID();
 
         // Auto-increment Quote Number
@@ -171,8 +175,14 @@ export function useQuote() {
             extras: [{ id: 1, description: 'Accommodation', cost: 0 }],
             internalExpenses: []
         };
-        setSavedQuotes([...savedQuotes, newQuote]);
-        loadQuote(newId, newQuote);
+
+        try {
+            await quoteRepository.create(newId, newQuote);
+            loadQuote(newId, newQuote);
+        } catch (e) {
+            console.error("Error creating quote:", e);
+            alert("Failed to create new quote in cloud.");
+        }
     };
 
     const loadQuote = (id: string, quoteData?: Quote) => {
@@ -188,10 +198,17 @@ export function useQuote() {
         setInternalExpenses(quote.internalExpenses || []);
     };
 
-    const deleteQuote = (id: string) => {
-        setSavedQuotes(savedQuotes.filter(q => q.id !== id));
-        if (activeQuoteId === id) {
-            setActiveQuoteId(null);
+    const deleteQuote = async (id: string) => {
+        if (!confirm("Are you sure you want to delete this quote?")) return;
+
+        try {
+            await quoteRepository.delete(id);
+            if (activeQuoteId === id) {
+                setActiveQuoteId(null);
+            }
+        } catch (e) {
+            console.error("Error deleting quote:", e);
+            alert("Failed to delete quote.");
         }
     };
 
@@ -382,12 +399,14 @@ export function useQuote() {
         URL.revokeObjectURL(url);
     };
 
-    const importState = (fileContent: string) => {
+    const importState = async (fileContent: string) => {
         try {
             const state = JSON.parse(fileContent);
 
             if (state.savedQuotes && Array.isArray(state.savedQuotes)) {
-                setSavedQuotes(state.savedQuotes);
+                // Import quotes to Firestore using Repository
+                await quoteRepository.importQuotes(state.savedQuotes);
+                console.log(`Imported ${state.savedQuotes.length} quotes to Firestore`);
             }
 
             // Note: We deliberately DO NOT overwrite global customers from import
