@@ -52,20 +52,6 @@ export default function CustomerDashboard({
         setEditContacts(customer.contacts || []);
     };
 
-    const handleCreate = () => {
-        const newId = crypto.randomUUID();
-        const newCustomer: Customer = {
-            id: newId,
-            name: 'New Customer',
-            rates: DEFAULT_RATES,
-            contacts: [],
-        };
-        saveCustomer(newCustomer);
-        setEditRates(DEFAULT_RATES);
-        setEditContacts([]);
-        handleSelect(newCustomer);
-    };
-
 
     const addContact = () => {
         if (newContactName.trim()) {
@@ -101,9 +87,9 @@ export default function CustomerDashboard({
                 <div className="p-4 border-b border-gray-600 flex justify-between items-center">
                     <h2 className="font-semibold text-slate-200">Customers</h2>
                     <button
-                        onClick={handleCreate}
-                        className="bg-primary-600 text-white p-2 rounded hover:bg-primary-700"
-                        title="Add Customer"
+                        disabled
+                        className="bg-gray-600 text-slate-400 p-2 rounded cursor-not-allowed opacity-50"
+                        title="Create customers in the Customer Portal"
                     >
                         <Plus size={20} />
                     </button>
@@ -168,16 +154,19 @@ export default function CustomerDashboard({
                     <>
                         <div className="bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-700">
                             <div className="flex justify-between items-end mb-4">
-                                <div className="w-full max-w-md">
+                                <div className="w-full">
                                     <label className="block text-sm text-slate-300 mb-1">Customer Name</label>
-                                    <input
-                                        type="text"
-                                        value={editName}
-                                        onChange={(e) => setEditName(e.target.value)}
-                                        disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
-                                        className={`w-full text-xl font-semibold border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none py-2 px-3 ${savedCustomers.find(c => c.id === selectedId)?.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        placeholder="Enter customer name"
-                                    />
+                                    <div className="w-full text-xl font-semibold border border-gray-600 rounded bg-gray-700/50 text-slate-100 py-2 px-3 opacity-75">
+                                        {editName}
+                                    </div>
+                                    <p className="text-xs text-cyan-400 mt-1 flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M12 16v-4"></path>
+                                            <path d="M12 8h.01"></path>
+                                        </svg>
+                                        To edit customer name, use the Customer Portal
+                                    </p>
                                 </div>
                                 <button
                                     onClick={() => {

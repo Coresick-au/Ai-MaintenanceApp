@@ -4,6 +4,7 @@ import { Modal, Button } from './UIComponents';
 import { Icons } from '../constants/icons';
 import { formatDate } from '../utils/helpers';
 import { getExpiryStatus, getStatusColorClasses } from '../utils/employeeUtils';
+import { INDUCTION_CATEGORIES, getCategoryColors, getInductionLabel, getCategoryIcon } from '../constants/inductionCategories';
 
 // Define the Roles based on professional standards
 const ROLES = [
@@ -111,13 +112,13 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
         status: 'active'
     });
     const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '' });
-    const [newInductionForm, setNewInductionForm] = useState({ siteId: '', expiry: '' });
+    const [newInductionForm, setNewInductionForm] = useState({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
 
     // NEW: Edit states
     const [editingCertId, setEditingCertId] = useState(null);
     const [editCertForm, setEditCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '' });
     const [editingInductionId, setEditingInductionId] = useState(null);
-    const [editInductionForm, setEditInductionForm] = useState({ siteId: '', expiry: '' });
+    const [editInductionForm, setEditInductionForm] = useState({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
 
     // Filter for active sites only - MUST BE BEFORE EARLY RETURN
     const activeSites = useMemo(() => {
@@ -601,55 +602,87 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                     </div>
 
                                     {/* Add Induction Form (Inline) */}
-                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700 grid grid-cols-5 gap-2">
-                                        <select
-                                            className="col-span-3 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
-                                            value={newInductionForm.siteId}
-                                            onChange={e => setNewInductionForm({ ...newInductionForm, siteId: e.target.value })}
-                                        >
-                                            <option value="">Select Site...</option>
-                                            {activeSites.map(site => (
-                                                <option key={site.id} value={site.id}>
-                                                    {site.customer} - {site.location}
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700 space-y-2">
+                                        <div className="grid grid-cols-6 gap-2">
+                                            <select
+                                                className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newInductionForm.category}
+                                                onChange={e => setNewInductionForm({ ...newInductionForm, category: e.target.value })}
+                                            >
+                                                {Object.entries(INDUCTION_CATEGORIES).map(([key, cat]) => (
+                                                    <option key={key} value={key}>
+                                                        {cat.icon} {cat.label}
+                                                    </option>
+                                                ))}
+                                            </select>
 
+                                            <select
+                                                className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newInductionForm.siteId}
+                                                onChange={e => setNewInductionForm({ ...newInductionForm, siteId: e.target.value })}
+                                            >
+                                                <option value="">Select Site...</option>
+                                                {activeSites.map(site => (
+                                                    <option key={site.id} value={site.id}>
+                                                        {site.customer} - {site.location}
+                                                    </option>
+                                                ))}
+                                            </select>
+
+                                            <input
+                                                type="date"
+                                                className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newInductionForm.expiry}
+                                                onChange={e => setNewInductionForm({ ...newInductionForm, expiry: e.target.value })}
+                                                title="Expiry Date"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    if (!newInductionForm.siteId) return;
+
+                                                    const selectedSite = activeSites.find(s => s.id === newInductionForm.siteId);
+                                                    const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.location}` : 'Unknown Site';
+
+                                                    const updatedInductions = [...(selectedEmp.inductions || []), {
+                                                        id: `ind-${Date.now()}`,
+                                                        siteId: newInductionForm.siteId,
+                                                        name: siteName,
+                                                        category: newInductionForm.category,
+                                                        customCategory: newInductionForm.customCategory,
+                                                        expiry: newInductionForm.expiry,
+                                                        notes: newInductionForm.notes,
+                                                        date: new Date().toISOString().split('T')[0]
+                                                    }];
+
+                                                    onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
+                                                    setNewInductionForm({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
+                                                    setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
+                                                }}
+                                                className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
+                                            >
+                                                + Add
+                                            </button>
+                                        </div>
+                                        {newInductionForm.category === 'custom' && (
+                                            <input
+                                                placeholder="Custom Category Name (e.g., 'Confined Space', 'Working at Heights')"
+                                                className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newInductionForm.customCategory}
+                                                onChange={e => setNewInductionForm({ ...newInductionForm, customCategory: e.target.value })}
+                                            />
+                                        )}
                                         <input
-                                            type="date"
-                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
-                                            value={newInductionForm.expiry}
-                                            onChange={e => setNewInductionForm({ ...newInductionForm, expiry: e.target.value })}
-                                            title="Expiry Date"
+                                            placeholder="Notes (optional)"
+                                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={newInductionForm.notes}
+                                            onChange={e => setNewInductionForm({ ...newInductionForm, notes: e.target.value })}
                                         />
-                                        <button
-                                            onClick={() => {
-                                                if (!newInductionForm.siteId) return;
-
-                                                const selectedSite = activeSites.find(s => s.id === newInductionForm.siteId);
-                                                const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.location}` : 'Unknown Site';
-
-                                                const updatedInductions = [...(selectedEmp.inductions || []), {
-                                                    id: `ind-${Date.now()}`,
-                                                    siteId: newInductionForm.siteId,
-                                                    name: siteName,
-                                                    expiry: newInductionForm.expiry,
-                                                    date: new Date().toISOString().split('T')[0]
-                                                }];
-
-                                                onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
-                                                setNewInductionForm({ siteId: '', expiry: '' });
-                                                setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
-                                            }}
-                                            className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
-                                        >
-                                            + Add
-                                        </button>
                                     </div>
 
                                     <table className="w-full text-sm text-left">
                                         <thead className="text-xs text-slate-500 uppercase bg-slate-900">
                                             <tr>
+                                                <th className="px-4 py-2">Category</th>
                                                 <th className="px-4 py-2">Site / Induction</th>
                                                 <th className="px-4 py-2">Expiry</th>
                                                 <th className="px-4 py-2">Status</th>
@@ -700,7 +733,10 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                                         ...i,
                                                                                         siteId: editInductionForm.siteId,
                                                                                         name: siteName,
-                                                                                        expiry: editInductionForm.expiry
+                                                                                        category: editInductionForm.category,
+                                                                                        customCategory: editInductionForm.customCategory,
+                                                                                        expiry: editInductionForm.expiry,
+                                                                                        notes: editInductionForm.notes
                                                                                     } : i
                                                                                 );
                                                                                 onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
@@ -724,6 +760,17 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                             </>
                                                         ) : (
                                                             <>
+                                                                <td className="px-4 py-2">
+                                                                    {(() => {
+                                                                        const category = ind.category || 'site';
+                                                                        const colors = getCategoryColors(category);
+                                                                        return (
+                                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${colors.bg} ${colors.border} ${colors.text}`}>
+                                                                                {getCategoryIcon(category)} {getInductionLabel(ind)}
+                                                                            </span>
+                                                                        );
+                                                                    })()}
+                                                                </td>
                                                                 <td className="px-4 py-2 font-medium text-slate-200">{ind.name}</td>
                                                                 <td className="px-4 py-2 text-slate-300">{ind.expiry ? formatDate(ind.expiry) : '-'}</td>
                                                                 <td className="px-4 py-2">
@@ -738,7 +785,10 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                                                 setEditingInductionId(ind.id);
                                                                                 setEditInductionForm({
                                                                                     siteId: ind.siteId || '',
-                                                                                    expiry: ind.expiry || ''
+                                                                                    category: ind.category || 'site',
+                                                                                    customCategory: ind.customCategory || '',
+                                                                                    expiry: ind.expiry || '',
+                                                                                    notes: ind.notes || ''
                                                                                 });
                                                                             }}
                                                                             className="text-blue-400 hover:text-blue-300"

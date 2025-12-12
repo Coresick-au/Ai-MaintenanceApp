@@ -362,6 +362,20 @@ export const GlobalDataProvider = ({ children }) => {
         }
     };
 
+    const deleteEmployee = async (id) => {
+        const employee = employees.find(e => e.id === id);
+        const empName = employee ? employee.name : 'this employee';
+        if (!window.confirm(`Are you sure you want to delete "${empName}"? All certifications and inductions will be permanently removed.`)) return;
+
+        try {
+            await employeeRepository.deleteEmployee(id);
+            console.log('[GlobalDataContext] Employee deleted:', id);
+        } catch (e) {
+            console.error('Error deleting employee:', e);
+            alert('Failed to delete employee.');
+        }
+    };
+
     return (
         <GlobalDataContext.Provider value={{
             customers,
@@ -385,7 +399,8 @@ export const GlobalDataProvider = ({ children }) => {
             getSitesByCustomer,
             getCustomerById,
             addEmployee,
-            updateEmployee
+            updateEmployee,
+            deleteEmployee
         }}>
             {children}
         </GlobalDataContext.Provider>

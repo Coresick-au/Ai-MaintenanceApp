@@ -6,7 +6,6 @@ const UIContext = createContext();
 export { UIContext };
 export const UIProvider = ({ children }) => {
     // --- MODALS ---
-    const [isAddSiteModalOpen, setIsAddSiteModalOpen] = useState(false);
     const [isEditSiteModalOpen, setIsEditSiteModalOpen] = useState(false);
     const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
     const [isAssetEditModalOpen, setIsAssetEditModalOpen] = useState(false);
@@ -83,7 +82,6 @@ export const UIProvider = ({ children }) => {
 
     return (
         <UIContext.Provider value={{
-            isAddSiteModalOpen, setIsAddSiteModalOpen,
             isEditSiteModalOpen, setIsEditSiteModalOpen,
             isAssetModalOpen, setIsAssetModalOpen,
             isAssetEditModalOpen, setIsAssetEditModalOpen,

@@ -39,7 +39,6 @@ export const SiteProvider = ({ children }) => {
     const [sites, setSites] = useState([]);
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
-    const [employees, setEmployees] = useState([]);
     const [todos, setTodos] = useState([]);
 
     // --- FIREBASE SYNC (Replaces Persistence & Auto-Save) ---
@@ -69,19 +68,6 @@ export const SiteProvider = ({ children }) => {
             }
         });
 
-        // 2. Sync Employees (Authentication/User Management)
-        const unsubscribeEmps = onSnapshot(collection(db, "employees"), (snapshot) => {
-            const cloudEmps = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            console.log('[SiteContext] Synced employees from Cloud:', cloudEmps.length);
-            setEmployees(cloudEmps);
-            try { localStorage.setItem('app_employees', JSON.stringify(cloudEmps)); } catch (e) { console.warn('LocalStorage full', e); }
-        }, (error) => {
-            console.error("Error fetching employees from Firebase:", error);
-        });
-
         // 3. Sync To-Dos
         const unsubscribeTodos = onSnapshot(
             query(collection(db, "todos"), orderBy("timestamp", "desc")),
@@ -94,7 +80,6 @@ export const SiteProvider = ({ children }) => {
 
         return () => {
             unsubscribeSites();
-            unsubscribeEmps();
             unsubscribeTodos();
         };
     }, []);
@@ -610,39 +595,7 @@ export const SiteProvider = ({ children }) => {
         }, 'Delete Report');
     };
 
-    // --- EMPLOYEE ACTIONS (Syncs to 'employees' collection) ---
-    const handleAddEmployee = async (empData) => {
-        const newEmpId = `emp-${Date.now()}`;
-        const newEmp = {
-            id: newEmpId,
-            name: empData.name,
-            role: empData.role || 'Technician',
-            email: empData.email || '',
-            phone: empData.phone || '',
-            active: true,
-            certifications: [],
-            inductions: []
-        };
-        try {
-            await setDoc(doc(db, "employees", newEmpId), newEmp);
-        } catch (e) { console.error("Error adding employee:", e); }
-    };
 
-    const handleUpdateEmployee = async (empId, updates) => {
-        try {
-            await updateDoc(doc(db, "employees", empId), updates);
-        } catch (e) { console.error("Error updating employee:", e); }
-    };
-
-    const handleDeleteEmployee = async (empId) => {
-        const emp = employees.find(e => e.id === empId);
-        const empName = emp ? emp.name : 'this technician';
-        if (!window.confirm(`Are you sure you want to delete "${empName}"? All certifications and inductions will be permanently removed.`)) return;
-
-        try {
-            await deleteDoc(doc(db, "employees", empId));
-        } catch (e) { console.error("Error deleting employee:", e); }
-    };
 
     // --- FILE HANDLING (Just for loading legacy json backups) ---
     const handleFileChange = (e) => {
@@ -712,9 +665,7 @@ export const SiteProvider = ({ children }) => {
             // Report Actions
             uploadServiceReport, deleteServiceReport,
 
-            // Employee Actions
-            employees, setEmployees,
-            handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee,
+
 
             // To-Do Actions
             todos,

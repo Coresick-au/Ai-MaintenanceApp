@@ -9,6 +9,7 @@ import { useSiteContext } from './hooks/useSiteContext';
 import { useUIContext } from './hooks/useUIContext';
 import { useFilterContext } from './hooks/useFilterContext';
 import { useUndo } from './hooks/useUndo';
+import { useGlobalData } from './context/GlobalDataContext';
 
 // IMPORT UI COMPONENTS
 import {
@@ -31,7 +32,7 @@ import { getExpiryStatus } from './utils/employeeUtils';
 import { SiteHealthCircle } from './components/SiteHealthCircle';
 import { MasterListModal } from './components/MasterListModal';
 import { AddAssetModal, EditAssetModal, OperationalStatusModal } from './components/AssetModals';
-import { AddSiteModal, EditSiteModal, ContactModal, SiteNotesModal } from './components/SiteModals';
+import { EditSiteModal, ContactModal, SiteNotesModal } from './components/SiteModals';
 import { AssetAnalyticsModal } from './components/AssetAnalytics';
 import { AppHistorySidePanel } from './components/AppHistorySidePanel';
 import { SiteIssueTracker } from './components/SiteIssueTracker';
@@ -76,12 +77,18 @@ export function App() {
 
     handleFileChange, uploadServiceReport, deleteServiceReport,
     dbPath, isDbReady, handleDatabaseSelected,
-    employees, handleAddEmployee, handleUpdateEmployee, handleDeleteEmployee,
     todos, handleAddTodo, handleUpdateTodo, handleDeleteTodo
   } = useSiteContext();
 
+  // Get employee data from GlobalDataContext
   const {
-    isAddSiteModalOpen, setIsAddSiteModalOpen,
+    employees,
+    addEmployee: handleAddEmployee,
+    updateEmployee: handleUpdateEmployee,
+    deleteEmployee: handleDeleteEmployee
+  } = useGlobalData();
+
+  const {
     isEditSiteModalOpen, setIsEditSiteModalOpen,
     isAssetModalOpen, setIsAssetModalOpen,
     isAssetEditModalOpen, setIsAssetEditModalOpen,
@@ -1348,6 +1355,20 @@ export function App() {
               const warningCount = serviceStats.dueSoon;
               const healthyCount = serviceStats.healthy;
 
+              // Calculate Induction Compliance for this site
+              const siteInductions = employees.flatMap(emp =>
+                (emp.inductions || []).filter(ind => ind.siteId === site.id)
+              );
+
+              const inductionCompliance = {
+                expired: siteInductions.filter(ind => getExpiryStatus(ind.expiry) === 'expired').length,
+                warning: siteInductions.filter(ind => getExpiryStatus(ind.expiry) === 'warning').length,
+                valid: siteInductions.filter(ind => getExpiryStatus(ind.expiry) === 'valid').length,
+                total: siteInductions.length
+              };
+
+              const hasInductionIssues = inductionCompliance.expired > 0 || inductionCompliance.warning > 0;
+
               return (
                 <div
                   key={site.id}
@@ -1366,6 +1387,30 @@ export function App() {
                 >
                   {/* Decorative Top Gradient */}
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+                  {/* Induction Compliance Badge */}
+                  {inductionCompliance.total > 0 && (
+                    <div className={`
+                      absolute top-2 right-2 px-2 py-1 rounded-full text-xs font-bold
+                      flex items-center gap-1 backdrop-blur-sm
+                      ${hasInductionIssues
+                        ? 'bg-red-500/20 border border-red-500/50 text-red-400'
+                        : 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-400'
+                      }
+                    `}>
+                      <span>👷</span>
+                      {inductionCompliance.expired > 0 && (
+                        <span>{inductionCompliance.expired} Expired</span>
+                      )}
+                      {inductionCompliance.warning > 0 && inductionCompliance.expired === 0 && (
+                        <span>{inductionCompliance.warning} Expiring</span>
+                      )}
+                      {inductionCompliance.warning > 0 && inductionCompliance.expired > 0 && (
+                        <span>, {inductionCompliance.warning} Expiring</span>
+                      )}
+                      {!hasInductionIssues && <span>✓ Compliant</span>}
+                    </div>
+                  )}
 
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-4">
@@ -1974,22 +2019,6 @@ export function App() {
           </main>
         )
       }
-
-      <AddSiteModal
-        isOpen={isAddSiteModalOpen}
-        onClose={() => setIsAddSiteModalOpen(false)}
-        onSave={(form, note) => {
-          handleAddSite(form, note);
-          setIsAddSiteModalOpen(false);
-          setSiteForm({});
-          setNoteInput({ author: '', content: '' });
-        }}
-        siteForm={siteForm}
-        setSiteForm={setSiteForm}
-        noteInput={noteInput}
-        setNoteInput={setNoteInput}
-        onLogoUpload={handleFileChange}
-      />
 
       <EditSiteModal
         isOpen={isEditSiteModalOpen}

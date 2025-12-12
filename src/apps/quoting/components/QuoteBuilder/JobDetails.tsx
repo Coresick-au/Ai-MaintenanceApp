@@ -18,7 +18,7 @@ export default function JobDetails({
 
     const selectedCustomer = savedCustomers.find(c => c.name === jobDetails.customer);
 
-    const handleCustomerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
         setJobDetails({ ...jobDetails, customer: value });
 
@@ -54,25 +54,22 @@ export default function JobDetails({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                {/* Customer with Datalist */}
+                {/* Customer Dropdown */}
                 <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
                         <Briefcase size={16} /> Customer
                     </label>
-                    <input
-                        type="text"
-                        list="customer-list"
+                    <select
                         disabled={isLocked}
                         value={jobDetails.customer}
                         onChange={handleCustomerChange}
                         className={`w-full p-2 border rounded-lg bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''} ${highlightMissingFields && !jobDetails.customer ? 'border-danger ring-1 ring-danger' : 'border-slate-700 hover:border-accent-primary'}`}
-                        placeholder="Select or type customer..."
-                    />
-                    <datalist id="customer-list">
+                    >
+                        <option value="">Select a customer...</option>
                         {savedCustomers.map(c => (
-                            <option key={c.id} value={c.name} />
+                            <option key={c.id} value={c.name}>{c.name}</option>
                         ))}
-                    </datalist>
+                    </select>
                     {/* Customer Notes Display */}
                     {selectedCustomer?.customerNotes && (
                         <div className="mt-2 text-xs text-cyan-400">
