@@ -1339,21 +1339,25 @@ export function App() {
                 return acc;
               }, { critical: 0, dueSoon: 0, healthy: 0, total: 0 });
 
-              // Calculate Overall Health Percentages (Service Based)
-              const totalAssets = serviceStats.total;
-              const criticalPct = totalAssets > 0 ? Math.round((serviceStats.critical / totalAssets) * 100) : 0;
-              const warningPct = totalAssets > 0 ? Math.round((serviceStats.dueSoon / totalAssets) * 100) : 0;
-              const healthyPct = totalAssets > 0 ? Math.round((serviceStats.healthy / totalAssets) * 100) : 0;
+              // Calculate Overall Health Percentages (Combined Service + Roller)
+              const totalAssets = serviceStats.total + rollerStats.total;
+              const totalCritical = serviceStats.critical + rollerStats.critical;
+              const totalDueSoon = serviceStats.dueSoon + rollerStats.dueSoon;
+              const totalHealthy = serviceStats.healthy + rollerStats.healthy;
+
+              const criticalPct = totalAssets > 0 ? Math.round((totalCritical / totalAssets) * 100) : 0;
+              const warningPct = totalAssets > 0 ? Math.round((totalDueSoon / totalAssets) * 100) : 0;
+              const healthyPct = totalAssets > 0 ? Math.round((totalHealthy / totalAssets) * 100) : 0;
 
               // Active Issues Count (Mock logic if issues not yet populated in filtered list, ensuring safety)
               // Assuming site.issues might be enriched by provider, or we filter from a global context if needed.
               // For now, we check if site.issues exists. 
               const activeIssuesCount = (site.issues || []).filter(i => i.status !== 'Closed').length;
 
-              // Calculate combined or service-based counts for the display
-              const criticalCount = serviceStats.critical;
-              const warningCount = serviceStats.dueSoon;
-              const healthyCount = serviceStats.healthy;
+              // Calculate combined counts for the display
+              const criticalCount = totalCritical;
+              const warningCount = totalDueSoon;
+              const healthyCount = totalHealthy;
 
               // Calculate Induction Compliance for this site
               const siteInductions = employees.flatMap(emp =>
