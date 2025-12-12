@@ -39,14 +39,15 @@ const styles = StyleSheet.create({
 
 interface JobSheetPDFProps {
     quote: Quote;
+    debug?: boolean;
 }
 
-export const JobSheetPDF: React.FC<JobSheetPDFProps> = ({ quote }) => {
+export const JobSheetPDF: React.FC<JobSheetPDFProps> = ({ quote, debug = false }) => {
     const { jobDetails, shifts } = quote;
 
     return (
         <Document>
-            <Page size="A4" style={styles.page}>
+            <Page size="A4" style={styles.page} debug={debug}>
                 {/* Header */}
                 <View style={styles.header}>
                     <View style={styles.headerText}>
