@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { PDFViewer } from '@react-pdf/renderer';
+import { PDFViewer, Page, Text, View, Document } from '@react-pdf/renderer';
 import { ServiceReportDocument } from './reports/ServiceReportDocument';
 import { MaintenanceReportPDF } from './MaintenanceReportPDF';
 import { JobSheetPDF } from '../apps/quoting/components/JobSheetPDF';
@@ -99,6 +99,18 @@ const mockQuote = {
 };
 
 
+// Inline Test Document to rule out import issues
+const TestDocument = () => (
+    <Document>
+        <Page size="A4" style={{ padding: 30 }}>
+            <View>
+                <Text>Inline Test Document</Text>
+                <Text>If this works, the issue is in the import/file structure.</Text>
+            </View>
+        </Page>
+    </Document>
+);
+
 export const DevPDFViewer = () => {
     const [selectedReport, setSelectedReport] = useState('job-sheet');
     const [zoom, setZoom] = useState(1.0);
@@ -140,7 +152,7 @@ export const DevPDFViewer = () => {
                     {(() => {
                         switch (selectedReport) {
                             case 'service-report':
-                                return <ServiceReportDocument data={mockServiceReportData} />;
+                                return <TestDocument />;
                             case 'maintenance-report':
                                 return <MaintenanceReportPDF site={mockSite} generatedDate={mockServiceDate} />;
                             case 'job-sheet':
