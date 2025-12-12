@@ -21,7 +21,7 @@ const styles = StyleSheet.create({
     value: { fontSize: 10, fontWeight: 'medium' },
 
     // Content Boxes
-    contentBox: { border: 1, borderColor: '#E5E7EB', borderRadius: 4, padding: 8, minHeight: 60 },
+    contentBox: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 4, padding: 8, minHeight: 60 },
 
     // Table
     table: { width: '100%', borderTopWidth: 1, borderTopColor: '#E5E7EB' },

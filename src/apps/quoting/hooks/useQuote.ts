@@ -283,9 +283,9 @@ export function useQuote() {
         return calculateLogic(shift, rates);
     };
 
-    const reportingCost = (jobDetails.reportingTime || 0) * rates.officeReporting;
+    const reportingCost = (jobDetails.reportingTime || 0) * (rates?.officeReporting || 0);
 
-    const travelChargeCost = (rates.travelChargeExBrisbane || 0) * jobDetails.technicians.length;
+    const travelChargeCost = (rates?.travelChargeExBrisbane || 0) * jobDetails.technicians.length;
 
     const totalCost = shifts.reduce((acc, shift) => acc + (calculateShiftBreakdown(shift).cost || 0), 0) +
         extras.reduce((acc, item) => acc + (item.cost || 0), 0) +
