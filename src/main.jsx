@@ -7,10 +7,14 @@ import { GlobalDataProvider } from './context/GlobalDataContext'
 // GlobalDataProvider wraps the entire Portal to provide customers, sites, and employees
 // to all apps (Maintenance, Inventory, Quoting, Customer Portal)
 
+import { AuthProvider } from './context/AuthContext' // Import this
+
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <GlobalDataProvider>
-      <Portal />
-    </GlobalDataProvider>
+    <AuthProvider> {/* Outer Layer: Auth */}
+      <GlobalDataProvider> {/* Inner Layer: Data */}
+        <Portal />
+      </GlobalDataProvider>
+    </AuthProvider>
   </React.StrictMode>,
 )

@@ -9,14 +9,14 @@ import { getAnalytics } from "firebase/analytics";
 // Keys are loaded from environment variables (.env file)
 const env = import.meta.env;
 
-const firebaseConfig = {
-    apiKey: env.VITE_FIREBASE_API_KEY || "demo-api-key",
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "demo-project.firebaseapp.com",
-    projectId: env.VITE_FIREBASE_PROJECT_ID || "demo-project",
-    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "demo-project.appspot.com",
-    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789",
-    appId: env.VITE_FIREBASE_APP_ID || "1:123456789:web:abcdef123456",
-    measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-ABCDEF123"
+export const firebaseConfig = {
+    apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyAcXwlK_851kGBtp_khuFh3w3fSuFkGZxA",
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "accurate-industries-database.firebaseapp.com",
+    projectId: env.VITE_FIREBASE_PROJECT_ID || "accurate-industries-database",
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "accurate-industries-database.firebasestorage.app",
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "838257999536",
+    appId: env.VITE_FIREBASE_APP_ID || "1:838257999536:web:7f93b7417ddaada1ee0575",
+    measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-4JENK2898F"
 };
 
 if (!env.VITE_FIREBASE_PROJECT_ID) {
