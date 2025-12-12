@@ -32,6 +32,7 @@ const DEFAULT_JOB_DETAILS: JobDetails = {
     techName: '',
     technicians: ['Tech 1'],
     description: '',
+    techNotes: '',
     reportingTime: 0,
     includeTravelCharge: false,
     travelDistance: 0,

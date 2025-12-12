@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Save, Lock, FileCheck, Unlock } from 'lucide-react';
+import { Save, Lock, FileCheck, Unlock, ClipboardList } from 'lucide-react';
+import { pdf } from '@react-pdf/renderer';
 import JobDetails from './JobDetails';
 import Timesheet from './Timesheet';
 import Extras from './Extras';
 import HoursVisualizer from '../HoursVisualizer';
+import { JobSheetPDF } from '../JobSheetPDF';
 import type { useQuote } from '../../hooks/useQuote';
 
 interface QuoteBuilderProps {
@@ -45,6 +47,39 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
         }
     };
 
+    const downloadJobSheet = async () => {
+        if (!jobDetails.customer) {
+            alert("Please select a customer first.");
+            return;
+        }
+
+        // Create the quote object to pass to the PDF
+        const currentQuoteData = {
+            id: activeQuoteId || 'temp',
+            quoteNumber: 'DRAFT',
+            lastModified: Date.now(),
+            status,
+            rates: quote.rates,
+            jobDetails: quote.jobDetails,
+            shifts: quote.shifts,
+            extras: quote.extras,
+            internalExpenses: quote.internalExpenses || []
+        };
+
+        // Generate Blob
+        const blob = await pdf(<JobSheetPDF quote={currentQuoteData} />).toBlob();
+        const url = URL.createObjectURL(blob);
+
+        // Trigger Download
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = `JobSheet_${jobDetails.jobNo || 'Draft'}_${jobDetails.customer.replace(/\s+/g, '-')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+    };
+
     const formatMoney = (amount: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
 
     return (
@@ -71,6 +106,14 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
                 </div>
 
                 <div className="flex gap-2">
+                    <button
+                        onClick={downloadJobSheet}
+                        className="bg-indigo-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-indigo-700 font-medium"
+                        title="Download Technician Job Sheet"
+                    >
+                        <ClipboardList size={18} /> Job Sheet
+                    </button>
+
                     {status === 'draft' && (
                         <button
                             onClick={saveQuoteToSystem}

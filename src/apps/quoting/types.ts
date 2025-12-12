@@ -40,6 +40,7 @@ export interface JobDetails {
     techName: string; // Legacy field
     technicians: string[];
     description: string;
+    techNotes?: string; // Technician-specific instructions for job sheet
     reportingTime: number; // hours
     includeTravelCharge: boolean;
     travelDistance: number; // km

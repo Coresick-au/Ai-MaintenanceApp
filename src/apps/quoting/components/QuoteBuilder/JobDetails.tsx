@@ -1,5 +1,6 @@
 
-import { MapPin, Users, Briefcase, Plus, X } from 'lucide-react';
+
+import { MapPin, Users, Briefcase, Plus, X, FileText } from 'lucide-react';
 import type { JobDetails as JobDetailsType, Customer, Rates } from '../../types';
 
 interface JobDetailsProps {
@@ -180,15 +181,32 @@ export default function JobDetails({
                 </div>
             </div>
 
-            <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1">Description / Scope of Works</label>
-                <textarea
-                    disabled={isLocked}
-                    value={jobDetails.description}
-                    onChange={(e) => setJobDetails({ ...jobDetails, description: e.target.value })}
-                    className={`w-full p-3 border border-slate-700 rounded-lg h-24 bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all hover:border-accent-primary resize-none ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''}`}
-                    placeholder="Enter job description..."
-                />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                {/* Description - Existing */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1">Description / Scope of Works</label>
+                    <textarea
+                        disabled={isLocked}
+                        value={jobDetails.description}
+                        onChange={(e) => setJobDetails({ ...jobDetails, description: e.target.value })}
+                        className={`w-full p-3 border border-slate-700 rounded-lg h-32 bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all hover:border-accent-primary resize-none ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''}`}
+                        placeholder="Enter job description..."
+                    />
+                </div>
+
+                {/* Technician Notes - NEW */}
+                <div>
+                    <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
+                        <FileText size={16} /> Technician Notes (Job Sheet Only)
+                    </label>
+                    <textarea
+                        disabled={isLocked}
+                        value={jobDetails.techNotes || ''}
+                        onChange={(e) => setJobDetails({ ...jobDetails, techNotes: e.target.value })}
+                        className={`w-full p-3 border border-slate-700 rounded-lg h-32 bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all hover:border-accent-primary resize-none ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''}`}
+                        placeholder="Specific instructions for the tech (e.g. Lockbox codes, safety warnings, site contact info)..."
+                    />
+                </div>
             </div>
         </div>
     );
