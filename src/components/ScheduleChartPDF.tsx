@@ -341,4 +341,4 @@ export const ScheduleChartPDF: React.FC<ScheduleChartPDFProps> = ({
   );
 };
 
-export default ScheduleChartPDF;
+

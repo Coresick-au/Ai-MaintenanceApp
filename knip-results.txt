@@ -1,0 +1,86 @@
+﻿[93m[4mUnused files[24m[39m (9)
+public/pdf.worker.min.js                  
+src/App.css                               
+src/components/AppHistoryModal.jsx        
+src/components/DatabaseSettingsModal.jsx  
+src/components/ErrorBoundary.jsx          
+src/components/PDFImportComponent.jsx     
+src/components/PDFImportModal.jsx         
+src/types/index.ts                        
+src/types/inventory.ts                    
+[93m[4mUnused dependencies[24m[39m (5)
+framer-motion   package.json:28:6
+html2canvas     package.json:29:6
+jimp            package.json:30:6
+jspdf           package.json:31:6
+tailwind-merge  package.json:38:6
+[93m[4mUnused devDependencies[24m[39m (2)
+@testing-library/user-event  package.json:67:6
+vite-plugin-react-inspector  package.json:82:6
+[93m[4mUnlisted dependencies[24m[39m (1)
+@vitest/coverage-v8  vitest.config.js
+[93m[4mUnlisted binaries[24m[39m (1)
+firebase  package.json
+[93m[4mUnused exports[24m[39m (47)
+parseServiceReport             function  src/utils/pdfParser.js:216:23                   
+getSiteHealthStyling                     src/utils/siteHealth.js:58:14                   
+initialSites                             src/data/mockData.js:401:14                     
+auth                                     src/firebase.js:41:14                           
+default                        variable  src/firebase.js:42:8                            
+getDaysUntilExpiry                       src/utils/employeeUtils.js:23:14                
+getEmployeeComplianceStatus              src/utils/employeeUtils.js:33:14                
+filterEmployeesByStatus                  src/utils/employeeUtils.js:51:14                
+sortEmployeesByExpiry                    src/utils/employeeUtils.js:60:14                
+getComplianceSummary                     src/utils/employeeUtils.js:84:14                
+default                                  src/components/FullDashboardPDFPreview.jsx:193:8
+default                                  src/components/ScheduleChartPDFPreview.jsx:262:8
+default                                  src/components/AssetSpecsPDFPreview.jsx:275:8   
+default                                  src/components/MasterListPDFPreview.jsx:286:8   
+default                                  src/components/FullDashboardPDF.tsx:417:8       
+default                                  src/components/ScheduleChartPDF.tsx:344:8       
+default                                  src/components/AssetSpecsPDF.tsx:421:8          
+App                            function  src/App.jsx:66:17                               
+MaintenanceReportPDF                     src/components/MaintenanceReportPDF.tsx:268:14  
+validateEmail                            src/utils/validation.ts:41:14                   
+validatePhone                            src/utils/validation.ts:46:14                   
+validateDate                             src/utils/validation.ts:52:14                   
+validateRequired                         src/utils/validation.ts:58:14                   
+validateNumber                           src/utils/validation.ts:63:14                   
+validateAssetCode                        src/utils/validation.ts:71:14                   
+validateAssetForm                        src/utils/validation.ts:111:14                  
+validateReportForm                       src/utils/validation.ts:136:14                  
+sanitizeAssetName                        src/utils/validation.ts:173:14                  
+sanitizeNotes                            src/utils/validation.ts:178:14                  
+countCriticalAssets                      src/utils/filterUtils.js:3:14                   
+QuoteRepository                          src/repositories/index.js:13:10                 
+CustomerRepository                       src/repositories/index.js:13:27                 
+SiteRepository                           src/repositories/index.js:13:47                 
+EmployeeRepository                       src/repositories/index.js:13:63                 
+BaseRepository                           src/repositories/index.js:14:10                 
+loadSitesFromStorage                     src/utils/dataUtils.js:27:14                    
+loadSelectedSiteIdFromStorage            src/utils/dataUtils.js:41:14                    
+deletePart                               src/services/inventoryService.js:57:14          
+getStockByLocation                       src/services/inventoryService.js:408:14         
+getSerializedAssetsByPart                src/services/inventoryService.js:419:14         
+bulkImportParts                          src/services/inventoryService.js:434:14         
+getCategoryPrefix                        src/utils/skuGenerator.js:16:14                 
+getDuration                              src/apps/quoting/logic.ts:3:14                  
+DEFAULT_RATES                            src/apps/quoting/hooks/useQuote.ts:10:14        
+getTaxYearForDate              function  src/apps/quoting/utils/taxYearUtils.ts:17:17    
+createTaxYear                  function  src/apps/quoting/utils/taxYearUtils.ts:73:17    
+getMonthsInTaxYear             function  src/apps/quoting/utils/taxYearUtils.ts:87:17    
+[93m[4mUnused exported types[24m[39m (4)
+ValidationResult  interface  src/utils/validation.ts:2:18 
+SiteFormData      interface  src/utils/validation.ts:7:18 
+AssetFormData     interface  src/utils/validation.ts:20:18
+ReportFormData    interface  src/utils/validation.ts:28:18
+[93m[4mDuplicate exports[24m[39m (9)
+FullDashboardPDFPreview|default  src/components/FullDashboardPDFPreview.jsx
+ScheduleChartPDFPreview|default  src/components/ScheduleChartPDFPreview.jsx
+AssetSpecsPDFPreview|default     src/components/AssetSpecsPDFPreview.jsx   
+MasterListPDFPreview|default     src/components/MasterListPDFPreview.jsx   
+FullDashboardPDF|default         src/components/FullDashboardPDF.tsx       
+ScheduleChartPDF|default         src/components/ScheduleChartPDF.tsx       
+AssetSpecsPDF|default            src/components/AssetSpecsPDF.tsx          
+App|default                      src/App.jsx                               
+MaintenanceReportPDF|default     src/components/MaintenanceReportPDF.tsx   

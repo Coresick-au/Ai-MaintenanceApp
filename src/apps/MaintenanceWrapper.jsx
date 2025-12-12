@@ -1,5 +1,5 @@
 import React from 'react';
-import App from '../App.jsx';
+import { App } from '../App.jsx';
 import { SiteProvider } from '../context/SiteContext';
 import { UIProvider } from '../context/UIContext';
 import { FilterProvider } from '../context/FilterContext';

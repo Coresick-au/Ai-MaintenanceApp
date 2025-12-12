@@ -418,4 +418,4 @@ export const AssetSpecsPDF: React.FC<AssetSpecsPDFProps> = ({
   );
 };
 
-export default AssetSpecsPDF;
+

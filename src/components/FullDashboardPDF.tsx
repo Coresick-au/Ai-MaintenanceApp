@@ -414,4 +414,4 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
   );
 };
 
-export default FullDashboardPDF;
+

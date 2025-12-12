@@ -10,7 +10,7 @@ import { formatDate } from '../utils/helpers';
 import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
-import MaintenanceReportPDF from './MaintenanceReportPDF';
+import { MaintenanceReportPDF } from './MaintenanceReportPDF';
 
 export const CustomerReportModal = ({
     isOpen,
@@ -110,7 +110,7 @@ export const CustomerReportModal = ({
             [''],
             ['Asset Name', 'Code', 'Frequency', 'Last Service Date', 'Due Date', 'Days Remaining', 'Status', 'Operational Status', 'Operational Notes', 'Weigher ID', 'Active Status']
         ];
-        
+
         sortedService.forEach(item => {
             serviceData.push([
                 item.name || '',
@@ -126,7 +126,7 @@ export const CustomerReportModal = ({
                 item.active !== false ? 'Active' : 'Inactive'
             ]);
         });
-        
+
         const serviceWs = XLSX.utils.aoa_to_sheet(serviceData);
         XLSX.utils.book_append_sheet(wb, serviceWs, 'Service Equipment');
 
@@ -136,7 +136,7 @@ export const CustomerReportModal = ({
             [''],
             ['Asset Name', 'Code', 'Frequency', 'Last Service Date', 'Due Date', 'Days Remaining', 'Status', 'Operational Status', 'Operational Notes', 'Weigher ID', 'Active Status']
         ];
-        
+
         sortedRoller.forEach(item => {
             rollerData.push([
                 item.name || '',
@@ -152,7 +152,7 @@ export const CustomerReportModal = ({
                 item.active !== false ? 'Active' : 'Inactive'
             ]);
         });
-        
+
         const rollerWs = XLSX.utils.aoa_to_sheet(rollerData);
         XLSX.utils.book_append_sheet(wb, rollerWs, 'Roller Equipment');
 
@@ -162,16 +162,16 @@ export const CustomerReportModal = ({
             [''],
             ['Asset Name', 'Asset Code', 'Weigher ID', 'Description', 'Scale Type', 'Integrator Controller', 'Speed Sensor Type', 'Load Cell Brand', 'Load Cell Size', 'Load Cell Sensitivity', 'Number of Load Cells', 'Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)', 'Adjustment Type', 'Billet Weight Type', 'Billet Weight Size', 'Billet Weight IDs', 'Notes Count']
         ];
-        
+
         // Combine all assets and match with specs
         const allAssets = [...sortedService, ...sortedRoller];
         allAssets.forEach(asset => {
-            const spec = (specData || []).find(s => 
-                s.weigher === asset.weigher || 
-                s.altCode === asset.code || 
+            const spec = (specData || []).find(s =>
+                s.weigher === asset.weigher ||
+                s.altCode === asset.code ||
                 s.weigher === asset.code
             );
-            
+
             if (spec) {
                 specDataExport.push([
                     asset.name || '',
@@ -194,7 +194,7 @@ export const CustomerReportModal = ({
                 ]);
             }
         });
-        
+
         const specWs = XLSX.utils.aoa_to_sheet(specDataExport);
         XLSX.utils.book_append_sheet(wb, specWs, 'Specifications');
 
@@ -205,7 +205,7 @@ export const CustomerReportModal = ({
             [''],
             ['Asset Name', 'Code', 'Type', 'Days Overdue', 'Operational Status', 'Operational Notes', 'Last Service', 'Due Date', 'Weigher ID']
         ];
-        
+
         criticalAssets.forEach(item => {
             criticalData.push([
                 item.name || '',
@@ -219,7 +219,7 @@ export const CustomerReportModal = ({
                 item.weigher || ''
             ]);
         });
-        
+
         const criticalWs = XLSX.utils.aoa_to_sheet(criticalData);
         XLSX.utils.book_append_sheet(wb, criticalWs, 'Critical Assets');
 
@@ -230,7 +230,7 @@ export const CustomerReportModal = ({
             [''],
             ['Asset Name', 'Code', 'Type', 'Days Remaining', 'Operational Status', 'Last Service', 'Due Date', 'Weigher ID']
         ];
-        
+
         dueSoonAssets.forEach(item => {
             dueSoonData.push([
                 item.name || '',
@@ -243,7 +243,7 @@ export const CustomerReportModal = ({
                 item.weigher || ''
             ]);
         });
-        
+
         const dueSoonWs = XLSX.utils.aoa_to_sheet(dueSoonData);
         XLSX.utils.book_append_sheet(wb, dueSoonWs, 'Due Soon');
 

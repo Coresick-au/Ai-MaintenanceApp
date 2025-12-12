@@ -259,4 +259,4 @@ export const ScheduleChartPDFPreview = ({
   );
 };
 
-export default ScheduleChartPDFPreview;
+

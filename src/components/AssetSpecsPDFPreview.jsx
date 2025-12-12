@@ -272,4 +272,4 @@ export const AssetSpecsPDFPreview = ({
   );
 };
 
-export default AssetSpecsPDFPreview;
+

@@ -54,7 +54,7 @@ export const FullDashboardPDFPreview = ({
     <div ref={modalContainerRef} className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
       {/* --- PREVIEW CONTAINER (Screen Mode) --- */}
       <div className="print-content-inner bg-slate-800 w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl overflow-auto flex flex-col print:h-auto print:shadow-none print:rounded-none print:w-full print:max-w-none print:bg-white">
-        
+
         {/* --- MODAL HEADER (Hidden on Print) --- */}
         <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 print:hidden">
           <div>
@@ -75,7 +75,7 @@ export const FullDashboardPDFPreview = ({
         <div ref={reportContentRef} className="bg-white text-black flex-1 overflow-auto">
           <div className="p-8">
             <div className="max-w-4xl mx-auto">
-              
+
               {/* DOCUMENT HEADER */}
               <header className="border-b-2 border-gray-300 pb-6 mb-8">
                 <h1 className="text-3xl font-black uppercase tracking-wider text-black mb-2">Full Dashboard Report</h1>
@@ -133,11 +133,10 @@ export const FullDashboardPDFPreview = ({
                         <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
                         <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
                         <td className="py-3 text-black">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            item.remaining < 0 ? 'bg-red-100 text-red-800' : 
-                            item.remaining < 30 ? 'bg-amber-100 text-amber-800' : 
-                            'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
+                            }`}>
                             {item.remaining}
                           </span>
                         </td>
@@ -168,11 +167,10 @@ export const FullDashboardPDFPreview = ({
                         <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
                         <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
                         <td className="py-3 text-black">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${
-                            item.remaining < 0 ? 'bg-red-100 text-red-800' : 
-                            item.remaining < 30 ? 'bg-amber-100 text-amber-800' : 
-                            'bg-green-100 text-green-800'
-                          }`}>
+                          <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
+                            }`}>
                             {item.remaining}
                           </span>
                         </td>
@@ -190,4 +188,4 @@ export const FullDashboardPDFPreview = ({
   );
 };
 
-export default FullDashboardPDFPreview;
+

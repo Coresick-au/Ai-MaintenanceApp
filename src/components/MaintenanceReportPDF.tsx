@@ -438,4 +438,4 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
   );
 };
 
-export default MaintenanceReportPDF;
+

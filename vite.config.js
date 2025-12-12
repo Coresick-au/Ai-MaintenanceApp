@@ -27,7 +27,6 @@ export default defineConfig(({ command, mode }) => {
           manualChunks: {
             vendor: ['react', 'react-dom'],
             charts: ['recharts'],
-            pdf: ['jspdf', 'html2canvas'],
             utils: ['date-fns', 'xlsx']
           }
         }
