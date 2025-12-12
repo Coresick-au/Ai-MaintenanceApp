@@ -53,6 +53,7 @@ import { ReportWizardModal } from './components/ReportWizardModal';
 import { ToDoWidget } from './components/ToDoWidget';
 import { ContextWizardModal } from './components/ContextWizardModal';
 import { EmployeeManager } from './components/EmployeeManager';
+import DevPDFViewer from './components/DevPDFViewer';
 
 import { pdf } from '@react-pdf/renderer';
 import { saveAs } from 'file-saver';
@@ -64,6 +65,12 @@ const getDisplayLocation = (site) => {
 };
 
 export function App() {
+  // Check for PDF Dev Mode
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.get('mode') === 'pdf') {
+    return <DevPDFViewer />;
+  }
+
   // Force HMR update
   const {
     sites, selectedSiteId, setSelectedSiteId, selectedSite,

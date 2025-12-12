@@ -43,12 +43,12 @@ export const ServiceReportDocument = ({ data }) => {
                         <Text style={{ fontSize: 8, marginTop: 4 }}>ABN 99 657 158 524</Text>
                     </View>
                     <View style={styles.titleSection}>
-                        {general.customerLogo && (
+                        {/* {general.customerLogo && (
                             <Image
                                 src={general.customerLogo}
                                 style={{ height: 40, marginBottom: 5 }}
                             />
-                        )}
+                        )} */}
                         <Text style={styles.reportTitle}>Belt Weigher Report</Text>
                         <Text style={{ fontSize: 10, color: '#666' }}>{general.reportId}</Text>
                     </View>

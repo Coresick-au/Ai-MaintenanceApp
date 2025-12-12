@@ -19,10 +19,10 @@ interface Asset {
 }
 
 // Register font (optional - you can use system fonts)
-Font.register({
-  family: 'Helvetica',
-  src: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
-});
+// Font.register({
+//   family: 'Helvetica',
+//   src: 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap'
+// });
 
 const styles = StyleSheet.create({
   page: {
@@ -256,6 +256,7 @@ interface SiteData {
   customer: string;
   name: string;
   location: string;
+  logo?: string;
   serviceData: Asset[];
   rollerData: Asset[];
 }
@@ -286,10 +287,9 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Image
-            src="/logos/ai-logo.png"
-            style={styles.logo}
-          />
+          {site.logo ? (
+            <Image src={site.logo} style={styles.logo} />
+          ) : null}
           <View style={styles.titleContainer}>
             <Text style={styles.title}>Accurate Industries</Text>
             <Text style={styles.subtitle}>Maintenance Report</Text>
