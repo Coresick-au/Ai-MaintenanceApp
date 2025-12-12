@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Plus, Trash2, Save, User, UserPlus, X } from 'lucide-react';
+import { Trash2, User, UserPlus } from 'lucide-react';
 import RatesConfig from './RatesConfig';
 import type { Customer, Rates, Contact } from '../types';
 
@@ -13,6 +13,45 @@ interface CustomerDashboardProps {
     savedDefaultRates: Rates;
 }
 
+// Customer Logo Component with background toggle
+function CustomerLogo({ customer, isSelected }: { customer: Customer; isSelected: boolean }) {
+    const backgrounds = ['bg-white', 'bg-gray-200', 'bg-gray-700', 'bg-black'];
+    const [bgIndex, setBgIndex] = useState(() => {
+        const saved = localStorage.getItem(`customer-logo-bg-${customer.id}`);
+        return saved ? parseInt(saved) : 2; // Default to gray-700
+    });
+
+    const handleClick = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        const nextIndex = (bgIndex + 1) % backgrounds.length;
+        setBgIndex(nextIndex);
+        localStorage.setItem(`customer-logo-bg-${customer.id}`, nextIndex.toString());
+    };
+
+    if (!customer.logo) {
+        return (
+            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${isSelected ? 'bg-primary-700 text-primary-200' : 'bg-gray-600 text-slate-300'
+                }`}>
+                <User size={20} />
+            </div>
+        );
+    }
+
+    return (
+        <div
+            onClick={handleClick}
+            className={`w-12 h-12 rounded-lg flex items-center justify-center p-1 cursor-pointer transition-all ${backgrounds[bgIndex]
+                } ${isSelected ? 'ring-2 ring-primary-500' : 'hover:ring-2 hover:ring-gray-500'}`}
+            title="Click to change background"
+        >
+            <img
+                src={customer.logo}
+                alt={`${customer.name} logo`}
+                className="w-full h-full object-contain"
+            />
+        </div>
+    );
+}
 
 const DEFAULT_RATES: Rates = {
     siteNormal: 160,
@@ -40,9 +79,6 @@ export default function CustomerDashboard({
     const [editName, setEditName] = useState('');
     const [editRates, setEditRates] = useState<Rates>(DEFAULT_RATES);
     const [editContacts, setEditContacts] = useState<Contact[]>([]);
-    const [newContactName, setNewContactName] = useState('');
-    const [newContactPhone, setNewContactPhone] = useState('');
-    const [newContactEmail, setNewContactEmail] = useState('');
     const [showDefaultRates, setShowDefaultRates] = useState(false);
 
     const handleSelect = (customer: Customer) => {
@@ -50,25 +86,6 @@ export default function CustomerDashboard({
         setEditName(customer.name);
         setEditRates(customer.rates || savedDefaultRates);
         setEditContacts(customer.contacts || []);
-    };
-
-
-    const addContact = () => {
-        if (newContactName.trim()) {
-            const newContact: Contact = {
-                name: newContactName.trim(),
-                phone: newContactPhone.trim(),
-                email: newContactEmail.trim()
-            };
-            setEditContacts([...editContacts, newContact]);
-            setNewContactName('');
-            setNewContactPhone('');
-            setNewContactEmail('');
-        }
-    };
-
-    const removeContact = (index: number) => {
-        setEditContacts(editContacts.filter((_, i) => i !== index));
     };
 
     const handleDelete = (id: string) => {
@@ -88,10 +105,10 @@ export default function CustomerDashboard({
                     <h2 className="font-semibold text-slate-200">Customers</h2>
                     <button
                         disabled
-                        className="bg-gray-600 text-slate-400 p-2 rounded cursor-not-allowed opacity-50"
+                        className="bg-gray-600 text-slate-400 p-2 rounded cursor-not-allowed opacity-50 text-xl font-bold"
                         title="Create customers in the Customer Portal"
                     >
-                        <Plus size={20} />
+                        +
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
@@ -105,9 +122,7 @@ export default function CustomerDashboard({
                             className={`p-3 rounded cursor-pointer flex justify-between items-center group ${selectedId === c.id ? 'bg-primary-900/20 border-primary-700 border' : 'hover:bg-gray-700 border border-transparent'}`}
                         >
                             <div className="flex items-center gap-3">
-                                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${selectedId === c.id ? 'bg-primary-700 text-primary-200' : 'bg-gray-600 text-slate-300'}`}>
-                                    <User size={16} />
-                                </div>
+                                <CustomerLogo customer={c} isSelected={selectedId === c.id} />
                                 <span className="font-medium text-slate-200">{c.name}</span>
                             </div>
                             <button
@@ -153,128 +168,66 @@ export default function CustomerDashboard({
                 {selectedId ? (
                     <>
                         <div className="bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-700">
-                            <div className="flex justify-between items-end mb-4">
-                                <div className="w-full">
-                                    <label className="block text-sm text-slate-300 mb-1">Customer Name</label>
-                                    <div className="w-full text-xl font-semibold border border-gray-600 rounded bg-gray-700/50 text-slate-100 py-2 px-3 opacity-75">
-                                        {editName}
-                                    </div>
-                                    <p className="text-xs text-cyan-400 mt-1 flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <path d="M12 16v-4"></path>
-                                            <path d="M12 8h.01"></path>
-                                        </svg>
-                                        To edit customer name, use the Customer Portal
-                                    </p>
+                            {/* Header */}
+                            <div className="mb-6 pb-4 border-b border-gray-600">
+                                <h2 className="text-2xl font-bold text-slate-100 mb-1">Customer Details</h2>
+                                <p className="text-sm text-slate-400">All customer information is managed in the Customer Portal</p>
+                            </div>
+
+                            {/* Customer Name */}
+                            <div className="mb-6">
+                                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-2">Customer Name</label>
+                                <div className="text-3xl font-bold text-slate-100">
+                                    {editName}
                                 </div>
-                                <button
-                                    onClick={() => {
-                                        const customer = savedCustomers.find(c => c.id === selectedId);
-                                        if (customer) {
-                                            if (customer.isLocked) {
-                                                // Unlock
-                                                saveCustomer({ ...customer, isLocked: false });
-                                            } else {
-                                                // Save and lock
-                                                saveCustomer({
-                                                    id: selectedId,
-                                                    name: editName,
-                                                    rates: editRates,
-                                                    contacts: editContacts,
-                                                    customerNotes: customer.customerNotes,
-                                                    isLocked: true
-                                                });
-                                                alert('Customer saved and locked!');
-                                            }
-                                        }
-                                    }}
-                                    className={`px-6 py-2 rounded shadow flex items-center gap-2 font-medium transition-colors ${savedCustomers.find(c => c.id === selectedId)?.isLocked
-                                        ? 'bg-amber-600 text-white hover:bg-amber-700'
-                                        : 'bg-green-600 text-white hover:bg-green-700'
-                                        }`}
-                                >
-                                    {savedCustomers.find(c => c.id === selectedId)?.isLocked ? (
-                                        <>
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                                <rect width="18" height="11" x="3" y="11" rx="2" ry="2"></rect>
-                                                <path d="M7 11V7a5 5 0 0 1 9.9-1"></path>
-                                            </svg>
-                                            Unlock to Edit
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save size={18} /> Save Changes
-                                        </>
-                                    )}
-                                </button>
                             </div>
 
                             {/* Contacts and Rate Notes Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-700">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                                {/* Contacts Management */}
+                                {/* Contacts Display (Read-Only) */}
                                 <div>
                                     <label className="block text-sm text-slate-300 mb-2 flex items-center gap-2">
                                         <UserPlus size={16} /> Main Quote Contacts
                                     </label>
 
-                                    {/* Existing Contacts List */}
-                                    <div className="space-y-2 mb-3">
-                                        {editContacts.map((contact, index) => (
-                                            <div key={index} className="bg-gray-700 p-3 rounded border border-gray-600">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <span className="text-sm font-semibold text-slate-200">{contact.name}</span>
-                                                    {!savedCustomers.find(c => c.id === selectedId)?.isLocked && (
-                                                        <button
-                                                            onClick={() => removeContact(index)}
-                                                            className="text-slate-400 hover:text-red-400"
-                                                        >
-                                                            <X size={14} />
-                                                        </button>
+                                    {/* Contacts List - Easy to Copy */}
+                                    {editContacts.length === 0 ? (
+                                        <div className="bg-gray-700/50 p-4 rounded border border-gray-600 text-center text-slate-400 text-sm">
+                                            No contacts added yet
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {editContacts.map((contact, index) => (
+                                                <div
+                                                    key={index}
+                                                    className="bg-gray-800/50 p-3 rounded-lg"
+                                                >
+                                                    <div className="text-sm font-bold text-slate-100 mb-2">{contact.name}</div>
+                                                    {contact.phone && (
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-xs">📞</span>
+                                                            <div
+                                                                className="text-xs text-slate-300 font-mono select-all cursor-pointer hover:bg-gray-600/50 rounded px-1 py-0.5 break-all flex-1"
+                                                                title="Click to select and copy"
+                                                            >
+                                                                {contact.phone}
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                    {contact.email && (
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-xs">✉️</span>
+                                                            <div
+                                                                className="text-xs text-slate-300 font-mono select-all cursor-pointer hover:bg-gray-600/50 rounded px-1 py-0.5 break-all flex-1"
+                                                                title="Click to select and copy"
+                                                            >
+                                                                {contact.email}
+                                                            </div>
+                                                        </div>
                                                     )}
                                                 </div>
-                                                {contact.phone && (
-                                                    <div className="text-xs text-slate-400">📞 {contact.phone}</div>
-                                                )}
-                                                {contact.email && (
-                                                    <div className="text-xs text-slate-400">✉️ {contact.email}</div>
-                                                )}
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Add New Contact Form */}
-                                    {!savedCustomers.find(c => c.id === selectedId)?.isLocked && (
-                                        <div className="space-y-2 p-3 bg-gray-700/50 rounded border border-gray-600">
-                                            <input
-                                                type="text"
-                                                value={newContactName}
-                                                onChange={(e) => setNewContactName(e.target.value)}
-                                                placeholder="Name *"
-                                                className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
-                                            />
-                                            <input
-                                                type="tel"
-                                                value={newContactPhone}
-                                                onChange={(e) => setNewContactPhone(e.target.value)}
-                                                placeholder="Phone"
-                                                className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
-                                            />
-                                            <input
-                                                type="email"
-                                                value={newContactEmail}
-                                                onChange={(e) => setNewContactEmail(e.target.value)}
-                                                placeholder="Email"
-                                                className="w-full border border-gray-600 rounded bg-gray-700 text-slate-100 px-3 py-2 text-sm focus:outline-none focus:border-primary-500"
-                                            />
-                                            <button
-                                                onClick={addContact}
-                                                className="w-full bg-primary-600 text-white py-2 rounded hover:bg-primary-700 transition-colors flex items-center justify-center gap-2"
-                                                title="Add Contact"
-                                            >
-                                                <Plus size={18} /> Add Contact
-                                            </button>
+                                            ))}
                                         </div>
                                     )}
                                 </div>
@@ -297,6 +250,14 @@ export default function CustomerDashboard({
                                         className={`w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-none ${savedCustomers.find(c => c.id === selectedId)?.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                                         placeholder="1. Special billing requirements&#10;2. Contact preferences&#10;3. Payment terms"
                                     />
+                                    <p className="text-xs text-cyan-400 mt-2 flex items-center gap-1">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <circle cx="12" cy="12" r="10"></circle>
+                                            <path d="M12 16v-4"></path>
+                                            <path d="M12 8h.01"></path>
+                                        </svg>
+                                        Notes appear under the Customer dropdown in Job Details (small cyan text with 📝 icon)
+                                    </p>
                                 </div>
                             </div>
 

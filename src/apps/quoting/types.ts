@@ -27,6 +27,7 @@ export interface Contact {
 export interface Customer {
     id: string;
     name: string;
+    logo?: string; // URL to customer logo from Customer Portal
     rates: Rates;
     contacts: Contact[]; // List of main contacts with name, phone, email
     customerNotes?: string; // Notes about the customer (e.g., special requirements, billing info)
@@ -44,7 +45,8 @@ export interface JobDetails {
     reportingTime: number; // hours
     includeTravelCharge: boolean;
     travelDistance: number; // km
-    quotedAmount?: number;
+    originalQuoteAmount?: number; // Auto-captured when status changes to 'quoted'
+    poAmount?: number; // Manually entered PO value
     varianceReason?: string;
     externalLink?: string;
     adminComments?: string;

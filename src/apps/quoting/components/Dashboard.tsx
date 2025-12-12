@@ -236,49 +236,72 @@ export default function Dashboard({
                                 {/* Filtered Quotes */}
                                 {savedQuotes
                                     .filter(q => filterStatus === 'all' || q.status === filterStatus)
-                                    .sort((a, b) => b.lastModified - a.lastModified)
-                                    .map((quote) => (
-                                        <div
-                                            key={quote.id}
-                                            onClick={() => loadQuote(quote.id)}
-                                            className={`p-6 rounded-lg shadow-sm border border-gray-700 hover:shadow-md transition-shadow cursor-pointer relative group ${quote.status === 'draft' ? 'bg-gray-800 text-slate-400' :
-                                                quote.status === 'quoted' ? 'bg-yellow-900/20 text-yellow-300' :
-                                                    quote.status === 'invoice' ? 'bg-purple-900/20 text-purple-300' :
-                                                        'bg-emerald-900/20 text-emerald-300 border-emerald-700'
-                                                }`}
-                                        >
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className={`px-2 py-1 rounded text-xs font-medium uppercase tracking-wide ${quote.status === 'draft' ? 'bg-gray-700 text-slate-300' :
-                                                    quote.status === 'quoted' ? 'bg-yellow-800/50 text-yellow-200' :
-                                                        quote.status === 'invoice' ? 'bg-purple-800/50 text-purple-200' :
-                                                            'bg-emerald-800/50 text-emerald-200'
-                                                    }`}>
-                                                    {quote.status}
-                                                </div>
-                                                <div className="flex items-center gap-2">
-                                                    <span className="text-sm font-mono text-slate-500">#{quote.quoteNumber}</span>
+                                    .sort((a, b) => {
+                                        // Sort by quote number (descending - newest first)
+                                        const numA = parseInt(a.quoteNumber) || 0;
+                                        const numB = parseInt(b.quoteNumber) || 0;
+                                        return numB - numA;
+                                    })
+                                    .map((quote) => {
+                                        const quoteTotal = calculateQuoteTotal(quote);
+                                        return (
+                                            <div
+                                                key={quote.id}
+                                                onClick={() => loadQuote(quote.id)}
+                                                className="p-5 rounded-xl bg-gray-800/80 border border-gray-700 hover:border-gray-600 hover:bg-gray-800 transition-all cursor-pointer relative group"
+                                            >
+                                                {/* Header Row */}
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-2xl font-black text-slate-100">#{quote.quoteNumber}</span>
+                                                        <div className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${quote.status === 'draft' ? 'bg-slate-700 text-slate-300' :
+                                                            quote.status === 'quoted' ? 'bg-amber-600 text-amber-50' :
+                                                                quote.status === 'invoice' ? 'bg-purple-600 text-purple-50' :
+                                                                    'bg-emerald-600 text-emerald-50'
+                                                            }`}>
+                                                            {quote.status}
+                                                        </div>
+                                                    </div>
                                                     <button
                                                         onClick={(e) => handleDelete(e, quote.id)}
-                                                        className="text-slate-500 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                                        className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                                                     >
-                                                        <Trash2 size={18} />
+                                                        <Trash2 size={16} />
                                                     </button>
                                                 </div>
-                                            </div>
 
-                                            <h3 className="text-2xl font-black text-slate-100 mb-2 tracking-tight">
-                                                {quote.jobDetails.jobNo ? `JOB${quote.jobDetails.jobNo}` : 'JOB-----'}
-                                            </h3>
-                                            <p className="text-slate-400 text-sm mb-4">
-                                                {quote.jobDetails.customer || 'No Customer'}
-                                            </p>
+                                                {/* Job Number */}
+                                                <h3 className="text-lg font-bold text-slate-200 mb-1">
+                                                    {quote.jobDetails.jobNo ? `JOB-${quote.jobDetails.jobNo}` : 'JOB-PENDING'}
+                                                </h3>
 
-                                            <div className="flex items-center gap-2 text-sm text-slate-500 mt-auto">
-                                                <FolderOpen size={14} />
-                                                <span>Last edited {new Date(quote.lastModified).toLocaleDateString()}</span>
+                                                {/* Customer */}
+                                                <p className="text-sm text-slate-400 mb-3 truncate">
+                                                    {quote.jobDetails.customer || 'No Customer Assigned'}
+                                                </p>
+
+                                                {/* Divider */}
+                                                <div className="border-t border-gray-700 my-3"></div>
+
+                                                {/* Footer Row */}
+                                                <div className="flex justify-between items-center">
+                                                    <div className="text-xs text-slate-500 flex items-center gap-1">
+                                                        <FolderOpen size={12} />
+                                                        <span>{new Date(quote.lastModified).toLocaleDateString('en-AU')}</span>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <div className="text-xs text-slate-500 uppercase tracking-wider">Value</div>
+                                                        <div className={`text-sm font-bold ${quote.status === 'quoted' ? 'text-amber-400' :
+                                                            quote.status === 'invoice' || quote.status === 'closed' ? 'text-emerald-400' :
+                                                                'text-slate-400'
+                                                            }`}>
+                                                            {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0 }).format(quoteTotal)}
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                             </div>
                         </div>
                     </>
@@ -360,8 +383,9 @@ export default function Dashboard({
                         saveTechnician={saveTechnician}
                         deleteTechnician={deleteTechnician}
                     />
-                )}
-            </div>
-        </div>
+                )
+                }
+            </div >
+        </div >
     );
 }

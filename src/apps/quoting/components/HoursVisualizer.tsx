@@ -17,37 +17,48 @@ export default function HoursVisualizer({ shifts, calculateShiftBreakdown }: Hou
 
     // Aggregate shifts by date and technician
     const aggregatedData = useMemo(() => {
-        const filteredShifts = selectedTech === 'ALL' 
-            ? shifts 
+        const filteredShifts = selectedTech === 'ALL'
+            ? shifts
             : shifts.filter(s => s.tech === selectedTech);
 
         const aggregated = new Map();
-        
+
         filteredShifts.forEach(shift => {
             const { breakdown } = calculateShiftBreakdown(shift);
             const key = shift.date;
-            
+
             if (!aggregated.has(key)) {
                 aggregated.set(key, {
                     date: key,
+                    dayType: shift.dayType,
                     normalHours: 0,
                     overtimeHours: 0,
+                    weekendHours: 0,
+                    publicHolidayHours: 0,
                     cost: 0,
                     techs: new Set()
                 });
             }
-            
+
             const dayData = aggregated.get(key);
-            dayData.normalHours += breakdown.siteNT + breakdown.travelInNT + breakdown.travelOutNT;
-            dayData.overtimeHours += breakdown.siteOT + breakdown.travelInOT + breakdown.travelOutOT;
+
+            // Categorize hours based on day type
+            if (shift.dayType === 'weekend') {
+                // Weekend: all hours are weekend rate
+                dayData.weekendHours += breakdown.totalHours;
+            } else if (shift.dayType === 'publicHoliday') {
+                // Public Holiday: all hours are PH rate
+                dayData.publicHolidayHours += breakdown.totalHours;
+            } else {
+                // Weekday: split into NT and OT
+                dayData.normalHours += breakdown.siteNT + breakdown.travelInNT + breakdown.travelOutNT;
+                dayData.overtimeHours += breakdown.siteOT + breakdown.travelInOT + breakdown.travelOutOT;
+            }
+
             dayData.techs.add(shift.tech);
-            
-            // Calculate cost based on day type
-            // Note: Cost calculation would require rates to be passed in
-            // For now, just aggregating hours without cost calculation
         });
-        
-        return Array.from(aggregated.values()).sort((a, b) => 
+
+        return Array.from(aggregated.values()).sort((a, b) =>
             new Date(a.date).getTime() - new Date(b.date).getTime()
         );
     }, [shifts, selectedTech, calculateShiftBreakdown]);
@@ -57,8 +68,10 @@ export default function HoursVisualizer({ shifts, calculateShiftBreakdown }: Hou
         return aggregatedData.reduce((acc, day) => ({
             normalHours: acc.normalHours + day.normalHours,
             overtimeHours: acc.overtimeHours + day.overtimeHours,
+            weekendHours: acc.weekendHours + day.weekendHours,
+            publicHolidayHours: acc.publicHolidayHours + day.publicHolidayHours,
             techCount: Math.max(acc.techCount, day.techs.size)
-        }), { normalHours: 0, overtimeHours: 0, techCount: 0 });
+        }), { normalHours: 0, overtimeHours: 0, weekendHours: 0, publicHolidayHours: 0, techCount: 0 });
     }, [aggregatedData]);
 
     if (shifts.length === 0) {
@@ -78,8 +91,12 @@ export default function HoursVisualizer({ shifts, calculateShiftBreakdown }: Hou
                 <h2 className="text-xl font-bold uppercase text-slate-100 tracking-wider">Hours Visualization</h2>
                 <div className="text-sm text-slate-400">
                     Total: <span className="font-semibold text-slate-200">
-                        {(totals.normalHours + totals.overtimeHours).toFixed(2)}h
-                    </span> (Normal: {totals.normalHours.toFixed(2)}h, Overtime: {totals.overtimeHours.toFixed(2)}h)
+                        {(totals.normalHours + totals.overtimeHours + totals.weekendHours + totals.publicHolidayHours).toFixed(2)}h
+                    </span>
+                    {totals.normalHours > 0 && ` (NT: ${totals.normalHours.toFixed(2)}h)`}
+                    {totals.overtimeHours > 0 && ` (OT: ${totals.overtimeHours.toFixed(2)}h)`}
+                    {totals.weekendHours > 0 && ` (Weekend: ${totals.weekendHours.toFixed(2)}h)`}
+                    {totals.publicHolidayHours > 0 && ` (PH: ${totals.publicHolidayHours.toFixed(2)}h)`}
                 </div>
             </div>
 
@@ -91,11 +108,10 @@ export default function HoursVisualizer({ shifts, calculateShiftBreakdown }: Hou
                         <button
                             key={tech}
                             onClick={() => setSelectedTech(tech)}
-                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                selectedTech === tech
-                                    ? 'bg-primary-600 text-white'
-                                    : 'bg-gray-700 text-slate-400 hover:bg-gray-600 border border-gray-600'
-                            }`}
+                            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${selectedTech === tech
+                                ? 'bg-primary-600 text-white'
+                                : 'bg-gray-700 text-slate-400 hover:bg-gray-600 border border-gray-600'
+                                }`}
                         >
                             {tech === 'ALL' ? 'All Technicians' : tech}
                         </button>
@@ -106,61 +122,100 @@ export default function HoursVisualizer({ shifts, calculateShiftBreakdown }: Hou
             {/* Chart */}
             <div className="space-y-3">
                 <div className="text-sm text-slate-400 mb-2">Daily Hours Breakdown:</div>
-                {aggregatedData.map(day => (
-                    <div key={day.date} className="bg-gray-700 p-3 rounded-lg">
-                        <div className="flex justify-between items-center mb-2">
-                            <span className="text-sm font-medium text-slate-200">
-                                {new Date(day.date).toLocaleDateString('en-AU', { 
-                                    weekday: 'short', 
-                                    day: 'numeric', 
-                                    month: 'short' 
-                                })}
-                            </span>
-                            <span className="text-xs text-slate-400">
-                                {day.normalHours.toFixed(2)}h NT + {day.overtimeHours.toFixed(2)}h OT = {(day.normalHours + day.overtimeHours).toFixed(2)}h total
-                            </span>
-                        </div>
-                        
-                        {/* Visual bar chart */}
-                        <div className="flex items-center gap-2">
-                            <div className="flex-1 bg-gray-600 rounded-full h-6 overflow-hidden flex">
-                                {day.normalHours > 0 && (
-                                    <div 
-                                        className="bg-blue-500 h-full flex items-center justify-center text-xs text-white font-medium"
-                                        style={{ width: `${(day.normalHours / (day.normalHours + day.overtimeHours)) * 100}%` }}
-                                    >
-                                        {day.normalHours > 0.5 && `${day.normalHours.toFixed(1)}h`}
-                                    </div>
-                                )}
-                                {day.overtimeHours > 0 && (
-                                    <div 
-                                        className="bg-amber-500 h-full flex items-center justify-center text-xs text-white font-medium"
-                                        style={{ width: `${(day.overtimeHours / (day.normalHours + day.overtimeHours)) * 100}%` }}
-                                    >
-                                        {day.overtimeHours > 0.5 && `${day.overtimeHours.toFixed(1)}h`}
-                                    </div>
-                                )}
+                {aggregatedData.map(day => {
+                    const totalHours = day.normalHours + day.overtimeHours + day.weekendHours + day.publicHolidayHours;
+                    const isWeekend = day.dayType === 'weekend';
+                    const isPublicHoliday = day.dayType === 'publicHoliday';
+
+                    return (
+                        <div key={day.date} className="bg-gray-700 p-3 rounded-lg">
+                            <div className="flex justify-between items-center mb-2">
+                                <span className={`text-sm font-medium ${isPublicHoliday ? 'text-purple-400' : isWeekend ? 'text-amber-400' : 'text-slate-200'
+                                    }`}>
+                                    {new Date(day.date).toLocaleDateString('en-AU', {
+                                        weekday: 'short',
+                                        day: 'numeric',
+                                        month: 'short'
+                                    })}
+                                    {isPublicHoliday && ' (PH)'}
+                                    {isWeekend && !isPublicHoliday && ' (Weekend)'}
+                                </span>
+                                <span className="text-xs text-slate-400">
+                                    {isWeekend ? (
+                                        `${day.weekendHours.toFixed(2)}h @ Weekend Rate`
+                                    ) : isPublicHoliday ? (
+                                        `${day.publicHolidayHours.toFixed(2)}h @ PH Rate`
+                                    ) : (
+                                        `${day.normalHours.toFixed(2)}h NT + ${day.overtimeHours.toFixed(2)}h OT = ${totalHours.toFixed(2)}h total`
+                                    )}
+                                </span>
                             </div>
-                        </div>
-                        
-                        {selectedTech !== 'ALL' && (
-                            <div className="text-xs text-slate-400 mt-1">
-                                Technician: {selectedTech}
+
+                            {/* Visual bar chart */}
+                            <div className="flex items-center gap-2">
+                                <div className="flex-1 bg-gray-600 rounded-full h-6 overflow-hidden flex">
+                                    {day.normalHours > 0 && (
+                                        <div
+                                            className="bg-blue-500 h-full flex items-center justify-center text-xs text-white font-medium"
+                                            style={{ width: `${(day.normalHours / totalHours) * 100}%` }}
+                                        >
+                                            {day.normalHours > 0.5 && `${day.normalHours.toFixed(1)}h`}
+                                        </div>
+                                    )}
+                                    {day.overtimeHours > 0 && (
+                                        <div
+                                            className="bg-amber-500 h-full flex items-center justify-center text-xs text-white font-medium"
+                                            style={{ width: `${(day.overtimeHours / totalHours) * 100}%` }}
+                                        >
+                                            {day.overtimeHours > 0.5 && `${day.overtimeHours.toFixed(1)}h`}
+                                        </div>
+                                    )}
+                                    {day.weekendHours > 0 && (
+                                        <div
+                                            className="bg-orange-500 h-full flex items-center justify-center text-xs text-white font-medium"
+                                            style={{ width: `${(day.weekendHours / totalHours) * 100}%` }}
+                                        >
+                                            {day.weekendHours > 0.5 && `${day.weekendHours.toFixed(1)}h`}
+                                        </div>
+                                    )}
+                                    {day.publicHolidayHours > 0 && (
+                                        <div
+                                            className="bg-purple-500 h-full flex items-center justify-center text-xs text-white font-medium"
+                                            style={{ width: `${(day.publicHolidayHours / totalHours) * 100}%` }}
+                                        >
+                                            {day.publicHolidayHours > 0.5 && `${day.publicHolidayHours.toFixed(1)}h`}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
-                        )}
-                    </div>
-                ))}
+
+                            {selectedTech !== 'ALL' && (
+                                <div className="text-xs text-slate-400 mt-1">
+                                    Technician: {selectedTech}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Legend */}
-            <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-700">
+            <div className="flex items-center gap-4 mt-6 pt-4 border-t border-gray-700 flex-wrap">
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-blue-500 rounded"></div>
-                    <span className="text-sm text-slate-400">Normal Time</span>
+                    <span className="text-sm text-slate-400">Weekday NT</span>
                 </div>
                 <div className="flex items-center gap-2">
                     <div className="w-4 h-4 bg-amber-500 rounded"></div>
-                    <span className="text-sm text-slate-400">Overtime</span>
+                    <span className="text-sm text-slate-400">Weekday OT</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-orange-500 rounded"></div>
+                    <span className="text-sm text-slate-400">Weekend Rate</span>
+                </div>
+                <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 bg-purple-500 rounded"></div>
+                    <span className="text-sm text-slate-400">Public Holiday Rate</span>
                 </div>
             </div>
         </div>

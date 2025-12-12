@@ -151,14 +151,16 @@ export default function Summary({ quote }: SummaryProps) {
         const vehicleCost = shifts.filter(s => s.vehicle).length * rates.vehicle;
         const perDiemCost = shifts.filter(s => s.perDiem).length * rates.perDiem;
 
-        // Admin Header
-        const variance = totalCost - (jobDetails.quotedAmount || 0);
-        const hasVariance = (jobDetails.quotedAmount || 0) > 0 && Math.abs(variance) > 0.01;
+        // Admin Header - Calculate variance against PO if available, otherwise against original quote
+        const compareAmount = jobDetails.poAmount || jobDetails.originalQuoteAmount || 0;
+        const variance = totalCost - compareAmount;
+        const hasVariance = compareAmount > 0 && Math.abs(variance) > 0.01;
 
         let body = `Hi Admin,\n\nSee draft invoice details for ${jobDetails.jobNo} - ${jobDetails.customer}.\n\nTotal to Invoice: ${formatMoney(totalCost)}\n`;
 
         if (hasVariance) {
-            body += `\nNote: The final value is ${formatMoney(Math.abs(variance))} ${variance > 0 ? 'higher' : 'lower'} than the original quote of ${formatMoney(jobDetails.quotedAmount || 0)}.`;
+            const compareLabel = jobDetails.poAmount ? 'PO' : 'original quote';
+            body += `\nNote: The final value is ${formatMoney(Math.abs(variance))} ${variance > 0 ? 'higher' : 'lower'} than the ${compareLabel} of ${formatMoney(compareAmount)}.`;
             if (jobDetails.varianceReason) {
                 body += `\nReason: ${jobDetails.varianceReason}`;
             }
@@ -613,43 +615,104 @@ export default function Summary({ quote }: SummaryProps) {
                             />
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div>
                                 <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Original Quote / PO Amount
+                                    Original Quote Amount
+                                </label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-slate-400">$</span>
+                                    <input
+                                        type="text"
+                                        value={jobDetails.originalQuoteAmount ? formatMoney(jobDetails.originalQuoteAmount) : 'Not yet quoted'}
+                                        disabled
+                                        className="w-full pl-7 p-2 border border-gray-600 rounded bg-gray-600 text-slate-300 outline-none opacity-75 cursor-not-allowed"
+                                        title="Auto-captured when quote status is set to 'Quoted'"
+                                    />
+                                </div>
+                                <p className="text-xs text-slate-500 mt-1">Auto-captured when marked as "Quoted"</p>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    PO Amount
                                 </label>
                                 <div className="relative">
                                     <span className="absolute left-3 top-2.5 text-slate-400">$</span>
                                     <input
                                         type="number"
-                                        value={jobDetails.quotedAmount || ''}
-                                        onChange={(e) => quote.setJobDetails({ ...jobDetails, quotedAmount: parseFloat(e.target.value) || 0 })}
+                                        value={jobDetails.poAmount || ''}
+                                        onChange={(e) => quote.setJobDetails({ ...jobDetails, poAmount: parseFloat(e.target.value) || undefined })}
                                         className="w-full pl-7 p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
                                         placeholder="0.00"
                                     />
                                 </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Variance Reason
-                                </label>
-                                <input
-                                    type="text"
-                                    value={jobDetails.varianceReason || ''}
-                                    onChange={(e) => quote.setJobDetails({ ...jobDetails, varianceReason: e.target.value })}
-                                    className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
-                                    placeholder="e.g. Extra site time requested..."
-                                />
+                                <p className="text-xs text-slate-500 mt-1">Enter the customer's PO value</p>
                             </div>
                         </div>
 
-                        <div className="bg-gray-700 p-3 rounded border border-gray-600 flex justify-between items-center mb-4">
-                            <span className="text-sm font-medium text-slate-300">Total to Invoice: {formatMoney(totalCost)}</span>
-                            {(jobDetails.quotedAmount || 0) > 0 && (
-                                <span className={`text-sm font-bold ${totalCost > (jobDetails.quotedAmount || 0) ? 'text-red-400' : 'text-green-400'}`}>
-                                    Difference vs. Original Quote Snapshot: {formatMoney(totalCost - (jobDetails.quotedAmount || 0))}
-                                    {Math.abs(totalCost - (jobDetails.quotedAmount || 0)) > 0.01 ? (totalCost > (jobDetails.quotedAmount || 0) ? ' (Higher)' : ' (Lower)') : ''}
-                                </span>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Variance Reason
+                            </label>
+                            <input
+                                type="text"
+                                value={jobDetails.varianceReason || ''}
+                                onChange={(e) => quote.setJobDetails({ ...jobDetails, varianceReason: e.target.value })}
+                                className="w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
+                                placeholder="e.g. Extra site time requested..."
+                            />
+                        </div>
+
+                        {/* Variance Display */}
+                        <div className="bg-gray-700 p-4 rounded border border-gray-600 space-y-2">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium text-slate-300">Final Invoice Total:</span>
+                                <span className="text-lg font-bold text-slate-100">{formatMoney(totalCost)}</span>
+                            </div>
+
+                            {jobDetails.poAmount && (
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-600">
+                                    <span className="text-xs text-slate-400">vs PO Amount:</span>
+                                    <span className={`text-sm font-bold ${totalCost > jobDetails.poAmount ? 'text-red-400' :
+                                        totalCost < jobDetails.poAmount ? 'text-emerald-400' :
+                                            'text-slate-400'
+                                        }`}>
+                                        {formatMoney(totalCost - jobDetails.poAmount)}
+                                        {Math.abs(totalCost - jobDetails.poAmount) > 0.01 ? (
+                                            totalCost > jobDetails.poAmount ? ' (Over PO)' : ' (Under PO)'
+                                        ) : ' (Matches PO)'}
+                                    </span>
+                                </div>
+                            )}
+
+                            {jobDetails.originalQuoteAmount && (
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-600">
+                                    <span className="text-xs text-slate-400">vs Original Quote:</span>
+                                    <span className={`text-sm font-bold ${totalCost > jobDetails.originalQuoteAmount ? 'text-amber-400' :
+                                        totalCost < jobDetails.originalQuoteAmount ? 'text-cyan-400' :
+                                            'text-slate-400'
+                                        }`}>
+                                        {formatMoney(totalCost - jobDetails.originalQuoteAmount)}
+                                        {Math.abs(totalCost - jobDetails.originalQuoteAmount) > 0.01 ? (
+                                            totalCost > jobDetails.originalQuoteAmount ? ' (Higher)' : ' (Lower)'
+                                        ) : ' (No Change)'}
+                                    </span>
+                                </div>
+                            )}
+
+                            {jobDetails.poAmount && jobDetails.originalQuoteAmount && (
+                                <div className="flex justify-between items-center pt-2 border-t border-gray-600">
+                                    <span className="text-xs text-slate-400">PO vs Original Quote:</span>
+                                    <span className={`text-sm font-bold ${jobDetails.poAmount > jobDetails.originalQuoteAmount ? 'text-emerald-400' :
+                                        jobDetails.poAmount < jobDetails.originalQuoteAmount ? 'text-red-400' :
+                                            'text-slate-400'
+                                        }`}>
+                                        {formatMoney(jobDetails.poAmount - jobDetails.originalQuoteAmount)}
+                                        {Math.abs(jobDetails.poAmount - jobDetails.originalQuoteAmount) > 0.01 ? (
+                                            jobDetails.poAmount > jobDetails.originalQuoteAmount ? ' (PO Higher)' : ' (PO Lower)'
+                                        ) : ' (Match)'}
+                                    </span>
+                                </div>
                             )}
                         </div>
                     </div>

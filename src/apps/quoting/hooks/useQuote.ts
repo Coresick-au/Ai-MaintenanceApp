@@ -36,7 +36,8 @@ const DEFAULT_JOB_DETAILS: JobDetails = {
     reportingTime: 0,
     includeTravelCharge: false,
     travelDistance: 0,
-    quotedAmount: 0,
+    originalQuoteAmount: undefined,
+    poAmount: undefined,
     varianceReason: '',
     externalLink: '',
     adminComments: ''
@@ -127,12 +128,26 @@ export function useQuote() {
         localStorage.setItem(DEFAULT_RATES_STORAGE_KEY, JSON.stringify(savedDefaultRates));
     }, [savedDefaultRates, isLoaded]);
 
+    // Utility to recursively remove undefined values (Firestore doesn't allow them)
+    const removeUndefined = (obj: any): any => {
+        if (obj === null || obj === undefined) return null;
+        if (Array.isArray(obj)) return obj.map(removeUndefined);
+        if (typeof obj === 'object') {
+            return Object.fromEntries(
+                Object.entries(obj)
+                    .filter(([_, v]) => v !== undefined)
+                    .map(([k, v]) => [k, removeUndefined(v)])
+            );
+        }
+        return obj;
+    };
+
     // 2. Auto-save Active Quote to Firestore using Repository
     useEffect(() => {
         if (!activeQuoteId || !isLoaded) return;
 
         const saveToCloud = async () => {
-            const updates = {
+            const updates = removeUndefined({
                 status,
                 rates,
                 jobDetails,
@@ -140,7 +155,7 @@ export function useQuote() {
                 extras,
                 internalExpenses,
                 lastModified: Date.now()
-            };
+            });
 
             try {
                 await quoteRepository.update(activeQuoteId, updates);
@@ -165,17 +180,17 @@ export function useQuote() {
         }, 0);
         const nextQuoteNum = (maxQuoteNum + 1).toString().padStart(4, '0');
 
-        const newQuote: Quote = {
+        const newQuote: Quote = removeUndefined({
             id: newId,
             quoteNumber: nextQuoteNum,
             lastModified: Date.now(),
             status: 'draft',
-            rates: savedDefaultRates, // Use saved defaults for new quotes
+            rates: savedDefaultRates,
             jobDetails: DEFAULT_JOB_DETAILS,
             shifts: DEFAULT_SHIFTS,
             extras: [{ id: 1, description: 'Accommodation', cost: 0 }],
             internalExpenses: []
-        };
+        }) as Quote;
 
         try {
             await quoteRepository.create(newId, newQuote);
@@ -457,7 +472,16 @@ export function useQuote() {
 
         // Active Quote
         status,
-        setStatus,
+        setStatus: (newStatus: Status) => {
+            // Auto-capture original quote amount when transitioning to 'quoted'
+            if (newStatus === 'quoted' && status !== 'quoted' && !jobDetails.originalQuoteAmount) {
+                setJobDetails({
+                    ...jobDetails,
+                    originalQuoteAmount: totalCost
+                });
+            }
+            setStatus(newStatus);
+        },
         rates,
         setRates,
         jobDetails,

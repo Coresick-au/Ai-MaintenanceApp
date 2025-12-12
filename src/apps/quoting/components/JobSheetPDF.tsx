@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import type { Quote } from '../types';
 
 // Clean, professional styles for job sheet
@@ -54,6 +54,7 @@ export const JobSheetPDF: React.FC<JobSheetPDFProps> = ({ quote, debug = false }
                         <Text style={styles.title}>JOB SHEET</Text>
                         <Text style={styles.subTitle}>Accurate Industries</Text>
                     </View>
+                    <Image src="/logos/ai-logo.png" style={styles.logo} />
                 </View>
 
                 {/* Job Information */}
@@ -89,7 +90,7 @@ export const JobSheetPDF: React.FC<JobSheetPDFProps> = ({ quote, debug = false }
                 {/* Technician Notes (New Feature) */}
                 <View style={styles.section}>
                     <Text style={[styles.sectionTitle, { color: '#B91C1C', backgroundColor: '#FEF2F2' }]}>
-                        TECHNICIAN NOTES & SAFETY
+                        SERVICE TECHNICIAN NOTES
                     </Text>
                     <View style={[styles.contentBox, { borderColor: '#FECACA' }]}>
                         <Text>{jobDetails.techNotes || 'No specific notes.'}</Text>
@@ -123,15 +124,7 @@ export const JobSheetPDF: React.FC<JobSheetPDFProps> = ({ quote, debug = false }
                     </View>
                 </View>
 
-                {/* Sign Off Area */}
-                <View style={{ marginTop: 40, flexDirection: 'row', justifyContent: 'space-between' }}>
-                    <View style={{ width: '45%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 5 }}>
-                        <Text style={styles.label}>Technician Signature</Text>
-                    </View>
-                    <View style={{ width: '45%', borderTopWidth: 1, borderTopColor: '#000', paddingTop: 5 }}>
-                        <Text style={styles.label}>Site Contact Signature</Text>
-                    </View>
-                </View>
+
 
                 {/* Footer */}
                 <View style={styles.footer}>

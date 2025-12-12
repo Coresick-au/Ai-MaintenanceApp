@@ -49,7 +49,6 @@ export default function Timesheet({
                     <tr>
                         <th className="p-3 w-32">Date</th>
                         <th className="p-3 w-32">Tech</th>
-                        <th className="p-3 w-32">Type</th>
                         <th className="p-3 w-24">Start</th>
                         <th className="p-3 w-24">Finish</th>
                         <th className="p-3 w-20 text-center text-primary-400 bg-primary-900/20">Trav In</th>
@@ -57,6 +56,7 @@ export default function Timesheet({
                         <th className="p-3 w-20 text-center font-bold">Site Hrs</th>
                         <th className="p-3 w-20 text-center font-bold text-slate-200">Total Hrs</th>
                         <th className="p-3 w-10 text-center">Night?</th>
+                        <th className="p-3 w-10 text-center">PH?</th>
                         <th className="p-3 w-10 text-center">Veh?</th>
                         <th className="p-3 w-10 text-center">P.D?</th>
                         <th className="p-3 text-right">Charge</th>
@@ -67,6 +67,9 @@ export default function Timesheet({
                     {shifts.map((shift) => {
                         const { cost, breakdown } = calculateShiftBreakdown(shift);
                         const dayName = getFormattedDate(shift.date);
+                        const isWeekend = shift.dayType === 'weekend';
+                        const isPublicHoliday = shift.dayType === 'publicHoliday';
+
                         return (
                             <tr key={shift.id} className="hover:bg-gray-700">
                                 <td className="p-3">
@@ -76,9 +79,24 @@ export default function Timesheet({
                                             type="date"
                                             value={shift.date}
                                             className={`border border-gray-600 rounded p-1 w-full bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50' : ''}`}
-                                            onChange={(e) => updateShift(shift.id, 'date', e.target.value)}
+                                            onChange={(e) => {
+                                                const date = new Date(e.target.value + 'T00:00:00');
+                                                const dayOfWeek = date.getDay();
+                                                const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+
+                                                // Auto-set dayType based on day of week
+                                                updateShift(shift.id, 'date', e.target.value);
+                                                if (!isPublicHoliday) {
+                                                    updateShift(shift.id, 'dayType', isWeekendDay ? 'weekend' : 'weekday');
+                                                }
+                                            }}
                                         />
-                                        {dayName && <div className="text-[10px] text-slate-400 font-bold uppercase whitespace-nowrap">{dayName}</div>}
+                                        {dayName && (
+                                            <div className={`text-[10px] font-bold uppercase whitespace-nowrap ${isWeekend ? 'text-amber-400' : isPublicHoliday ? 'text-purple-400' : 'text-slate-400'
+                                                }`}>
+                                                {dayName}
+                                            </div>
+                                        )}
                                     </div>
                                 </td>
                                 <td className="p-3">
@@ -91,18 +109,6 @@ export default function Timesheet({
                                         {technicians.map((tech, index) => (
                                             <option key={index} value={tech}>{tech}</option>
                                         ))}
-                                    </select>
-                                </td>
-                                <td className="p-3">
-                                    <select
-                                        disabled={isLocked}
-                                        className={`border border-gray-600 rounded p-1 w-full bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50' : 'bg-gray-700 text-slate-100'}`}
-                                        value={shift.dayType}
-                                        onChange={(e) => updateShift(shift.id, 'dayType', e.target.value)}
-                                    >
-                                        <option value="weekday">Weekday</option>
-                                        <option value="weekend">Weekend</option>
-                                        <option value="publicHoliday">Public Holiday</option>
                                     </select>
                                 </td>
                                 <td className="p-3">
@@ -155,6 +161,26 @@ export default function Timesheet({
                                         checked={shift.isNightShift || false}
                                         onChange={(e) => updateShift(shift.id, 'isNightShift', e.target.checked)}
                                         className="w-4 h-4 accent-primary-600"
+                                    />
+                                </td>
+                                <td className="p-3 text-center">
+                                    <input
+                                        disabled={isLocked}
+                                        type="checkbox"
+                                        checked={isPublicHoliday}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                updateShift(shift.id, 'dayType', 'publicHoliday');
+                                            } else {
+                                                // Revert to auto-detected type
+                                                const date = new Date(shift.date + 'T00:00:00');
+                                                const dayOfWeek = date.getDay();
+                                                const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+                                                updateShift(shift.id, 'dayType', isWeekendDay ? 'weekend' : 'weekday');
+                                            }
+                                        }}
+                                        className="w-4 h-4 accent-purple-600"
+                                        title="Public Holiday - overrides weekend/weekday detection"
                                     />
                                 </td>
                                 <td className="p-3 text-center">

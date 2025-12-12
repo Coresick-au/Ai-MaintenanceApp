@@ -16,7 +16,7 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
     const [calcKm, setCalcKm] = useState<number>(0);
     const [calcHours, setCalcHours] = useState<number>(0);
     const [hasBeenUnlocked, setHasBeenUnlocked] = useState(false);
-    
+
     // Profit Target State
     const [targetMargin, setTargetMargin] = useState<number>(0);
 
@@ -83,19 +83,19 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                             {resetToDefaults && (
                                 <button
                                     onClick={handleResetDefaults}
-                                    className="text-slate-400 hover:text-primary-400 px-3 py-2 rounded text-sm font-medium flex items-center gap-1 hover:bg-gray-700"
+                                    className="text-slate-400 hover:text-primary-400 px-2 py-1.5 rounded text-xs font-medium flex items-center gap-1 hover:bg-gray-700"
                                     title="Load system default rates"
                                 >
-                                    <RotateCcw size={16} /> Load Defaults
+                                    <RotateCcw size={14} /> Load Defaults
                                 </button>
                             )}
                             {saveAsDefaults && (
                                 <button
                                     onClick={handleSaveDefaults}
-                                    className="text-slate-400 hover:text-primary-400 px-3 py-2 rounded text-sm font-medium flex items-center gap-1 hover:bg-gray-700"
+                                    className="text-slate-400 hover:text-primary-400 px-2 py-1.5 rounded text-xs font-medium flex items-center gap-1 hover:bg-gray-700"
                                     title="Save current rates as system defaults"
                                 >
-                                    <Save size={16} /> Set as Defaults
+                                    <Save size={14} /> Set as Defaults
                                 </button>
                             )}
                         </div>
@@ -104,16 +104,16 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                     {isLocked ? (
                         <button
                             onClick={handleUnlock}
-                            className="bg-amber-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-amber-700 font-medium"
+                            className="bg-amber-600 text-white px-3 py-1.5 rounded flex items-center gap-1.5 hover:bg-amber-700 font-medium text-sm"
                         >
-                            <Unlock size={18} /> Unlock to Edit
+                            <Unlock size={16} /> Unlock
                         </button>
                     ) : (
                         <button
                             onClick={handleLock}
-                            className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2 hover:bg-green-700 font-medium"
+                            className="bg-green-600 text-white px-3 py-1.5 rounded flex items-center gap-1.5 hover:bg-green-700 font-medium text-sm"
                         >
-                            <Lock size={18} /> Lock Rates
+                            <Lock size={16} /> Lock Rates
                         </button>
                     )}
                 </div>
@@ -329,8 +329,8 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                             <div className="pb-2 text-slate-500">→</div>
                             <div>
                                 <label className="block text-xs text-slate-400 mb-1">Required Multiplier</label>
-                                <div className="py-2 px-3 bg-gray-800 rounded border border-gray-600 text-slate-100 font-mono min-w-[80px] text-center">
-                                    {targetMargin > 0 && targetMargin < 100 
+                                <div className="text-2xl font-bold text-primary-400 font-mono">
+                                    {targetMargin > 0 && targetMargin < 100
                                         ? (1 / (1 - (targetMargin / 100))).toFixed(3) + 'x'
                                         : '-'}
                                 </div>
