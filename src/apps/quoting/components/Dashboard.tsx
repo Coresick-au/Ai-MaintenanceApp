@@ -5,6 +5,7 @@ import { calculateShiftBreakdown as calculateLogic } from '../logic';
 import type { Quote, Customer, Rates } from '../types';
 import CustomerDashboard from './CustomerDashboard';
 import TechnicianDashboard from './TechnicianDashboard';
+import QuoteValueChart from './QuoteValueChart';
 
 interface DashboardProps {
     savedQuotes: Quote[];
@@ -194,6 +195,14 @@ export default function Dashboard({
                             </div>
                         </div>
 
+                        {/* Quote Value Chart */}
+                        <div className="mb-6">
+                            <QuoteValueChart
+                                quotes={savedQuotes}
+                                calculateQuoteTotal={calculateQuoteTotal}
+                            />
+                        </div>
+
                         <div className="px-6">
                             {/* Filter Section */}
                             <div className="flex gap-2 mb-6">
@@ -300,8 +309,8 @@ export default function Dashboard({
                                 <button
                                     onClick={handleBackup}
                                     className={`w-full px-4 py-2 rounded font-medium transition-colors flex items-center justify-center gap-2 ${backupSuccess
-                                            ? 'bg-success text-white'
-                                            : 'bg-gray-600 text-white hover:bg-gray-500'
+                                        ? 'bg-success text-white'
+                                        : 'bg-gray-600 text-white hover:bg-gray-500'
                                         }`}
                                 >
                                     {backupSuccess ? (

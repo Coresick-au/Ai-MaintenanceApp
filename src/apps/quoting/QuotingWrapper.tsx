@@ -1,4 +1,4 @@
-import React, { useState, Suspense, lazy } from 'react';
+import { useState, Suspense, lazy } from 'react';
 import Layout from './components/Layout';
 import QuoteBuilder from './components/QuoteBuilder/QuoteBuilder';
 import RatesConfig from './components/RatesConfig';
@@ -14,24 +14,9 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
     const [activeTab, setActiveTab] = useState('quote');
     const quote = useQuote();
 
-    // Exit App Handler
-    const handleExit = () => {
-        onBack();
-    };
-
     if (!quote.activeQuoteId) {
         return (
             <div className="relative">
-                {/* Exit Button provided by Wrapper */}
-                <div className="fixed top-4 right-4 z-50 print:hidden">
-                    <button
-                        onClick={handleExit}
-                        className="bg-slate-800 text-white px-4 py-2 rounded-lg shadow-lg hover:bg-slate-700 transition-colors flex items-center gap-2 font-bold text-sm border border-slate-700"
-                    >
-                        <span>✕</span> Exit Quoting
-                    </button>
-                </div>
-
                 <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-200">Loading Dashboard...</div>}>
                     <Dashboard
                         savedQuotes={quote.savedQuotes}
@@ -72,16 +57,6 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
 
     return (
         <div className="relative">
-            {/* Exit Button provided by Wrapper (Overlay) */}
-            <div className="fixed top-4 right-4 z-[60] print:hidden">
-                <button
-                    onClick={handleExit}
-                    className="bg-slate-900/80 backdrop-blur text-white px-3 py-1.5 rounded-lg shadow-lg hover:bg-slate-800 transition-colors flex items-center gap-2 font-bold text-xs border border-slate-700"
-                >
-                    <span>✕</span> Exit
-                </button>
-            </div>
-
             <Layout
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}

@@ -1294,7 +1294,7 @@ export function App() {
             </div>
 
             {/* Navigation Hint */}
-            <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-xs text-cyan-400">
+            <div className="mt-3 flex items-center gap-2 px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-lg text-xs text-cyan-400">
               <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="12" cy="12" r="10" />
                 <path d="M12 16v-4" />
@@ -1845,7 +1845,7 @@ export function App() {
                               </td>
                               <td className="px-3 py-2 text-center no-print">
                                 <div className="flex justify-center gap-2">
-                                  <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); setWizardAction('analytics'); setIsActionMenuOpen(false); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
                                   <button onClick={(e) => { e.stopPropagation(); setWizardAction('report'); setIsActionMenuOpen(false); setSelectedAssetId(item.id); setIsReportWizardOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-green-400" title="New Report"><Icons.FileText size={14} /></button>
                                 </div>
                               </td>
@@ -2059,6 +2059,18 @@ export function App() {
         siteLocation={selectedSite?.fullLocation || selectedSite?.location}
         onSaveReport={handleSaveReport}
         onDeleteReport={handleDeleteReportWrapper}
+      />
+
+      <ContextWizardModal
+        isOpen={isActionMenuOpen && wizardAction === 'analytics'}
+        onClose={() => { setIsActionMenuOpen(false); setWizardAction(null); }}
+        sites={sites}
+        actionTitle="View Analytics For..."
+        onComplete={(site, asset) => {
+          setViewAnalyticsAsset(asset);
+          setIsActionMenuOpen(false);
+          setWizardAction(null);
+        }}
       />
 
       <AppHistorySidePanel
