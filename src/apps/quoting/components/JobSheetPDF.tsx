@@ -8,17 +8,17 @@ const styles = StyleSheet.create({
     header: { flexDirection: 'row', marginBottom: 20, borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingBottom: 10 },
     logo: { width: 60, height: 60, marginRight: 15 },
     headerText: { flexDirection: 'column', justifyContent: 'center' },
-    title: { fontSize: 24, fontWeight: 'bold', color: '#111827' },
+    title: { fontSize: 24, color: '#111827' },
     subTitle: { fontSize: 12, color: '#6B7280' },
 
     section: { marginBottom: 15 },
-    sectionTitle: { fontSize: 12, fontWeight: 'bold', backgroundColor: '#F3F4F6', padding: 5, marginBottom: 5, color: '#374151' },
+    sectionTitle: { fontSize: 12, backgroundColor: '#F3F4F6', padding: 5, marginBottom: 5, color: '#374151' },
 
     // Grid for Job Details
     grid: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 10 },
     gridItem: { width: '50%', marginBottom: 5 },
     label: { fontSize: 8, color: '#6B7280', textTransform: 'uppercase' },
-    value: { fontSize: 10, fontWeight: 'medium' },
+    value: { fontSize: 10 },
 
     // Content Boxes
     contentBox: { borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 4, padding: 8, minHeight: 60 },
@@ -26,7 +26,7 @@ const styles = StyleSheet.create({
     // Table
     table: { width: '100%', borderTopWidth: 1, borderTopColor: '#E5E7EB' },
     tableRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#E5E7EB', paddingVertical: 6, alignItems: 'center' },
-    tableHeader: { backgroundColor: '#F9FAFB', fontWeight: 'bold' },
+    tableHeader: { backgroundColor: '#F9FAFB' },
     colDate: { width: '20%' },
     colTime: { width: '20%' },
     colTech: { width: '25%' },

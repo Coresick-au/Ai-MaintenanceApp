@@ -280,7 +280,8 @@ export function useQuote() {
     // Bridge to our verified logic
     const calculateShiftBreakdown = (shift: Shift) => {
         // We pass the current 'rates' state to the pure logic function
-        return calculateLogic(shift, rates);
+        // Use DEFAULT_RATES as fallback if rates is undefined
+        return calculateLogic(shift, rates || DEFAULT_RATES);
     };
 
     const reportingCost = (jobDetails.reportingTime || 0) * (rates?.officeReporting || 0);

@@ -48,36 +48,52 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
     };
 
     const downloadJobSheet = async () => {
+        console.log('[Job Sheet] Button clicked');
+
         if (!jobDetails.customer) {
             alert("Please select a customer first.");
             return;
         }
 
-        // Create the quote object to pass to the PDF
-        const currentQuoteData = {
-            id: activeQuoteId || 'temp',
-            quoteNumber: 'DRAFT',
-            lastModified: Date.now(),
-            status,
-            rates: quote.rates,
-            jobDetails: quote.jobDetails,
-            shifts: quote.shifts,
-            extras: quote.extras,
-            internalExpenses: quote.internalExpenses || []
-        };
+        try {
+            console.log('[Job Sheet] Creating quote data...');
 
-        // Generate Blob
-        const blob = await pdf(<JobSheetPDF quote={currentQuoteData} />).toBlob();
-        const url = URL.createObjectURL(blob);
+            // Create the quote object to pass to the PDF
+            const currentQuoteData = {
+                id: activeQuoteId || 'temp',
+                quoteNumber: 'DRAFT',
+                lastModified: Date.now(),
+                status,
+                rates: quote.rates,
+                jobDetails: quote.jobDetails,
+                shifts: quote.shifts,
+                extras: quote.extras,
+                internalExpenses: quote.internalExpenses || []
+            };
 
-        // Trigger Download
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `JobSheet_${jobDetails.jobNo || 'Draft'}_${jobDetails.customer.replace(/\s+/g, '-')}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
+            console.log('[Job Sheet] Generating PDF...', currentQuoteData);
+
+            // Generate Blob
+            const blob = await pdf(<JobSheetPDF quote={currentQuoteData} />).toBlob();
+
+            console.log('[Job Sheet] PDF generated, creating download link...');
+
+            const url = URL.createObjectURL(blob);
+
+            // Trigger Download
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `JobSheet_${jobDetails.jobNo || 'Draft'}_${jobDetails.customer.replace(/\s+/g, '-')}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+
+            console.log('[Job Sheet] Download triggered successfully');
+        } catch (error) {
+            console.error('[Job Sheet] Error generating PDF:', error);
+            alert(`Failed to generate Job Sheet: ${(error as Error).message}`);
+        }
     };
 
     const formatMoney = (amount: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
