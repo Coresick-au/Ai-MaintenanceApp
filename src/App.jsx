@@ -150,13 +150,23 @@ export function App() {
     }));
   };
 
-  // Toggle Logo Background
+  // Toggle Logo Background - Cycle through: white -> light-grey -> grey -> card-grey -> dark
   const toggleLogoBg = (e, siteId) => {
     if (e) e.stopPropagation();
-    setLogoBackgrounds(prev => ({
-      ...prev,
-      [siteId]: prev[siteId] === 'light' ? 'dark' : 'light'
-    }));
+    setLogoBackgrounds(prev => {
+      const current = prev[siteId] || 'light';
+      const cycle = {
+        'light': 'light-grey',
+        'light-grey': 'grey',
+        'grey': 'card-grey',
+        'card-grey': 'dark',
+        'dark': 'light'
+      };
+      return {
+        ...prev,
+        [siteId]: cycle[current]
+      };
+    });
   };
 
 
@@ -884,7 +894,18 @@ export function App() {
         {/* Sidebar Header - Logo */}
         <div className="p-4 border-b border-slate-700 bg-slate-700 flex flex-col items-center">
           <div
-            className="flex items-center justify-center mb-3 transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95"
+            className={`flex items-center justify-center mb-3 transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 rounded-lg p-0.5 ${selectedSite && logoBackgrounds[selectedSite.id] === 'light'
+              ? 'bg-white'
+              : selectedSite && logoBackgrounds[selectedSite.id] === 'light-grey'
+                ? 'bg-slate-200'
+                : selectedSite && logoBackgrounds[selectedSite.id] === 'grey'
+                  ? 'bg-slate-400'
+                  : selectedSite && logoBackgrounds[selectedSite.id] === 'card-grey'
+                    ? 'bg-slate-900 border border-slate-700'
+                    : selectedSite
+                      ? 'bg-slate-800 border border-slate-700'
+                      : 'bg-transparent'
+              } ${isSidebarCollapsed ? 'w-10 h-10' : 'w-40 h-40'}`}
             onClick={() => { setSelectedSiteId(null); setSelectedRowIds(new Set()); }}
             title="Return to Site Selection"
           >
@@ -1444,10 +1465,16 @@ export function App() {
                         <div
                           onClick={(e) => toggleLogoBg(e, site.id)}
                           className={`w-16 h-16 rounded-lg p-0.5 shadow-md cursor-pointer transition-colors flex items-center justify-center flex-shrink-0 ${logoBackgrounds[site.id] === 'light'
-                            ? 'bg-white'
-                            : 'bg-slate-800 border border-slate-700'
+                              ? 'bg-white'
+                              : logoBackgrounds[site.id] === 'light-grey'
+                                ? 'bg-slate-200'
+                                : logoBackgrounds[site.id] === 'grey'
+                                  ? 'bg-slate-400'
+                                  : logoBackgrounds[site.id] === 'card-grey'
+                                    ? 'bg-slate-900 border border-slate-700'
+                                    : 'bg-slate-800 border border-slate-700'
                             }`}
-                          title="Click to toggle background (Light/Dark)"
+                          title="Click to cycle background (White → Light Grey → Grey → Card Grey → Dark)"
                         >
                           <img src={site.logo} alt="Logo" className="w-full h-full object-contain" />
                         </div>
