@@ -26,8 +26,8 @@ const Portal = () => {
             icon: '🗂️',
             color: 'purple',
             component: <CustomerApp onBack={() => setActiveApp(null)} />,
-            // PERMISSION: Admin or Manager only
-            restricted: !['admin', 'manager'].includes(userRole)
+            // PERMISSION: Admin, Manager, or Tech
+            restricted: !['admin', 'manager', 'tech'].includes(userRole)
         },
         {
             id: 'aimm',

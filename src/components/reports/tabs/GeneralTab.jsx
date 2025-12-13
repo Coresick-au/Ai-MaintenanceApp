@@ -78,15 +78,27 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
                     <label className="text-xs text-slate-400 block mb-1">
                         Next Service Date
                         {asset?.serviceSchedule && (
-                            <span className="text-slate-500"> ({asset.serviceSchedule})</span>
+                            <span className="text-cyan-500 ml-1">({asset.serviceSchedule})</span>
                         )}
                     </label>
-                    <input
-                        type="date"
-                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
-                        value={formData.nextServiceDate}
-                        onChange={e => handleChange('nextServiceDate', e.target.value)}
-                    />
+                    <div className="relative">
+                        <input
+                            type="date"
+                            className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-400 cursor-not-allowed opacity-75"
+                            value={formData.nextServiceDate}
+                            readOnly
+                            title="Automatically calculated based on service schedule"
+                        />
+                        <div className="absolute right-8 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none">
+                            {/* Lock Icon */}
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1 italic flex items-center gap-1">
+                        {/* Info Icon */}
+                        <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+                        Auto-calculated from '{asset?.serviceSchedule || 'Yearly'}' schedule
+                    </p>
                 </div>
             </div>
 

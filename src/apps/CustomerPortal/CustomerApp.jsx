@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
+import { useAuth } from '../../context/AuthContext'; // Import useAuth
 import { Icons } from '../../constants/icons';
 
 // Format date helper
@@ -47,6 +48,8 @@ export const CustomerApp = ({ onBack }) => {
         toggleSiteStatus,
         getSitesByCustomer
     } = useGlobalData();
+
+    const { userRole } = useAuth(); // Get user role
 
     const [selectedCustId, setSelectedCustId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -149,6 +152,11 @@ export const CustomerApp = ({ onBack }) => {
     const handleDeleteCustomer = async () => {
         if (!selectedCustomer) return;
 
+        if (userRole === 'tech') {
+            alert("Please ask a manager to delete this customer.");
+            return;
+        }
+
         const linkedSites = getSitesByCustomer(selectedCustId);
         if (linkedSites.length > 0) {
             alert(`Cannot delete customer. They have ${linkedSites.length} active sites. Please delete or reassign sites first.`);
@@ -165,6 +173,11 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleArchiveCustomer = async () => {
         if (!selectedCustomer) return;
+
+        if (userRole === 'tech') {
+            alert("Please ask a manager to archive/restore this customer.");
+            return;
+        }
 
         const isArchiving = selectedCustomer.active !== false;
         const message = isArchiving
@@ -216,6 +229,11 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleDeleteContact = async (contactId, contactName) => {
         if (!selectedCustId) return;
+
+        if (userRole === 'tech') {
+            alert("Please ask a manager to delete this contact.");
+            return;
+        }
 
         if (window.confirm(`Are you sure you want to delete "${contactName}"?`)) {
             await deleteCustomerContact(selectedCustId, contactId);
@@ -291,10 +309,18 @@ export const CustomerApp = ({ onBack }) => {
     };
 
     const handleDeleteNote = async (noteId) => {
+        if (userRole === 'tech') {
+            alert("Please ask a manager to delete this note.");
+            return;
+        }
         await deleteCustomerNote(selectedCustId, noteId);
     };
 
     const handleArchiveNote = async (noteId, isArchived) => {
+        if (userRole === 'tech') {
+            alert("Please ask a manager to archive/restore this note.");
+            return;
+        }
         await archiveCustomerNote(selectedCustId, noteId, isArchived);
     };
 
@@ -593,14 +619,26 @@ export const CustomerApp = ({ onBack }) => {
                                                             <Icons.Edit size={14} />
                                                         </button>
                                                         <button
-                                                            onClick={() => toggleSiteStatus(site.id)}
+                                                            onClick={async () => {
+                                                                if (userRole === 'tech') {
+                                                                    alert("Please ask a manager to archive/restore this site.");
+                                                                    return;
+                                                                }
+                                                                await toggleSiteStatus(site.id);
+                                                            }}
                                                             className={`transition p-1 ${site.active === false ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'}`}
                                                             title={site.active === false ? "Restore site" : "Archive site"}
                                                         >
                                                             {site.active === false ? <Icons.RotateCcw size={14} /> : <Icons.Archive size={14} />}
                                                         </button>
                                                         <button
-                                                            onClick={() => deleteSite(site.id)}
+                                                            onClick={async () => {
+                                                                if (userRole === 'tech') {
+                                                                    alert("Please ask a manager to delete this site.");
+                                                                    return;
+                                                                }
+                                                                await deleteSite(site.id);
+                                                            }}
                                                             className="text-red-400 hover:text-red-300 transition p-1"
                                                             title="Delete site"
                                                         >

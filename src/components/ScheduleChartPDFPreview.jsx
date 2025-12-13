@@ -62,6 +62,12 @@ export const ScheduleChartPDFPreview = ({
   const sortedService = [...(site.serviceData || [])].filter(a => a.active !== false).sort(sortByDue);
   const sortedRoller = [...(site.rollerData || [])].filter(a => a.active !== false).sort(sortByDue);
 
+  // Calculate counts for health bar
+  const allAssets = [...sortedService, ...sortedRoller];
+  const criticalCount = allAssets.filter(i => i.remaining < 0).length;
+  const warningCount = allAssets.filter(i => i.remaining >= 0 && i.remaining < 30).length;
+  const healthyCount = allAssets.filter(i => i.remaining >= 30).length;
+
   return (
     <div ref={modalContainerRef} className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
       {/* --- PREVIEW CONTAINER (Screen Mode) --- */}
@@ -130,42 +136,21 @@ export const ScheduleChartPDFPreview = ({
                 </div>
               </section>
 
-              {/* VISUAL CHART REPRESENTATION */}
+              {/* VISUAL HEALTH BAR */}
               <section className="mb-8">
-                <h2 className="text-xl font-bold text-black border-b border-gray-300 pb-2 mb-4">Asset Status Chart</h2>
-                {[...sortedService, ...sortedRoller].length > 20 && (
-                  <div className="mb-2 text-xs text-gray-600 text-center">
-                    Showing top 20 most critical assets (out of {[...sortedService, ...sortedRoller].length} total)
+                <div className="p-4 border border-gray-300 rounded bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-500 uppercase">Overall Health</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-xs text-red-600 font-medium">{Math.round((criticalCount / (sortedService.length + sortedRoller.length)) * 100)}%</span></div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-xs text-amber-600 font-medium">{Math.round((warningCount / (sortedService.length + sortedRoller.length)) * 100)}%</span></div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div><span className="text-xs text-green-600 font-medium">{Math.round((healthyCount / (sortedService.length + sortedRoller.length)) * 100)}%</span></div>
+                    </div>
                   </div>
-                )}
-                <div className="p-6 border border-gray-300 rounded bg-gray-50">
-                  <div className="space-y-2">
-                    {[...sortedService, ...sortedRoller].slice(0, 20).map((item, index) => (
-                      <div key={item.id} className="flex items-center gap-4">
-                        <div className="w-32 text-sm font-medium truncate">{item.name}</div>
-                        <div className="flex-1">
-                          <div className="h-6 bg-gray-200 rounded-full overflow-hidden">
-                            <div
-                              className={`h-full ${item.remaining < 0 ? 'bg-red-500' :
-                                  item.remaining < 30 ? 'bg-amber-500' :
-                                    'bg-green-500'
-                                }`}
-                              style={{
-                                width: `${Math.max(5, Math.min(100, item.remaining < 0 ? 100 : item.remaining))}%`
-                              }}
-                            ></div>
-                          </div>
-                        </div>
-                        <div className="w-20 text-sm text-right">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
-                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
-                                'bg-green-100 text-green-800'
-                            }`}>
-                            {item.remaining}d
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden flex">
+                    <div className="bg-red-500 transition-all duration-500" style={{ width: `${(criticalCount / (sortedService.length + sortedRoller.length)) * 100}%` }}></div>
+                    <div className="bg-amber-500 transition-all duration-500" style={{ width: `${(warningCount / (sortedService.length + sortedRoller.length)) * 100}%` }}></div>
+                    <div className="bg-green-500 transition-all duration-500" style={{ width: `${(healthyCount / (sortedService.length + sortedRoller.length)) * 100}%` }}></div>
                   </div>
                 </div>
               </section>
@@ -198,8 +183,8 @@ export const ScheduleChartPDFPreview = ({
                           <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
                           <td className="py-3 text-black">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
-                                item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
-                                  'bg-green-100 text-green-800'
+                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
                               }`}>
                               {item.remaining < 0 ? 'OVERDUE' :
                                 item.remaining < 30 ? 'DUE SOON' :
@@ -236,8 +221,8 @@ export const ScheduleChartPDFPreview = ({
                           <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
                           <td className="py-3 text-black">
                             <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
-                                item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
-                                  'bg-green-100 text-green-800'
+                              item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
                               }`}>
                               {item.remaining < 0 ? 'OVERDUE' :
                                 item.remaining < 30 ? 'DUE SOON' :

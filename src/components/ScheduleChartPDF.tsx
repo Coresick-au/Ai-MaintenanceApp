@@ -267,31 +267,29 @@ export const ScheduleChartPDF: React.FC<ScheduleChartPDFProps> = ({
           <Text style={styles.summaryText}>Generated: {generatedDate}</Text>
         </View>
 
-        {/* Visual Chart */}
+        {/* Overall Health Bar */}
         <View style={styles.chartContainer}>
-          <Text style={styles.chartTitle}>Asset Status Overview</Text>
-          <View style={styles.chartGrid}>
-            <View style={styles.chartBar}>
-              <View style={styles.barContainer}>
-                <View style={[styles.barFill, { height: `${Math.min(criticalPct, 100)}%`, backgroundColor: '#EF4444' }]} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10, alignItems: 'center' }}>
+            <Text style={{ fontSize: 8, fontWeight: 'bold', textTransform: 'uppercase', color: '#9CA3AF' }}>Overall Health</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: '#EF4444' }}>{Math.round(criticalPct)}%</Text>
               </View>
-              <Text style={styles.barLabel}>Critical</Text>
-              <Text style={[styles.barValue, { color: '#EF4444' }]}>{criticalCount}</Text>
-            </View>
-            <View style={styles.chartBar}>
-              <View style={styles.barContainer}>
-                <View style={[styles.barFill, { height: `${Math.min(dueSoonPct, 100)}%`, backgroundColor: '#F59E0B' }]} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F59E0B', marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: '#F59E0B' }}>{Math.round(dueSoonPct)}%</Text>
               </View>
-              <Text style={styles.barLabel}>Due Soon</Text>
-              <Text style={[styles.barValue, { color: '#D97706' }]}>{dueSoonCount}</Text>
-            </View>
-            <View style={styles.chartBar}>
-              <View style={styles.barContainer}>
-                <View style={[styles.barFill, { height: `${Math.min(healthyPct, 100)}%`, backgroundColor: '#10B981' }]} />
+              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 4 }} />
+                <Text style={{ fontSize: 8, color: '#10B981' }}>{Math.round(healthyPct)}%</Text>
               </View>
-              <Text style={styles.barLabel}>Healthy</Text>
-              <Text style={[styles.barValue, { color: '#059669' }]}>{healthyCount}</Text>
             </View>
+          </View>
+          <View style={{ flexDirection: 'row', height: 8, backgroundColor: '#E2E8F0', borderRadius: 4, overflow: 'hidden' }}>
+            <View style={{ height: '100%', width: `${criticalPct}%`, backgroundColor: '#EF4444' }} />
+            <View style={{ height: '100%', width: `${dueSoonPct}%`, backgroundColor: '#F59E0B' }} />
+            <View style={{ height: '100%', width: `${healthyPct}%`, backgroundColor: '#10B981' }} />
           </View>
         </View>
 

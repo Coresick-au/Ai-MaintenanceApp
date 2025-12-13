@@ -16,6 +16,7 @@ import {
   Card,
   Button,
   StatusBadge,
+  OpStatusBadge,
   SimpleBarChart,
   CalendarWidget,
   Modal,
@@ -743,19 +744,24 @@ export function App() {
               <span className="font-medium text-slate-200">{selectedSpecs.billetWeightType || '-'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-slate-500">Billet Weight Size:</span>
+              <span className="text-slate-500">Billet Weight Size (kg):</span>
               <span className="font-medium text-slate-200">{selectedSpecs.billetWeightSize || '-'}</span>
             </div>
             {/* Billet Weight IDs Display */}
             {selectedSpecs.billetWeightIds && selectedSpecs.billetWeightIds.length > 0 && (
               <div className="pt-2 mt-2 border-t border-slate-700/50">
-                <span className="text-slate-500 block mb-1 text-xs">Billet Weight IDs:</span>
+                <span className="text-slate-500 block mb-1 text-xs">Billet Weight IDs (kg):</span>
                 <div className="flex flex-wrap gap-1">
-                  {selectedSpecs.billetWeightIds.map((id, idx) => (
-                    <span key={idx} className="bg-slate-800 border border-slate-600 px-1.5 py-0.5 rounded text-xs font-mono text-slate-300">
-                      {id}
-                    </span>
-                  ))}
+                  {selectedSpecs.billetWeightIds.map((item, idx) => {
+                    const isString = typeof item === 'string';
+                    const displayId = isString ? item : item.id;
+                    const displayWeight = isString ? '' : item.weight;
+                    return (
+                      <span key={idx} className="bg-slate-800 border border-slate-600 px-1.5 py-0.5 rounded text-xs font-mono text-slate-300">
+                        {displayId}{displayWeight ? ` - ${displayWeight}kg` : ''}
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
             )}
@@ -1881,28 +1887,21 @@ export function App() {
                               <td className={`px-4 py-2 text-right font-bold ${item.remaining < 0 ? 'text-red-400' : 'text-slate-300'}`}>{item.remaining}</td>
                               <td className="px-4 py-2 text-center"><StatusBadge remaining={item.remaining} isActive={item.active} /></td>
                               <td className="px-4 py-2 text-center" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
+                                <OpStatusBadge
+                                  status={item.opStatus}
+                                  note={item.opNote}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     closeFullscreen();
                                     setOpStatusAsset(item);
                                     setIsOpStatusModalOpen(true);
                                   }}
-                                  className={`rounded-full px-2 py-0.5 text-xs font-bold border ${item.opStatus === 'Down' ? 'bg-red-900/30 text-red-500 border-red-800' :
-                                    item.opStatus === 'Warning' ? 'bg-amber-900/30 text-amber-500 border-amber-800' :
-                                      item.opStatus === 'Out of Service' ? 'bg-slate-700 text-slate-400 border-slate-600' :
-                                        'bg-emerald-900/30 text-emerald-500 border-emerald-800'
-                                    }`}
-                                  title={item.opNote || 'Click to update operational status'}
-                                >
-                                  {item.opStatus || 'Operational'}
-                                </button>
+                                />
                               </td>
                               <td className="px-3 py-2 text-center no-print">
                                 <div className="flex justify-center gap-2">
                                   <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); setWizardAction('report'); setIsActionMenuOpen(false); setSelectedAssetId(item.id); setIsReportWizardOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-green-400" title="New Report"><Icons.FileText size={14} /></button>
+                                  <button onClick={(e) => { e.stopPropagation(); setSelectedAssetId(item.id); setIsServiceReportOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-green-400" title="New Report"><Icons.FileText size={14} /></button>
                                 </div>
                               </td>
                               <td className="px-3 py-2 text-center no-print">
@@ -1915,7 +1914,13 @@ export function App() {
                                 </button>
                               </td>
                               <td className="px-3 py-2 text-center no-print">
-                                <button onClick={(e) => { e.stopPropagation(); setEditingAsset(item); setIsAssetEditModalOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-blue-400" title="Edit Asset Details & Specs">
+                                <button onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingAsset(item);
+                                  const specs = currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
+                                  setEditingSpecs(specs || null);
+                                  setIsAssetEditModalOpen(true);
+                                }} className="p-1.5 rounded hover:bg-slate-600 text-blue-400" title="Edit Asset Details & Specs">
                                   <Icons.Edit />
                                 </button>
                               </td>
@@ -1945,10 +1950,10 @@ export function App() {
                 {/* ===== FULL-WIDTH SECTION: Equipment Details ===== */}
                 <section aria-label="Equipment Details" className="w-full" id="print-section-specs">
                   <FullScreenContainer className="bg-slate-800/80 rounded-xl shadow-md border border-slate-700 flex flex-col" title="Equipment Specification">
-                    <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-between items-center">
+                    <div className="p-4 border-b border-slate-700 bg-slate-900/30 rounded-t-xl flex justify-start items-center gap-4">
                       <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
                       {selectedAsset && (
-                        <div className="no-print mr-8 flex gap-2">
+                        <div className="no-print flex gap-2">
                           <Button
                             variant="secondary"
                             onClick={(e) => {

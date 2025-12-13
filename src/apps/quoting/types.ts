@@ -24,6 +24,14 @@ export interface Contact {
     email: string;
 }
 
+export interface ManagedSite {
+    id: string;
+    name: string;
+    location: string;
+    logo?: string;
+    contacts: Contact[];
+}
+
 export interface Customer {
     id: string;
     name: string;
@@ -32,6 +40,7 @@ export interface Customer {
     contacts: Contact[]; // List of main contacts with name, phone, email
     customerNotes?: string; // Notes about the customer (e.g., special requirements, billing info)
     isLocked?: boolean; // Lock state for customer editing
+    managedSites?: ManagedSite[]; // Managed sites for this customer
 }
 
 export interface JobDetails {

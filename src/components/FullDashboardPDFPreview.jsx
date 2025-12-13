@@ -14,8 +14,57 @@ export const FullDashboardPDFPreview = ({
 }) => {
   const modalContainerRef = useRef(null);
   const reportContentRef = useRef(null);
+  const [sortConfig, setSortConfig] = React.useState({ key: 'remaining', direction: 'asc' });
 
   if (!isOpen || !site) return null;
+
+  // Sorting function
+  const sortData = (data, config) => {
+    const sorted = [...data];
+    sorted.sort((a, b) => {
+      let aVal = a[config.key];
+      let bVal = b[config.key];
+
+      // Handle undefined/null values - push them to the end
+      if (aVal === undefined || aVal === null) return 1;
+      if (bVal === undefined || bVal === null) return -1;
+
+      // Handle date sorting
+      if (config.key === 'lastCal' || config.key === 'dueDate') {
+        aVal = new Date(aVal).getTime();
+        bVal = new Date(bVal).getTime();
+      }
+
+      // Handle numeric sorting
+      if (config.key === 'remaining') {
+        aVal = Number(aVal);
+        bVal = Number(bVal);
+      }
+
+      // Handle string sorting (name, code, opStatus)
+      if (typeof aVal === 'string') {
+        aVal = aVal.toLowerCase();
+        bVal = typeof bVal === 'string' ? bVal.toLowerCase() : '';
+      }
+
+      if (aVal < bVal) return config.direction === 'asc' ? -1 : 1;
+      if (aVal > bVal) return config.direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+    return sorted;
+  };
+
+  const handleSort = (key) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const SortIcon = ({ columnKey }) => {
+    if (sortConfig.key !== columnKey) return <span className="text-gray-400 ml-1">⇅</span>;
+    return sortConfig.direction === 'asc' ? <span className="ml-1">↑</span> : <span className="ml-1">↓</span>;
+  };
 
   const handlePrint = async (event) => {
     let originalHTML;
@@ -26,10 +75,18 @@ export const FullDashboardPDFPreview = ({
       button.innerHTML = '<Icons.Loader className="animate-spin" size={18} /> Generating PDF...';
       button.disabled = true;
 
-      // Create PDF using react-pdf
+      // Sort the data using current sort configuration
+      const sortedServiceData = sortData(site.serviceData || [], sortConfig);
+      const sortedRollerData = sortData(site.rollerData || [], sortConfig);
+
+      // Create PDF using react-pdf with sorted data
       const blob = await pdf((
         <FullDashboardPDF
-          site={site}
+          site={{
+            ...site,
+            serviceData: sortedServiceData,
+            rollerData: sortedRollerData
+          }}
           generatedDate={generatedDate}
         />
       )).toBlob();
@@ -92,7 +149,7 @@ export const FullDashboardPDFPreview = ({
               {/* DASHBOARD SUMMARY */}
               <section className="mb-8">
                 <h2 className="text-xl font-bold text-black border-b border-gray-300 pb-2 mb-4">Dashboard Summary</h2>
-                <div className="grid grid-cols-3 gap-4 mb-6">
+                <div className="grid grid-cols-4 gap-4 mb-6">
                   <div className="p-4 border border-gray-300 rounded bg-gray-50">
                     <div className="text-xs font-bold text-black uppercase">Total Assets</div>
                     <div className="text-2xl font-bold text-black">{(site.serviceData || []).length + (site.rollerData || []).length}</div>
@@ -109,6 +166,32 @@ export const FullDashboardPDFPreview = ({
                       {[...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 0 && i.remaining < 30).length}
                     </div>
                   </div>
+                  <div className="p-4 border border-gray-300 rounded bg-green-50">
+                    <div className="text-xs font-bold text-black uppercase">Healthy</div>
+                    <div className="text-2xl font-bold text-green-600">
+                      {[...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 30).length}
+                    </div>
+                  </div>
+                </div>
+
+                {/* OVERALL HEALTH BAR */}
+                <div className="p-4 border border-gray-300 rounded bg-white">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-gray-500 uppercase">Overall Health</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div><span className="text-xs text-red-600 font-medium">{Math.round(([...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length / ([...site.serviceData, ...site.rollerData].length)) * 100)}%</span></div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500"></div><span className="text-xs text-amber-600 font-medium">{Math.round(([...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 0 && i.remaining < 30).length / ([...site.serviceData, ...site.rollerData].length)) * 100)}%</span></div>
+                      <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-green-500"></div><span className="text-xs text-green-600 font-medium">{Math.round(([...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 30).length / ([...site.serviceData, ...site.rollerData].length)) * 100)}%</span></div>
+                    </div>
+                  </div>
+                  <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden flex">
+                    <div className="bg-red-500 transition-all duration-500" style={{ width: `${([...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length / ([...site.serviceData, ...site.rollerData].length)) * 100}%` }}></div>
+                    <div className="bg-amber-500 transition-all duration-500" style={{ width: `${([...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 0 && i.remaining < 30).length / ([...site.serviceData, ...site.rollerData].length)) * 100}%` }}></div>
+                    <div className="bg-green-500 transition-all duration-500" style={{ width: `${([...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 30).length / ([...site.serviceData, ...site.rollerData].length)) * 100}%` }}></div>
+                  </div>
+                  <div className="mt-2 text-center text-xs text-gray-400">
+                    <span className="font-bold text-red-600 text-sm">{Math.round(([...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length / ([...site.serviceData, ...site.rollerData].length)) * 100)}% Critical</span> ({[...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length} assets)
+                  </div>
                 </div>
               </section>
 
@@ -118,29 +201,49 @@ export const FullDashboardPDFPreview = ({
                 <table className="w-full text-sm text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-300 text-black uppercase text-xs tracking-wider">
-                      <th className="py-2 font-bold">Name</th>
-                      <th className="py-2 font-bold">Code</th>
-                      <th className="py-2 font-bold">Last Service</th>
-                      <th className="py-2 font-bold">Due Date</th>
-                      <th className="py-2 font-bold">Days Remaining</th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>Name <SortIcon columnKey="name" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('code')}>Code <SortIcon columnKey="code" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lastCal')}>Last Service <SortIcon columnKey="lastCal" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dueDate')}>Due Date <SortIcon columnKey="dueDate" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('remaining')}>Days Remaining <SortIcon columnKey="remaining" /></th>
+                      <th className="py-2 font-bold text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('opStatus')}>Operational Status <SortIcon columnKey="opStatus" /></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-300">
-                    {(site.serviceData || []).map((item) => (
-                      <tr key={item.id} className="border-b border-gray-200">
-                        <td className="py-3 font-semibold text-black">{item.name}</td>
-                        <td className="py-3 font-mono text-black text-xs">{item.code}</td>
-                        <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
-                        <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
-                        <td className="py-3 text-black">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                    {sortData(site.serviceData || [], sortConfig).map((item) => (
+                      <React.Fragment key={item.id}>
+                        <tr className="border-b border-gray-200">
+                          <td className="py-3 font-semibold text-black">{item.name}</td>
+                          <td className="py-3 font-mono text-black text-xs">{item.code}</td>
+                          <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
+                          <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
+                          <td className="py-3 text-black">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
                               item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
                                 'bg-green-100 text-green-800'
-                            }`}>
-                            {item.remaining}
-                          </span>
-                        </td>
-                      </tr>
+                              }`}>
+                              {item.remaining}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.opStatus === 'Down' ? 'bg-red-100 text-red-800' :
+                              item.opStatus === 'Warning' ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                              {item.opStatus === 'Down' ? 'DOWN/CRITICAL' :
+                                item.opStatus === 'Warning' ? 'WARNING' :
+                                  'OPERATIONAL'}
+                            </span>
+                          </td>
+                        </tr>
+                        {(item.opStatus === 'Down' || item.opStatus === 'Warning' || item.opStatus === 'Out of Service') && item.opNote && (
+                          <tr className="border-b border-gray-200 bg-red-50/50">
+                            <td colSpan="6" className="py-2 px-4 text-xs italic text-slate-600">
+                              <span className="font-bold text-red-800">Comment:</span> {item.opNote}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>
@@ -152,29 +255,49 @@ export const FullDashboardPDFPreview = ({
                 <table className="w-full text-sm text-left border-collapse">
                   <thead>
                     <tr className="border-b border-gray-300 text-black uppercase text-xs tracking-wider">
-                      <th className="py-2 font-bold">Name</th>
-                      <th className="py-2 font-bold">Code</th>
-                      <th className="py-2 font-bold">Last Service</th>
-                      <th className="py-2 font-bold">Due Date</th>
-                      <th className="py-2 font-bold">Days Remaining</th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('name')}>Name <SortIcon columnKey="name" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('code')}>Code <SortIcon columnKey="code" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('lastCal')}>Last Service <SortIcon columnKey="lastCal" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('dueDate')}>Due Date <SortIcon columnKey="dueDate" /></th>
+                      <th className="py-2 font-bold cursor-pointer hover:bg-gray-100" onClick={() => handleSort('remaining')}>Days Remaining <SortIcon columnKey="remaining" /></th>
+                      <th className="py-2 font-bold text-right cursor-pointer hover:bg-gray-100" onClick={() => handleSort('opStatus')}>Operational Status <SortIcon columnKey="opStatus" /></th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-300">
-                    {(site.rollerData || []).map((item) => (
-                      <tr key={item.id} className="border-b border-gray-200">
-                        <td className="py-3 font-semibold text-black">{item.name}</td>
-                        <td className="py-3 font-mono text-black text-xs">{item.code}</td>
-                        <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
-                        <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
-                        <td className="py-3 text-black">
-                          <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
+                    {sortData(site.rollerData || [], sortConfig).map((item) => (
+                      <React.Fragment key={item.id}>
+                        <tr className="border-b border-gray-200">
+                          <td className="py-3 font-semibold text-black">{item.name}</td>
+                          <td className="py-3 font-mono text-black text-xs">{item.code}</td>
+                          <td className="py-3 text-black">{formatDate(item.lastCal)}</td>
+                          <td className="py-3 text-black font-medium">{formatDate(item.dueDate)}</td>
+                          <td className="py-3 text-black">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.remaining < 0 ? 'bg-red-100 text-red-800' :
                               item.remaining < 30 ? 'bg-amber-100 text-amber-800' :
                                 'bg-green-100 text-green-800'
-                            }`}>
-                            {item.remaining}
-                          </span>
-                        </td>
-                      </tr>
+                              }`}>
+                              {item.remaining}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.opStatus === 'Down' ? 'bg-red-100 text-red-800' :
+                              item.opStatus === 'Warning' ? 'bg-amber-100 text-amber-800' :
+                                'bg-green-100 text-green-800'
+                              }`}>
+                              {item.opStatus === 'Down' ? 'DOWN/CRITICAL' :
+                                item.opStatus === 'Warning' ? 'WARNING' :
+                                  'OPERATIONAL'}
+                            </span>
+                          </td>
+                        </tr>
+                        {(item.opStatus === 'Down' || item.opStatus === 'Warning' || item.opStatus === 'Out of Service') && item.opNote && (
+                          <tr className="border-b border-gray-200 bg-red-50/50">
+                            <td colSpan="6" className="py-2 px-4 text-xs italic text-slate-600">
+                              <span className="font-bold text-red-800">Comment:</span> {item.opNote}
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
                     ))}
                   </tbody>
                 </table>

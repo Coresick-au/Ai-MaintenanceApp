@@ -306,7 +306,7 @@ export const EditAssetModal = ({
                     />
                   </div>
                   <div>
-                    <label className="text-[10px] text-slate-400 block">Billet Weight Size</label>
+                    <label className="text-[10px] text-slate-400 block">Billet Weight Size (kg)</label>
                     <input
                       className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
                       value={specs.billetWeightSize}
@@ -316,36 +316,56 @@ export const EditAssetModal = ({
 
                   {/* Dynamic Billet Weight IDs */}
                   <div className="col-span-2 border-t border-slate-700/50 pt-2 mt-1">
-                    <label className="text-[10px] text-slate-400 block mb-1">Billet Weight IDs</label>
+                    <label className="text-[10px] text-slate-400 block mb-1">Billet Weight IDs (kg)</label>
                     <div className="space-y-2">
-                      {(specs.billetWeightIds || []).map((id, index) => (
-                        <div key={index} className="flex gap-2">
-                          <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
-                            placeholder={`ID #${index + 1}`}
-                            value={id}
-                            onChange={e => {
-                              const newIds = [...(specs.billetWeightIds || [])];
-                              newIds[index] = e.target.value;
-                              setSpecs({ ...specs, billetWeightIds: newIds });
-                            }}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const newIds = (specs.billetWeightIds || []).filter((_, i) => i !== index);
-                              setSpecs({ ...specs, billetWeightIds: newIds });
-                            }}
-                            className="px-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
-                            title="Remove ID"
-                          >
-                            <Icons.Trash size={14} />
-                          </button>
-                        </div>
-                      ))}
+                      {(specs.billetWeightIds || []).map((item, index) => {
+                        const isString = typeof item === 'string';
+                        const idVal = isString ? item : item.id || '';
+                        const weightVal = isString ? '' : item.weight || '';
+
+                        return (
+                          <div key={index} className="flex gap-2">
+                            <input
+                              className="flex-[2] bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                              placeholder={`ID #${index + 1}`}
+                              value={idVal}
+                              onChange={e => {
+                                const newIds = [...(specs.billetWeightIds || [])];
+                                const currentItem = newIds[index];
+                                const currentWeight = typeof currentItem === 'string' ? '' : currentItem.weight || '';
+                                newIds[index] = { id: e.target.value, weight: currentWeight };
+                                setSpecs({ ...specs, billetWeightIds: newIds });
+                              }}
+                            />
+                            <input
+                              className="flex-1 bg-slate-800 border border-slate-600 rounded p-1 text-sm text-white"
+                              placeholder="Weight (kg)"
+                              value={weightVal}
+                              onChange={e => {
+                                const newIds = [...(specs.billetWeightIds || [])];
+                                const currentItem = newIds[index];
+                                const currentId = typeof currentItem === 'string' ? currentItem : currentItem.id || '';
+                                newIds[index] = { id: currentId, weight: e.target.value };
+                                setSpecs({ ...specs, billetWeightIds: newIds });
+                              }}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const newIds = (specs.billetWeightIds || []).filter((_, i) => i !== index);
+                                setSpecs({ ...specs, billetWeightIds: newIds });
+                              }}
+                              className="px-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors"
+                              title="Remove ID"
+                            >
+                              <Icons.Trash size={14} />
+                            </button>
+                          </div>
+                        );
+                      })}
                       <button
                         type="button"
-                        onClick={() => setSpecs({ ...specs, billetWeightIds: [...(specs.billetWeightIds || []), ''] })}
+                        onClick={() => setSpecs({ ...specs, billetWeightIds: [...(specs.billetWeightIds || []), { id: '', weight: '' }] })}
                         className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 mt-1"
                       >
                         <Icons.Plus size={12} /> Add ID
@@ -420,7 +440,6 @@ export const EditAssetModal = ({
                   type="number"
                   value={rollerHelperData.diameter}
                   onChange={e => setRollerHelperData({ ...rollerHelperData, diameter: e.target.value })}
-                  placeholder="e.g., 100"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -430,7 +449,6 @@ export const EditAssetModal = ({
                   type="number"
                   value={rollerHelperData.face}
                   onChange={e => setRollerHelperData({ ...rollerHelperData, face: e.target.value })}
-                  placeholder="e.g., 50"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -440,7 +458,6 @@ export const EditAssetModal = ({
                   type="number"
                   value={rollerHelperData.b2b}
                   onChange={e => setRollerHelperData({ ...rollerHelperData, b2b: e.target.value })}
-                  placeholder="e.g., 600"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -450,7 +467,6 @@ export const EditAssetModal = ({
                   type="number"
                   value={rollerHelperData.totalLength}
                   onChange={e => setRollerHelperData({ ...rollerHelperData, totalLength: e.target.value })}
-                  placeholder="e.g., 650"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -460,7 +476,6 @@ export const EditAssetModal = ({
                   type="number"
                   value={rollerHelperData.shaftSize}
                   onChange={e => setRollerHelperData({ ...rollerHelperData, shaftSize: e.target.value })}
-                  placeholder="e.g., 25"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -470,7 +485,6 @@ export const EditAssetModal = ({
                   type="number"
                   value={rollerHelperData.slotSize}
                   onChange={e => setRollerHelperData({ ...rollerHelperData, slotSize: e.target.value })}
-                  placeholder="e.g., 10"
                   className="w-full px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
@@ -480,7 +494,7 @@ export const EditAssetModal = ({
             <div className="bg-slate-900/50 border border-slate-700 rounded-lg p-3">
               <p className="text-xs text-slate-400 mb-1">Preview:</p>
               <p className="text-sm text-blue-400 font-mono">
-                {rollerHelperData.diameter || 'Diameter'}mm x {rollerHelperData.face || 'Face'}mm x {rollerHelperData.b2b || 'B2B'}mm x {rollerHelperData.totalLength || 'Total'}mm x {rollerHelperData.shaftSize || 'Shaft'}mm x {rollerHelperData.slotSize || 'Slot'}mm
+                {rollerHelperData.diameter || 'Diameter'} x {rollerHelperData.face || 'Face'} x {rollerHelperData.b2b || 'B2B'} x {rollerHelperData.totalLength || 'Total'} x {rollerHelperData.shaftSize || 'Shaft'} x {rollerHelperData.slotSize || 'Slot'}
               </p>
             </div>
 
@@ -488,7 +502,7 @@ export const EditAssetModal = ({
             <div className="flex gap-3">
               <Button
                 onClick={() => {
-                  const rollDimsString = `${rollerHelperData.diameter || 'Diameter'}mm x ${rollerHelperData.face || 'Face'}mm x ${rollerHelperData.b2b || 'B2B'}mm x ${rollerHelperData.totalLength || 'Total'}mm x ${rollerHelperData.shaftSize || 'Shaft'}mm x ${rollerHelperData.slotSize || 'Slot'}mm`;
+                  const rollDimsString = `${rollerHelperData.diameter || 'Diameter'} x ${rollerHelperData.face || 'Face'} x ${rollerHelperData.b2b || 'B2B'} x ${rollerHelperData.totalLength || 'Total'} x ${rollerHelperData.shaftSize || 'Shaft'} x ${rollerHelperData.slotSize || 'Slot'}`;
                   setSpecs({ ...specs, rollDims: rollDimsString });
                   setShowRollerHelper(false);
                   setRollerHelperData({

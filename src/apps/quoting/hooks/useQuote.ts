@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import type { Rates, JobDetails, Shift, ExtraItem, Quote, Customer, Status, InternalExpense } from '../types';
 import { calculateShiftBreakdown as calculateLogic } from '../logic';
 // @ts-ignore
@@ -68,10 +68,76 @@ export function useQuote() {
     // Global State
     const {
         customers,
+        sites,
         addCustomer: addGlobalCustomer,
         updateCustomer: updateGlobalCustomer,
         deleteCustomer: deleteGlobalCustomer,
+        getSitesByCustomer,
     } = useGlobalData(); // Use Global Data Context
+
+    // Transform customers to include managed sites as separate entries
+    const expandedCustomers = useMemo(() => {
+        const result: Customer[] = [];
+
+        customers.forEach((customer: any) => {
+            const customerSites = getSitesByCustomer(customer.id);
+
+            if (customerSites && customerSites.length > 0) {
+                // Create an entry for each managed site
+                customerSites.forEach((site: any) => {
+                    // Get contacts that manage this specific site
+                    const siteContacts = (customer.contacts || [])
+                        .filter((contact: any) =>
+                            contact.managedSites && contact.managedSites.includes(site.id)
+                        )
+                        .map((contact: any) => ({
+                            name: contact.name || '',
+                            phone: contact.phone || '',
+                            email: contact.email || ''
+                        }));
+
+                    result.push({
+                        id: `${customer.id}__${site.id}`, // Composite ID
+                        name: `${customer.name} - ${site.name}`, // Display format
+                        logo: site.logo || customer.logo,
+                        rates: customer.rates || DEFAULT_RATES,
+                        contacts: siteContacts.length > 0 ? siteContacts : (customer.contacts || []).map((c: any) => ({
+                            name: c.name || '',
+                            phone: c.phone || '',
+                            email: c.email || ''
+                        })),
+                        customerNotes: customer.customerNotes,
+                        isLocked: customer.isLocked,
+                        managedSites: [{
+                            id: site.id,
+                            name: site.name,
+                            location: site.location || '',
+                            logo: site.logo,
+                            contacts: siteContacts
+                        }]
+                    });
+                });
+            } else {
+                // Customer has no sites, keep as-is
+                result.push({
+                    id: customer.id,
+                    name: customer.name,
+                    logo: customer.logo,
+                    rates: customer.rates || DEFAULT_RATES,
+                    contacts: (customer.contacts || []).map((c: any) => ({
+                        name: c.name || '',
+                        phone: c.phone || '',
+                        email: c.email || ''
+                    })),
+                    customerNotes: customer.customerNotes,
+                    isLocked: customer.isLocked,
+                    managedSites: []
+                });
+            }
+        });
+
+        return result;
+    }, [customers, sites, getSitesByCustomer]);
 
     const [savedQuotes, setSavedQuotes] = useState<Quote[]>([]);
     // const [savedCustomers, setSavedCustomers] = useState<Customer[]>([]); // Removed local state
@@ -451,7 +517,7 @@ export function useQuote() {
     return {
         // Global
         savedQuotes,
-        savedCustomers: customers as Customer[], // Map global users to return object
+        savedCustomers: expandedCustomers, // Use expanded customers with managed sites
         savedTechnicians,
         savedDefaultRates,
         activeQuoteId,

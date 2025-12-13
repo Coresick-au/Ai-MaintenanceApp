@@ -74,7 +74,9 @@ import {
     Barcode,
     Truck,
     ChevronsUpDown,
-    FolderTree
+    FolderTree,
+    Lock,
+    AlertOctagon
 } from 'lucide-react';
 
 export const Icons = {
@@ -153,5 +155,7 @@ export const Icons = {
     Truck,
     Tool: Wrench, // Alias for installation/maintenance
     ChevronsUpDown,
-    FolderTree
+    FolderTree,
+    Lock,
+    AlertOctagon
 };

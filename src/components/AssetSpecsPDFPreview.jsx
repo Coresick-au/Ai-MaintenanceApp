@@ -215,15 +215,24 @@ export const AssetSpecsPDFPreview = ({
                         <div className="font-semibold">{assetWithSpecs.specs.billetWeightType || 'N/A'}</div>
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-gray-600 uppercase">Billet Weight Size</div>
+                        <div className="text-xs font-bold text-gray-600 uppercase">Billet Weight Size (kg)</div>
                         <div className="font-semibold">{assetWithSpecs.specs.billetWeightSize || 'N/A'}</div>
                       </div>
                     </div>
                     {assetWithSpecs.specs.billetWeightIds && assetWithSpecs.specs.billetWeightIds.length > 0 && (
                       <div className="mt-4">
-                        <div className="text-xs font-bold text-gray-600 uppercase mb-2">Billet Weight IDs</div>
-                        <div className="font-mono text-sm bg-gray-100 p-2 rounded">
-                          {assetWithSpecs.specs.billetWeightIds.join(', ')}
+                        <div className="text-xs font-bold text-gray-600 uppercase mb-2">Billet Weight IDs (kg)</div>
+                        <div className="font-mono text-sm bg-gray-100 p-2 rounded flex flex-wrap gap-2">
+                          {assetWithSpecs.specs.billetWeightIds.map((item, idx) => {
+                            const isString = typeof item === 'string';
+                            const displayId = isString ? item : item.id;
+                            const displayWeight = isString ? '' : item.weight;
+                            return (
+                              <span key={idx} className="bg-white border border-gray-300 px-1.5 py-0.5 rounded">
+                                {displayId}{displayWeight ? ` - ${displayWeight}kg` : ''}
+                              </span>
+                            );
+                          })}
                         </div>
                       </div>
                     )}

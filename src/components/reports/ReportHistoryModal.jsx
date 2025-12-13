@@ -118,8 +118,20 @@ export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewRepo
                                                 )}
                                                 {report.data?.general?.comments && (
                                                     <div className="flex items-center gap-2 text-slate-400 col-span-2">
-                                                        <Icons.MessageCircle size={14} />
+                                                        <Icons.MessageCircle size={14} className="shrink-0" />
                                                         <span className="line-clamp-1">{report.data.general.comments}</span>
+                                                    </div>
+                                                )}
+                                                {/* Internal Comments Display */}
+                                                {report.data?.general?.internalComments && (
+                                                    <div className="flex items-start gap-2 text-amber-500/90 col-span-2 bg-amber-950/30 p-2 rounded border border-amber-900/50 mt-1">
+                                                        <Icons.Lock size={12} className="shrink-0 mt-0.5" />
+                                                        <div className="flex flex-col">
+                                                            <span className="text-[10px] font-bold uppercase tracking-wider opacity-70 mb-0.5">Internal Notes</span>
+                                                            <span className="text-xs font-mono italic line-clamp-2">
+                                                                {report.data.general.internalComments}
+                                                            </span>
+                                                        </div>
                                                     </div>
                                                 )}
                                             </div>

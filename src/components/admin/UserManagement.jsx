@@ -68,6 +68,58 @@ export default function UserManagement({ onBack }) {
         }
     };
 
+    // Edit User Logic
+    const [editingId, setEditingId] = useState(null);
+
+    const handleEdit = (user) => {
+        setEditingId(user.id);
+        setNewUserName(user.name);
+        setNewUserEmail(user.email);
+        setNewUserRole(user.role);
+        setNewUserPass(''); // Password reset not supported in this view
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setNewUserName('');
+        setNewUserEmail('');
+        setNewUserRole('tech');
+        setNewUserPass('');
+    };
+
+    const handleUpdateUser = async (e) => {
+        e.preventDefault();
+        if (!editingId) return;
+
+        setLoading(true);
+        try {
+            const userRef = doc(db, 'users', editingId);
+            await setDoc(userRef, {
+                name: newUserName,
+                role: newUserRole,
+                // Email/Pass not updated here
+            }, { merge: true });
+
+            alert(`User ${newUserName} updated successfully!`);
+            handleCancelEdit();
+            fetchUsers();
+        } catch (error) {
+            console.error("Error updating user:", error);
+            alert("Error updating user: " + error.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = (e) => {
+        if (editingId) {
+            handleUpdateUser(e);
+        } else {
+            handleCreateUser(e);
+        }
+    };
+
     const handleDeleteUser = async (userId) => {
         if (!confirm("This removes their permission settings (Firestore), but they will still exist in Firebase Auth. Continue?")) return;
         await deleteDoc(doc(db, 'users', userId));
@@ -83,25 +135,45 @@ export default function UserManagement({ onBack }) {
 
                 <h1 className="text-3xl font-bold mb-8">User Management</h1>
 
-                {/* Create User Form */}
-                <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 mb-8 shadow-lg">
-                    <h2 className="text-xl font-bold text-cyan-400 mb-4">Create New User</h2>
-                    <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Create/Edit User Form */}
+                <div className={`bg-slate-900 border ${editingId ? 'border-amber-500/50' : 'border-slate-800'} rounded-xl p-6 mb-8 shadow-lg transition-colors duration-300`}>
+                    <div className="flex justify-between items-center mb-4">
+                        <h2 className={`text-xl font-bold ${editingId ? 'text-amber-400' : 'text-cyan-400'}`}>
+                            {editingId ? 'Edit User' : 'Create New User'}
+                        </h2>
+                        {editingId && (
+                            <button
+                                onClick={handleCancelEdit}
+                                type="button"
+                                className="text-xs text-slate-400 hover:text-white underline"
+                            >
+                                Cancel Edit
+                            </button>
+                        )}
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <input
-                            className="bg-slate-800 border border-slate-700 p-2 rounded text-white"
+                            className="bg-slate-800 border border-slate-700 p-2 rounded text-white focus:border-cyan-500 outline-none"
                             placeholder="Name (e.g. John Tech)"
                             value={newUserName} onChange={e => setNewUserName(e.target.value)} required
                         />
                         <input
-                            className="bg-slate-800 border border-slate-700 p-2 rounded text-white"
+                            className={`bg-slate-800 border border-slate-700 p-2 rounded text-white ${editingId ? 'cursor-not-allowed opacity-50' : ''}`}
                             placeholder="Email" type="email"
-                            value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)} required
+                            value={newUserEmail} onChange={e => setNewUserEmail(e.target.value)}
+                            required
+                            disabled={!!editingId} // Disable email edit
+                            title={editingId ? "Email cannot be changed here" : ""}
                         />
-                        <input
-                            className="bg-slate-800 border border-slate-700 p-2 rounded text-white"
-                            placeholder="Password (min 6 chars)" type="password"
-                            value={newUserPass} onChange={e => setNewUserPass(e.target.value)} required
-                        />
+                        {!editingId && (
+                            <input
+                                className="bg-slate-800 border border-slate-700 p-2 rounded text-white"
+                                placeholder="Password (min 6 chars)" type="password"
+                                value={newUserPass} onChange={e => setNewUserPass(e.target.value)}
+                                required={!editingId}
+                            />
+                        )}
                         <select
                             className="bg-slate-800 border border-slate-700 p-2 rounded text-white"
                             value={newUserRole} onChange={e => setNewUserRole(e.target.value)}
@@ -111,13 +183,26 @@ export default function UserManagement({ onBack }) {
                             <option value="admin">Admin (Full Access)</option>
                         </select>
 
-                        <div className="md:col-span-2">
+                        <div className="md:col-span-2 flex gap-3">
                             <button
-                                disabled={isCreating}
-                                className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded transition-colors"
+                                type="submit"
+                                disabled={isCreating || loading}
+                                className={`flex-1 font-bold py-2 rounded transition-colors ${editingId
+                                    ? 'bg-amber-600 hover:bg-amber-500 text-white'
+                                    : 'bg-green-600 hover:bg-green-500 text-white'
+                                    }`}
                             >
-                                {isCreating ? "Creating..." : "Create User"}
+                                {loading || isCreating ? "Processing..." : editingId ? "Update User" : "Create User"}
                             </button>
+                            {editingId && (
+                                <button
+                                    type="button"
+                                    onClick={handleCancelEdit}
+                                    className="px-6 py-2 bg-slate-700 hover:bg-slate-600 text-white font-medium rounded"
+                                >
+                                    Cancel
+                                </button>
+                            )}
                         </div>
                     </form>
                 </div>
@@ -135,18 +220,24 @@ export default function UserManagement({ onBack }) {
                         </thead>
                         <tbody className="divide-y divide-slate-800">
                             {users.map(user => (
-                                <tr key={user.id} className="hover:bg-slate-800/50">
+                                <tr key={user.id} className={`hover:bg-slate-800/50 ${editingId === user.id ? 'bg-amber-900/10' : ''}`}>
                                     <td className="p-4 font-bold">{user.name}</td>
                                     <td className="p-4 text-slate-400">{user.email}</td>
                                     <td className="p-4">
                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${user.role === 'admin' ? 'bg-purple-900/50 text-purple-400' :
-                                                user.role === 'manager' ? 'bg-blue-900/50 text-blue-400' :
-                                                    'bg-slate-700 text-slate-300'
+                                            user.role === 'manager' ? 'bg-blue-900/50 text-blue-400' :
+                                                'bg-slate-700 text-slate-300'
                                             }`}>
                                             {user.role}
                                         </span>
                                     </td>
                                     <td className="p-4 text-right">
+                                        <button
+                                            onClick={() => handleEdit(user)}
+                                            className="text-amber-400 hover:text-amber-300 text-sm mr-4"
+                                        >
+                                            Edit
+                                        </button>
                                         <button onClick={() => handleDeleteUser(user.id)} className="text-red-400 hover:text-red-300 text-sm">
                                             Delete Role
                                         </button>

@@ -271,10 +271,39 @@ export const SecureDeleteButton = ({ onComplete, duration = 3000, label = "Hold 
 };
 
 export const StatusBadge = ({ remaining, isActive }) => {
-  if (isActive === false) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-700 text-slate-400 border border-slate-600 shadow-sm"><Icons.Archive /> Archived</span>;
-  if (remaining < 0) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-900/50 text-red-300 border border-red-800 shadow-sm"><Icons.AlertTriangle /> Overdue</span>;
-  if (remaining < 30) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-900/50 text-yellow-300 border border-yellow-800 shadow-sm"><Icons.Clock /> Due Soon</span>;
-  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-900/50 text-green-300 border border-green-800 shadow-sm"><Icons.CheckCircle /> Good</span>;
+  if (isActive === false) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-700 text-slate-400 border border-slate-600 shadow-sm gap-1 whitespace-nowrap"><Icons.Archive size={12} /> Archived</span>;
+  if (remaining < 0) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-red-900/50 text-red-300 border border-red-800 shadow-sm gap-1 whitespace-nowrap"><Icons.AlertTriangle size={12} /> Overdue</span>;
+  if (remaining < 30) return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-yellow-900/50 text-yellow-300 border border-yellow-800 shadow-sm gap-1 whitespace-nowrap"><Icons.Clock size={12} /> Due Soon</span>;
+  return <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-green-900/50 text-green-300 border border-green-800 shadow-sm gap-1 whitespace-nowrap"><Icons.CheckCircle size={12} /> Good</span>;
+};
+
+export const OpStatusBadge = ({ status, onClick, note }) => {
+  let content;
+  let styleClass = "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border shadow-sm gap-1 cursor-pointer transition-all hover:brightness-110 active:scale-95 whitespace-nowrap";
+
+  if (status === 'Down') {
+    styleClass += " bg-red-900/50 text-red-300 border-red-800";
+    content = <><Icons.AlertOctagon size={12} /> Down</>;
+  } else if (status === 'Warning') {
+    styleClass += " bg-yellow-900/50 text-yellow-300 border-yellow-800";
+    content = <><Icons.AlertTriangle size={12} /> Warning</>;
+  } else if (status === 'Out of Service') {
+    styleClass += " bg-slate-700 text-slate-400 border-slate-600";
+    content = <><Icons.Archive size={12} /> Out of Service</>;
+  } else {
+    // Operational (default)
+    styleClass += " bg-green-900/50 text-green-300 border-green-800";
+    content = <><Icons.CheckCircle size={12} /> Operational</>;
+  }
+
+  return (
+    <span onClick={onClick} className={styleClass} title={note || "Click to update status"}>
+      {content}
+      <span className="opacity-50 border-l border-current pl-1 ml-1">
+        <Icons.Edit size={8} />
+      </span>
+    </span>
+  );
 };
 
 export const SimpleBarChart = ({ data }) => {

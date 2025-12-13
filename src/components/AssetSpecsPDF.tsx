@@ -368,15 +368,22 @@ export const AssetSpecsPDF: React.FC<AssetSpecsPDFProps> = ({
                 <Text style={styles.specsValue}>{assetWithSpecs.specs.billetWeightType || 'N/A'}</Text>
               </View>
               <View style={styles.specsItem}>
-                <Text style={styles.specsLabel}>Billet Weight Size</Text>
+                <Text style={styles.specsLabel}>Billet Weight Size (kg)</Text>
                 <Text style={styles.specsValue}>{assetWithSpecs.specs.billetWeightSize || 'N/A'}</Text>
               </View>
             </View>
             {assetWithSpecs.specs.billetWeightIds && assetWithSpecs.specs.billetWeightIds.length > 0 && (
               <View style={{ marginTop: 8 }}>
-                <Text style={styles.specsLabel}>Billet Weight IDs:</Text>
+                <Text style={styles.specsLabel}>Billet Weight IDs (kg):</Text>
                 <View style={styles.codeBlock}>
-                  <Text>{assetWithSpecs.specs.billetWeightIds.join(', ')}</Text>
+                  <Text>
+                    {assetWithSpecs.specs.billetWeightIds.map((item: any) => {
+                      const isString = typeof item === 'string';
+                      const displayId = isString ? item : item.id;
+                      const displayWeight = isString ? '' : item.weight;
+                      return `${displayId}${displayWeight ? ` - ${displayWeight}kg` : ''}`;
+                    }).join(', ')}
+                  </Text>
                 </View>
               </View>
             )}

@@ -21,12 +21,19 @@ export default function JobDetails({
 
     const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
-        setJobDetails({ ...jobDetails, customer: value });
 
-        // Check if it matches a saved customer
+        // Check if it matches a saved customer (which could be a managed site)
         const customer = savedCustomers.find(c => c.name === value);
         if (customer) {
+            // Auto-populate location if this is a managed site
+            const location = customer.managedSites && customer.managedSites.length > 0
+                ? customer.managedSites[0].location
+                : jobDetails.location;
+
+            setJobDetails({ ...jobDetails, customer: value, location });
             setRates(customer.rates);
+        } else {
+            setJobDetails({ ...jobDetails, customer: value });
         }
     };
 
@@ -91,6 +98,24 @@ export default function JobDetails({
                                         // Regular line
                                         return line.trim() ? <div key={idx} className="italic">{line}</div> : null;
                                     })}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    {/* Site-Specific Contacts */}
+                    {selectedCustomer?.contacts && selectedCustomer.contacts.length > 0 && (
+                        <div className="mt-2 text-xs text-emerald-400">
+                            <div className="flex items-start gap-1">
+                                <span className="flex-shrink-0">👤</span>
+                                <div className="flex-1">
+                                    <div className="font-semibold mb-1">Site Contacts:</div>
+                                    {selectedCustomer.contacts.map((contact, idx) => (
+                                        <div key={idx} className="ml-2">
+                                            <span className="font-medium">{contact.name}</span>
+                                            {contact.phone && <span className="ml-2">📞 {contact.phone}</span>}
+                                            {contact.email && <span className="ml-2">✉️ {contact.email}</span>}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         </div>
