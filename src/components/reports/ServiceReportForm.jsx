@@ -5,112 +5,363 @@ import { GeneralTab } from './tabs/GeneralTab';
 import { CalibrationTab } from './tabs/CalibrationTab';
 import { IntegratorTab } from './tabs/IntegratorTab';
 
+const DEFAULT_INTEGRATOR_ROWS = [
+    { id: 1, label: 'Scale Capacity (t/h)', asFound: '1500', asLeft: '1500', diff: '0', percentChange: '0.00', showPercentage: false },
+    { id: 2, label: 'Totaliser (t)', asFound: '0', asLeft: '0', diff: '0', percentChange: '0.00', showPercentage: false },
+    { id: 3, label: 'Pulses Per Length', asFound: '24.86', asLeft: '24.86', diff: '0.00', percentChange: '0.00', showPercentage: false },
+    { id: 4, label: 'Test Time (s)', asFound: '60.00', asLeft: '60.00', diff: '0.00', percentChange: '0.00', showPercentage: false },
+    { id: 5, label: 'Simulated Rate (t/h)', asFound: '0.00', asLeft: '0.00', diff: '0.00', percentChange: '0.00', showPercentage: false },
+    { id: 6, label: 'Load Cell (mV)', asFound: '8.55', asLeft: '8.55', diff: '0.00', percentChange: '0.00', showPercentage: false }
+];
+
+const DEFAULT_TEMPLATES = [
+    {
+        id: 'std_integrator',
+        name: 'Standard Integrator',
+        integrator: DEFAULT_INTEGRATOR_ROWS
+    }
+];
+
 export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave, initialData = null, readOnly = false }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [draftSaved, setDraftSaved] = useState(false);
 
-    // --- INITIAL STATE ---
-    // --- HELPER: Calculate Next Date ---
-    const calculateNextDate = (startDate, schedule) => {
-        console.log('Calculating Next Date. Start:', startDate, 'Schedule:', schedule); // DEBUG
-        if (!startDate) return '';
-
-        const sched = schedule || 'Yearly';
-        let monthsToAdd = 12; // Default
-
-        const lowerSched = String(sched).toLowerCase();
-
-        if (lowerSched.includes('month') && lowerSched.includes('1')) monthsToAdd = 1;
-        else if (lowerSched.includes('quarter') || lowerSched.includes('3')) monthsToAdd = 3;
-        else if (lowerSched.includes('half') || lowerSched.includes('6')) monthsToAdd = 6;
-        else if (lowerSched.includes('year') || lowerSched.includes('annual') || lowerSched.includes('12')) monthsToAdd = 12;
-        else if (!isNaN(parseInt(lowerSched))) monthsToAdd = parseInt(lowerSched);
-
-        console.log('Months to add:', monthsToAdd); // DEBUG
-
-        const date = new Date(startDate);
-        if (isNaN(date.getTime())) return '';
-
-        date.setMonth(date.getMonth() + monthsToAdd);
-        return date.toISOString().split('T')[0];
-    };
+    // Template Management State
+    const [showTemplateModal, setShowTemplateModal] = useState(false);
+    const [templates, setTemplates] = useState(DEFAULT_TEMPLATES);
+    const [isCreatingTemplate, setIsCreatingTemplate] = useState(false);
+    const [newTemplateName, setNewTemplateName] = useState('');
+    const [newTemplateRows, setNewTemplateRows] = useState([...DEFAULT_INTEGRATOR_ROWS]);
+    const [editingTemplateId, setEditingTemplateId] = useState(null);
 
     // --- INITIAL STATE ---
-    const [formData, setFormData] = useState(() => {
-        const today = new Date().toISOString().split('T')[0];
-        // Calculate initial next date immediately if not editing an existing draft/report
-        const calcNext = !initialData ? calculateNextDate(today, asset?.serviceSchedule) : (asset?.dueDate || '');
-
-        return {
-            general: {
-                reportId: `${new Date().getFullYear()}.${String(new Date().getMonth() + 1).padStart(2, '0')}.${String(new Date().getDate()).padStart(2, '0')}-CALR-${asset?.code || 'UNK'}`,
-                jobNumber: '',
-                customerName: site?.customer || '',
-                customerLogo: site?.logo || null,
-                siteLocation: site?.location || '',
-                contactName: site?.contactName || '',
-                contactEmail: site?.contactEmail || '',
-                assetName: asset?.name || '',
-                conveyorNumber: asset?.code || '',
-                serviceDate: today,
-                nextServiceDate: calcNext, // Use calculated date
-                technicians: '',
-                comments: '',
-                photos: []
-            },
-            // ... (rest of initial state stays same, but we need to duplicate it here because we are replacing the whole block or need to merge)
-            calibration: {
-                oldTare: '0.000', newTare: '0.000', tareChange: '0.00',
-                oldSpan: '1.000', newSpan: '1.000', spanChange: '0.00',
-                oldSpeed: '0.00', newSpeed: '0.00', speedChange: '0.00'
-            },
-            calibrationRows: null,
-            integrator: [
-                { id: 1, label: 'Scale Capacity (t/h)', asFound: '1500', asLeft: '1500', diff: '0' },
-                { id: 2, label: 'Totaliser (t)', asFound: '0', asLeft: '0', diff: '0' },
-                { id: 3, label: 'Pulses Per Length', asFound: '24.86', asLeft: '24.86', diff: '0.00' },
-                { id: 4, label: 'Test Time (s)', asFound: '60.00', asLeft: '60.00', diff: '0.00' },
-                { id: 5, label: 'Simulated Rate (t/h)', asFound: '0.00', asLeft: '0.00', diff: '0.00' },
-                { id: 6, label: 'Load Cell (mV)', asFound: '8.55', asLeft: '8.55', diff: '0.00' }
-            ],
-            integratorRows: null
-        };
+    const [formData, setFormData] = useState({
+        general: {
+            reportId: `${new Date().getFullYear()}.${String(new Date().getMonth() + 1).padStart(2, '0')}.${String(new Date().getDate()).padStart(2, '0')}-CALR-${asset?.code || 'UNK'}`,
+            jobNumber: '',
+            customerName: site?.customer || '',
+            customerLogo: site?.logo || null,
+            siteLocation: site?.location || '',
+            contactName: site?.contactName || '',
+            contactEmail: site?.contactEmail || '',
+            assetName: asset?.name || '',
+            conveyorNumber: asset?.code || '',
+            serviceDate: new Date().toISOString().split('T')[0],
+            nextServiceDate: asset?.dueDate || '',
+            technicians: '',
+            comments: '',
+            photos: []
+        },
+        calibration: {
+            oldTare: '0.000', newTare: '0.000', tareChange: '0.00',
+            oldSpan: '1.000', newSpan: '1.000', spanChange: '0.00',
+            oldSpeed: '0.00', newSpeed: '0.00', speedChange: '0.00'
+        },
+        calibrationRows: null,
+        integrator: DEFAULT_INTEGRATOR_ROWS,
+        integratorRows: null
     });
 
-    // ... (useEffect for Drafts need to handle state updates carefully)
+    // --- LOAD DATA & TEMPLATES ---
+    useEffect(() => {
+        // Load custom templates from local storage
+        const savedTemplates = JSON.parse(localStorage.getItem('serviceReportTemplates') || '[]');
+        if (savedTemplates.length > 0) {
+            setTemplates(prev => [...prev, ...savedTemplates]);
+        }
+
+        if (initialData) {
+            setFormData({
+                ...initialData,
+                general: {
+                    ...initialData.general,
+                    customerLogo: initialData.general.customerLogo || site?.logo
+                }
+            });
+        } else if (asset?.id) {
+            const draftKey = `serviceReportDraft_${asset.id}`;
+            const savedDraft = localStorage.getItem(draftKey);
+
+            if (savedDraft) {
+                try {
+                    const parsedDraft = JSON.parse(savedDraft);
+                    setFormData({
+                        ...parsedDraft,
+                        general: {
+                            ...parsedDraft.general,
+                            customerLogo: parsedDraft.general.customerLogo || site?.logo
+                        }
+                    });
+                    setDraftSaved(true);
+                } catch (error) {
+                    console.error('Error loading draft:', error);
+                    // If draft fails, show template modal since it's effectively a new report
+                    if (!readOnly) setShowTemplateModal(true);
+                }
+            } else if (!readOnly) {
+                // New report, no draft -> Show template selection
+                setShowTemplateModal(true);
+            }
+        }
+    }, [asset?.id, initialData, site?.logo, readOnly]);
+
+    // --- AUTO-SAVE DRAFT ---
+    useEffect(() => {
+        if (asset?.id && !readOnly && !initialData && !showTemplateModal) {
+            const draftKey = `serviceReportDraft_${asset.id}`;
+            const storageData = {
+                ...formData,
+                general: {
+                    ...formData.general,
+                    photos: (formData.general.photos || []).map(p => ({
+                        ...p,
+                        preview: null,
+                        file: null
+                    }))
+                }
+            };
+
+            try {
+                localStorage.setItem(draftKey, JSON.stringify(storageData));
+                setDraftSaved(true);
+                const timer = setTimeout(() => setDraftSaved(false), 2000);
+                return () => clearTimeout(timer);
+            } catch (error) {
+                if (error.name === 'QuotaExceededError') {
+                    console.warn('Local storage quota exceeded. Draft not saved.');
+                }
+            }
+        }
+    }, [formData, asset?.id, readOnly, initialData, showTemplateModal]);
 
     // --- HANDLERS ---
     const handleGeneralChange = (field, value) => {
-        setFormData(prev => {
-            const newGeneral = { ...prev.general, [field]: value };
-
-            if (field === 'serviceDate' && value) {
-                const nextDate = calculateNextDate(value, asset?.serviceSchedule);
-                if (nextDate) {
-                    newGeneral.nextServiceDate = nextDate;
-                }
-            }
-
-            return {
-                ...prev,
-                general: newGeneral
-            };
-        });
+        setFormData(prev => ({
+            ...prev,
+            general: { ...prev.general, [field]: value }
+        }));
     };
 
     const handleCalibrationChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            [field]: value
-        }));
+        setFormData(prev => ({ ...prev, [field]: value }));
     };
 
     const handleIntegratorChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    // --- DRAFT MANAGEMENT ---
+    const clearDraft = () => {
+        if (asset?.id) {
+            localStorage.removeItem(`serviceReportDraft_${asset.id}`);
+            setDraftSaved(false);
+        }
+    };
+
+    const handleSaveWrapper = (dataWrapper) => {
+        clearDraft();
+        onSave(dataWrapper);
+    };
+
+    // --- TEMPLATE HANDLERS ---
+    const handleSelectTemplate = (template) => {
         setFormData(prev => ({
             ...prev,
-            [field]: value
+            integrator: template.integrator,
+            integratorRows: template.integrator
         }));
+        setShowTemplateModal(false);
     };
+
+    const handleCreateTemplate = () => {
+        if (!newTemplateName.trim()) return;
+
+        let updatedTemplates;
+        const newTemplate = {
+            id: editingTemplateId || `custom_${Date.now()}`,
+            name: newTemplateName,
+            integrator: newTemplateRows
+        };
+
+        if (editingTemplateId) {
+            // Update existing
+            updatedTemplates = templates.map(t =>
+                t.id === editingTemplateId ? newTemplate : t
+            );
+        } else {
+            // Create new
+            updatedTemplates = [...templates, newTemplate];
+        }
+
+        setTemplates(updatedTemplates);
+
+        // Persist only custom templates
+        const customTemplates = updatedTemplates.filter(t => t.id.startsWith('custom_'));
+        localStorage.setItem('serviceReportTemplates', JSON.stringify(customTemplates));
+
+        // Select the new/updated template immediately
+        handleSelectTemplate(newTemplate);
+        setIsCreatingTemplate(false);
+        setEditingTemplateId(null);
+    };
+
+    const handleDeleteTemplate = (templateId) => {
+        if (window.confirm('Are you sure you want to delete this template? This cannot be undone.')) {
+            const updatedTemplates = templates.filter(t => t.id !== templateId);
+            setTemplates(updatedTemplates);
+
+            // Update local storage
+            const customTemplates = updatedTemplates.filter(t => t.id.startsWith('custom_'));
+            localStorage.setItem('serviceReportTemplates', JSON.stringify(customTemplates));
+        }
+    };
+
+    const handleEditTemplate = (template) => {
+        setNewTemplateName(template.name);
+        setNewTemplateRows([...template.integrator]);
+        setEditingTemplateId(template.id);
+        setIsCreatingTemplate(true);
+    };
+
+    // --- RENDER TEMPLATE MODAL ---
+    if (showTemplateModal) {
+        return (
+            <div className="fixed inset-0 z-[9999] bg-black/90 flex items-center justify-center p-4">
+                <div className="w-full max-w-4xl bg-slate-900 rounded-xl border border-slate-700 shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                    <div className="p-6 border-b border-slate-700 bg-slate-800 flex justify-between items-center">
+                        <div>
+                            <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                <Icons.FileText className="text-cyan-400" />
+                                {isCreatingTemplate
+                                    ? (editingTemplateId ? 'Edit Template' : 'Create New Template')
+                                    : 'Select Report Type'}
+                            </h2>
+                            <p className="text-sm text-slate-400">
+                                {isCreatingTemplate
+                                    ? (editingTemplateId ? 'Modify the existing template parameters.' : 'Define the default parameters for this report type.')
+                                    : 'Choose a template to initialize the service report.'}
+                            </p>
+                        </div>
+                        <Button variant="secondary" onClick={onClose}>Cancel</Button>
+                    </div>
+
+                    <div className="p-6 overflow-y-auto flex-1">
+                        {isCreatingTemplate ? (
+                            <div className="space-y-6">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Template Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full bg-slate-950 border border-slate-700 rounded-lg px-4 py-2 text-white focus:ring-2 focus:ring-cyan-500 outline-none"
+                                        placeholder="e.g., Heavy Duty Belt Scale"
+                                        value={newTemplateName}
+                                        onChange={(e) => setNewTemplateName(e.target.value)}
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-2">Default Parameters</label>
+                                    <div className="border border-slate-700 rounded-lg overflow-hidden">
+                                        {/* Reuse IntegratorTab for defining template structure */}
+                                        <IntegratorTab
+                                            formData={{ integratorRows: newTemplateRows }}
+                                            onChange={(_, val) => setNewTemplateRows(val)}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {/* Create New Card */}
+                                <button
+                                    onClick={() => {
+                                        setIsCreatingTemplate(true);
+                                        setNewTemplateRows([...DEFAULT_INTEGRATOR_ROWS]); // Start with defaults
+                                        setNewTemplateName('');
+                                        setEditingTemplateId(null); // Ensure we are in create mode
+                                    }}
+                                    className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-700 rounded-xl hover:border-cyan-500 hover:bg-slate-800/50 transition-all group"
+                                >
+                                    <div className="w-12 h-12 rounded-full bg-slate-800 flex items-center justify-center mb-4 group-hover:bg-cyan-900/30 transition-colors">
+                                        <Icons.Plus className="text-cyan-400" size={24} />
+                                    </div>
+                                    <span className="font-bold text-white">Create New Template</span>
+                                    <span className="text-xs text-slate-500 mt-1">Define custom parameters</span>
+                                </button>
+
+                                {/* Existing Templates */}
+                                {templates.map(template => (
+                                    <div
+                                        key={template.id}
+                                        className="relative group bg-slate-800 border border-slate-700 rounded-xl hover:border-cyan-500 hover:shadow-lg hover:shadow-cyan-900/20 transition-all"
+                                    >
+                                        <button
+                                            onClick={() => handleSelectTemplate(template)}
+                                            className="flex flex-col p-6 w-full text-left"
+                                        >
+                                            <div className="flex items-start justify-between w-full mb-3">
+                                                <div className="p-2 bg-slate-700 rounded-lg group-hover:bg-cyan-900/30 transition-colors">
+                                                    <Icons.FileText className="text-cyan-400" size={20} />
+                                                </div>
+                                            </div>
+                                            <span className="text-lg font-bold text-white mb-1">{template.name}</span>
+                                            <span className="text-sm text-slate-400">{template.integrator.length} Parameters configured</span>
+                                        </button>
+
+                                        {/* Edit/Delete Actions for Custom Templates */}
+                                        {template.id.startsWith('custom_') && (
+                                            <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleEditTemplate(template);
+                                                    }}
+                                                    className="p-1.5 bg-slate-700 hover:bg-cyan-600 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                                    title="Edit Template"
+                                                >
+                                                    <Icons.Edit size={14} />
+                                                </button>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleDeleteTemplate(template.id);
+                                                    }}
+                                                    className="p-1.5 bg-slate-700 hover:bg-red-600 text-slate-300 hover:text-white rounded-lg transition-colors"
+                                                    title="Delete Template"
+                                                >
+                                                    <Icons.Trash size={14} />
+                                                </button>
+                                            </div>
+                                        )}
+
+                                        {/* Custom Badge moved to bottom right */}
+                                        {template.id.startsWith('custom_') && (
+                                            <span className="absolute bottom-4 right-4 text-[10px] uppercase tracking-wider bg-slate-700 text-slate-300 px-2 py-0.5 rounded-full pointer-events-none">Custom</span>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4 border-t border-slate-700 bg-slate-800 flex justify-end gap-3">
+                        {isCreatingTemplate && (
+                            <>
+                                <Button variant="secondary" onClick={() => setIsCreatingTemplate(false)}>Back</Button>
+                                <Button
+                                    variant="primary"
+                                    className="bg-emerald-600 hover:bg-emerald-500"
+                                    onClick={handleCreateTemplate}
+                                    disabled={!newTemplateName.trim()}
+                                >
+                                    <Icons.Save size={16} /> Save & Use Template
+                                </Button>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="fixed inset-0 z-[9999] bg-black/80 flex items-center justify-center p-4">
@@ -137,10 +388,17 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
                         <Button variant="secondary" onClick={onClose}>{readOnly ? 'Close' : 'Cancel'}</Button>
                         {!readOnly && (
                             <>
-                                <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500" onClick={() => onSave({ ...formData, download: false })}>
+                                <Button
+                                    variant="secondary"
+                                    onClick={() => setShowTemplateModal(true)}
+                                    title="Change Report Template"
+                                >
+                                    <Icons.LayoutTemplate size={16} /> Template
+                                </Button>
+                                <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-500 border-emerald-500" onClick={() => handleSaveWrapper({ ...formData, download: false })}>
                                     <Icons.Save size={16} /> Save Record
                                 </Button>
-                                <Button variant="primary" onClick={() => onSave({ ...formData, download: true })}>
+                                <Button variant="primary" onClick={() => handleSaveWrapper({ ...formData, download: true })}>
                                     <Icons.Download size={16} /> Save & PDF
                                 </Button>
                             </>
@@ -197,6 +455,6 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

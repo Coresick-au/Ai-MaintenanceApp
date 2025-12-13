@@ -76,7 +76,8 @@ import {
     ChevronsUpDown,
     FolderTree,
     Lock,
-    AlertOctagon
+    AlertOctagon,
+    LayoutTemplate
 } from 'lucide-react';
 
 export const Icons = {
@@ -157,5 +158,6 @@ export const Icons = {
     ChevronsUpDown,
     FolderTree,
     Lock,
-    AlertOctagon
+    AlertOctagon,
+    LayoutTemplate
 };

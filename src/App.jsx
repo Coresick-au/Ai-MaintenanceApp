@@ -2278,24 +2278,26 @@ export function App() {
       {/* SERVICE REPORT MODAL */}
       {
         isServiceReportOpen && (
-          <div className="fixed inset-0 z-[150] bg-black/80 flex items-center justify-center p-4">
-            <div className="bg-slate-900 w-full max-w-6xl h-[90vh] rounded-xl border border-slate-700 overflow-hidden shadow-2xl">
-              <ServiceReportForm
-                site={selectedSite}
-                asset={selectedAsset}
-                employees={employees}
-                onClose={() => {
-                  setIsServiceReportOpen(false);
-                  setEditingReportId(null);
-                  setServiceReportInitialData(null);
-                  setServiceReportReadOnly(false);
-                }}
-                onSave={(data) => handleGenerateReport(data)}
-                initialData={serviceReportInitialData}
-                readOnly={serviceReportReadOnly}
-              />
-            </div>
-          </div>
+          <ServiceReportForm
+            site={selectedSite}
+            asset={selectedAsset}
+            employees={employees}
+            onClose={() => {
+              setIsServiceReportOpen(false);
+              setEditingReportId(null);
+              setServiceReportInitialData(null);
+              setServiceReportReadOnly(false);
+            }}
+            onSave={(data) => {
+              handleGenerateReport(data);
+              setIsServiceReportOpen(false);
+              setEditingReportId(null);
+              setServiceReportInitialData(null);
+              setServiceReportReadOnly(false);
+            }}
+            initialData={serviceReportInitialData}
+            readOnly={serviceReportReadOnly}
+          />
         )
       }
 
@@ -2371,16 +2373,15 @@ export function App() {
       {/* The actual Report Form (Full Screen Overlay) */}
       {
         reportFormState && (
-          <div className="fixed inset-0 z-[200] bg-black/80 flex items-center justify-center p-4 animate-in fade-in duration-200">
-            <div className="w-full max-w-7xl h-[95vh] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-700 flex flex-col">
-              <ServiceReportForm
-                site={reportFormState.site}
-                asset={reportFormState.asset}
-                onClose={() => setReportFormState(null)}
-                onSave={(data) => handleGenerateReport(data, reportFormState.asset)}
-              />
-            </div>
-          </div>
+          <ServiceReportForm
+            site={reportFormState.site}
+            asset={reportFormState.asset}
+            onClose={() => setReportFormState(null)}
+            onSave={(data) => {
+              handleGenerateReport(data, reportFormState.asset);
+              setReportFormState(null);
+            }}
+          />
         )
       }
 
