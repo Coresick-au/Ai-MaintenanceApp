@@ -3,8 +3,9 @@ import { Icons } from '../../constants/icons';
 import { Button } from '../UIComponents';
 import { formatDate } from '../../utils/helpers';
 
-export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewReport, onEditReport, onNewReport }) => {
+export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewReport, onEditReport, onNewReport, onDeleteReport }) => {
     const [searchTerm, setSearchTerm] = useState('');
+    const [deleteConfirmState, setDeleteConfirmState] = useState({}); // Track confirmation state per report
     const reports = asset?.reports || [];
 
     // Filter reports based on search
@@ -163,6 +164,53 @@ export const ReportHistoryModal = ({ asset, onClose, onRegeneratePDF, onViewRepo
                                             >
                                                 <Icons.Edit size={14} /> Edit
                                             </Button>
+                                            {onDeleteReport && (
+                                                <Button
+                                                    variant="secondary"
+                                                    className={`text-xs ${deleteConfirmState[report.id] === 2
+                                                            ? 'text-red-500 hover:text-red-400 border-red-500 hover:border-red-400'
+                                                            : deleteConfirmState[report.id] === 1
+                                                                ? 'text-yellow-500 hover:text-yellow-400 border-yellow-500 hover:border-yellow-400'
+                                                                : 'text-red-400 hover:text-red-300'
+                                                        }`}
+                                                    onClick={() => {
+                                                        const currentState = deleteConfirmState[report.id] || 0;
+                                                        if (currentState === 0) {
+                                                            // First click - show first warning
+                                                            setDeleteConfirmState({ ...deleteConfirmState, [report.id]: 1 });
+                                                            // Reset after 5 seconds
+                                                            setTimeout(() => {
+                                                                setDeleteConfirmState(prev => ({ ...prev, [report.id]: 0 }));
+                                                            }, 5000);
+                                                        } else if (currentState === 1) {
+                                                            // Second click - show final warning
+                                                            setDeleteConfirmState({ ...deleteConfirmState, [report.id]: 2 });
+                                                            // Reset after 5 seconds
+                                                            setTimeout(() => {
+                                                                setDeleteConfirmState(prev => ({ ...prev, [report.id]: 0 }));
+                                                            }, 5000);
+                                                        } else {
+                                                            // Third click - actually delete
+                                                            onDeleteReport(report);
+                                                            setDeleteConfirmState({ ...deleteConfirmState, [report.id]: 0 });
+                                                        }
+                                                    }}
+                                                    title={
+                                                        deleteConfirmState[report.id] === 2
+                                                            ? 'FINAL WARNING: Click again to permanently delete!'
+                                                            : deleteConfirmState[report.id] === 1
+                                                                ? 'WARNING: Click again to confirm deletion'
+                                                                : 'Delete Report'
+                                                    }
+                                                >
+                                                    <Icons.Trash size={14} />
+                                                    {deleteConfirmState[report.id] === 2
+                                                        ? 'CONFIRM DELETE'
+                                                        : deleteConfirmState[report.id] === 1
+                                                            ? 'Click Again'
+                                                            : 'Delete'}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 </div>

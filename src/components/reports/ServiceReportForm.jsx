@@ -34,10 +34,13 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
     const [newTemplateRows, setNewTemplateRows] = useState([...DEFAULT_INTEGRATOR_ROWS]);
     const [editingTemplateId, setEditingTemplateId] = useState(null);
 
+    // Validation State
+    const [validationErrors, setValidationErrors] = useState({});
+
     // --- INITIAL STATE ---
     const [formData, setFormData] = useState({
         general: {
-            reportId: `${new Date().getFullYear()}.${String(new Date().getMonth() + 1).padStart(2, '0')}.${String(new Date().getDate()).padStart(2, '0')}-CALR-${asset?.code || 'UNK'}`,
+            reportId: `${new Date().getFullYear()}.${String(new Date().getMonth() + 1).padStart(2, '0')}.${String(new Date().getDate()).padStart(2, '0')}-CALRPENDING-${asset?.code || 'UNK'}`,
             jobNumber: '',
             customerName: site?.customer || '',
             customerLogo: site?.logo || null,
@@ -50,7 +53,7 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
             nextServiceDate: asset?.dueDate || '',
             technicians: '',
             comments: '',
-            photos: []
+            photosLink: ''
         },
         calibration: {
             oldTare: '0.000', newTare: '0.000', tareChange: '0.00',
@@ -109,20 +112,9 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
     useEffect(() => {
         if (asset?.id && !readOnly && !initialData && !showTemplateModal) {
             const draftKey = `serviceReportDraft_${asset.id}`;
-            const storageData = {
-                ...formData,
-                general: {
-                    ...formData.general,
-                    photos: (formData.general.photos || []).map(p => ({
-                        ...p,
-                        preview: null,
-                        file: null
-                    }))
-                }
-            };
 
             try {
-                localStorage.setItem(draftKey, JSON.stringify(storageData));
+                localStorage.setItem(draftKey, JSON.stringify(formData));
                 setDraftSaved(true);
                 const timer = setTimeout(() => setDraftSaved(false), 2000);
                 return () => clearTimeout(timer);
@@ -136,10 +128,23 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
 
     // --- HANDLERS ---
     const handleGeneralChange = (field, value) => {
-        setFormData(prev => ({
-            ...prev,
-            general: { ...prev.general, [field]: value }
-        }));
+        setFormData(prev => {
+            const updates = { [field]: value };
+
+            // Auto-update Report ID when Job Number changes
+            if (field === 'jobNumber') {
+                const date = new Date(prev.general.serviceDate);
+                const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
+                const assetCode = asset?.code || 'UNK';
+                const jobNum = value.trim() || 'PENDING';
+                updates.reportId = `${dateStr}-CALR${jobNum}-${assetCode}`;
+            }
+
+            return {
+                ...prev,
+                general: { ...prev.general, ...updates }
+            };
+        });
     };
 
     const handleCalibrationChange = (field, value) => {
@@ -158,9 +163,42 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
         }
     };
 
-    const handleSaveWrapper = (dataWrapper) => {
-        clearDraft();
-        onSave(dataWrapper);
+    const handleSaveWrapper = async (dataWrapper) => {
+        console.log('[handleSaveWrapper] Starting...', dataWrapper);
+        // Validate required fields
+        const errors = {};
+
+        if (!dataWrapper.general.jobNumber || dataWrapper.general.jobNumber.trim() === '') {
+            errors.jobNumber = 'Job Number is required';
+        }
+
+        if (!dataWrapper.general.technicians || dataWrapper.general.technicians.trim() === '') {
+            errors.technicians = 'At least one technician is required';
+        }
+
+        // Show errors if any
+        if (Object.keys(errors).length > 0) {
+            console.log('[handleSaveWrapper] Validation errors:', errors);
+            setValidationErrors(errors);
+            setActiveTab('general'); // Switch to General tab where errors are
+            return; // Don't proceed with save
+        }
+
+        console.log('[handleSaveWrapper] Validation passed, proceeding with save...');
+        // Clear any previous errors
+        setValidationErrors({});
+
+        // Proceed with save
+        try {
+            console.log('[handleSaveWrapper] Calling onSave...');
+            await onSave(dataWrapper);
+            console.log('[handleSaveWrapper] onSave completed successfully');
+            // Only clear draft on successful save
+            clearDraft();
+        } catch (error) {
+            console.error('[handleSaveWrapper] Save failed:', error);
+            // Don't close window on error - let user retry
+        }
     };
 
     // --- TEMPLATE HANDLERS ---
@@ -433,6 +471,7 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
                             asset={asset}
                             employees={employees}
                             readOnly={readOnly}
+                            validationErrors={validationErrors}
                         />
                     )}
 

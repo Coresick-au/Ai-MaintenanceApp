@@ -364,19 +364,20 @@ export function App() {
   };
 
   const handleGenerateReport = async (reportData, assetOverride = null) => {
+    console.log('[handleGenerateReport] Starting...', { reportData, assetOverride });
     const targetAsset = assetOverride || selectedAsset;
-    if (!targetAsset) return;
-    const targetAssetId = targetAsset.id;
-
-    // Validate job number
-    if (!reportData.general.jobNumber || reportData.general.jobNumber.trim() === '') {
-      alert('Please enter a Job Number before generating the report.');
+    if (!targetAsset) {
+      console.error('[handleGenerateReport] No target asset found!');
       return;
     }
+    const targetAssetId = targetAsset.id;
+    console.log('[handleGenerateReport] Target asset:', targetAsset.name, targetAssetId);
 
     try {
+      console.log('[handleGenerateReport] Generating PDF blob...');
       // 1. Generate PDF Blob
       const blob = await pdf(<ServiceReportDocument data={reportData} />).toBlob();
+      console.log('[handleGenerateReport] PDF blob generated:', blob.size, 'bytes');
 
       // 2. Create filename: YYYY.MM.DD-CALR-[jobNumber]-[AssetName]
       const date = new Date(reportData.general.serviceDate);
@@ -391,17 +392,20 @@ export function App() {
         saveAs(blob, fileName);
       }
 
-      // 4. Upload to Firebase Storage
+      // 4. Upload to Firebase Storage (non-blocking - continue even if it fails)
       let downloadURL = null;
       try {
         const storageRef = ref(storage, `reports/${targetAssetId}/${fileName}`);
         const snapshot = await uploadBytes(storageRef, blob);
         downloadURL = await getDownloadURL(snapshot.ref);
-        console.log('Uploaded report to:', downloadURL);
+        console.log('[handleGenerateReport] Uploaded report to:', downloadURL);
       } catch (uploadError) {
-        console.error("Firebase upload failed:", uploadError);
-        alert("Warning: PDF upload to Cloud failed. Report data will still be saved locally/offline.");
+        console.warn('[handleGenerateReport] Firebase upload failed (expected in localhost):', uploadError.message);
+        // Don't throw - CORS errors are expected in localhost
+        // Report will still save locally and to database
       }
+
+      console.log('[handleGenerateReport] Continuing with local save...');
 
       // 5. Save to App History (using existing context method)
       // If editing, delete old record first to ensure clean update (simulated update)
@@ -423,19 +427,23 @@ export function App() {
       const draftKey = `serviceReportDraft_${targetAssetId}`;
       localStorage.removeItem(draftKey);
 
+      // 7. Close form modals FIRST
       setIsServiceReportOpen(false);
-      setReportFormState(null); // Also close the wizard form if open
+      setReportFormState(null);
 
       // Reset Edit State
       setEditingReportId(null);
       setServiceReportInitialData(null);
       setServiceReportReadOnly(false);
 
-      // Open History Modal (Workflow Improvement)
-      setIsReportHistoryOpen(true);
+      // 8. Open Report History after a brief delay to ensure form closes first
+      setTimeout(() => {
+        setIsReportHistoryOpen(true);
+      }, 100);
     } catch (error) {
       console.error('Error generating service report:', error);
       alert('Failed to generate service report. Please try again.');
+      throw error; // Re-throw to prevent window from closing
     }
   };
 
@@ -2288,12 +2296,9 @@ export function App() {
               setServiceReportInitialData(null);
               setServiceReportReadOnly(false);
             }}
-            onSave={(data) => {
-              handleGenerateReport(data);
-              setIsServiceReportOpen(false);
-              setEditingReportId(null);
-              setServiceReportInitialData(null);
-              setServiceReportReadOnly(false);
+            onSave={async (data) => {
+              await handleGenerateReport(data);
+              // Window closing and state reset now handled in handleGenerateReport
             }}
             initialData={serviceReportInitialData}
             readOnly={serviceReportReadOnly}
@@ -2310,6 +2315,9 @@ export function App() {
             onRegeneratePDF={handleRegeneratePDF}
             onViewReport={handleViewReport}
             onEditReport={handleEditReport}
+            onDeleteReport={(report) => {
+              deleteServiceReport(selectedAsset.id, report.id);
+            }}
             onNewReport={() => {
               setIsReportHistoryOpen(false);
               setReportFormState({ site: selectedSite, asset: selectedAsset });
@@ -2377,9 +2385,9 @@ export function App() {
             site={reportFormState.site}
             asset={reportFormState.asset}
             onClose={() => setReportFormState(null)}
-            onSave={(data) => {
-              handleGenerateReport(data, reportFormState.asset);
-              setReportFormState(null);
+            onSave={async (data) => {
+              await handleGenerateReport(data, reportFormState.asset);
+              // Window closing and state reset now handled in handleGenerateReport
             }}
           />
         )

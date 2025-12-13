@@ -1,6 +1,6 @@
 import React from 'react';
 
-export const GeneralTab = ({ formData, onChange, site, asset, employees = [], readOnly = false }) => {
+export const GeneralTab = ({ formData, onChange, site, asset, employees = [], readOnly = false, validationErrors = {} }) => {
     const handleChange = (field, value) => {
         onChange(field, value);
     };
@@ -51,19 +51,34 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
                 <div>
                     <label className="text-xs text-slate-400 block mb-1">Report ID</label>
                     <input
-                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white font-mono"
+                        className="w-full bg-slate-800 border border-slate-700 rounded p-2 text-sm text-slate-400 font-mono cursor-not-allowed"
                         value={formData.reportId}
-                        onChange={e => handleChange('reportId', e.target.value)}
+                        readOnly
+                        title="Auto-generated from date, job number, and asset code"
                     />
+                    <p className="text-xs text-slate-500 mt-1 italic">
+                        Auto-generated: Updates when Job Number changes
+                    </p>
                 </div>
                 <div>
-                    <label className="text-xs text-slate-400 block mb-1">Job Number</label>
+                    <label className="text-xs text-slate-400 block mb-1">Job Number <span className="text-red-400">*</span></label>
                     <input
-                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                        className={`w-full bg-slate-900 border rounded p-2 text-sm text-white ${validationErrors.jobNumber ? 'border-red-500' : 'border-slate-600'
+                            }`}
                         value={formData.jobNumber}
                         onChange={e => handleChange('jobNumber', e.target.value)}
-                        placeholder="Optional"
+                        placeholder="Required"
                     />
+                    {validationErrors.jobNumber && (
+                        <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            {validationErrors.jobNumber}
+                        </p>
+                    )}
                 </div>
                 <div>
                     <label className="text-xs text-slate-400 block mb-1">Service Date</label>
@@ -127,15 +142,26 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
             <div className="bg-slate-800 p-4 rounded-lg border border-slate-700 space-y-4">
                 <h3 className="text-cyan-400 font-bold mb-4 uppercase text-xs">Service Details</h3>
                 <div>
-                    <label className="text-xs text-slate-400 block mb-1">Technicians</label>
+                    <label className="text-xs text-slate-400 block mb-1">Technicians <span className="text-red-400">*</span></label>
                     <input
                         type="text"
-                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                        className={`w-full bg-slate-900 border rounded p-2 text-sm text-white ${validationErrors.technicians ? 'border-red-500' : 'border-slate-600'
+                            }`}
                         value={formData.technicians}
                         onChange={e => handleChange('technicians', e.target.value)}
                         placeholder="e.g., John Doe, Jane Smith"
                         list="technician-suggestions"
                     />
+                    {validationErrors.technicians && (
+                        <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <line x1="12" y1="8" x2="12" y2="12"></line>
+                                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                            </svg>
+                            {validationErrors.technicians}
+                        </p>
+                    )}
                     <datalist id="technician-suggestions">
                         {employees.map(emp => (
                             <option
@@ -173,107 +199,63 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
             </div>
 
             {/* Photo Evidence Section */}
-            <div className="col-span-2 bg-slate-800 p-4 rounded-lg border border-slate-700">
+            <div className="col-span-2 bg-slate-800 p-4 rounded-lg border border-slate-700 space-y-4">
                 <h3 className="text-cyan-400 font-bold mb-4 uppercase text-xs flex items-center gap-2">
-                    📷 Photo Evidence
+                    📁 Photo Evidence
                 </h3>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {/* Existing Photos */}
-                    {(formData.photos || []).map((photo) => (
-                        <div key={photo.id} className="relative group aspect-square bg-slate-900 rounded-lg overflow-hidden border border-slate-600">
-                            <img src={photo.preview || photo.path} alt="Evidence" className="w-full h-full object-cover" />
-                            {!readOnly && (
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        const updatedPhotos = formData.photos.filter(p => p.id !== photo.id);
-                                        onChange('photos', updatedPhotos);
-                                    }}
-                                    className="absolute top-1 right-1 bg-red-500/80 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-600"
-                                >
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M3 6h18"></path>
-                                        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path>
-                                        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path>
-                                    </svg>
-                                </button>
-                            )}
-                            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2">
-                                <p className="text-xs text-white truncate">{photo.name}</p>
-                            </div>
-                        </div>
-                    ))}
-
-                    {/* Upload Button */}
-                    {!readOnly && (
-                        <label className="cursor-pointer aspect-square bg-slate-700/50 hover:bg-slate-700 border-2 border-dashed border-slate-600 hover:border-cyan-500 rounded-lg flex flex-col items-center justify-center transition-all group">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-slate-400 group-hover:text-cyan-400 mb-2">
-                                <path d="M5 12h14"></path>
-                                <path d="M12 5v14"></path>
+                {/* Folder Name / Report ID with Copy Button */}
+                <div>
+                    <label className="text-xs text-slate-400 block mb-1">Folder Name (Report ID)</label>
+                    <div className="flex gap-2">
+                        <input
+                            className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white font-mono cursor-not-allowed"
+                            value={formData.reportId}
+                            readOnly
+                            title="Use this as your folder name for storing photos"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                navigator.clipboard.writeText(formData.reportId);
+                                // Optional: Show a brief success indicator
+                                const btn = event.target.closest('button');
+                                const originalText = btn.innerHTML;
+                                btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+                                setTimeout(() => {
+                                    btn.innerHTML = originalText;
+                                }, 1500);
+                            }}
+                            className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded text-sm font-medium flex items-center gap-2 transition-colors"
+                            title="Copy folder name to clipboard"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
                             </svg>
-                            <span className="text-xs text-slate-400 group-hover:text-cyan-400 font-bold">Add Photo</span>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={async (e) => {
-                                    const file = e.target.files[0];
-                                    if (!file) return;
-
-                                    // Check if we're in Electron environment
-                                    if (window.electronAPI && window.electronAPI.saveReportPhoto) {
-                                        try {
-                                            // In Electron, we need to get the file path
-                                            // Since we can't access file.path directly in the renderer for security,
-                                            // we'll use a FileReader to create a temporary blob and save it
-                                            const reader = new FileReader();
-                                            reader.onload = async (ev) => {
-                                                // Create a temporary file path (this is a workaround)
-                                                // In a real implementation, you might want to use a file dialog
-                                                const newPhoto = {
-                                                    id: Date.now(),
-                                                    name: file.name,
-                                                    preview: ev.target.result,
-                                                    file: file // Store file for later upload
-                                                };
-
-                                                const currentPhotos = formData.photos || [];
-                                                onChange('photos', [...currentPhotos, newPhoto]);
-                                            };
-                                            reader.readAsDataURL(file);
-                                        } catch (error) {
-                                            console.error('Error uploading photo:', error);
-                                            alert('Failed to upload photo: ' + error.message);
-                                        }
-                                    } else {
-                                        // Browser preview mode - just show the image
-                                        const reader = new FileReader();
-                                        reader.onload = (ev) => {
-                                            const newPhoto = {
-                                                id: Date.now(),
-                                                name: file.name,
-                                                preview: ev.target.result
-                                            };
-                                            const currentPhotos = formData.photos || [];
-                                            onChange('photos', [...currentPhotos, newPhoto]);
-                                        };
-                                        reader.readAsDataURL(file);
-                                    }
-
-                                    // Reset input
-                                    e.target.value = '';
-                                }}
-                            />
-                        </label>
-                    )}
+                            Copy
+                        </button>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1 italic">
+                        Create a folder with this name for storing photos (e.g., in SharePoint or Google Drive)
+                    </p>
                 </div>
 
-                {(formData.photos || []).length > 0 && (
-                    <p className="text-xs text-slate-400 mt-3">
-                        {formData.photos.length} photo{formData.photos.length !== 1 ? 's' : ''} attached
+                {/* Photos Link Input */}
+                <div>
+                    <label className="text-xs text-slate-400 block mb-1">Photos Link</label>
+                    <input
+                        type="url"
+                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                        value={formData.photosLink || ''}
+                        onChange={e => handleChange('photosLink', e.target.value)}
+                        placeholder="Paste link to SharePoint/Drive folder..."
+                        readOnly={readOnly}
+                    />
+                    <p className="text-xs text-slate-500 mt-1">
+                        Link to the folder containing photos for this report
                     </p>
-                )}
+                </div>
             </div>
         </fieldset>
     );
