@@ -6,9 +6,11 @@ import { getAnalytics } from "firebase/analytics";
 
 // Your web app's Firebase configuration
 // Keys are loaded from environment variables (.env file)
-// Keys are loaded from environment variables (.env file)
 const env = import.meta.env;
 
+// NOTE: Hardcoded values below are DEMO/FALLBACK credentials only.
+// For production, always use environment variables via .env file.
+// These fallbacks allow the app to run for testing without .env setup.
 export const firebaseConfig = {
     apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyAcXwlK_851kGBtp_khuFh3w3fSuFkGZxA",
     authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "accurate-industries-database.firebaseapp.com",

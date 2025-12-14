@@ -66,11 +66,8 @@ const getDisplayLocation = (site) => {
 };
 
 export function App() {
-  // Check for PDF Dev Mode
-  const searchParams = new URLSearchParams(window.location.search);
-  if (searchParams.get('mode') === 'pdf') {
-    return <DevPDFViewer />;
-  }
+  // --- ALL HOOKS MUST BE CALLED FIRST (Rules of Hooks) ---
+  // Do NOT add early returns before this section
 
   // Force HMR update
   const {
@@ -92,8 +89,9 @@ export function App() {
   const {
     employees,
     addEmployee: handleAddEmployee,
-    updateEmployee: handleUpdateEmployee,
-    deleteEmployee: handleDeleteEmployee
+    // Unused but kept for future use
+    updateEmployee: _handleUpdateEmployee,
+    deleteEmployee: _handleDeleteEmployee
   } = useGlobalData();
 
   const {
@@ -139,7 +137,8 @@ export function App() {
   // Universal Action Wizard State
   const [wizardAction, setWizardAction] = useState(null); // 'analytics', 'report', 'specs'
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
-  const [isEmployeeManagerOpen, setIsEmployeeManagerOpen] = useState(false);
+  // Unused but kept for future employee manager feature
+  const [_isEmployeeManagerOpen, _setIsEmployeeManagerOpen] = useState(false);
   const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
 
   const toggleCardExpansion = (e, siteId) => {
@@ -171,7 +170,8 @@ export function App() {
 
 
   // Calculate count of certifications/inductions needing attention
-  const complianceIssuesCount = useMemo(() => {
+  // Unused currently but kept for future compliance dashboard
+  const _complianceIssuesCount = useMemo(() => {
     let count = 0;
     employees.forEach(emp => {
       // Check Certifications
@@ -196,7 +196,9 @@ export function App() {
     siteSearchQuery, setSiteSearchQuery,
     searchTerm, setSearchTerm,
     filterStatus, setFilterStatus,
-    isRollerOnlyMode, setIsRollerOnlyMode,
+    isRollerOnlyMode,
+    // Unused but kept for future roller-only mode feature
+    setIsRollerOnlyMode: _setIsRollerOnlyMode,
     sortConfig,
     selectedRowIds, setSelectedRowIds,
     showArchived, setShowArchived,
@@ -209,7 +211,16 @@ export function App() {
     toggleSelectAll
   } = useFilterContext();
 
-  const { canUndo, performUndo, lastActionDescription, isDirty, canRedo, performRedo, lastRedoActionDescription } = useUndo();
+  const {
+    // Unused but kept for future undo UI
+    canUndo: _canUndo,
+    performUndo,
+    lastActionDescription: _lastActionDescription,
+    isDirty,
+    canRedo,
+    performRedo,
+    lastRedoActionDescription
+  } = useUndo();
 
   // --- APP EXIT CONFIRMATION ---
   // We need a ref to access the latest isDirty inside the event handler
@@ -217,6 +228,13 @@ export function App() {
   useEffect(() => {
     isDirtyRef.current = isDirty;
   }, [isDirty]);
+
+  // --- EARLY RETURNS (AFTER ALL HOOKS) ---
+  // Check for PDF Dev Mode - MUST be after all Hooks
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.get('mode') === 'pdf') {
+    return <DevPDFViewer />;
+  }
 
   // Removed Electron window close handlers (web-only app)
 
@@ -1465,14 +1483,14 @@ export function App() {
                         <div
                           onClick={(e) => toggleLogoBg(e, site.id)}
                           className={`w-16 h-16 rounded-lg p-0.5 shadow-md cursor-pointer transition-colors flex items-center justify-center flex-shrink-0 ${logoBackgrounds[site.id] === 'light'
-                              ? 'bg-white'
-                              : logoBackgrounds[site.id] === 'light-grey'
-                                ? 'bg-slate-200'
-                                : logoBackgrounds[site.id] === 'grey'
-                                  ? 'bg-slate-400'
-                                  : logoBackgrounds[site.id] === 'card-grey'
-                                    ? 'bg-slate-900 border border-slate-700'
-                                    : 'bg-slate-800 border border-slate-700'
+                            ? 'bg-white'
+                            : logoBackgrounds[site.id] === 'light-grey'
+                              ? 'bg-slate-200'
+                              : logoBackgrounds[site.id] === 'grey'
+                                ? 'bg-slate-400'
+                                : logoBackgrounds[site.id] === 'card-grey'
+                                  ? 'bg-slate-900 border border-slate-700'
+                                  : 'bg-slate-800 border border-slate-700'
                             }`}
                           title="Click to cycle background (White → Light Grey → Grey → Card Grey → Dark)"
                         >
