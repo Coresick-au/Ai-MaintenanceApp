@@ -82,9 +82,12 @@ export function useQuote() {
         customers.forEach((customer: any) => {
             const customerSites = getSitesByCustomer(customer.id);
 
-            if (customerSites && customerSites.length > 0) {
-                // Create an entry for each managed site
-                customerSites.forEach((site: any) => {
+            // Filter sites to only include AIMM-enabled sites
+            const aimmEnabledSites = customerSites ? customerSites.filter((site: any) => site.hasAIMMProfile === true) : [];
+
+            if (aimmEnabledSites && aimmEnabledSites.length > 0) {
+                // Create an entry for each AIMM-enabled managed site
+                aimmEnabledSites.forEach((site: any) => {
                     // Get contacts that manage this specific site
                     const siteContacts = (customer.contacts || [])
                         .filter((contact: any) =>
@@ -117,23 +120,9 @@ export function useQuote() {
                         }]
                     });
                 });
-            } else {
-                // Customer has no sites, keep as-is
-                result.push({
-                    id: customer.id,
-                    name: customer.name,
-                    logo: customer.logo,
-                    rates: customer.rates || DEFAULT_RATES,
-                    contacts: (customer.contacts || []).map((c: any) => ({
-                        name: c.name || '',
-                        phone: c.phone || '',
-                        email: c.email || ''
-                    })),
-                    customerNotes: customer.customerNotes,
-                    isLocked: customer.isLocked,
-                    managedSites: []
-                });
             }
+            // Note: Customers with no AIMM-enabled sites are completely hidden
+            // They won't appear in the list at all, even as base customers
         });
 
         return result;
@@ -300,11 +289,17 @@ export function useQuote() {
 
     // Customer Management (Wrapper around Global Data)
     const saveCustomer = async (customer: Customer) => {
-        const exists = customers.find((c: any) => c.id === customer.id);
+        // Handle composite IDs from expanded customers (format: "customerId__siteId")
+        const baseCustomerId = customer.id.includes('__') ? customer.id.split('__')[0] : customer.id;
+        const exists = customers.find((c: any) => c.id === baseCustomerId);
+
+        // For expanded customers, preserve the original base customer name
+        // Don't save the expanded name (which includes site names) back to the base customer
+        const originalCustomerName = exists ? exists.name : customer.name;
 
         // Ensure rates object is clean and correctly structured
         const customerData = {
-            name: customer.name,
+            name: originalCustomerName, // Use original name, not expanded name
             rates: customer.rates || DEFAULT_RATES, // Ensure rates exist
             contacts: customer.contacts || [],
             customerNotes: customer.customerNotes || '',
@@ -312,7 +307,7 @@ export function useQuote() {
         };
 
         if (exists) {
-            await updateGlobalCustomer(customer.id, customerData);
+            await updateGlobalCustomer(baseCustomerId, customerData);
         } else {
             // New Customer - Global Context handles ID generation if not provided,
             // but our UI might generate one. Let's pass data.

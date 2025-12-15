@@ -50,3 +50,11 @@ backups/
 Download_and_Setup*.bat
 SHARE_THIS_APP*.md
 
+# Firebase specific
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+
+# Temporary scripts
+scripts/browser-cleanup.js
+

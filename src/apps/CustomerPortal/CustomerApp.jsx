@@ -607,10 +607,36 @@ export const CustomerApp = ({ onBack }) => {
                                                             {site.active === false && (
                                                                 <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">Archived</span>
                                                             )}
+                                                            {site.hasAIMMProfile && (
+                                                                <span className="text-[10px] bg-blue-900/30 text-blue-400 px-1.5 py-0.5 rounded border border-blue-800">AIMM</span>
+                                                            )}
                                                         </div>
                                                         <div className="text-xs text-slate-400 truncate">{site.location || "No Location"}</div>
                                                     </div>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {/* AIMM Profile Toggle */}
+                                                        <button
+                                                            onClick={async () => {
+                                                                if (userRole === 'tech') {
+                                                                    alert("Please ask a manager to change AIMM profile settings.");
+                                                                    return;
+                                                                }
+                                                                
+                                                                const isCurrentlyEnabled = site.hasAIMMProfile || false;
+                                                                const action = isCurrentlyEnabled ? 'disable' : 'enable';
+                                                                const warning = isCurrentlyEnabled 
+                                                                    ? '\n\n⚠️ WARNING: Disabling AIMM tracking will:\n• Remove this site from AIMM monitoring\n• Hide the customer from the customer list\n• Any existing AIMM data will remain but will no longer be updated\n\nThe customer will not be visible in the quoting system until AIMM is re-enabled.'
+                                                                    : '';
+                                                                
+                                                                if (window.confirm(`Are you sure you want to ${action} AIMM profile tracking for "${site.name}"?${warning}\n\nThis change will affect how this site is monitored in AIMM.`)) {
+                                                                    await updateSite(site.id, { hasAIMMProfile: !isCurrentlyEnabled });
+                                                                }
+                                                            }}
+                                                            className={`transition p-1 ${site.hasAIMMProfile ? 'text-blue-400 hover:text-blue-300' : 'text-slate-500 hover:text-slate-400'}`}
+                                                            title={site.hasAIMMProfile ? "AIMM tracking enabled - Click to disable" : "AIMM tracking disabled - Click to enable"}
+                                                        >
+                                                            <Icons.Activity size={14} />
+                                                        </button>
                                                         <button
                                                             onClick={() => handleEditSite(site)}
                                                             className="text-blue-400 hover:text-blue-300 transition p-1"

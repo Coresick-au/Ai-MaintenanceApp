@@ -225,7 +225,8 @@ export const GlobalDataProvider = ({ children }) => {
             specData: [],
             issues: [],
             notes: [],
-            active: true
+            active: true,
+            hasAIMMProfile: false // Default to false for new sites
         };
 
         try {
