@@ -41,6 +41,7 @@ export interface Customer {
     customerNotes?: string; // Notes about the customer (e.g., special requirements, billing info)
     isLocked?: boolean; // Lock state for customer editing
     managedSites?: ManagedSite[]; // Managed sites for this customer
+    hasAIMMProfile?: boolean; // AIMM monitoring status (for reference only)
 }
 
 export interface JobDetails {

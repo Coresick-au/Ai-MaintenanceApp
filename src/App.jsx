@@ -934,7 +934,7 @@ export function App() {
             />
           </div>
           {!isSidebarCollapsed && (
-            <h2 className="text-center text-sm font-bold text-slate-100 uppercase tracking-wide animate-in fade-in duration-300">Accurate Industries Maintenance Management</h2>
+            <h2 className="text-center text-sm font-bold text-slate-100 uppercase tracking-wide animate-in fade-in duration-300">ACCURATE INDUSTRIES MAINTENANCE MANAGER</h2>
           )}
         </div>
 
@@ -1275,17 +1275,6 @@ export function App() {
                 {!isSidebarCollapsed && <span>Add New Site</span>}
               </button>
 
-              {/* Add Demo Site */}
-              <button
-                type="button"
-                onClick={() => { handleGenerateSample(); setSelectedRowIds(new Set()); }}
-                className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} text-slate-300 hover:text-white hover:bg-slate-700`}
-                title={isSidebarCollapsed ? "Add Demo Site" : ""}
-              >
-                <Icons.Zap size={18} />
-                {!isSidebarCollapsed && <span>Add Demo Site</span>}
-              </button>
-
               {/* Tools section removed - Employee Management is now a standalone app */}
             </>
           )}
@@ -1524,24 +1513,6 @@ export function App() {
                       </div>
                     </div>
 
-                    {/* Restored Action Buttons */}
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setSiteForm(site); setNoteInput({ content: '', author: '' }); setIsAddSiteModalOpen(true); }}
-                        className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
-                        title="Edit Site Details"
-                      >
-                        <Icons.Edit size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setViewContactSite(site); }}
-                        className="p-2 rounded-lg bg-slate-700/50 text-slate-400 hover:text-cyan-400 hover:bg-slate-700 transition-colors"
-                        title="View Contact Info"
-                      >
-                        <Icons.Contact size={16} />
-                      </button>
-                    </div>
-
                   </div>
 
                   {/* Restored Active Issues Banner */}
@@ -1675,7 +1646,7 @@ export function App() {
           <main className={`main-content flex-1 ${isSidebarCollapsed ? 'ml-20' : 'ml-64'} p-6 transition-all duration-300`}>
             <header className="mb-6 text-center relative">
               <h1 className="text-3xl font-bold text-slate-100 mb-2">
-                {selectedSite.customer ? `${selectedSite.customer} Dashboard` : 'Distribution Hub Dashboard'}
+                {selectedSite.name ? `${selectedSite.name} Dashboard` : 'Distribution Hub Dashboard'}
               </h1>
               <p className="text-sm text-slate-400 mt-1">
                 {activeTab === 'service' && localViewMode === 'list' && 'Service Schedule'}
@@ -2229,17 +2200,17 @@ export function App() {
                 <Icons.Info size={24} className="flex-shrink-0" />
                 <div>
                   <p className="font-bold mb-1">Process Update</p>
-                  <p>To ensure data consistency, site management is now handled through the Customer details.</p>
+                  <p>Site management is now handled through the Customer Portal for better data organization.</p>
                 </div>
               </div>
 
               <div className="space-y-3 text-slate-300 text-sm">
-                <p>Please follow these steps to add a new site:</p>
+                <p>To add a new site:</p>
                 <ol className="list-decimal pl-5 space-y-2 marker:text-cyan-500">
-                  <li>Return to the <strong>App Portal</strong>.</li>
                   <li>Open the <strong>Customer Portal</strong> (CRM).</li>
-                  <li>Select the relevant <strong>Customer</strong> from the sidebar.</li>
-                  <li>Use the <strong>"Add Site"</strong> button within their profile.</li>
+                  <li>Select the <strong>Customer</strong> from the sidebar.</li>
+                  <li>Use the <strong>"Add Site"</strong> button in their Managed Sites section.</li>
+                  <li>Use the <strong>"Demo"</strong> button to add sample data for testing.</li>
                 </ol>
                 <p className="pt-2 text-slate-400 text-xs">This ensures the site is correctly linked to the parent entity for reporting and billing.</p>
               </div>

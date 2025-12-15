@@ -3,6 +3,7 @@ import { useUndo } from '../hooks/useUndo';
 import { recalculateRow, generateSampleSite } from '../data/mockData';
 import { safelyLoadData } from '../utils/dataUtils';
 import { SiteContext } from './SiteContext.context';
+import { useGlobalData } from './GlobalDataContext';
 
 // --- FIREBASE IMPORTS ---
 import { db } from '../firebase';
@@ -36,39 +37,56 @@ const formatFullLocation = (siteForm) => {
 export { SiteContext };
 export const SiteProvider = ({ children }) => {
     const { addUndoAction } = useUndo();
+    const { customers, loading, updateManagedSite } = useGlobalData();
     const [sites, setSites] = useState([]);
     const [selectedSiteId, setSelectedSiteId] = useState(null);
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [todos, setTodos] = useState([]);
 
-    // --- FIREBASE SYNC (Replaces Persistence & Auto-Save) ---
+    // --- GET SITES FROM CUSTOMER MANAGED SITES ---
     useEffect(() => {
-        console.log('[SiteContext] Initializing Firebase Listeners...');
+        console.log('[SiteContext] Loading sites from customer managed sites...');
 
-        // 1. Sync Sites
-        const unsubscribeSites = onSnapshot(collection(db, "sites"), (snapshot) => {
-            const cloudSites = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            }));
-            console.log('[SiteContext] Synced sites from Cloud:', cloudSites.length);
-            setSites(cloudSites);
-            // Cache for offline access
-            try { localStorage.setItem('app_data', JSON.stringify(cloudSites)); } catch (e) { console.warn('LocalStorage full', e); }
+        if (!loading && customers.length > 0) {
+            // Aggregate all managed sites from all customers where hasAIMMProfile === true
+            const aggregatedSites = [];
+            
+            customers.forEach(customer => {
+                const managedSites = customer.managedSites || [];
+                managedSites.forEach(site => {
+                    // Only include sites that have AIMM enabled for the Maintenance App
+                    if (site.hasAIMMProfile === true) {
+                        aggregatedSites.push({
+                            ...site,
+                            customerName: customer.name,
+                            customerId: customer.id,
+                            // Ensure all expected properties exist with defaults
+                            serviceData: site.serviceData || [],
+                            rollerData: site.rollerData || [],
+                            specData: site.specData || [],
+                            issues: site.issues || [],
+                            notes: site.notes || [],
+                            active: site.active !== undefined ? site.active : true,
+                            logo: site.logo || null,
+                            location: site.location || '',
+                            contact: site.contact || '',
+                            phone: site.phone || '',
+                            email: site.email || ''
+                        });
+                    }
+                });
+            });
+
+            console.log(`[SiteContext] Found ${aggregatedSites.length} AIMM-enabled managed sites`);
+            setSites(aggregatedSites);
             setIsDataLoaded(true);
-        }, (error) => {
-            console.error("Error fetching sites from Firebase:", error);
-            // Fallback to local storage if offline or error
-            const localData = localStorage.getItem('app_data');
-            if (localData) {
-                try {
-                    setSites(JSON.parse(localData));
-                    console.warn('Loaded sites from LocalStorage fallback');
-                } catch (e) { }
-            }
-        });
+        }
+    }, [customers, loading]);
 
-        // 3. Sync To-Dos
+    // --- TODOS SYNC (Keep Firebase for now) ---
+    useEffect(() => {
+        console.log('[SiteContext] Initializing todos listener...');
+        
         const unsubscribeTodos = onSnapshot(
             query(collection(db, "todos"), orderBy("timestamp", "desc")),
             (snapshot) => {
@@ -79,7 +97,6 @@ export const SiteProvider = ({ children }) => {
         );
 
         return () => {
-            unsubscribeSites();
             unsubscribeTodos();
         };
     }, []);
@@ -90,152 +107,81 @@ export const SiteProvider = ({ children }) => {
     const currentRollerData = selectedSite ? (selectedSite.rollerData || []) : [];
     const currentSpecData = useMemo(() => selectedSite ? (selectedSite.specData || []) : [], [selectedSite]);
 
-    // --- ACTIONS (Directly to Firestore) ---
+    // --- ACTIONS (Via GlobalDataContext) ---
 
-    // Generic Update Function
+    // Generic Update Function - now routes through GlobalDataContext
     const updateSiteData = async (siteId, updates, description = 'Update Site Data') => {
+        // Find the site to get its customerId
+        const site = sites.find(s => s.id === siteId);
+        if (!site || !site.customerId) {
+            console.error(`Cannot update site ${siteId}: no customer ID found`);
+            return;
+        }
+
         // Optimistic UI update
-        // (Note: Firestore listeners are fast, so we *could* skip this, 
-        // but keeping it ensures instant feedback even on slow connections)
         setSites(prev => prev.map(s => s.id === siteId ? { ...s, ...updates } : s));
 
         try {
-            const siteRef = doc(db, "sites", siteId);
-            await updateDoc(siteRef, updates);
-            // Also update localStorage as backup
-            // localStorage.setItem('app_data', JSON.stringify(sites)); 
+            // Update through GlobalDataContext's updateManagedSite
+            await updateManagedSite(site.customerId, siteId, updates);
+            console.log(`[SiteContext] Updated site ${siteId} via GlobalDataContext`);
         } catch (e) {
             console.error(`Error updating site ${siteId}:`, e);
-            // alert("Failed to save changes to cloud. Check internet.");
+            // Revert optimistic update on error
+            setSites(prev => prev.map(s => s.id === siteId ? { ...s, ...Object.fromEntries(Object.keys(updates).map(k => [k, s[k]])) } : s));
         }
     };
 
     const handleAddSite = async (siteForm, noteInput) => {
-        if (!siteForm.name) return;
-        const newSiteId = `site-${Date.now()}`;
-        const initialNotes = noteInput.content ? [{
-            id: `n-${Date.now()}`,
-            content: noteInput.content,
-            author: noteInput.author || 'Admin',
-            timestamp: new Date().toISOString()
-        }] : [];
-
-        const newSite = {
-            id: newSiteId,
-            customerId: siteForm.customerId || null, // NEW: Link to customer
-            name: siteForm.name,
-            customer: siteForm.customer, // Keep for backward compatibility
-            location: siteForm.location,
-            fullLocation: formatFullLocation(siteForm),
-            streetAddress: siteForm.streetAddress || '',
-            city: siteForm.city || '',
-            state: siteForm.state || '',
-            postcode: siteForm.postcode || '',
-            country: siteForm.country || 'Australia',
-            gpsCoordinates: siteForm.gpsCoordinates || '',
-            contactName: siteForm.contactName,
-            contactEmail: siteForm.contactEmail,
-            contactPosition: siteForm.contactPosition,
-            contactPhone1: siteForm.contactPhone1,
-            contactPhone2: siteForm.contactPhone2,
-            active: true,
-            notes: initialNotes,
-            logo: siteForm.logo,
-            type: siteForm.type || 'Mine',
-            typeDetail: siteForm.typeDetail || '',
-            photoFolderLink: siteForm.photoFolderLink || '', // New Photo Link Field
-            serviceData: [],
-            rollerData: [],
-            specData: [],
-            issues: []
-        };
-
-        // Add to Cloud
-        try {
-            await setDoc(doc(db, "sites", newSiteId), newSite);
-            setSelectedSiteId(newSiteId);
-        } catch (e) {
-            console.error("Error creating site:", e);
-            alert("Failed to create site in cloud.");
-        }
-
-        return newSite;
+        // Sites should now be created through Customer Portal
+        console.warn('[SiteContext] handleAddSite called - sites should be created through Customer Portal');
+        alert('Please create new sites through the Customer Portal. This ensures proper customer-site relationships.');
+        return;
     };
 
     const handleGenerateSample = async (siteName) => {
-        const sampleSite = generateSampleSite();
-        const baseLocation = siteName ? siteName : "Sample Location";
-        const newId = `site-${Date.now()}`;
+        console.warn('[SiteContext] handleGenerateSample called - sample generation should be done through Customer Portal');
+        alert('Sample sites should be created through the Customer Portal to ensure proper customer relationships.');
+        return;
+    };
 
-        // 1. Ensure "Sample Customer" exists
-        const sampleCustomerName = "Sample Customer";
-        let customerId = null;
+    // Service data functions - now route through GlobalDataContext
+    const updateServiceData = async (siteId, serviceId, updates) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site || !site.customerId) return;
 
-        try {
-            const q = query(collection(db, "customers"), where("name", "==", sampleCustomerName));
-            const querySnapshot = await getDocs(q);
+        const currentServiceData = site.serviceData || [];
+        const updatedServiceData = currentServiceData.map(service =>
+            service.id === serviceId ? { ...service, ...updates } : service
+        );
 
-            if (!querySnapshot.empty) {
-                customerId = querySnapshot.docs[0].id;
-            } else {
-                // Create Sample Customer
-                const newCustId = `cust-sample-${Date.now()}`;
-                await setDoc(doc(db, "customers", newCustId), {
-                    id: newCustId,
-                    name: sampleCustomerName,
-                    address: "123 Sample St, Testville",
-                    createdAt: new Date().toISOString(),
-                    active: true,
-                    contacts: []
-                });
-                customerId = newCustId;
-                console.log("Created new Sample Customer:", newCustId);
-            }
-        } catch (e) {
-            console.error("Error ensuring sample customer:", e);
-        }
+        await updateSiteData(siteId, { serviceData: updatedServiceData }, 'Update Service Data');
+    };
 
-        const newSite = {
-            ...sampleSite,
-            id: newId,
-            customerId: customerId, // LINKED!
-            name: baseLocation,
-            customer: sampleCustomerName,
-            location: 'Test Facility',
-            fullLocation: '123 Test St, Testville',
-            active: true,
-            notes: [{
-                id: `n-${Date.now()}`,
-                content: 'Automated Sample Site',
-                author: 'System',
-                timestamp: new Date().toISOString()
-            }]
-        };
+    const addServiceData = async (siteId, newService) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site || !site.customerId) return;
 
-        // Add to Cloud
-        try {
-            await setDoc(doc(db, "sites", newId), newSite);
-            setSelectedSiteId(newId);
-        } catch (e) {
-            console.error("Error creating sample site:", e);
-            alert("Failed to create sample site.");
-        }
+        const currentServiceData = site.serviceData || [];
+        const updatedServiceData = [...currentServiceData, { ...newService, id: `svc-${Date.now()}` }];
+
+        await updateSiteData(siteId, { serviceData: updatedServiceData }, 'Add Service Data');
+    };
+
+    const deleteServiceData = async (siteId, serviceId) => {
+        const site = sites.find(s => s.id === siteId);
+        if (!site || !site.customerId) return;
+
+        const currentServiceData = site.serviceData || [];
+        const updatedServiceData = currentServiceData.filter(service => service.id !== serviceId);
+
+        await updateSiteData(siteId, { serviceData: updatedServiceData }, 'Delete Service Data');
     };
 
     const handleDeleteSite = async (siteId) => {
-        const site = sites.find(s => s.id === siteId);
-        const siteName = site ? site.name : 'this site';
-        if (!window.confirm(`Are you sure you want to delete "${siteName}"? This action cannot be undone.`)) return;
-
-        try {
-            await deleteDoc(doc(db, "sites", siteId));
-            if (selectedSiteId === siteId) {
-                setSelectedSiteId(null);
-                localStorage.removeItem('selected_site_id');
-            }
-        } catch (e) {
-            console.error("Error deleting site:", e);
-        }
+        console.warn('[SiteContext] handleDeleteSite called - sites should be deleted through Customer Portal');
+        alert('Sites should be deleted through the Customer Portal to ensure proper customer-site relationship management.');
+        return;
     };
 
     const handleUpdateSiteInfo = (siteForm) => {

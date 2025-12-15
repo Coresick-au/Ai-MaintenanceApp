@@ -155,6 +155,76 @@ export class CustomerRepository extends BaseRepository {
     }
 
     /**
+     * Add a managed site to a customer
+     * @param {string} customerId - Customer ID
+     * @param {Object} siteData - Site information
+     * @returns {Promise<Object>} Created site
+     */
+    async addManagedSite(customerId, siteData) {
+        const customer = await this.getById(customerId);
+        if (!customer) throw new Error('Customer not found');
+
+        const newSite = {
+            id: `site-${Date.now()}`,
+            ...siteData,
+            // Ensure all required properties exist with defaults
+            serviceData: siteData.serviceData || [],
+            rollerData: siteData.rollerData || [],
+            specData: siteData.specData || [],
+            issues: siteData.issues || [],
+            notes: siteData.notes || [],
+            active: siteData.active !== undefined ? siteData.active : true,
+            logo: siteData.logo || null,
+            location: siteData.location || '',
+            contact: siteData.contact || '',
+            phone: siteData.phone || '',
+            email: siteData.email || '',
+            createdAt: new Date().toISOString(),
+            hasAIMMProfile: false // Default to false for new managed sites
+        };
+
+        const updatedSites = [...(customer.managedSites || []), newSite];
+        await this.update(customerId, { managedSites: updatedSites });
+
+        return newSite;
+    }
+
+    /**
+     * Update a managed site
+     * @param {string} customerId - Customer ID
+     * @param {string} siteId - Site ID
+     * @param {Object} updatedData - Updated site data
+     * @returns {Promise<Object>} Updated site
+     */
+    async updateManagedSite(customerId, siteId, updatedData) {
+        const customer = await this.getById(customerId);
+        if (!customer) throw new Error('Customer not found');
+
+        const updatedSites = (customer.managedSites || []).map(site =>
+            site.id === siteId ? { ...site, ...updatedData } : site
+        );
+
+        await this.update(customerId, { managedSites: updatedSites });
+        return updatedSites.find(s => s.id === siteId);
+    }
+
+    /**
+     * Delete a managed site
+     * @param {string} customerId - Customer ID
+     * @param {string} siteId - Site ID
+     * @returns {Promise<boolean>} True if successful
+     */
+    async deleteManagedSite(customerId, siteId) {
+        const customer = await this.getById(customerId);
+        if (!customer) throw new Error('Customer not found');
+
+        const updatedSites = (customer.managedSites || []).filter(site => site.id !== siteId);
+        await this.update(customerId, { managedSites: updatedSites });
+
+        return true;
+    }
+
+    /**
      * Archive a customer (soft delete)
      * @param {string} customerId - Customer ID
      * @returns {Promise<Object>} Updated customer

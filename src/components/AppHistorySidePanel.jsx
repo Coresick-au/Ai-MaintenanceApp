@@ -16,7 +16,7 @@ export const AppHistorySidePanel = ({ isOpen, onClose, asset, searchQuery: initi
 
     sites.forEach(site => {
       // Site notes as history
-      (site.notes || []).forEach(note => {
+      (Array.isArray(site.notes) ? site.notes : []).forEach(note => {
         history.push({
           id: note.id,
           timestamp: note.timestamp,
@@ -117,7 +117,7 @@ export const AppHistorySidePanel = ({ isOpen, onClose, asset, searchQuery: initi
         });
 
         // Spec notes
-        (spec.notes || []).forEach(note => {
+        (Array.isArray(spec.notes) ? spec.notes : []).forEach(note => {
           history.push({
             id: note.id,
             timestamp: note.timestamp,

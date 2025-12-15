@@ -212,6 +212,79 @@ export const GlobalDataProvider = ({ children }) => {
 
     // --- SITE ACTIONS (Linked to Customer) ---
 
+    const addManagedSite = async (customerId, siteData) => {
+        try {
+            const newSite = await customerRepository.addManagedSite(customerId, siteData);
+            console.log('[GlobalDataContext] Managed site created:', newSite.id);
+            return newSite.id;
+        } catch (e) {
+            console.error('Error creating managed site:', e);
+            alert('Failed to create managed site.');
+            return null;
+        }
+    };
+
+    const updateManagedSite = async (customerId, siteId, data) => {
+        try {
+            await customerRepository.updateManagedSite(customerId, siteId, data);
+            console.log('[GlobalDataContext] Managed site updated:', siteId);
+        } catch (e) {
+            console.error('Error updating managed site:', e);
+            alert('Failed to update managed site.');
+        }
+    };
+
+    const deleteManagedSite = async (customerId, siteId) => {
+        const customer = customers.find(c => c.id === customerId);
+        const site = customer?.managedSites?.find(s => s.id === siteId);
+        const siteName = site ? site.name : 'this site';
+        if (!window.confirm(`Are you sure you want to delete "${siteName}"? This action cannot be undone.`)) return;
+
+        try {
+            await customerRepository.deleteManagedSite(customerId, siteId);
+            console.log('[GlobalDataContext] Managed site deleted:', siteId);
+        } catch (e) {
+            console.error('Error deleting managed site:', e);
+            alert('Failed to delete managed site.');
+        }
+    };
+
+    // Move managed site to global sites collection (enable AIMM)
+    const enableAIMMForSite = async (customerId, siteId) => {
+        try {
+            const customer = customers.find(c => c.id === customerId);
+            const managedSite = customer?.managedSites?.find(s => s.id === siteId);
+            
+            if (!managedSite) {
+                throw new Error('Managed site not found');
+            }
+
+            // Create site in global collection with AIMM enabled
+            const globalSiteData = {
+                name: managedSite.name,
+                location: managedSite.location || '',
+                customer: customer.name,
+                customerId: customerId,
+                logo: managedSite.logo || customer.logo || null,
+                active: true,
+                hasAIMMProfile: true // Enable AIMM
+            };
+
+            // Create in global sites collection
+            await siteRepository.create(siteId, globalSiteData);
+            
+            // Remove from customer's managed sites
+            await customerRepository.deleteManagedSite(customerId, siteId);
+            
+            console.log('[GlobalDataContext] Site enabled for AIMM:', siteId);
+        } catch (e) {
+            console.error('Error enabling AIMM for site:', e);
+            alert('Failed to enable AIMM for site.');
+            throw e;
+        }
+    };
+
+    // Legacy site methods for Maintenance App (AIMM) only
     const addSite = async (customerId, siteData) => {
         const id = `site-${Date.now()}`;
         const customer = customers.find(c => c.id === customerId);
@@ -330,6 +403,109 @@ export const GlobalDataProvider = ({ children }) => {
 
     const getCustomerById = (customerId) => customers.find(c => c.id === customerId);
 
+    // Get orphaned sites (sites with issues in customer managed sites)
+    const getOrphanedSites = () => {
+        const orphaned = [];
+        
+        customers.forEach(customer => {
+            const managedSites = customer.managedSites || [];
+            managedSites.forEach(site => {
+                // Site has issues if customer is archived
+                if (!customer.active) {
+                    orphaned.push({
+                        ...site,
+                        customerName: customer.name,
+                        customerStatus: 'Archived',
+                        customerId: customer.id,
+                        isOrphaned: true,
+                        issue: 'Customer is archived'
+                    });
+                }
+            });
+        });
+        
+        console.log('[Debug] Found sites with issues:', orphaned.map(s => ({ name: s.name, id: s.id, issue: s.issue })));
+        return orphaned;
+    };
+
+    // Get all sites for Maintenance App (from customer managed sites)
+    const getAllMaintenanceAppSites = () => {
+        const allSites = [];
+        customers.forEach(customer => {
+            const managedSites = customer.managedSites || [];
+            managedSites.forEach(site => {
+                allSites.push({
+                    ...site,
+                    customerName: customer.name,
+                    customerStatus: customer.active === false ? 'Archived' : 'Active',
+                    customerId: customer.id,
+                    isOrphaned: !customer.active
+                });
+            });
+        });
+        return allSites;
+    };
+
+    // Delete site from customer managed sites
+    const deleteOrphanedSite = async (siteId) => {
+        // Find the site and its customer
+        let targetSite = null;
+        let targetCustomerId = null;
+        
+        customers.forEach(customer => {
+            const site = (customer.managedSites || []).find(s => s.id === siteId);
+            if (site) {
+                targetSite = site;
+                targetCustomerId = customer.id;
+            }
+        });
+        
+        if (!targetSite) {
+            console.error('Site not found:', siteId);
+            alert('Site not found.');
+            return;
+        }
+        
+        const siteName = targetSite.name;
+        if (!window.confirm(`⚠️ WARNING: This will permanently delete "${siteName}" from the customer's managed sites.\n\nThis action cannot be undone. Are you sure?`)) return;
+
+        try {
+            await deleteManagedSite(targetCustomerId, siteId);
+            console.log('[GlobalDataContext] Managed site deleted:', siteId);
+        } catch (e) {
+            console.error('Error deleting managed site:', e);
+            alert('Failed to delete site.');
+        }
+    };
+
+    // Get all legacy global sites (for cleanup)
+    const getLegacyGlobalSites = () => {
+        return sites.map(site => {
+            const customer = customers.find(c => c.id === site.customerId);
+            return {
+                ...site,
+                customerStatus: customer ? (customer.active === false ? 'Archived' : 'Active') : 'Not Found',
+                customerName: customer?.name || site.customer || 'Unknown',
+                isOrphaned: !site.customerId || !customer || customer?.active === false
+            };
+        });
+    };
+
+    // Delete legacy global site
+    const deleteLegacySite = async (siteId) => {
+        const site = sites.find(s => s.id === siteId);
+        const siteName = site ? site.name : 'this site';
+        if (!window.confirm(`⚠️ WARNING: This will permanently delete "${siteName}" from the legacy global sites collection.\n\nThis action cannot be undone. Are you sure?`)) return;
+
+        try {
+            await siteRepository.delete(siteId);
+            console.log('[GlobalDataContext] Legacy site deleted:', siteId);
+        } catch (e) {
+            console.error('Error deleting legacy site:', e);
+            alert('Failed to delete legacy site.');
+        }
+    };
+
     // --- EMPLOYEE ACTIONS ---
 
     const addEmployee = async (data) => {
@@ -389,10 +565,23 @@ export const GlobalDataProvider = ({ children }) => {
             addContactToCustomer,
             updateCustomerContact,
             deleteCustomerContact,
+            // Managed sites (Customer Portal)
+            addManagedSite,
+            updateManagedSite,
+            deleteManagedSite,
+            enableAIMMForSite,
+            // Legacy sites (Maintenance App)
             addSite,
             updateSite,
             deleteSite,
             toggleSiteStatus,
+            // Site management functions
+            getOrphanedSites,
+            deleteOrphanedSite,
+            getAllMaintenanceAppSites,
+            // Legacy cleanup functions
+            getLegacyGlobalSites,
+            deleteLegacySite,
             addCustomerNote,
             updateCustomerNote,
             deleteCustomerNote,

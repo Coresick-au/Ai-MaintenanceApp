@@ -80,14 +80,13 @@ export function useQuote() {
         const result: Customer[] = [];
 
         customers.forEach((customer: any) => {
-            const customerSites = getSitesByCustomer(customer.id);
+            // Get managed sites from customer data
+            const customerManagedSites = customer.managedSites || [];
 
-            // Filter sites to only include AIMM-enabled sites
-            const aimmEnabledSites = customerSites ? customerSites.filter((site: any) => site.hasAIMMProfile === true) : [];
-
-            if (aimmEnabledSites && aimmEnabledSites.length > 0) {
-                // Create an entry for each AIMM-enabled managed site
-                aimmEnabledSites.forEach((site: any) => {
+            // Show ALL managed sites in quotes, but only show AIMM-enabled sites in Maintenance App
+            if (customerManagedSites && customerManagedSites.length > 0) {
+                // Create an entry for each managed site
+                customerManagedSites.forEach((site: any) => {
                     // Get contacts that manage this specific site
                     const siteContacts = (customer.contacts || [])
                         .filter((contact: any) =>
@@ -111,6 +110,7 @@ export function useQuote() {
                         })),
                         customerNotes: customer.customerNotes,
                         isLocked: customer.isLocked,
+                        hasAIMMProfile: site.hasAIMMProfile || false, // Include AIMM status for Maintenance App filtering
                         managedSites: [{
                             id: site.id,
                             name: site.name,
@@ -121,12 +121,12 @@ export function useQuote() {
                     });
                 });
             }
-            // Note: Customers with no AIMM-enabled sites are completely hidden
+            // Note: Customers with no managed sites are completely hidden
             // They won't appear in the list at all, even as base customers
         });
 
         return result;
-    }, [customers, sites, getSitesByCustomer]);
+    }, [customers]);
 
     const [savedQuotes, setSavedQuotes] = useState<Quote[]>([]);
     // const [savedCustomers, setSavedCustomers] = useState<Customer[]>([]); // Removed local state
