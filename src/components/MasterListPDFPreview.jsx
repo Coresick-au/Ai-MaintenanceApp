@@ -5,6 +5,7 @@ import { formatDate } from '../utils/helpers';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
 import MasterListPDF from './MasterListPDF';
+import { countUniqueAssets } from '../utils/assetUtils';
 
 export const MasterListPDFPreview = ({
   isOpen,
@@ -64,12 +65,12 @@ export const MasterListPDFPreview = ({
     return true;
   }).map(asset => {
     // Find matching spec data for each asset
-    const spec = specData.find(s => 
-      s.weigher === asset.weigher || 
-      s.altCode === asset.code || 
+    const spec = specData.find(s =>
+      s.weigher === asset.weigher ||
+      s.altCode === asset.code ||
       s.weigher === asset.code
     );
-    
+
     return {
       ...asset,
       spec: spec || {}
@@ -102,37 +103,37 @@ export const MasterListPDFPreview = ({
 
   const formatSpecData = (spec) => {
     if (!spec) return '-';
-    
+
     const parts = [];
     if (spec.loadCellBrand) parts.push(spec.loadCellBrand);
     if (spec.loadCellSize) parts.push(spec.loadCellSize);
     if (spec.loadCellSensitivity) parts.push(spec.loadCellSensitivity);
-    
+
     return parts.length > 0 ? parts.join('\n') : '-';
   };
 
   const formatBilletInfo = (spec) => {
     if (!spec) return '-';
-    
+
     const parts = [];
     if (spec.billetWeightType) parts.push(spec.billetWeightType);
     if (spec.billetWeightSize) parts.push(spec.billetWeightSize);
-    
+
     return parts.length > 0 ? parts.join('\n') : '-';
   };
 
   const formatRollerDimensions = (spec) => {
     if (!spec) return '-';
-    
+
     // Extract plain text from rollDims, removing any HTML, input fields, or React components
     let rollDims = spec.rollDims || '-';
-    
+
     // Handle different data types
     if (typeof rollDims === 'object' && rollDims !== null) {
       // If it's an object, try to extract value property or stringify
       rollDims = rollDims.value || rollDims.props?.value || JSON.stringify(rollDims);
     }
-    
+
     if (typeof rollDims === 'string') {
       // Remove HTML tags, React component markers, and input field indicators
       rollDims = rollDims
@@ -149,12 +150,12 @@ export const MasterListPDFPreview = ({
         .replace(/\s+/g, ' ') // Normalize whitespace
         .trim();
     }
-    
+
     // Final cleanup - if still looks like code, return a default
     if (rollDims && (rollDims.includes('<') || rollDims.includes('{') || rollDims.includes('props') || rollDims.includes('Editable'))) {
       return '240mm x 120mm'; // Default fallback
     }
-    
+
     return rollDims || '-';
   };
 
@@ -162,7 +163,7 @@ export const MasterListPDFPreview = ({
     <div ref={modalContainerRef} className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
       {/* --- PREVIEW CONTAINER (Screen Mode) --- */}
       <div className="print-content-inner bg-slate-800 w-full max-w-7xl h-[90vh] rounded-xl shadow-2xl overflow-auto flex flex-col print:h-auto print:shadow-none print:rounded-none print:w-full print:max-w-none print:bg-white">
-        
+
         {/* --- MODAL HEADER (Hidden on Print) --- */}
         <div className="p-4 border-b border-slate-700 flex justify-between items-center bg-slate-900 print:hidden">
           <div>
@@ -183,7 +184,7 @@ export const MasterListPDFPreview = ({
         <div ref={reportContentRef} className="bg-white text-black flex-1 overflow-auto">
           <div className="p-6">
             <div className="max-w-full mx-auto">
-              
+
               {/* DOCUMENT HEADER */}
               <header className="border-b-2 border-gray-300 pb-6 mb-8">
                 <h1 className="text-2xl font-black uppercase tracking-wider text-black mb-4">Master Equipment List</h1>
@@ -191,7 +192,7 @@ export const MasterListPDFPreview = ({
                   Customer: {site.customer} | Site: {site.name} | Location: {site.location}
                 </div>
                 <div className="text-sm text-black">
-                  Generated: {formatDate(new Date().toISOString())} | Total Assets: {allAssets.length}
+                  Generated: {formatDate(new Date().toISOString())} | Total Assets: {countUniqueAssets(serviceData, rollerData)}
                 </div>
               </header>
 

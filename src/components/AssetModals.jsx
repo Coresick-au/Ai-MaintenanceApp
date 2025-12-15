@@ -402,7 +402,10 @@ export const EditAssetModal = ({
                 : 'Are you sure you want to reactivate this asset?';
 
               if (window.confirm(message)) {
-                setEditingAsset({ ...editingAsset, active: !isArchiving });
+                const updatedAsset = { ...editingAsset, active: !isArchiving };
+                setEditingAsset(updatedAsset);
+                // CRITICAL FIX: Call onSave to persist the change
+                onSave(updatedAsset, activeTab);
               }
             }}
             className={`flex-1 justify-center ${editingAsset.active !== false ? 'bg-orange-600 hover:bg-orange-500' : 'bg-green-600 hover:bg-green-500'}`}

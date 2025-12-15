@@ -1,8 +1,49 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 
 export const GeneralTab = ({ formData, onChange, site, asset, employees = [], readOnly = false, validationErrors = {} }) => {
+    // Parse technicians from formData into array
+    const [technicianList, setTechnicianList] = useState(() => {
+        if (!formData.technicians) return [''];
+        return formData.technicians.split(',').map(t => t.trim()).filter(t => t);
+    });
+
+    // Update technicianList when formData.technicians changes externally
+    useEffect(() => {
+        if (!formData.technicians) {
+            setTechnicianList(['']);
+        } else {
+            const parsed = formData.technicians.split(',').map(t => t.trim()).filter(t => t);
+            setTechnicianList(parsed.length > 0 ? parsed : ['']);
+        }
+    }, [formData.technicians]);
+
     const handleChange = (field, value) => {
         onChange(field, value);
+    };
+
+    const updateTechnicians = (newList) => {
+        const filtered = newList.filter(t => t);
+        handleChange('technicians', filtered.join(', '));
+    };
+
+    const addTechnician = () => {
+        const newList = [...technicianList, ''];
+        setTechnicianList(newList);
+        updateTechnicians(newList);
+    };
+
+    const removeTechnician = (index) => {
+        const newList = technicianList.filter((_, i) => i !== index);
+        const finalList = newList.length > 0 ? newList : [''];
+        setTechnicianList(finalList);
+        updateTechnicians(finalList);
+    };
+
+    const updateTechnicianAt = (index, value) => {
+        const newList = [...technicianList];
+        newList[index] = value;
+        setTechnicianList(newList);
+        updateTechnicians(newList);
     };
 
     return (
@@ -143,15 +184,48 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
                 <h3 className="text-cyan-400 font-bold mb-4 uppercase text-xs">Service Details</h3>
                 <div>
                     <label className="text-xs text-slate-400 block mb-1">Technicians <span className="text-red-400">*</span></label>
-                    <input
-                        type="text"
-                        className={`w-full bg-slate-900 border rounded p-2 text-sm text-white ${validationErrors.technicians ? 'border-red-500' : 'border-slate-600'
-                            }`}
-                        value={formData.technicians}
-                        onChange={e => handleChange('technicians', e.target.value)}
-                        placeholder="e.g., John Doe, Jane Smith"
-                        list="technician-suggestions"
-                    />
+                    <div className="space-y-2">
+                        {technicianList.map((tech, index) => (
+                            <div key={`tech-${index}`} className="flex gap-2">
+                                <select
+                                    className={`flex-1 bg-slate-900 border rounded p-2 text-sm text-white ${validationErrors.technicians ? 'border-red-500' : 'border-slate-600'}`}
+                                    value={tech}
+                                    onChange={e => updateTechnicianAt(index, e.target.value)}
+                                >
+                                    <option value="">Select Technician...</option>
+                                    {employees.map(emp => (
+                                        <option key={emp.id} value={emp.name}>
+                                            {emp.name} - {emp.role || 'No role'}
+                                        </option>
+                                    ))}
+                                </select>
+                                {technicianList.length > 1 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => removeTechnician(index)}
+                                        className="px-3 py-2 bg-red-700 hover:bg-red-600 text-white rounded transition-colors"
+                                        title="Remove technician"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                            <line x1="18" y1="6" x2="6" y2="18"></line>
+                                            <line x1="6" y1="6" x2="18" y2="18"></line>
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={addTechnician}
+                            className="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded font-medium transition-colors flex items-center justify-center gap-2"
+                        >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <line x1="12" y1="5" x2="12" y2="19"></line>
+                                <line x1="5" y1="12" x2="19" y2="12"></line>
+                            </svg>
+                            Add Technician
+                        </button>
+                    </div>
                     {validationErrors.technicians && (
                         <p className="text-red-400 text-xs mt-1 flex items-center gap-1">
                             <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -162,18 +236,8 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
                             {validationErrors.technicians}
                         </p>
                     )}
-                    <datalist id="technician-suggestions">
-                        {employees.map(emp => (
-                            <option
-                                key={emp.id}
-                                value={`${emp.name}${emp.phone ? ` (${emp.phone})` : ''}${emp.email ? ` | ${emp.email}` : ''}`}
-                            >
-                                {emp.name} - {emp.role || 'No role'}
-                            </option>
-                        ))}
-                    </datalist>
                     <p className="text-xs text-slate-500 mt-1">
-                        Type to search employees or enter custom names (comma-separated)
+                        Select technicians from the dropdown or add multiple using the "+" button
                     </p>
                 </div>
                 <div>

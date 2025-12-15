@@ -1,5 +1,6 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { countUniqueAssets } from '../utils/assetUtils';
 
 // Asset interface for TypeScript
 interface Asset {
@@ -253,7 +254,7 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
   const criticalCount = allAssets.filter(a => a.remaining < 0).length;
   const dueSoonCount = allAssets.filter(a => a.remaining >= 0 && a.remaining < 30).length;
   const healthyCount = allAssets.filter(a => a.remaining >= 30).length;
-  const totalCount = allAssets.length;
+  const totalCount = countUniqueAssets(site.serviceData, site.rollerData);
 
   const criticalPct = totalCount > 0 ? (criticalCount / totalCount) * 100 : 0;
   const dueSoonPct = totalCount > 0 ? (dueSoonCount / totalCount) * 100 : 0;

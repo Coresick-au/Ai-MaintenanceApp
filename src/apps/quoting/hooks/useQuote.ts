@@ -415,7 +415,9 @@ export function useQuote() {
 
     const updateShift = (id: number, field: keyof Shift, value: any) => {
         if (isLocked) return;
-        setShifts(shifts.map(s => s.id === id ? { ...s, [field]: value } : s));
+        setShifts(prevShifts => {
+            return prevShifts.map(s => s.id === id ? { ...s, [field]: value } : s);
+        });
     };
 
     const removeShift = (id: number) => {

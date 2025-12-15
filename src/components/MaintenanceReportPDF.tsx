@@ -5,6 +5,7 @@ import React from 'react';
 // in the Report Preview (CustomerReportModal.jsx) to ensure Visual Consistency.
 // ==========================================
 import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import { countUniqueAssets } from '../utils/assetUtils';
 
 // Asset interface for TypeScript
 interface Asset {
@@ -276,7 +277,7 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
   const criticalCount = allAssets.filter(a => a.remaining < 0).length;
   const dueSoonCount = allAssets.filter(a => a.remaining >= 0 && a.remaining < 30).length;
   const healthyCount = allAssets.filter(a => a.remaining >= 30).length;
-  const totalCount = allAssets.length;
+  const totalCount = countUniqueAssets(site.serviceData, site.rollerData);
 
   const criticalPct = totalCount > 0 ? (criticalCount / totalCount) * 100 : 0;
   const dueSoonPct = totalCount > 0 ? (dueSoonCount / totalCount) * 100 : 0;

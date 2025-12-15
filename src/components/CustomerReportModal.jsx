@@ -11,6 +11,7 @@ import * as XLSX from 'xlsx';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
 import { MaintenanceReportPDF } from './MaintenanceReportPDF';
+import { countUniqueAssets } from '../utils/assetUtils';
 
 export const CustomerReportModal = ({
     isOpen,
@@ -91,7 +92,7 @@ export const CustomerReportModal = ({
             ['Asset Summary'],
             ['Total Service Equipment', sortedService.length],
             ['Total Roller Equipment', sortedRoller.length],
-            ['Total Assets', sortedService.length + sortedRoller.length],
+            ['Total Assets', countUniqueAssets(serviceData, rollerData)],
             ['Critical (Overdue)', [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length],
             ['Due Soon (0-30 days)', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length],
             ['Operational', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 30).length],
@@ -322,7 +323,7 @@ export const CustomerReportModal = ({
                         {/* EXECUTIVE SUMMARY */}
                         {(() => {
                             const allAssets = [...sortedService, ...sortedRoller];
-                            const totalAssets = allAssets.length;
+                            const totalAssets = countUniqueAssets(serviceData, rollerData);
                             const criticalCount = allAssets.filter(i => i.remaining < 0).length;
                             const warningCount = allAssets.filter(i => i.remaining >= 0 && i.remaining < 30).length;
                             const healthyCount = allAssets.filter(i => i.remaining >= 30).length;

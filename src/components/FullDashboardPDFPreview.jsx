@@ -5,6 +5,7 @@ import { formatDate } from '../utils/helpers';
 import { saveAs } from 'file-saver';
 import { pdf } from '@react-pdf/renderer';
 import { FullDashboardPDF } from './FullDashboardPDF';
+import { countUniqueAssets } from '../utils/assetUtils';
 
 export const FullDashboardPDFPreview = ({
   isOpen,
@@ -152,7 +153,7 @@ export const FullDashboardPDFPreview = ({
                 <div className="grid grid-cols-4 gap-4 mb-6">
                   <div className="p-4 border border-gray-300 rounded bg-gray-50">
                     <div className="text-xs font-bold text-black uppercase">Total Assets</div>
-                    <div className="text-2xl font-bold text-black">{(site.serviceData || []).length + (site.rollerData || []).length}</div>
+                    <div className="text-2xl font-bold text-black">{countUniqueAssets(site.serviceData, site.rollerData)}</div>
                   </div>
                   <div className="p-4 border border-gray-300 rounded bg-red-50">
                     <div className="text-xs font-bold text-black uppercase">Critical</div>

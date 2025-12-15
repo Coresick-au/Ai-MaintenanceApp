@@ -80,13 +80,16 @@ export default function Timesheet({
                                             value={shift.date}
                                             className={`border border-gray-600 rounded p-1 w-full bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50' : ''}`}
                                             onChange={(e) => {
-                                                const date = new Date(e.target.value + 'T00:00:00');
-                                                const dayOfWeek = date.getDay();
-                                                const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
+                                                const newDate = e.target.value;
 
-                                                // Auto-set dayType based on day of week
-                                                updateShift(shift.id, 'date', e.target.value);
+                                                // Update date first
+                                                updateShift(shift.id, 'date', newDate);
+
+                                                // Then calculate and update day type if not a public holiday
                                                 if (!isPublicHoliday) {
+                                                    const date = new Date(newDate + 'T00:00:00');
+                                                    const dayOfWeek = date.getDay();
+                                                    const isWeekendDay = dayOfWeek === 0 || dayOfWeek === 6;
                                                     updateShift(shift.id, 'dayType', isWeekendDay ? 'weekend' : 'weekday');
                                                 }
                                             }}

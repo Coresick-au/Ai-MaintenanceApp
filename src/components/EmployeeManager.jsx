@@ -120,6 +120,10 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
     const [editingInductionId, setEditingInductionId] = useState(null);
     const [editInductionForm, setEditInductionForm] = useState({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
 
+    // NEW: Employee edit state
+    const [isEditingEmployee, setIsEditingEmployee] = useState(false);
+    const [editEmployeeForm, setEditEmployeeForm] = useState(null);
+
     // Filter for active sites only - MUST BE BEFORE EARLY RETURN
     const activeSites = useMemo(() => {
         const allSites = sites || [];
@@ -359,12 +363,45 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                     <div className="flex gap-2">
                                         <button
                                             onClick={() => {
+                                                setIsEditingEmployee(true);
+                                                setEditEmployeeForm({
+                                                    name: selectedEmp.name,
+                                                    role: selectedEmp.role,
+                                                    email: selectedEmp.email,
+                                                    phone: selectedEmp.phone,
+                                                    address: selectedEmp.address,
+                                                    emergencyContactName: selectedEmp.emergencyContactName,
+                                                    emergencyContactPhone: selectedEmp.emergencyContactPhone
+                                                });
+                                            }}
+                                            className="px-4 py-2 text-sm rounded-lg transition-colors bg-blue-700 hover:bg-blue-600 text-white"
+                                        >
+                                            Edit Details
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (!window.confirm(`Are you sure you want to permanently delete ${selectedEmp.name}? This action cannot be undone.`)) return;
+                                                if (!window.confirm(`FINAL WARNING: Deleting ${selectedEmp.name} will remove all their data permanently. Continue?`)) return;
+                                                // Note: onDeleteEmployee needs to be added to props
+                                                if (onUpdateEmployee) {
+                                                    // For now, we'll archive instead of delete since delete handler may not exist
+                                                    onUpdateEmployee(selectedEmp.id, { status: 'archived' });
+                                                    setSelectedEmp(null);
+                                                    alert('Employee archived (delete functionality requires backend implementation)');
+                                                }
+                                            }}
+                                            className="px-4 py-2 text-sm rounded-lg transition-colors bg-red-900 hover:bg-red-800 text-white"
+                                        >
+                                            Delete Employee
+                                        </button>
+                                        <button
+                                            onClick={() => {
                                                 const newStatus = selectedEmp.status === 'active' ? 'archived' : 'active';
                                                 onUpdateEmployee(selectedEmp.id, { status: newStatus });
                                                 setSelectedEmp({ ...selectedEmp, status: newStatus });
                                             }}
                                             className={`px-4 py-2 text-sm rounded-lg transition-colors ${selectedEmp.status === 'active'
-                                                ? 'bg-red-700 hover:bg-red-600 text-white'
+                                                ? 'bg-orange-700 hover:bg-orange-600 text-white'
                                                 : 'bg-green-700 hover:bg-green-600 text-white'}`}
                                         >
                                             {selectedEmp.status === 'active' ? 'Archive Employee' : 'Restore Employee'}
@@ -378,25 +415,109 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                     </div>
                                 </div>
 
-                                {/* NEW: Personnel Details Card */}
-                                <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
-                                    <h3 className="font-bold text-slate-200 mb-3">Personnel Details</h3>
-                                    <div className="grid grid-cols-2 gap-y-2 text-sm">
-                                        <div className="text-slate-500">Address:</div>
-                                        <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
-
-                                        <div className="text-slate-500">Emergency Contact Name:</div>
-                                        <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
-
-                                        <div className="text-slate-500">Emergency Contact Phone:</div>
-                                        <div className="text-slate-300">{selectedEmp.emergencyContactPhone || 'N/A'}</div>
-
-                                        <div className="text-slate-500">Status:</div>
-                                        <div className={`font-bold uppercase text-xs ${selectedEmp.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
-                                            {selectedEmp.status || 'active'}
+                                {/* Personnel Details Card - Editable */}
+                                {isEditingEmployee ? (
+                                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-4 space-y-3">
+                                        <h3 className="font-bold text-slate-200 mb-3">Edit Employee Details</h3>
+                                        <div className="grid grid-cols-2 gap-3">
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Name</label>
+                                                <input
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.name}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, name: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Role</label>
+                                                <input
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.role}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, role: e.target.value })}
+                                                    list="role-suggestions"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Email</label>
+                                                <input
+                                                    type="email"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.email}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, email: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Phone</label>
+                                                <input
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.phone}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, phone: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
+                                                <label className="text-xs text-slate-400 block mb-1">Address</label>
+                                                <input
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.address}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, address: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Emergency Contact Name</label>
+                                                <input
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.emergencyContactName}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, emergencyContactName: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Emergency Contact Phone</label>
+                                                <input
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.emergencyContactPhone}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, emergencyContactPhone: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2 pt-2">
+                                            <button
+                                                onClick={() => {
+                                                    onUpdateEmployee(selectedEmp.id, editEmployeeForm);
+                                                    setSelectedEmp({ ...selectedEmp, ...editEmployeeForm });
+                                                    setIsEditingEmployee(false);
+                                                }}
+                                                className="flex-1 bg-green-600 hover:bg-green-500 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                            >
+                                                Save Changes
+                                            </button>
+                                            <button
+                                                onClick={() => setIsEditingEmployee(false)}
+                                                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                                            >
+                                                Cancel
+                                            </button>
                                         </div>
                                     </div>
-                                </div>
+                                ) : (
+                                    <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
+                                        <h3 className="font-bold text-slate-200 mb-3">Personnel Details</h3>
+                                        <div className="grid grid-cols-2 gap-y-2 text-sm">
+                                            <div className="text-slate-500">Address:</div>
+                                            <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
+
+                                            <div className="text-slate-500">Emergency Contact Name:</div>
+                                            <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
+
+                                            <div className="text-slate-500">Emergency Contact Phone:</div>
+                                            <div className="text-slate-300">{selectedEmp.emergencyContactPhone || 'N/A'}</div>
+
+                                            <div className="text-slate-500">Status:</div>
+                                            <div className={`font-bold uppercase text-xs ${selectedEmp.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
+                                                {selectedEmp.status || 'active'}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
 
                                 {/* CERTIFICATIONS TABLE */}
                                 <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">

@@ -1921,7 +1921,7 @@ export function App() {
                             <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
                             <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
                             <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[100px]" onClick={() => { handleSort('opStatus'); setSelectedRowIds(new Set()); }}>Op Status {getSortIcon('opStatus')}</th>
-                            <th className="px-3 py-2 text-center no-print text-xs">Reports / Analytics</th>
+                            <th className="px-3 py-2 text-center no-print text-xs">Analytics / Reports</th>
                             <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
                             <th className="px-3 py-2 text-center no-print text-xs">Edit</th>
                           </tr>
@@ -1959,7 +1959,16 @@ export function App() {
                               </td>
                               <td className="px-3 py-2 text-center no-print">
                                 <button
-                                  onClick={(e) => toggleAssetStatus(item, e)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const isArchiving = item.active !== false;
+                                    const message = isArchiving
+                                      ? `Are you sure you want to archive "${item.name}"? It will be hidden from active lists but can be reactivated later.`
+                                      : `Are you sure you want to reactivate "${item.name}"?`;
+                                    if (window.confirm(message)) {
+                                      toggleAssetStatus(item, e);
+                                    }
+                                  }}
                                   className={`p-1.5 rounded transition-colors ${item.active === false ? 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600' : 'hover:bg-slate-600 text-slate-400 hover:text-red-400'}`}
                                   title={item.active === false ? "Restore" : "Archive"}
                                 >
