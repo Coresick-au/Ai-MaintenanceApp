@@ -742,7 +742,27 @@ export const CustomerApp = ({ onBack }) => {
                                                                     alert("Please ask a manager to archive/restore this site.");
                                                                     return;
                                                                 }
-                                                                await toggleSiteStatus(site.id);
+                                                                
+                                                                const isCurrentlyActive = site.active !== false;
+                                                                const action = isCurrentlyActive ? 'archive' : 'restore';
+                                                                const warning = isCurrentlyActive 
+                                                                    ? '\n\n⚠️ Archiving this site will:\n• Remove it from active site lists\n• Stop monitoring and data collection\n• The site will remain accessible in the Customer Portal'
+                                                                    : '\n\n⚠️ Restoring this site will:\n• Add it back to active site lists\n• Resume monitoring and data collection\n• The site will be visible in the Maintenance App if AIMM is enabled';
+                                                                
+                                                                if (window.confirm(`Are you sure you want to ${action} "${site.name}"?${warning}\n\nThis action can be reversed later.`)) {
+                                                                    try {
+                                                                        await updateManagedSite(selectedCustId, site.id, { active: !isCurrentlyActive });
+                                                                        
+                                                                        const statusMessage = isCurrentlyActive 
+                                                                            ? `✅ Site "${site.name}" has been archived.`
+                                                                            : `✅ Site "${site.name}" has been restored and is now active.`;
+                                                                        
+                                                                        alert(statusMessage);
+                                                                    } catch (error) {
+                                                                        console.error('Failed to toggle site status:', error);
+                                                                        alert(`❌ Failed to ${action} site "${site.name}". Please try again.\n\nError: ${error.message}`);
+                                                                    }
+                                                                }
                                                             }}
                                                             className={`transition p-1 ${site.active === false ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'}`}
                                                             title={site.active === false ? "Restore site" : "Archive site"}
