@@ -16,6 +16,14 @@ export interface Rates {
     weekendDayRate: number; // 12hrs
     costOfLabour: number; // internal cost per hour for margin calculation
     rateNotes: string; // Notes specific to the rate setup (e.g., Charge Origin)
+    overtimeThreshold: number; // hours before overtime kicks in (default 7.5)
+    standardExpenses?: ExpenseTemplate[]; // standard recurring expenses for this customer
+}
+
+export interface ExpenseTemplate {
+    id: string;
+    description: string;
+    cost: number;
 }
 
 export interface Contact {
@@ -30,6 +38,8 @@ export interface ManagedSite {
     location: string;
     logo?: string;
     contacts: Contact[];
+    rates?: Rates; // Site-specific rates (optional, falls back to customer rates)
+    isLocked?: boolean; // Site-specific lock state (optional, falls back to customer lock state)
 }
 
 export interface Customer {

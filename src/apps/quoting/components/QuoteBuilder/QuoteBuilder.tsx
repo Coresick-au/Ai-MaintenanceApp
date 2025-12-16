@@ -17,7 +17,7 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
         status, setStatus,
         jobDetails, setJobDetails,
         shifts, addShift, updateShift, removeShift, calculateShiftBreakdown,
-        extras, addExtra, updateExtra, removeExtra,
+        extras, addExtra, updateExtra, removeExtra, setExtras,
         isLocked, savedQuotes, loadQuote, activeQuoteId,
         savedCustomers, setRates, renameTechnician,
         totalHours, totalNTHrs, totalOTHrs
@@ -94,6 +94,24 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
             console.error('[Job Sheet] Error generating PDF:', error);
             alert(`Failed to generate Job Sheet: ${(error as Error).message}`);
         }
+    };
+
+    const loadStandardExpenses = () => {
+        const standardExpenses = quote.rates?.standardExpenses || [];
+        if (standardExpenses.length === 0) return;
+
+        // Get the highest current extra ID
+        const maxId = extras.length > 0 ? Math.max(...extras.map(e => e.id)) : 0;
+
+        // Convert expense templates to extra items with unique IDs
+        const newExtras = standardExpenses.map((template, index) => ({
+            id: maxId + index + 1,
+            description: template.description,
+            cost: template.cost
+        }));
+
+        // Add new expenses to existing extras
+        setExtras([...extras, ...newExtras]);
     };
 
     const formatMoney = (amount: number) => new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(amount);
@@ -230,6 +248,8 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
                 addExtra={addExtra}
                 updateExtra={updateExtra}
                 removeExtra={removeExtra}
+                standardExpenses={quote.rates?.standardExpenses}
+                loadStandardExpenses={loadStandardExpenses}
             />
 
             {/* New Total Hours Box - Displays Hours (NT/OT) calculated in useQuote.ts */}

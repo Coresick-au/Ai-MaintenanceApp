@@ -205,6 +205,22 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                     </div>
 
                     <div>
+                        <label className="block text-sm text-slate-300 mb-1">Normal Hours Threshold (before OT)</label>
+                        <div className="flex items-center gap-2">
+                            <input
+                                disabled={isLocked}
+                                type="number"
+                                step="0.5"
+                                value={rates.overtimeThreshold}
+                                onChange={(e) => setRates({ ...rates, overtimeThreshold: parseFloat(e.target.value) || 7.5 })}
+                                className={`border border-gray-600 rounded p-2 w-full bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50 text-slate-400' : ''}`}
+                            />
+                            <span className="text-slate-400">hrs</span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-1">Hours before overtime kicks in (default: 7.5)</p>
+                    </div>
+
+                    <div>
                         <label className="block text-sm text-slate-300 mb-1">Internal Cost of Labor (Per Hr)</label>
                         <div className="flex items-center gap-2">
                             <span className="text-slate-400">$</span>
@@ -416,6 +432,75 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                     <p className="text-xs text-slate-400 mt-2">
                         Calculates (Hours × Travel Rate) + (Distance × Travel Charge) and adds it to the "Travel Charge ex Brisbane" field.
                     </p>
+                </div>
+
+                {/* Standard Expenses Templates */}
+                <div className="col-span-2 bg-gray-700/50 p-4 rounded border border-gray-600 mt-4">
+                    <h4 className="text-sm font-semibold text-slate-300 mb-3 flex items-center gap-2">
+                        📋 Standard Recurring Expenses
+                    </h4>
+                    <p className="text-xs text-slate-400 mb-4">
+                        Define standard expenses for this customer that can be quickly added to quotes (e.g., flights, accommodation).
+                    </p>
+
+                    <div className="space-y-3">
+                        {(rates.standardExpenses || []).map((expense, index) => (
+                            <div key={expense.id} className="flex items-center gap-2">
+                                <input
+                                    disabled={isLocked}
+                                    type="text"
+                                    placeholder="Description (e.g., Flights)"
+                                    value={expense.description}
+                                    onChange={(e) => {
+                                        const updated = [...(rates.standardExpenses || [])];
+                                        updated[index] = { ...expense, description: e.target.value };
+                                        setRates({ ...rates, standardExpenses: updated });
+                                    }}
+                                    className={`flex-1 border border-gray-600 rounded p-2 bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50' : ''}`}
+                                />
+                                <div className="flex items-center gap-1">
+                                    <span className="text-slate-400 text-sm">$</span>
+                                    <input
+                                        disabled={isLocked}
+                                        type="number"
+                                        placeholder="Cost"
+                                        value={expense.cost}
+                                        onChange={(e) => {
+                                            const updated = [...(rates.standardExpenses || [])];
+                                            updated[index] = { ...expense, cost: parseFloat(e.target.value) || 0 };
+                                            setRates({ ...rates, standardExpenses: updated });
+                                        }}
+                                        className={`w-28 border border-gray-600 rounded p-2 bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50' : ''}`}
+                                    />
+                                </div>
+                                <button
+                                    disabled={isLocked}
+                                    onClick={() => {
+                                        const updated = (rates.standardExpenses || []).filter((_, i) => i !== index);
+                                        setRates({ ...rates, standardExpenses: updated });
+                                    }}
+                                    className="text-red-400 hover:text-red-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                    ✕
+                                </button>
+                            </div>
+                        ))}
+
+                        <button
+                            disabled={isLocked}
+                            onClick={() => {
+                                const newExpense = {
+                                    id: `exp-${Date.now()}`,
+                                    description: '',
+                                    cost: 0
+                                };
+                                setRates({ ...rates, standardExpenses: [...(rates.standardExpenses || []), newExpense] });
+                            }}
+                            className="w-full px-4 py-2 bg-gray-600 hover:bg-gray-500 text-slate-200 rounded text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            + Add Standard Expense
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

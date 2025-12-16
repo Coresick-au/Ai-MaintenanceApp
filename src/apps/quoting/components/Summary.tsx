@@ -247,8 +247,9 @@ export default function Summary({ quote }: SummaryProps) {
     };
 
     const copyBreakdown = () => {
-        navigator.clipboard.writeText(generateShiftBreakdown());
-        alert("Shift breakdown copied to clipboard!");
+        const textToCopy = showFullBreakdown ? generateShiftBreakdown() : generateShiftSummary();
+        navigator.clipboard.writeText(textToCopy);
+        alert(showFullBreakdown ? "Detailed shift breakdown copied to clipboard!" : "Shift summary copied to clipboard!");
     };
 
     // Calculate individual allowances

@@ -23,6 +23,8 @@ export const DEFAULT_RATES: Rates = {
     weekendDayRate: 2520,
     costOfLabour: 100,
     rateNotes: 'Ex Banyo',
+    overtimeThreshold: 7.5,
+    standardExpenses: []
 };
 
 const DEFAULT_JOB_DETAILS: JobDetails = {
@@ -102,21 +104,23 @@ export function useQuote() {
                         id: `${customer.id}__${site.id}`, // Composite ID
                         name: `${customer.name} - ${site.name}`, // Display format
                         logo: site.logo || customer.logo,
-                        rates: customer.rates || DEFAULT_RATES,
+                        rates: site.rates || customer.rates || DEFAULT_RATES, // Prioritize site-specific rates
                         contacts: siteContacts.length > 0 ? siteContacts : (customer.contacts || []).map((c: any) => ({
                             name: c.name || '',
                             phone: c.phone || '',
                             email: c.email || ''
                         })),
                         customerNotes: customer.customerNotes,
-                        isLocked: customer.isLocked,
+                        isLocked: site.isLocked !== undefined ? site.isLocked : customer.isLocked, // Prioritize site-specific lock state
                         hasAIMMProfile: site.hasAIMMProfile || false, // Include AIMM status for Maintenance App filtering
                         managedSites: [{
                             id: site.id,
                             name: site.name,
                             location: site.location || '',
                             logo: site.logo,
-                            contacts: siteContacts
+                            contacts: siteContacts,
+                            rates: site.rates, // Preserve site-specific rates
+                            isLocked: site.isLocked // Preserve site-specific lock state
                         }]
                     });
                 });
@@ -291,38 +295,61 @@ export function useQuote() {
     const saveCustomer = async (customer: Customer) => {
         // Handle composite IDs from expanded customers (format: "customerId__siteId")
         const baseCustomerId = customer.id.includes('__') ? customer.id.split('__')[0] : customer.id;
+        const siteId = customer.id.includes('__') ? customer.id.split('__')[1] : null;
         const exists = customers.find((c: any) => c.id === baseCustomerId);
+
+        console.log('[useQuote] saveCustomer called', {
+            compositeId: customer.id,
+            baseCustomerId,
+            siteId,
+            hasExistingCustomer: !!exists
+        });
 
         // For expanded customers, preserve the original base customer name
         // Don't save the expanded name (which includes site names) back to the base customer
         const originalCustomerName = exists ? exists.name : customer.name;
 
-        // Ensure rates object is clean and correctly structured
-        const customerData = {
-            name: originalCustomerName, // Use original name, not expanded name
-            rates: customer.rates || DEFAULT_RATES, // Ensure rates exist
-            contacts: customer.contacts || [],
-            customerNotes: customer.customerNotes || '',
-            isLocked: customer.isLocked || false
-        };
+        // If saving for a specific site, update that site's rates and lock state
+        if (siteId && exists) {
+            const updatedManagedSites = (exists.managedSites || []).map((site: any) => {
+                if (site.id === siteId) {
+                    return {
+                        ...site,
+                        rates: customer.rates, // Update site-specific rates
+                        isLocked: customer.isLocked // Update site-specific lock state
+                    };
+                }
+                return site;
+            });
 
-        if (exists) {
+            const customerData = {
+                name: originalCustomerName,
+                rates: exists.rates || DEFAULT_RATES, // Keep customer-level rates unchanged
+                contacts: customer.contacts || [],
+                customerNotes: customer.customerNotes || '',
+                isLocked: exists.isLocked || false, // Keep customer-level lock state unchanged
+                managedSites: updatedManagedSites
+            };
+
+            console.log('[useQuote] Calling updateGlobalCustomer with', { baseCustomerId, managedSitesCount: updatedManagedSites.length });
             await updateGlobalCustomer(baseCustomerId, customerData);
+            console.log('[useQuote] Site rates update complete');
         } else {
-            // New Customer - Global Context handles ID generation if not provided,
-            // but our UI might generate one. Let's pass data.
-            // If ID is a temp ID (crypto), we might want to let Firebase generate one,
-            // but CustomerDashboard relies on the ID.
-            // GlobalContext `addCustomer` generates its own ID 'cust-timestamp'.
-            // The CustomerDashboard logic might need adjustment if it expects the ID to persist immediately.
-            // Actually, we can check if it's a new 'temp' ID.
-            // But simplify: Just call addCustomer with data using the ID we have or let it generate.
+            console.log('[useQuote] Updating customer-level rates');
+            // Saving for base customer (no site-specific ID)
+            const customerData = {
+                name: originalCustomerName,
+                rates: customer.rates || DEFAULT_RATES, // Update customer-level rates
+                contacts: customer.contacts || [],
+                customerNotes: customer.customerNotes || '',
+                isLocked: customer.isLocked || false
+            };
 
-            // Note: GlobalContext `addCustomer(data)` generates a NEW ID.
-            // If we want to preserve the ID generated by the UI (if valid), we might need to modify GlobalContext
-            // OR accept that the ID changes.
-            // Better: Let GlobalContext generate ID. Logic in UI will refresh list automatically.
-            await addGlobalCustomer(customerData);
+            if (exists) {
+                await updateGlobalCustomer(baseCustomerId, customerData);
+            } else {
+                await addGlobalCustomer(customerData);
+            }
         }
     };
 
@@ -362,7 +389,9 @@ export function useQuote() {
 
     const reportingCost = (jobDetails.reportingTime || 0) * (rates?.officeReporting || 0);
 
-    const travelChargeCost = (rates?.travelChargeExBrisbane || 0) * jobDetails.technicians.length;
+    const travelChargeCost = jobDetails.includeTravelCharge
+        ? (rates?.travelChargeExBrisbane || 0) * jobDetails.technicians.length
+        : 0;
 
     const totalCost = shifts.reduce((acc, shift) => acc + (calculateShiftBreakdown(shift).cost || 0), 0) +
         extras.reduce((acc, item) => acc + (item.cost || 0), 0) +
@@ -557,6 +586,7 @@ export function useQuote() {
         addExtra,
         updateExtra,
         removeExtra,
+        setExtras,
         internalExpenses,
         setInternalExpenses,
         renameTechnician,

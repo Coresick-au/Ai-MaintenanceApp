@@ -42,7 +42,7 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
             cost += totalOT * rates.siteOvertime;
         } else {
             let hoursConsumed = 0;
-            const ntLimit = 7.5;
+            const ntLimit = rates.overtimeThreshold || 7.5;
 
             // 1. Travel In
             const travelInNT = Math.max(0, Math.min(shift.travelIn, ntLimit - hoursConsumed));
