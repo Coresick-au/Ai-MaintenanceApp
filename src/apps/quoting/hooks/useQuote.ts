@@ -322,14 +322,17 @@ export function useQuote() {
                 return site;
             });
 
-            const customerData = {
+            const customerData = removeUndefined({
                 name: originalCustomerName,
-                rates: exists.rates || DEFAULT_RATES, // Keep customer-level rates unchanged
+                rates: { ...DEFAULT_RATES, ...(exists.rates || {}) }, // Keep customer-level rates unchanged, with defaults
                 contacts: customer.contacts || [],
                 customerNotes: customer.customerNotes || '',
                 isLocked: exists.isLocked || false, // Keep customer-level lock state unchanged
-                managedSites: updatedManagedSites
-            };
+                managedSites: updatedManagedSites.map((site: any) => ({
+                    ...site,
+                    rates: site.rates ? { ...DEFAULT_RATES, ...site.rates } : undefined // Ensure site rates have all fields
+                }))
+            });
 
             console.log('[useQuote] Calling updateGlobalCustomer with', { baseCustomerId, managedSitesCount: updatedManagedSites.length });
             await updateGlobalCustomer(baseCustomerId, customerData);
@@ -337,13 +340,13 @@ export function useQuote() {
         } else {
             console.log('[useQuote] Updating customer-level rates');
             // Saving for base customer (no site-specific ID)
-            const customerData = {
+            const customerData = removeUndefined({
                 name: originalCustomerName,
-                rates: customer.rates || DEFAULT_RATES, // Update customer-level rates
+                rates: { ...DEFAULT_RATES, ...(customer.rates || {}) }, // Update customer-level rates with defaults
                 contacts: customer.contacts || [],
                 customerNotes: customer.customerNotes || '',
                 isLocked: customer.isLocked || false
-            };
+            });
 
             if (exists) {
                 await updateGlobalCustomer(baseCustomerId, customerData);

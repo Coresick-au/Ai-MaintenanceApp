@@ -68,7 +68,9 @@ const DEFAULT_RATES: Rates = {
     standardDayRate: 2055,
     weekendDayRate: 2520,
     costOfLabour: 100,
-    rateNotes: 'Ex Banyo'
+    rateNotes: 'Ex Banyo',
+    overtimeThreshold: 7.5,
+    standardExpenses: []
 };
 
 export default function CustomerDashboard({
@@ -298,8 +300,8 @@ export default function CustomerDashboard({
                                     onClick={handleSaveRates}
                                     disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
                                     className={`w-full px-6 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2 transition-all ${saveSuccess
-                                            ? 'bg-green-600 hover:bg-green-700'
-                                            : 'bg-primary-600 hover:bg-primary-700'
+                                        ? 'bg-green-600 hover:bg-green-700'
+                                        : 'bg-primary-600 hover:bg-primary-700'
                                         } disabled:opacity-50 disabled:cursor-not-allowed`}
                                 >
                                     {saveSuccess ? (

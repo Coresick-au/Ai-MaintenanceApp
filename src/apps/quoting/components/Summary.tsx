@@ -115,7 +115,7 @@ export default function Summary({ quote }: SummaryProps) {
                 summary += `  Reporting Time: ${jobDetails.reportingTime}h @ ${formatMoney(rates.siteNormal)} = ${formatMoney(reportingCost)}\n`;
             }
             if (travelChargeCost > 0) {
-                summary += `  Travel Charge: ${formatMoney(travelChargeCost)}\n`;
+                summary += `  Travel Charge: ${jobDetails.technicians.length}x @ ${formatMoney(rates.travelChargeExBrisbane)}/tech = ${formatMoney(travelChargeCost)}\n`;
             }
 
             // Add individual extras
@@ -175,7 +175,7 @@ export default function Summary({ quote }: SummaryProps) {
         if (vehicleCost > 0) body += `Vehicle Allowances: ${formatMoney(vehicleCost)}\n`;
         if (perDiemCost > 0) body += `Per Diems: ${formatMoney(perDiemCost)}\n`;
         if (reportingCost > 0) body += `Reporting Time: ${formatMoney(reportingCost)}\n`;
-        if (travelChargeCost > 0) body += `Travel Charge: ${formatMoney(travelChargeCost)}\n`;
+        if (travelChargeCost > 0) body += `Travel Charge (${jobDetails.technicians.length}x @ ${formatMoney(rates.travelChargeExBrisbane)}/tech): ${formatMoney(travelChargeCost)}\n`;
 
         // Break down extras individually
         extras.filter(e => (e.cost || 0) > 0).forEach(extra => {
@@ -407,7 +407,7 @@ export default function Summary({ quote }: SummaryProps) {
 
                         {travelChargeCost > 0 && (
                             <div className="flex justify-between py-2 border-b border-gray-700">
-                                <span className="text-slate-300">Travel Charge</span>
+                                <span className="text-slate-300">Travel Charge ({jobDetails.technicians.length}x @ {formatMoney(rates.travelChargeExBrisbane)}/tech)</span>
                                 <span className="font-mono">
                                     {formatMoney(travelChargeCost)}
                                 </span>
