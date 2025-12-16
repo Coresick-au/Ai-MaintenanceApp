@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Trash2, User, UserPlus } from 'lucide-react';
+import { Trash2, User, UserPlus, Save, Check } from 'lucide-react';
 import RatesConfig from './RatesConfig';
 import type { Customer, Rates, Contact } from '../types';
 
@@ -80,12 +80,14 @@ export default function CustomerDashboard({
     const [editRates, setEditRates] = useState<Rates>(DEFAULT_RATES);
     const [editContacts, setEditContacts] = useState<Contact[]>([]);
     const [showDefaultRates, setShowDefaultRates] = useState(false);
+    const [saveSuccess, setSaveSuccess] = useState(false);
 
     const handleSelect = (customer: Customer) => {
         setSelectedId(customer.id);
         setEditName(customer.name);
         setEditRates(customer.rates || savedDefaultRates);
         setEditContacts(customer.contacts || []);
+        setSaveSuccess(false);
     };
 
     const handleDelete = (id: string) => {
@@ -95,6 +97,21 @@ export default function CustomerDashboard({
                 setSelectedId(null);
             }
         }
+    };
+
+    const handleSaveRates = () => {
+        if (!selectedId) return;
+
+        const customer = savedCustomers.find(c => c.id === selectedId);
+        if (!customer) return;
+
+        saveCustomer({
+            ...customer,
+            rates: editRates
+        });
+
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
     };
 
     return (
@@ -274,6 +291,33 @@ export default function CustomerDashboard({
                                 saveAsDefaults={saveAsDefaults}
                                 resetToDefaults={() => setEditRates(savedDefaultRates)}
                             />
+
+                            {/* Save Button */}
+                            <div className="mt-6 pt-6 border-t border-gray-600">
+                                <button
+                                    onClick={handleSaveRates}
+                                    disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
+                                    className={`w-full px-6 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2 transition-all ${saveSuccess
+                                            ? 'bg-green-600 hover:bg-green-700'
+                                            : 'bg-primary-600 hover:bg-primary-700'
+                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                >
+                                    {saveSuccess ? (
+                                        <>
+                                            <Check size={20} />
+                                            Rates Saved Successfully!
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Save size={20} />
+                                            Save Customer Rates
+                                        </>
+                                    )}
+                                </button>
+                                <p className="text-xs text-slate-400 mt-2 text-center">
+                                    Changes will be saved to this customer's profile and applied to future quotes
+                                </p>
+                            </div>
                         </div>
                     </>
                 ) : (
