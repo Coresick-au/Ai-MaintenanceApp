@@ -1706,7 +1706,7 @@ export function App() {
             {activeTab !== 'issues' && (
               <div className="w-full space-y-6">
 
-                {/* ===== TOP ROW: Asset Analytics (Left) + Maintenance Calendar (Right) ===== */}
+                {/* ===== TOP ROW: Critical/Overdue + Due Soon + Healthy (Left) + Maintenance Calendar (Right) ===== */}
                 <section
                   aria-label="Overview Statistics and Maintenance Calendar"
                   className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6"
@@ -1714,23 +1714,6 @@ export function App() {
                   {/* Asset Analytics - KPI Cards (1/3 or 1/4 width) */}
                   <div className="lg:col-span-1 flex">
                     <div className="flex flex-col gap-3 no-print w-full">
-                      {/* Total Assets */}
-                      <div
-                        onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
-                        className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'all'
-                          ? 'bg-cyan-500/20 border-2 border-cyan-400 ring-2 ring-cyan-400/50'
-                          : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-cyan-500/50'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <Icons.Database className="text-cyan-400" size={20} />
-                          <span className={`text-2xl font-bold ${filterStatus === 'all' ? 'text-white' : 'text-slate-200'}`}>{stats.total}</span>
-                        </div>
-                        <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'all' ? 'text-cyan-100' : 'text-slate-400'}`}>
-                          Total Assets
-                        </div>
-                      </div>
-
                       {/* Critical / Overdue */}
                       <div
                         onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
@@ -1845,30 +1828,51 @@ export function App() {
                     isOpen={expandedSection === 'schedule'}
                     onToggle={(val) => setExpandedSection(val ? 'schedule' : null)}
                   >
-                    <div className="p-4 border-b border-slate-700 flex flex-wrap gap-4 justify-between items-center sticky top-0 bg-slate-800/95 backdrop-blur-sm z-10">
-                      <div className="flex items-center gap-2">
-                        <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
-                        <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
-                        <span
-                          className="ml-2 px-2 py-0.5 rounded-full bg-slate-600 text-xs font-bold text-slate-300 hidden sm:inline min-w-[20px] text-center flex items-center justify-center"
-                          title={`Archived Assets: ${(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}`}
-                        >
-                          {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}
-                        </span>
-                      </div>
-                      <div className="flex flex-wrap gap-2 items-center no-print pr-2 sm:pr-10">
-                        <div className="flex items-center mr-2">
-                          <input
-                            type="checkbox"
-                            id="show-archived"
-                            checked={showArchived}
-                            onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
-                            className="mr-1 accent-cyan-500"
-                          />
-                          <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
+                    <div className="p-4 border-b border-slate-700">
+                      <div className="flex flex-wrap gap-4 justify-between items-center mb-4">
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Calendar /> {activeTab === 'service' ? 'Service Schedule' : 'Roller Schedule'}</h2>
+                          <span className="ml-2 px-2 py-0.5 rounded-full bg-slate-700 text-xs text-cyan-400 font-bold hidden sm:inline">{filteredData.length}</span>
+                          <span
+                            className="ml-2 px-2 py-0.5 rounded-full bg-slate-600 text-xs font-bold text-slate-300 hidden sm:inline min-w-[20px] text-center flex items-center justify-center"
+                            title={`Archived Assets: ${(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}`}
+                          >
+                            {(activeTab === 'service' ? currentServiceData : currentRollerData)?.filter(i => i.active === false).length || 0}
+                          </span>
                         </div>
-                        <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
-                        <button type="button" onClick={() => { closeFullscreen(); setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
+                        <div className="flex flex-wrap gap-2 items-center no-print pr-2 sm:pr-10">
+                          <div className="flex items-center mr-2">
+                            <input
+                              type="checkbox"
+                              id="show-archived"
+                              checked={showArchived}
+                              onChange={(e) => { setShowArchived(e.target.checked); setSelectedRowIds(new Set()); }}
+                              className="mr-1 accent-cyan-500"
+                            />
+                            <label htmlFor="show-archived" className="text-xs text-slate-400 select-none cursor-pointer">Show Archived</label>
+                          </div>
+                          <input type="text" placeholder="Search..." className="pl-2 pr-2 py-1 border border-slate-600 rounded text-sm w-32 md:w-40 bg-slate-900 text-white focus:border-cyan-500 outline-none" value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setSelectedRowIds(new Set()); }} />
+                          <button type="button" onClick={() => { closeFullscreen(); setIsAssetModalOpen(true); setSelectedRowIds(new Set()); }} className="bg-cyan-600 text-white hover:bg-cyan-700 w-10 h-10 md:w-auto md:h-auto p-0 md:px-4 md:py-2 rounded-full text-sm font-medium transition-all flex-shrink-0 whitespace-nowrap flex items-center justify-center gap-2 shadow-md" title="Add Asset"><Icons.Plus size={20} /> <span className="hidden md:inline">Add Asset</span></button>
+                        </div>
+                      </div>
+                      {/* Equipment Type Stats */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
+                          <div className="text-xs font-bold text-black uppercase">{activeTab === 'service' ? 'Service' : 'Roller'} Equipment</div>
+                          <div className="text-2xl font-bold text-black">{activeTab === 'service' ? serviceStats.total : rollerStats.total}</div>
+                        </div>
+                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
+                          <div className="text-xs font-bold text-red-600 uppercase">Critical</div>
+                          <div className="text-2xl font-bold text-red-600">{activeTab === 'service' ? serviceStats.critical : rollerStats.critical}</div>
+                        </div>
+                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
+                          <div className="text-xs font-bold text-amber-600 uppercase">Due Soon</div>
+                          <div className="text-2xl font-bold text-amber-600">{activeTab === 'service' ? serviceStats.dueSoon : rollerStats.dueSoon}</div>
+                        </div>
+                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
+                          <div className="text-xs font-bold text-green-600 uppercase">Healthy</div>
+                          <div className="text-2xl font-bold text-green-600">{activeTab === 'service' ? serviceStats.healthy : rollerStats.healthy}</div>
+                        </div>
                       </div>
                     </div>
                     <div className="overflow-x-auto h-full">
