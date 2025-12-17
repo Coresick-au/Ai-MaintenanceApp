@@ -328,10 +328,24 @@ export function useQuote() {
                 contacts: customer.contacts || [],
                 customerNotes: customer.customerNotes || '',
                 isLocked: exists.isLocked || false, // Keep customer-level lock state unchanged
-                managedSites: updatedManagedSites.map((site: any) => ({
-                    ...site,
-                    rates: site.rates ? { ...DEFAULT_RATES, ...site.rates } : undefined // Ensure site rates have all fields
-                }))
+                managedSites: updatedManagedSites.map((site: any) => {
+                    const siteData: any = {
+                        id: site.id,
+                        name: site.name,
+                        location: site.location || '',
+                        contacts: site.contacts || [],
+                        isLocked: site.isLocked
+                    };
+                    // Only include rates if they exist
+                    if (site.rates) {
+                        siteData.rates = { ...DEFAULT_RATES, ...site.rates };
+                    }
+                    // Only include logo if it exists
+                    if (site.logo) {
+                        siteData.logo = site.logo;
+                    }
+                    return siteData;
+                })
             });
 
             console.log('[useQuote] Calling updateGlobalCustomer with', { baseCustomerId, managedSitesCount: updatedManagedSites.length });

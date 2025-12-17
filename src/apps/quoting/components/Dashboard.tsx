@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { FileText, Plus, Trash2, FolderOpen, Users, Download, Upload } from 'lucide-react';
+import { FileText, Plus, Trash2, FolderOpen, Users, Download, Upload, Search } from 'lucide-react';
 import { calculateShiftBreakdown as calculateLogic } from '../logic';
 import type { Quote, Customer, Rates } from '../types';
 import CustomerDashboard from './CustomerDashboard';
@@ -33,6 +33,7 @@ export default function Dashboard({
 }: DashboardProps) {
     const [view, setView] = useState<'quotes' | 'customers' | 'technicians' | 'backup'>('quotes');
     const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'quoted' | 'invoice' | 'closed'>('all');
+    const [searchQuery, setSearchQuery] = useState('');
     const [backupSuccess, setBackupSuccess] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -204,20 +205,43 @@ export default function Dashboard({
                         </div>
 
                         <div className="px-6">
-                            {/* Filter Section */}
-                            <div className="flex gap-2 mb-6">
-                                {(['all', 'draft', 'quoted', 'invoice', 'closed'] as const).map((status) => (
-                                    <button
-                                        key={status}
-                                        onClick={() => setFilterStatus(status)}
-                                        className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${filterStatus === status
-                                            ? 'bg-primary-600 text-white'
-                                            : 'bg-gray-800 text-slate-400 border border-gray-700 hover:bg-gray-700'
-                                            }`}
-                                    >
-                                        {status}
-                                    </button>
-                                ))}
+                            {/* Search and Filter Section */}
+                            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+                                {/* Search Bar */}
+                                <div className="relative flex-1 max-w-md">
+                                    <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        value={searchQuery}
+                                        onChange={(e) => setSearchQuery(e.target.value)}
+                                        placeholder="Search customers, jobs, descriptions..."
+                                        className="w-full pl-10 pr-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all"
+                                    />
+                                    {searchQuery && (
+                                        <button
+                                            onClick={() => setSearchQuery('')}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200"
+                                        >
+                                            ×
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Status Filter Pills */}
+                                <div className="flex gap-2 flex-wrap">
+                                    {(['all', 'draft', 'quoted', 'invoice', 'closed'] as const).map((status) => (
+                                        <button
+                                            key={status}
+                                            onClick={() => setFilterStatus(status)}
+                                            className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${filterStatus === status
+                                                ? 'bg-primary-600 text-white'
+                                                : 'bg-gray-800 text-slate-400 border border-gray-700 hover:bg-gray-700'
+                                                }`}
+                                        >
+                                            {status}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {/* Quotes Grid */}
@@ -235,7 +259,23 @@ export default function Dashboard({
 
                                 {/* Filtered Quotes */}
                                 {savedQuotes
-                                    .filter(q => filterStatus === 'all' || q.status === filterStatus)
+                                    .filter(q => {
+                                        // Status filter
+                                        const matchesStatus = filterStatus === 'all' || q.status === filterStatus;
+
+                                        // Search filter (case-insensitive)
+                                        if (!searchQuery.trim()) return matchesStatus;
+
+                                        const query = searchQuery.toLowerCase().trim();
+                                        const matchesSearch =
+                                            q.jobDetails.customer?.toLowerCase().includes(query) ||
+                                            q.jobDetails.jobNo?.toLowerCase().includes(query) ||
+                                            q.quoteNumber?.toLowerCase().includes(query) ||
+                                            q.jobDetails.description?.toLowerCase().includes(query) ||
+                                            q.jobDetails.location?.toLowerCase().includes(query);
+
+                                        return matchesStatus && matchesSearch;
+                                    })
                                     .sort((a, b) => {
                                         // Sort by quote number (descending - newest first)
                                         const numA = parseInt(a.quoteNumber) || 0;
@@ -276,9 +316,16 @@ export default function Dashboard({
                                                 </h3>
 
                                                 {/* Customer */}
-                                                <p className="text-sm text-slate-400 mb-3 truncate">
+                                                <p className="text-sm text-slate-400 truncate">
                                                     {quote.jobDetails.customer || 'No Customer Assigned'}
                                                 </p>
+
+                                                {/* Description/Scope */}
+                                                {quote.jobDetails.description && (
+                                                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                                        {quote.jobDetails.description}
+                                                    </p>
+                                                )}
 
                                                 {/* Divider */}
                                                 <div className="border-t border-gray-700 my-3"></div>

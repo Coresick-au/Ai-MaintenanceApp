@@ -1,5 +1,4 @@
-
-
+import { useRef, useEffect } from 'react';
 import { MapPin, Users, Briefcase, Plus, X, FileText } from 'lucide-react';
 import type { JobDetails as JobDetailsType, Customer, Rates } from '../../types';
 
@@ -18,6 +17,21 @@ export default function JobDetails({
 }: JobDetailsProps) {
 
     const selectedCustomer = savedCustomers.find(c => c.name === jobDetails.customer);
+
+    // Auto-expanding textarea ref
+    const descriptionRef = useRef<HTMLTextAreaElement>(null);
+
+    // Auto-resize description textarea based on content
+    useEffect(() => {
+        const textarea = descriptionRef.current;
+        if (textarea) {
+            // Reset height to auto to get accurate scrollHeight
+            textarea.style.height = 'auto';
+            // Set to scrollHeight, clamped between min (80px) and max (300px)
+            const newHeight = Math.min(Math.max(textarea.scrollHeight, 80), 300);
+            textarea.style.height = `${newHeight}px`;
+        }
+    }, [jobDetails.description]);
 
     const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         const value = e.target.value;
@@ -40,7 +54,7 @@ export default function JobDetails({
     const addTechnician = () => {
         if (isLocked) return;
         // Always use Tech N pattern for new technicians
-        const newTechName = `Tech ${jobDetails.technicians.length + 1}`;
+        const newTechName = `Tech ${jobDetails.technicians.length + 1} `;
         setJobDetails({ ...jobDetails, technicians: [...jobDetails.technicians, newTechName] });
     };
 
@@ -150,7 +164,7 @@ export default function JobDetails({
                                 value={tech}
                                 onChange={(e) => updateTechnician(index, e.target.value)}
                                 className={`p-2 border border-slate-700 rounded-lg w-48 bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all hover:border-accent-primary ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''}`}
-                                placeholder={`Tech ${index + 1}`}
+                                placeholder={`Tech ${index + 1} `}
                             />
                             {!isLocked && jobDetails.technicians.length > 1 && (
                                 <button
@@ -207,14 +221,16 @@ export default function JobDetails({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                {/* Description - Existing */}
+                {/* Description - Auto-expanding */}
                 <div>
                     <label className="block text-sm font-medium text-slate-300 mb-1">Description / Scope of Works</label>
                     <textarea
+                        ref={descriptionRef}
                         disabled={isLocked}
                         value={jobDetails.description}
                         onChange={(e) => setJobDetails({ ...jobDetails, description: e.target.value })}
-                        className={`w-full p-3 border border-slate-700 rounded-lg h-32 bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all hover:border-accent-primary resize-none ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''}`}
+                        className={`w-full p-3 border border-slate-700 rounded-lg bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all hover:border-accent-primary overflow-y-auto ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''}`}
+                        style={{ minHeight: '80px', maxHeight: '300px' }}
                         placeholder="Enter job description..."
                     />
                 </div>
