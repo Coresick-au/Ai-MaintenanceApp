@@ -1,6 +1,5 @@
 import React from 'react';
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
-import { countUniqueAssets } from '../utils/assetUtils';
 
 // Asset interface for TypeScript
 interface Asset {
@@ -27,10 +26,27 @@ interface FullDashboardPDFProps {
   generatedDate: string;
 }
 
+// Dark theme color palette (matching the app UI)
+const colors = {
+  pageBg: '#0f172a',       // slate-900
+  cardBg: '#1e293b',       // slate-800
+  borderColor: '#334155',  // slate-700
+  textPrimary: '#f1f5f9',  // slate-100
+  textSecondary: '#94a3b8', // slate-400
+  textMuted: '#64748b',    // slate-500
+  critical: '#ef4444',     // red-500
+  criticalBg: '#7f1d1d',   // red-900
+  warning: '#f59e0b',      // amber-500
+  warningBg: '#78350f',    // amber-900
+  healthy: '#10b981',      // emerald-500
+  healthyBg: '#064e3b',    // emerald-900
+  accent: '#06b6d4',       // cyan-500
+};
+
 const styles = StyleSheet.create({
   page: {
     flexDirection: 'column',
-    backgroundColor: '#FFFFFF',
+    backgroundColor: colors.pageBg,
     padding: 30,
     fontSize: 10,
     lineHeight: 1.5,
@@ -53,33 +69,55 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#1F2937',
+    color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: 5,
   },
   subtitle: {
     fontSize: 14,
-    marginBottom: 15,
+    marginBottom: 10,
     fontWeight: 'bold',
-    color: '#374151',
+    color: colors.accent,
   },
   section: {
     marginBottom: 15,
   },
+  siteInfoBox: {
+    backgroundColor: colors.cardBg,
+    padding: 10,
+    borderRadius: 5,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: colors.borderColor,
+  },
+  siteInfoText: {
+    fontSize: 10,
+    marginBottom: 3,
+    color: colors.textSecondary,
+  },
+  siteInfoLabel: {
+    color: colors.textMuted,
+  },
+  sectionTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 10,
+  },
   headerRow: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.borderColor,
     borderBottomStyle: 'solid',
     paddingBottom: 5,
     marginBottom: 5,
     fontWeight: 'bold',
-    backgroundColor: '#F9FAFB',
+    backgroundColor: colors.cardBg,
   },
   entryContainer: {
     flexDirection: 'column',
     borderBottomWidth: 0.5,
-    borderBottomColor: '#E5E7EB',
+    borderBottomColor: colors.borderColor,
     borderBottomStyle: 'solid',
   },
   row: {
@@ -88,7 +126,7 @@ const styles = StyleSheet.create({
   },
   commentRow: {
     flexDirection: 'row',
-    backgroundColor: '#fef2f2',
+    backgroundColor: colors.criticalBg,
     padding: 4,
     marginHorizontal: 10,
     marginBottom: 4,
@@ -97,12 +135,12 @@ const styles = StyleSheet.create({
   },
   commentText: {
     fontSize: 8,
-    color: '#475569',
+    color: colors.textSecondary,
     fontStyle: 'italic',
   },
   commentLabel: {
     fontSize: 8,
-    color: '#991b1b',
+    color: colors.critical,
     fontWeight: 'bold',
     marginRight: 4,
   },
@@ -110,38 +148,30 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 5,
     fontSize: 9,
+    color: colors.textSecondary,
   },
   headerCell: {
     flex: 1,
     paddingHorizontal: 5,
     fontSize: 9,
     fontWeight: 'bold',
+    color: colors.textPrimary,
   },
   statusCritical: {
-    color: '#DC2626',
+    color: colors.critical,
     fontWeight: 'bold',
   },
   statusWarning: {
-    color: '#D97706',
+    color: colors.warning,
     fontWeight: 'bold',
   },
   statusGood: {
-    color: '#059669',
+    color: colors.healthy,
     fontWeight: 'bold',
   },
   statusService: {
-    color: '#4B5563',
+    color: colors.textMuted,
     fontWeight: 'bold',
-  },
-  summaryBox: {
-    backgroundColor: '#F3F4F6',
-    padding: 10,
-    borderRadius: 5,
-    marginBottom: 15,
-  },
-  summaryText: {
-    fontSize: 10,
-    marginBottom: 3,
   },
   footer: {
     position: 'absolute',
@@ -149,81 +179,38 @@ const styles = StyleSheet.create({
     left: 30,
     right: 30,
     fontSize: 8,
-    color: '#6B7280',
+    color: colors.textMuted,
     borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
+    borderTopColor: colors.borderColor,
     borderTopStyle: 'solid',
     paddingTop: 10,
     textAlign: 'center',
   },
-  kpiContainer: {
+  // Stats cards above each section
+  statsContainer: {
     flexDirection: 'row',
-    marginBottom: 15,
+    marginBottom: 10,
   },
-  kpiBox: {
+  statsBox: {
     flex: 1,
     padding: 8,
     borderWidth: 1,
     borderRadius: 6,
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-    marginRight: 8,
+    marginRight: 6,
   },
-  kpiBoxLast: {
+  statsBoxLast: {
     marginRight: 0,
   },
-  kpiTitle: {
+  statsTitle: {
     fontSize: 8,
     textTransform: 'uppercase',
-    color: '#64748B',
     marginBottom: 4,
     fontWeight: 'bold',
   },
-  kpiValue: {
+  statsValue: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#0F172A',
   },
-  healthContainer: {
-    marginBottom: 20,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 8,
-    backgroundColor: '#F8FAFC',
-  },
-  healthHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-    alignItems: 'center',
-  },
-  healthTitle: {
-    fontSize: 8,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    color: '#9CA3AF',
-  },
-  healthLegend: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  progressBar: {
-    flexDirection: 'row',
-    height: 8,
-    backgroundColor: '#E2E8F0',
-    borderRadius: 4,
-    overflow: 'hidden',
-  },
-  progressSegment: {
-    height: '100%',
-  },
-  healthSummary: {
-    marginTop: 8,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-  }
 });
 
 const getStatusStyle = (asset: Asset) => {
@@ -244,21 +231,45 @@ const getStatusText = (asset: Asset) => {
   return 'OPERATIONAL';
 };
 
+// Calculate stats for a single asset array
+const calculateStats = (assets: Asset[]) => {
+  const activeAssets = (assets || []).filter(a => a.active !== false);
+  const critical = activeAssets.filter(a => a.remaining < 0).length;
+  const dueSoon = activeAssets.filter(a => a.remaining >= 0 && a.remaining < 30).length;
+  const healthy = activeAssets.filter(a => a.remaining >= 30).length;
+  const total = activeAssets.length;
+  return { critical, dueSoon, healthy, total };
+};
+
+// Stats cards component for each section
+const SectionStatsCards = ({ stats, label }: { stats: ReturnType<typeof calculateStats>, label: string }) => (
+  <View style={styles.statsContainer}>
+    <View style={[styles.statsBox, { borderColor: colors.borderColor, backgroundColor: colors.cardBg }]}>
+      <Text style={[styles.statsTitle, { color: colors.textSecondary }]}>{label}</Text>
+      <Text style={[styles.statsValue, { color: colors.textPrimary }]}>{stats.total}</Text>
+    </View>
+    <View style={[styles.statsBox, { borderColor: colors.critical, backgroundColor: colors.criticalBg }]}>
+      <Text style={[styles.statsTitle, { color: colors.critical }]}>Critical</Text>
+      <Text style={[styles.statsValue, { color: colors.critical }]}>{stats.critical}</Text>
+    </View>
+    <View style={[styles.statsBox, { borderColor: colors.warning, backgroundColor: colors.warningBg }]}>
+      <Text style={[styles.statsTitle, { color: colors.warning }]}>Due Soon</Text>
+      <Text style={[styles.statsValue, { color: colors.warning }]}>{stats.dueSoon}</Text>
+    </View>
+    <View style={[styles.statsBox, styles.statsBoxLast, { borderColor: colors.healthy, backgroundColor: colors.healthyBg }]}>
+      <Text style={[styles.statsTitle, { color: colors.healthy }]}>Healthy</Text>
+      <Text style={[styles.statsValue, { color: colors.healthy }]}>{stats.healthy}</Text>
+    </View>
+  </View>
+);
+
 export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
   site,
   generatedDate
 }) => {
-  const allAssets = [...(site.serviceData || []), ...(site.rollerData || [])]
-    .filter(asset => asset.active !== false);
-
-  const criticalCount = allAssets.filter(a => a.remaining < 0).length;
-  const dueSoonCount = allAssets.filter(a => a.remaining >= 0 && a.remaining < 30).length;
-  const healthyCount = allAssets.filter(a => a.remaining >= 30).length;
-  const totalCount = countUniqueAssets(site.serviceData, site.rollerData);
-
-  const criticalPct = totalCount > 0 ? (criticalCount / totalCount) * 100 : 0;
-  const dueSoonPct = totalCount > 0 ? (dueSoonCount / totalCount) * 100 : 0;
-  const healthyPct = totalCount > 0 ? (healthyCount / totalCount) * 100 : 0;
+  // Calculate separate stats for each section
+  const serviceStats = calculateStats(site.serviceData);
+  const rollerStats = calculateStats(site.rollerData);
 
   return (
     <Document>
@@ -270,80 +281,29 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
             style={styles.logo}
           />
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Accurate Industries</Text>
-            <Text style={styles.subtitle}>Full Dashboard Report</Text>
+            <Text style={styles.title}>FULL DASHBOARD REPORT</Text>
+            <Text style={[styles.subtitle, { color: colors.accent }]}>| {site.customer}</Text>
           </View>
         </View>
 
         {/* Site Information */}
-        <View style={styles.summaryBox}>
-          <Text style={styles.summaryText}>Customer: {site.customer}</Text>
-          <Text style={styles.summaryText}>Site: {site.name}</Text>
-          <Text style={styles.summaryText}>Location: {site.location}</Text>
-          <Text style={styles.summaryText}>Generated: {generatedDate}</Text>
+        <View style={styles.siteInfoBox}>
+          <Text style={styles.siteInfoText}>📍 {site.location}</Text>
+          <Text style={styles.siteInfoText}>Generated: {generatedDate}</Text>
         </View>
 
-        {/* Summary Statistics */}
-        <View style={styles.kpiContainer}>
-          <View style={styles.kpiBox}>
-            <Text style={styles.kpiTitle}>Total Assets</Text>
-            <Text style={styles.kpiValue}>{totalCount}</Text>
-          </View>
-          <View style={[styles.kpiBox, { borderColor: '#FECACA', backgroundColor: '#FEF2F2' }]}>
-            <Text style={[styles.kpiTitle, { color: '#DC2626' }]}>Critical</Text>
-            <Text style={[styles.kpiValue, { color: '#DC2626' }]}>{criticalCount}</Text>
-          </View>
-          <View style={[styles.kpiBox, { borderColor: '#FDE68A', backgroundColor: '#FFFBEB' }]}>
-            <Text style={[styles.kpiTitle, { color: '#D97706' }]}>Due Soon</Text>
-            <Text style={[styles.kpiValue, { color: '#D97706' }]}>{dueSoonCount}</Text>
-          </View>
-          <View style={[styles.kpiBox, styles.kpiBoxLast, { borderColor: '#A7F3D0', backgroundColor: '#ECFDF5' }]}>
-            <Text style={[styles.kpiTitle, { color: '#059669' }]}>Healthy</Text>
-            <Text style={[styles.kpiValue, { color: '#059669' }]}>{healthyCount}</Text>
-          </View>
-        </View>
-
-        {/* Overall Health Bar */}
-        <View style={styles.healthContainer}>
-          <View style={styles.healthHeader}>
-            <Text style={styles.healthTitle}>Overall Health</Text>
-            <View style={styles.healthLegend}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#EF4444', marginRight: 4 }} />
-                <Text style={{ fontSize: 8, color: '#EF4444' }}>{Math.round(criticalPct)}%</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#F59E0B', marginRight: 4 }} />
-                <Text style={{ fontSize: 8, color: '#F59E0B' }}>{Math.round(dueSoonPct)}%</Text>
-              </View>
-              <View style={{ flexDirection: 'row', alignItems: 'center', marginLeft: 10 }}>
-                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#10B981', marginRight: 4 }} />
-                <Text style={{ fontSize: 8, color: '#10B981' }}>{Math.round(healthyPct)}%</Text>
-              </View>
-            </View>
-          </View>
-          <View style={styles.progressBar}>
-            <View style={[styles.progressSegment, { width: `${criticalPct}%`, backgroundColor: '#EF4444' }]} />
-            <View style={[styles.progressSegment, { width: `${dueSoonPct}%`, backgroundColor: '#F59E0B' }]} />
-            <View style={[styles.progressSegment, { width: `${healthyPct}%`, backgroundColor: '#10B981' }]} />
-          </View>
-          <View style={styles.healthSummary}>
-            <Text style={{ fontSize: 9, fontWeight: 'bold', color: '#EF4444' }}>{Math.round(criticalPct)}% Critical</Text>
-            <Text style={{ fontSize: 9, color: '#9CA3AF', marginLeft: 4 }}>({criticalCount} assets)</Text>
-          </View>
-        </View>
-
-        {/* Service & Calibration Equipment */}
+        {/* Service Equipment Section */}
         {site.serviceData && site.serviceData.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.subtitle}>Service & Calibration Equipment</Text>
+            <Text style={styles.sectionTitle}>Service Equipment</Text>
+            <SectionStatsCards stats={serviceStats} label="Service Equipment" />
             <View style={styles.headerRow}>
-              <Text style={styles.headerCell}>Asset Name</Text>
-              <Text style={styles.headerCell}>Code</Text>
-              <Text style={styles.headerCell}>Last Service</Text>
-              <Text style={styles.headerCell}>Due Date</Text>
-              <Text style={styles.headerCell}>Days Remaining</Text>
-              <Text style={styles.headerCell}>Status</Text>
+              <Text style={styles.headerCell}>NAME</Text>
+              <Text style={styles.headerCell}>CODE</Text>
+              <Text style={styles.headerCell}>LAST SERVICE</Text>
+              <Text style={styles.headerCell}>DUE DATE</Text>
+              <Text style={styles.headerCell}>DAYS REMAINING</Text>
+              <Text style={styles.headerCell}>OPERATIONAL STATUS</Text>
             </View>
             {site.serviceData
               .filter(asset => asset.active !== false)
@@ -370,17 +330,18 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
           </View>
         )}
 
-        {/* Roller Data */}
+        {/* Roller Equipment Section */}
         {site.rollerData && site.rollerData.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.subtitle}>Roller Equipment</Text>
+            <Text style={styles.sectionTitle}>Roller Equipment</Text>
+            <SectionStatsCards stats={rollerStats} label="Roller Equipment" />
             <View style={styles.headerRow}>
-              <Text style={styles.headerCell}>Asset Name</Text>
-              <Text style={styles.headerCell}>Code</Text>
-              <Text style={styles.headerCell}>Last Service</Text>
-              <Text style={styles.headerCell}>Due Date</Text>
-              <Text style={styles.headerCell}>Days Remaining</Text>
-              <Text style={styles.headerCell}>Status</Text>
+              <Text style={styles.headerCell}>NAME</Text>
+              <Text style={styles.headerCell}>CODE</Text>
+              <Text style={styles.headerCell}>LAST SERVICE</Text>
+              <Text style={styles.headerCell}>DUE DATE</Text>
+              <Text style={styles.headerCell}>DAYS REMAINING</Text>
+              <Text style={styles.headerCell}>OPERATIONAL STATUS</Text>
             </View>
             {site.rollerData
               .filter(asset => asset.active !== false)
@@ -415,5 +376,3 @@ export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
     </Document>
   );
 };
-
-

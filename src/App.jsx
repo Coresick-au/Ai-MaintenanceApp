@@ -188,7 +188,26 @@ export function App() {
     return count;
   }, [employees]);
 
+  // Component-level stats for the selected site dashboard
+  const serviceStats = useMemo(() => {
+    return (currentServiceData || []).reduce((acc, curr) => {
+      if (curr.remaining < 0) acc.critical++;
+      else if (curr.remaining < 30) acc.dueSoon++;
+      else acc.healthy++;
+      acc.total++;
+      return acc;
+    }, { critical: 0, dueSoon: 0, healthy: 0, total: 0 });
+  }, [currentServiceData]);
 
+  const rollerStats = useMemo(() => {
+    return (currentRollerData || []).reduce((acc, curr) => {
+      if (curr.remaining < 0) acc.critical++;
+      else if (curr.remaining < 30) acc.dueSoon++;
+      else acc.healthy++;
+      acc.total++;
+      return acc;
+    }, { critical: 0, dueSoon: 0, healthy: 0, total: 0 });
+  }, [currentRollerData]);
 
 
   const {
