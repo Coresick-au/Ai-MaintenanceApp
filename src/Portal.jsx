@@ -82,8 +82,8 @@ const Portal = () => {
             icon: '📋',
             color: 'sky',
             component: <JobSheetPage onBack={() => setActiveApp(null)} currentUser={currentUser} userRole={userRole} />,
-            // PERMISSION: Admin only
-            restricted: userRole !== 'admin'
+            // PERMISSION: Admin or Manager only (hidden from Techs)
+            restricted: !['admin', 'manager'].includes(userRole)
         }
     ];
 

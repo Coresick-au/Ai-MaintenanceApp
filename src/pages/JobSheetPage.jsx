@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Edit2, Plus, Download, Printer, RotateCcw, DollarSign, ChevronDown, ChevronUp, AlertTriangle, Trash2 } from "lucide-react";
+import { ArrowLeft, Edit2, Plus, Download, Printer, RotateCcw, DollarSign, ChevronDown, ChevronUp, AlertTriangle, Trash2, MessageSquare, LayoutDashboard, Table, X } from "lucide-react";
 import { jobSheetSeed } from "../data/jobSheetSeed";
 import { clearJobSheet, loadJobSheet, saveJobSheet } from "../lib/storage";
 import {
@@ -14,6 +14,7 @@ import {
     Modal,
 } from "../components/ui/NeonUI";
 import { useGlobalData } from "../context/GlobalDataContext";
+import JobSheetDashboard from "./JobSheetDashboard";
 
 const TYPES = ["Service", "Parts", "Projects"];
 const STATUSES = [
@@ -58,6 +59,30 @@ const statusTone = (s) => {
     if (["ordered", "parts ordered", "awaiting parts", "parts required", "awaiting", "pending"].includes(v)) return "warning";
     if (["wip", "in progress", "job in progress", "progress"].includes(v)) return "info";
     return "slate";
+};
+
+// Helper to get row background color based on status (matching Excel color scheme)
+const statusRowColor = (status) => {
+    switch (status) {
+        // Yellow group - needs action/attention
+        case "Ready for Invoicing":
+        case "Parts Ordered":
+        case "Parts Required":
+            return "bg-yellow-500/30 hover:bg-yellow-500/40";
+        // Green group - completed/paid
+        case "Paid":
+        case "Job Completed":
+            return "bg-emerald-500/30 hover:bg-emerald-500/40";
+        // Blue group - in progress/invoiced
+        case "Shipped":
+        case "Invoiced":
+        case "Job In Progress":
+        case "PO Received":
+        case "Quoted":
+            return "bg-sky-500/30 hover:bg-sky-500/40";
+        default:
+            return "hover:bg-slate-800/30";
+    }
 };
 
 const INITIAL_JOB = {
@@ -115,8 +140,9 @@ const FormRow = ({ label, children, isMoney, prefix }) => (
 );
 
 // Multi-select dropdown component
-function MultiSelectDropdown({ label, options, selected, onChange, placeholder }) {
+function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
     const [isOpen, setIsOpen] = useState(false);
+    const [searchQuery, setSearchQuery] = useState("");
 
     const toggleOption = (opt) => {
         if (selected.includes(opt)) {
@@ -125,6 +151,10 @@ function MultiSelectDropdown({ label, options, selected, onChange, placeholder }
             onChange([...selected, opt]);
         }
     };
+
+    const filteredOptions = options.filter(opt =>
+        opt.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     const displayText = selected.length === 0
         ? placeholder
@@ -143,24 +173,38 @@ function MultiSelectDropdown({ label, options, selected, onChange, placeholder }
                 <ChevronDown size={14} className={`transition-transform ${isOpen ? "rotate-180" : ""}`} />
             </button>
             {isOpen && (
-                <div className="absolute z-[100] mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-auto">
-                    {options.map(opt => (
-                        <label
-                            key={opt}
-                            className="flex items-center gap-2 px-3 py-2 hover:bg-slate-800 cursor-pointer text-sm text-slate-200"
-                        >
-                            <input
-                                type="checkbox"
-                                checked={selected.includes(opt)}
-                                onChange={() => toggleOption(opt)}
-                                className="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500"
+                <div className="absolute z-[100] mt-1 w-full bg-slate-900 border border-slate-700 rounded-lg shadow-xl max-h-60 overflow-hidden flex flex-col">
+                    {/* Search input */}
+                    {options.length > 5 && (
+                        <div className="p-2 border-b border-slate-700">
+                            <TextInput
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                placeholder="Search..."
+                                className="text-sm"
+                                autoFocus
                             />
-                            {opt}
-                        </label>
-                    ))}
-                    {options.length === 0 && (
-                        <div className="px-3 py-2 text-slate-500 text-sm italic">No options</div>
+                        </div>
                     )}
+                    <div className="overflow-auto">
+                        {filteredOptions.map(opt => (
+                            <label
+                                key={opt}
+                                className="flex items-center gap-2 px-3 py-2 hover:bg-slate-800 cursor-pointer text-sm text-slate-200"
+                            >
+                                <input
+                                    type="checkbox"
+                                    checked={selected.includes(opt)}
+                                    onChange={() => toggleOption(opt)}
+                                    className="rounded border-slate-600 bg-slate-800 text-cyan-500 focus:ring-cyan-500"
+                                />
+                                {opt}
+                            </label>
+                        ))}
+                        {filteredOptions.length === 0 && (
+                            <div className="px-3 py-2 text-slate-500 text-sm italic">No matches</div>
+                        )}
+                    </div>
                 </div>
             )}
         </div>
@@ -169,6 +213,7 @@ function MultiSelectDropdown({ label, options, selected, onChange, placeholder }
 
 export default function JobSheetPage({ onBack, currentUser }) {
     const { customers } = useGlobalData();
+
     const [rows, setRows] = useState([]);
     const [q, setQ] = useState("");
 
@@ -176,6 +221,7 @@ export default function JobSheetPage({ onBack, currentUser }) {
     const [statusFilters, setStatusFilters] = useState([]);
     const [customerFilters, setCustomerFilters] = useState([]);
     const [siteFilters, setSiteFilters] = useState([]);
+    const [yearFilters, setYearFilters] = useState([]); // Multi-select year filter
 
     // Sorting
     const [sortColumn, setSortColumn] = useState("jobNumber");
@@ -195,6 +241,15 @@ export default function JobSheetPage({ onBack, currentUser }) {
     // Danger Zone toggle
     const [showDangerZone, setShowDangerZone] = useState(false);
 
+    // View mode: "table" or "dashboard"
+    const [viewMode, setViewMode] = useState("table");
+
+    // Year type for dashboard: "calendar" or "financial"
+    const [yearType, setYearType] = useState("calendar");
+
+    // Drill down state for dashboard
+    const [drillDownFilter, setDrillDownFilter] = useState(null);
+
     useEffect(() => {
         const loaded = loadJobSheet();
         setRows(Array.isArray(loaded) && loaded.length ? loaded.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)) : jobSheetSeed);
@@ -204,13 +259,26 @@ export default function JobSheetPage({ onBack, currentUser }) {
         saveJobSheet(rows);
     }, [rows]);
 
-    // Get unique customers and sites from data for filters
+    // Get unique customers, sites, and years from data for filters
     const filterOptions = useMemo(() => {
         const customerSet = new Set(rows.map(r => r.customer).filter(Boolean));
         const siteSet = new Set(rows.map(r => r.managedSite).filter(Boolean));
+
+        // Extract years from PO Date
+        const yearSet = new Set();
+        rows.forEach(r => {
+            if (r.poDate) {
+                const year = r.poDate.substring(0, 4); // YYYY-MM-DD format
+                if (year && year.length === 4 && !isNaN(year)) {
+                    yearSet.add(year);
+                }
+            }
+        });
+
         return {
             customers: Array.from(customerSet).sort(),
-            sites: Array.from(siteSet).sort()
+            sites: Array.from(siteSet).sort(),
+            years: Array.from(yearSet).sort((a, b) => b - a) // Descending
         };
     }, [rows]);
 
@@ -224,6 +292,12 @@ export default function JobSheetPage({ onBack, currentUser }) {
                 if (customerFilters.length > 0 && !customerFilters.includes(r.customer)) return false;
                 // Site filter
                 if (siteFilters.length > 0 && !siteFilters.includes(r.managedSite)) return false;
+                // Year filter (multi-select based on PO Date)
+                if (yearFilters.length > 0) {
+                    if (!r.poDate) return false;
+                    const year = r.poDate.substring(0, 4);
+                    if (!yearFilters.includes(year)) return false;
+                }
                 return true;
             })
             .filter((r) => {
@@ -254,7 +328,7 @@ export default function JobSheetPage({ onBack, currentUser }) {
                 const comparison = String(aVal).localeCompare(String(bVal));
                 return sortDirection === "asc" ? comparison : -comparison;
             });
-    }, [rows, q, statusFilters, customerFilters, siteFilters, sortColumn, sortDirection]);
+    }, [rows, q, statusFilters, customerFilters, siteFilters, yearFilters, sortColumn, sortDirection]);
 
     const handleSort = (column) => {
         if (sortColumn === column) {
@@ -363,10 +437,58 @@ export default function JobSheetPage({ onBack, currentUser }) {
         setStatusFilters([]);
         setCustomerFilters([]);
         setSiteFilters([]);
+        setYearFilters([]);
         setQ("");
+        setDrillDownFilter(null); // Also clear drill-down
     }
 
+    // Drill-down handler for dashboard charts
+    function handleDrillDown(type, value) {
+        if (!type || !value) {
+            setDrillDownFilter(null);
+            return;
+        }
+        setDrillDownFilter({ type, value });
+    }
+
+    // Calculate drill-down filtered data
+    const drillDownFiltered = useMemo(() => {
+        if (!drillDownFilter) return filtered;
+
+        return filtered.filter(job => {
+            switch (drillDownFilter.type) {
+                case 'status':
+                    return job.status === drillDownFilter.value;
+                case 'type':
+                    return job.type === drillDownFilter.value;
+                case 'customer':
+                    return job.customer === drillDownFilter.value;
+                case 'month':
+                    return job.poDate && job.poDate.startsWith(drillDownFilter.value);
+                case 'year':
+                    return job.poDate && job.poDate.startsWith(drillDownFilter.value);
+                default:
+                    return true;
+            }
+        });
+    }, [filtered, drillDownFilter]);
+
     // === TEMPORARY CSV IMPORT ===
+    // Helper functions for CSV import
+    const normalizeHeader = (h) => h.toLowerCase().trim().replace(/\s+/g, ' ');
+
+    const convertDateToISO = (val) => {
+        if (!val || typeof val !== 'string') return val;
+        // Matches DD/MM/YYYY, DD-MM-YYYY, or DD.MM.YY
+        const match = val.match(/^(\d{1,2})[\/\.\-](\d{1,2})[\/\.\-](\d{2,4})$/);
+        if (match) {
+            let [, d, m, y] = match;
+            if (y.length === 2) y = "20" + y;
+            return `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+        }
+        return val;
+    };
+
     function handleCsvImport(event) {
         const file = event.target.files?.[0];
         if (!file) return;
@@ -375,107 +497,134 @@ export default function JobSheetPage({ onBack, currentUser }) {
         reader.onload = (e) => {
             try {
                 const text = e.target.result;
-                const lines = text.split('\n').filter(line => line.trim());
 
-                if (lines.length < 2) {
+                // 1. Robust CSV Parser: Handles newlines inside quotes & escaped quotes
+                const parseCSV = (str) => {
+                    const rows = [];
+                    let row = [];
+                    let col = "";
+                    let inQuotes = false;
+                    for (let i = 0; i < str.length; i++) {
+                        const char = str[i];
+                        const nextChar = str[i + 1];
+                        if (char === '"' && inQuotes && nextChar === '"') {
+                            col += '"'; i++; // Handle "" escaped quotes
+                        } else if (char === '"') {
+                            inQuotes = !inQuotes;
+                        } else if (char === ',' && !inQuotes) {
+                            row.push(col.trim());
+                            col = "";
+                        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                            if (col !== "" || row.length > 0) {
+                                row.push(col.trim());
+                                rows.push(row);
+                                row = [];
+                                col = "";
+                            }
+                            if (char === '\r' && nextChar === '\n') i++; // Handle CRLF
+                        } else {
+                            col += char;
+                        }
+                    }
+                    if (col || row.length) {
+                        row.push(col.trim());
+                        rows.push(row);
+                    }
+                    return rows;
+                };
+
+                const allRows = parseCSV(text);
+                if (allRows.length < 2) {
                     alert("CSV appears empty or invalid.");
                     return;
                 }
 
-                // Parse header
-                const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''));
-                console.log('[CSV Import] Headers:', headers);
+                // 2. Normalize headers to handle "Exc" vs "Ex" and extra spaces
+                const rawHeaders = allRows[0];
+                const normalizedHeaders = rawHeaders.map(normalizeHeader);
+                console.log('[CSV Import] Normalized Headers:', normalizedHeaders);
 
-                // Map CSV columns to our data structure
+                // Map CSV columns (normalized) to internal state keys
                 const columnMap = {
-                    'Job Number(s)': 'jobNumber',
-                    'Job Number': 'jobNumber',
-                    'Customer': 'customer',
-                    'Job Description': 'jobDescription',
-                    'Quote': 'quote',
-                    'PO': 'po',
-                    'Type': 'type',
-                    'PO Value Ex GST': 'poValueExGst',
-                    'PO Date': 'poDate',
-                    'Status': 'status',
-                    'Est Job Date(s)': 'estJobDate',
-                    'Est Job Date': 'estJobDate',
-                    'Parts Ordered From': 'partsOrderedFrom',
-                    'Parts Ordered Date': 'partsOrderedDate',
-                    'Parts Ordered Date(s)': 'partsOrderedDate',
-                    'Est Delivery': 'estDelivery',
-                    'Inv No': 'invNo',
-                    'Inv Date': 'invDate',
-                    'Inv Value Ex GST': 'invValueExGst',
-                    'Inv Value Inc GST': 'invValueIncGst',
-                    'Inv Value for GST': 'invValueIncGst',
-                    'Inv Due Date': 'invDueDate',
-                    'Notes': 'notes'
+                    'job number': 'jobNumber',
+                    'job number(s)': 'jobNumber',
+                    'customer': 'customer',
+                    'job description': 'jobDescription',
+                    'quote': 'quote',
+                    'po': 'po',
+                    'type': 'type',
+                    'po value exc gst': 'poValueExGst',
+                    'po value ex gst': 'poValueExGst',
+                    'po date': 'poDate',
+                    'status': 'status',
+                    'est job date': 'estJobDate',
+                    'est job date(s)': 'estJobDate',
+                    'parts ordered from': 'partsOrderedFrom',
+                    'parts ordered date': 'partsOrderedDate',
+                    'parts ordered date(s)': 'partsOrderedDate',
+                    'est delivery': 'estDelivery',
+                    'inv no': 'invNo',
+                    'inv date': 'invDate',
+                    'inv value exc gst': 'invValueExGst',
+                    'inv value ex gst': 'invValueExGst',
+                    'inv value inc gst': 'invValueIncGst',
+                    'inv value for gst': 'invValueIncGst',
+                    'inv due date': 'invDueDate',
+                    'notes': 'notes'
                 };
 
-                // Parse data rows (handle quoted fields with commas)
+                // 3. Efficiency: Find the last actual column index we care about
+                const lastRelevantIdx = normalizedHeaders.reduce((acc, h, i) => columnMap[h] ? i : acc, 0);
+
                 const importedJobs = [];
-                for (let i = 1; i < lines.length; i++) {
-                    const line = lines[i];
-                    // Simple CSV parsing (handles basic quoted fields)
-                    const values = [];
-                    let current = '';
-                    let inQuotes = false;
-                    for (let char of line) {
-                        if (char === '"') {
-                            inQuotes = !inQuotes;
-                        } else if (char === ',' && !inQuotes) {
-                            values.push(current.trim());
-                            current = '';
-                        } else {
-                            current += char;
-                        }
-                    }
-                    values.push(current.trim()); // Don't forget last field
+                for (let i = 1; i < allRows.length; i++) {
+                    const values = allRows[i];
+                    if (!values[0]) continue; // Skip if Job Number is missing
 
                     const job = {
                         id: crypto.randomUUID(),
                         updatedAt: new Date().toISOString(),
-                        managedSite: '' // Not in CSV, but we need it
+                        managedSite: ''
                     };
 
-                    headers.forEach((header, idx) => {
+                    // Only loop through columns that exist in our headers
+                    for (let j = 0; j <= lastRelevantIdx; j++) {
+                        const header = normalizedHeaders[j];
                         const fieldName = columnMap[header];
-                        if (fieldName && values[idx] !== undefined) {
-                            let value = values[idx].replace(/^"|"$/g, ''); // Remove quotes
 
-                            // Clean up money values (remove $ and commas)
-                            if (fieldName.includes('Value') && value) {
-                                value = value.replace(/[$,]/g, '');
-                            }
+                        if (fieldName && values[j] !== undefined) {
+                            let value = values[j];
 
-                            // Clean up quote/invoice prefixes if they exist (we'll add them on display)
-                            if (fieldName === 'quote' && value) {
-                                value = value.replace(/^QU-/i, '');
+                            // Clean money
+                            if (fieldName.toLowerCase().includes('value')) {
+                                value = value.replace(/[$,\s]/g, '');
                             }
-                            if (fieldName === 'invNo' && value) {
-                                value = value.replace(/^INV-/i, '');
+                            // Clean IDs
+                            if (fieldName === 'quote') value = value.replace(/^QU-/i, '');
+                            if (fieldName === 'invNo') value = value.replace(/^INV-/i, '');
+
+                            // Convert dates to YYYY-MM-DD for the HTML inputs
+                            if (fieldName.toLowerCase().includes('date') || fieldName === 'estDelivery') {
+                                value = convertDateToISO(value);
                             }
 
                             job[fieldName] = value;
                         }
-                    });
+                    }
 
-                    // Only add if it has a job number
                     if (job.jobNumber) {
                         importedJobs.push(job);
                     }
                 }
 
                 if (importedJobs.length === 0) {
-                    alert("No valid jobs found in CSV.");
+                    alert("No valid jobs found in CSV. Check if the 'Job Number' column exists.");
                     return;
                 }
 
-                const confirmImport = confirm(`Found ${importedJobs.length} jobs to import. This will ADD them to your existing data. Continue?`);
-                if (confirmImport) {
+                if (confirm(`Found ${importedJobs.length} jobs. Add to database?`)) {
                     setRows(prev => [...importedJobs, ...prev]);
-                    alert(`Successfully imported ${importedJobs.length} jobs!`);
+                    alert(`Imported ${importedJobs.length} jobs successfully.`);
                 }
 
             } catch (err) {
@@ -485,13 +634,34 @@ export default function JobSheetPage({ onBack, currentUser }) {
         };
 
         reader.readAsText(file);
-        // Reset input so same file can be re-selected
         event.target.value = '';
     }
     // === END TEMPORARY CSV IMPORT ===
 
+
     const right = (
         <>
+            {/* View Toggle */}
+            <div className="flex rounded-lg border border-slate-700 overflow-hidden">
+                <button
+                    onClick={() => setViewMode("table")}
+                    className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "table"
+                        ? "bg-cyan-500/20 text-cyan-300"
+                        : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                        }`}
+                >
+                    <Table size={14} /> Table
+                </button>
+                <button
+                    onClick={() => setViewMode("dashboard")}
+                    className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "dashboard"
+                        ? "bg-cyan-500/20 text-cyan-300"
+                        : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                        }`}
+                >
+                    <LayoutDashboard size={14} /> Dashboard
+                </button>
+            </div>
             <NeonButton variant="slate" onClick={onBack}>
                 <ArrowLeft size={16} /> Back
             </NeonButton>
@@ -524,7 +694,7 @@ export default function JobSheetPage({ onBack, currentUser }) {
         <PageShell title="Job Sheet" right={right}>
             {/* Filters Card - needs relative positioning for dropdowns */}
             <Card className="p-4 mb-4 print:hidden relative z-30">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
                     <div>
                         <label className="text-xs text-slate-400 block mb-1">Search Database</label>
                         <TextInput
@@ -565,141 +735,218 @@ export default function JobSheetPage({ onBack, currentUser }) {
                         />
                     </div>
 
+                    <div className="flex items-end gap-1">
+                        <div className="flex-1">
+                            <label className="text-xs text-slate-400 block mb-1">Year (PO Date)</label>
+                            <MultiSelectDropdown
+                                options={filterOptions.years}
+                                selected={yearFilters}
+                                onChange={setYearFilters}
+                                placeholder="All Years"
+                            />
+                        </div>
+                        {(statusFilters.length > 0 || customerFilters.length > 0 || siteFilters.length > 0 || yearFilters.length > 0 || q) && (
+                            <button
+                                onClick={clearAllFilters}
+                                className="p-2 h-[42px] rounded-lg bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500/20 transition-colors"
+                                title="Clear all filters"
+                            >
+                                <X size={18} />
+                            </button>
+                        )}
+                    </div>
+
                     <div className="flex flex-col justify-end gap-2">
                         <div className="text-sm text-slate-400 bg-slate-950/30 px-3 py-2 rounded-lg border border-slate-800/50 flex justify-between">
                             <span>Results</span>
                             <span className="text-cyan-400 font-bold font-mono">{filtered.length}</span>
                         </div>
-                        {(statusFilters.length > 0 || customerFilters.length > 0 || siteFilters.length > 0 || q) && (
-                            <button
-                                onClick={clearAllFilters}
-                                className="text-xs text-red-400 hover:text-red-300 underline"
-                            >
-                                Clear all filters
-                            </button>
-                        )}
                     </div>
                 </div>
             </Card>
 
-            {/* Data Table */}
-            <Card className="overflow-hidden print:border print:bg-white flex-1">
-                <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
-                    <table className="w-full text-sm border-collapse">
-                        <thead className="bg-slate-900 border-b border-slate-700 print:bg-white print:border-gray-300 sticky top-0 z-20">
-                            <tr>
-                                {columns.map((c) => (
-                                    <th
-                                        key={c.key}
-                                        onClick={() => c.sortable && handleSort(c.key)}
-                                        className={[
-                                            "text-left p-3 font-semibold text-slate-400 print:text-black whitespace-nowrap uppercase tracking-wider text-[10px]",
-                                            c.w,
-                                            c.sortable ? "cursor-pointer hover:text-cyan-400 select-none" : ""
-                                        ].join(" ")}
-                                    >
-                                        <div className="flex items-center gap-1">
-                                            {c.label}
-                                            {c.sortable && sortColumn === c.key && (
-                                                sortDirection === "asc"
-                                                    ? <ChevronUp size={12} className="text-cyan-400" />
-                                                    : <ChevronDown size={12} className="text-cyan-400" />
-                                            )}
-                                        </div>
-                                    </th>
-                                ))}
-                                <th className="text-left p-3 font-semibold text-slate-400 print:text-black w-[160px] uppercase tracking-wider text-[10px]">
-                                    Last Updated
-                                </th>
-                                <th className="sticky right-0 z-10 bg-slate-900 print:bg-white text-left p-3 border-l border-slate-700 print:border-gray-300 w-[100px] uppercase tracking-wider text-[10px] text-slate-400">
-                                    Actions
-                                </th>
-                            </tr>
-                        </thead>
+            {/* Dashboard View */}
+            {viewMode === "dashboard" && (
+                <>
+                    <JobSheetDashboard
+                        filteredData={filtered}
+                        allData={rows}
+                        onDrillDown={handleDrillDown}
+                        drillDownFilter={drillDownFilter}
+                        yearType={yearType}
+                        onYearTypeChange={setYearType}
+                    />
 
-                        <tbody className="divide-y divide-slate-800/50">
-                            {filtered.map((r) => {
-                                const selected = r.id === selectedId;
-                                return (
-                                    <tr
-                                        key={r.id}
-                                        className={[
-                                            "print:border-gray-300 group",
-                                            selected ? "bg-cyan-500/5" : "hover:bg-slate-800/30",
-                                            "transition-colors",
-                                        ].join(" ")}
-                                        onClick={() => setSelectedId(r.id)}
-                                    >
-                                        {columns.map((c) => {
-                                            let value = r[c.key] ?? "";
-                                            const key = c.key;
-
-                                            // Format quote and invoice with prefix for display
-                                            if (key === "quote" && value) {
-                                                value = formatQuote(value);
-                                            }
-                                            if (key === "invNo" && value) {
-                                                value = formatInvoice(value);
-                                            }
-
-                                            if (key === "status") {
-                                                return (
-                                                    <td key={key} className="p-3">
-                                                        <StatusBadge tone={statusTone(value)}>{String(value || "N/A")}</StatusBadge>
-                                                    </td>
-                                                );
-                                            }
-
-                                            // Formatting money columns in table
-                                            const displayValue = (key.toLowerCase().includes("value") && value && !isNaN(value))
-                                                ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                : value || <span className="text-slate-600 italic">...</span>;
-
-                                            return (
-                                                <td key={key} className="p-3 text-slate-200 truncate font-medium">
-                                                    {displayValue}
-                                                </td>
-                                            );
-                                        })}
-
-                                        <td className="p-3 text-[10px] text-slate-500 font-mono">
-                                            {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ""}
-                                        </td>
-
-                                        {/* Actions column - now at the end */}
-                                        <td className="sticky right-0 z-10 bg-[#0f172a] print:bg-white p-2 border-l border-slate-800/70 print:border-gray-300">
-                                            <NeonButton
-                                                variant="cyan"
-                                                className="px-2 py-1 text-[10px] uppercase font-bold print:hidden h-7"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    openEditModal(r);
+                    {/* Drill-Down Job List */}
+                    {drillDownFilter && drillDownFiltered.length > 0 && (
+                        <Card className="mt-6">
+                            <div className="p-4 border-b border-slate-800">
+                                <h3 className="text-lg font-bold text-white">
+                                    {drillDownFiltered.length} Job{drillDownFiltered.length !== 1 ? 's' : ''} - {drillDownFilter.type}: {drillDownFilter.value}
+                                </h3>
+                            </div>
+                            <div className="overflow-auto max-h-[400px]">
+                                <table className="w-full text-sm">
+                                    <thead className="bg-slate-900 border-b border-slate-700 sticky top-0">
+                                        <tr>
+                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Job #</th>
+                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Customer</th>
+                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Type</th>
+                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Status</th>
+                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">PO Value</th>
+                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">PO Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {drillDownFiltered.map(job => (
+                                            <tr
+                                                key={job.id}
+                                                className={`border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer ${statusRowColor(job.status)}`}
+                                                onClick={() => {
+                                                    setSelectedId(job.id);
+                                                    openEditModal(job);
                                                 }}
                                             >
-                                                <Edit2 size={12} /> Edit
-                                            </NeonButton>
+                                                <td className="p-3 text-slate-200 font-mono text-xs">{job.jobNumber}</td>
+                                                <td className="p-3 text-slate-200">{job.customer || 'N/A'}</td>
+                                                <td className="p-3 text-slate-200">{job.type}</td>
+                                                <td className="p-3">
+                                                    <StatusBadge tone={statusTone(job.status)}>{job.status}</StatusBadge>
+                                                </td>
+                                                <td className="p-3 text-slate-200">
+                                                    {job.poValueExGst ? `$${Number(job.poValueExGst).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}
+                                                </td>
+                                                <td className="p-3 text-slate-400 text-xs">
+                                                    {job.poDate || 'N/A'}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </Card>
+                    )}
+                </>
+            )}
+
+            {/* Table View */}
+            {viewMode === "table" && (
+                <Card className="overflow-hidden print:border print:bg-white flex-1">
+                    <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
+                        <table className="w-full text-sm border-collapse">
+                            <thead className="bg-slate-900 border-b border-slate-700 print:bg-white print:border-gray-300 sticky top-0 z-20">
+                                <tr>
+                                    {columns.map((c) => (
+                                        <th
+                                            key={c.key}
+                                            className={`p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:bg-slate-800 select-none ${c.w ?? ""}`}
+                                            onClick={() => handleSort(c.key)}
+                                        >
+                                            <div className="flex items-center gap-1">
+                                                {c.label}
+                                                {sortColumn === c.key && (
+                                                    sortDirection === "asc"
+                                                        ? <ChevronUp size={14} className="text-cyan-400" />
+                                                        : <ChevronDown size={14} className="text-cyan-400" />
+                                                )}
+                                            </div>
+                                        </th>
+                                    ))}
+                                    <th className="p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 w-[120px]">Last Updated</th>
+                                    <th className="sticky right-0 z-10 bg-[#0f172a] p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 border-l border-slate-800/70 w-[100px] print:bg-white">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {filtered.map((r) => {
+                                    const selected = r.id === selectedId;
+                                    return (
+                                        <tr
+                                            key={r.id}
+                                            className={[
+                                                "print:border-gray-300 group border-b border-slate-800/30",
+                                                selected ? "ring-2 ring-cyan-500/50 bg-cyan-500/10" : statusRowColor(r.status),
+                                                "transition-colors",
+                                            ].join(" ")}
+                                            onClick={() => setSelectedId(r.id)}
+                                        >
+                                            {columns.map((c) => {
+                                                let value = r[c.key] ?? "";
+                                                const key = c.key;
+
+                                                // Format quote and invoice with prefix for display
+                                                if (key === "quote" && value) {
+                                                    value = formatQuote(value);
+                                                }
+                                                if (key === "invNo" && value) {
+                                                    value = formatInvoice(value);
+                                                }
+
+                                                if (key === "status") {
+                                                    return (
+                                                        <td key={key} className="p-3">
+                                                            <StatusBadge tone={statusTone(value)}>{String(value || "N/A")}</StatusBadge>
+                                                        </td>
+                                                    );
+                                                }
+
+                                                // Formatting money columns in table
+                                                const displayValue = (key.toLowerCase().includes("value") && value && !isNaN(value))
+                                                    ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                    : value || <span className="text-slate-600 italic">...</span>;
+
+                                                return (
+                                                    <td key={key} className="p-3 text-slate-200 truncate font-medium">
+                                                        {displayValue}
+                                                    </td>
+                                                );
+                                            })}
+
+                                            <td className="p-3 text-[10px] text-slate-500 font-mono">
+                                                {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ""}
+                                            </td>
+
+                                            {/* Actions column - now at the end */}
+                                            <td className="sticky right-0 z-10 bg-[#0f172a] print:bg-white p-2 border-l border-slate-800/70 print:border-gray-300">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    <NeonButton
+                                                        variant="cyan"
+                                                        className="px-3 py-1.5 text-[10px] uppercase font-bold print:hidden relative"
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            openEditModal(r);
+                                                        }}
+                                                    >
+                                                        <Edit2 size={12} /> Edit
+                                                        {r.notes && (
+                                                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center" title="Has notes">
+                                                                <MessageSquare size={10} className="text-slate-900" />
+                                                            </span>
+                                                        )}
+                                                    </NeonButton>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
+
+                                {!filtered.length && (
+                                    <tr>
+                                        <td
+                                            colSpan={columns.length + 2}
+                                            className="p-12 text-center text-slate-500"
+                                        >
+                                            <div className="flex flex-col items-center gap-2">
+                                                <span className="text-4xl">🔍</span>
+                                                <p className="text-lg">No matching records found in database.</p>
+                                            </div>
                                         </td>
                                     </tr>
-                                );
-                            })}
-
-                            {!filtered.length && (
-                                <tr>
-                                    <td
-                                        colSpan={columns.length + 2}
-                                        className="p-12 text-center text-slate-500"
-                                    >
-                                        <div className="flex flex-col items-center gap-2">
-                                            <span className="text-4xl">🔍</span>
-                                            <p className="text-lg">No matching records found in database.</p>
-                                        </div>
-                                    </td>
-                                </tr>
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </Card>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </Card>
+            )}
 
             {/* Edit / Add Modal */}
             <Modal
@@ -872,7 +1119,7 @@ export default function JobSheetPage({ onBack, currentUser }) {
                         <h3 className="text-sm font-bold text-cyan-500 uppercase">Notes & Audit Trail</h3>
                     </div>
                     <div className="col-span-full">
-                        <FormRow label="Add New Note Entry">
+                        <FormRow label="Quick Add Note (Auto-timestamps on save)">
                             <TextInput
                                 value={newNoteEntry}
                                 onChange={e => setNewNoteEntry(e.target.value)}
@@ -881,13 +1128,14 @@ export default function JobSheetPage({ onBack, currentUser }) {
                         </FormRow>
                     </div>
                     <div className="col-span-full mt-2">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Full History</label>
+                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 block">Full Notes (Editable)</label>
                         <TextArea
                             value={formData.notes || ""}
-                            readOnly
-                            className="bg-slate-950/40 text-slate-400 text-xs font-mono opacity-80 h-[120px]"
-                            placeholder="No history yet."
+                            onChange={e => setFormData({ ...formData, notes: e.target.value })}
+                            className="bg-slate-900 text-slate-200 text-xs font-mono h-[150px]"
+                            placeholder="No notes yet. You can add or edit notes here..."
                         />
+                        <p className="text-[10px] text-slate-500 mt-1">You can directly edit, add, or delete notes above. Use the "Quick Add" field to auto-timestamp new entries.</p>
                     </div>
 
                     {/* Danger Zone - only show when editing */}
