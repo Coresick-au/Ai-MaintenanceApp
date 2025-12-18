@@ -369,7 +369,7 @@ export function useQuote() {
     };
 
     const deleteCustomer = async (id: string) => {
-        await deleteGlobalCustomer(id);
+        await deleteGlobal(id);
     };
 
     // Technician Management
@@ -559,6 +559,7 @@ export function useQuote() {
         // Global
         savedQuotes,
         savedCustomers: expandedCustomers, // Use expanded customers with managed sites
+        globalCustomers: customers, // Raw global customers for Customer Portal Management
         savedTechnicians,
         savedDefaultRates,
         activeQuoteId,

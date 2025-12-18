@@ -241,3 +241,41 @@ Ensure correct handling of composite IDs:
 const baseCustomerId = customer.id.includes('__') ? customer.id.split('__')[0] : customer.id;
 const siteId = customer.id.includes('__') ? customer.id.split('__')[1] : null;
 ```
+---
+
+## 11. React Component Remounting / Input Focus Loss
+
+### Symptoms
+- Typing in an input field causes it to lose focus after the first character.
+- The input seems to "reset" or "flash" on every keystroke.
+- Data is updated, but you have to click back into the field to continue typing.
+
+### How to Reproduce
+1. Define a sub-component (like `FormRow`) *inside* the render function of a parent component.
+2. Use that sub-component to wrap an input field.
+3. Type in the input.
+
+### Where to Look
+- Look for component definitions nested inside other components.
+- Check the render function of the page or modal where the issue occurs.
+
+### Root Cause
+React identifies components by their type. When a component is defined inside another, a new "type" function is created on every render of the parent. React sees this as a different component entirely, so it unmounts the old one (losing focus and state) and mounts the "new" one.
+
+### Fix
+Move the sub-component definition outside of the parent component's scope (or use `useMemo`, but moving outside is preferred).
+
+**Example:**
+```javascript
+// DON'T
+function MyPage() {
+  const MyInput = ({ label }) => <input ... />; // ❌ BAD
+  return <MyInput label="Test" />;
+}
+
+// DO
+const MyInput = ({ label }) => <input ... />; // ✅ GOOD
+function MyPage() {
+  return <MyInput label="Test" />;
+}
+```

@@ -1,19 +1,21 @@
-
 import { useState } from 'react';
-import { Trash2, User, UserPlus, Save, Check } from 'lucide-react';
+import { Trash2, User, UserPlus, Save, Check, MapPin, Building2, Layout, Plus } from 'lucide-react';
 import RatesConfig from './RatesConfig';
-import type { Customer, Rates, Contact } from '../types';
+import type { Customer, Rates, Contact, ManagedSite } from '../types';
+// @ts-ignore
+import { useGlobalData } from '../../../context/GlobalDataContext';
 
 interface CustomerDashboardProps {
-    savedCustomers: Customer[];
-    saveCustomer: (customer: Customer) => void;
-    deleteCustomer: (id: string) => void;
+    // Legacy props might still be passed but we prefer global data
+    savedCustomers?: Customer[];
+    saveCustomer?: (customer: Customer) => void;
+    deleteCustomer?: (id: string) => void;
     saveAsDefaults: (rates: Rates) => void;
     resetToDefaults: () => void;
     savedDefaultRates: Rates;
 }
 
-// Customer Logo Component with background toggle
+// ... CustomerLogo ... (Keep existing if possible, or redefine)
 function CustomerLogo({ customer, isSelected }: { customer: Customer; isSelected: boolean }) {
     const backgrounds = ['bg-white', 'bg-gray-200', 'bg-gray-700', 'bg-black'];
     const [bgIndex, setBgIndex] = useState(() => {
@@ -74,9 +76,17 @@ const DEFAULT_RATES: Rates = {
 };
 
 export default function CustomerDashboard({
-    savedCustomers, saveCustomer, deleteCustomer,
     saveAsDefaults, resetToDefaults, savedDefaultRates
 }: CustomerDashboardProps) {
+    const {
+        customers,
+        addCustomer,
+        updateCustomer,
+        deleteCustomer,
+        addManagedSite,
+        deleteManagedSite
+    } = useGlobalData();
+
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
     const [editRates, setEditRates] = useState<Rates>(DEFAULT_RATES);
@@ -84,37 +94,76 @@ export default function CustomerDashboard({
     const [showDefaultRates, setShowDefaultRates] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
+    // Tab State
+    const [activeTab, setActiveTab] = useState<'details' | 'sites'>('details');
+
+    // New Managed Site State
+    const [isAddingSite, setIsAddingSite] = useState(false);
+    const [newSiteName, setNewSiteName] = useState('');
+    const [newSiteLocation, setNewSiteLocation] = useState('');
+
     const handleSelect = (customer: Customer) => {
         setSelectedId(customer.id);
         setEditName(customer.name);
         setEditRates(customer.rates || savedDefaultRates);
         setEditContacts(customer.contacts || []);
         setSaveSuccess(false);
+        setActiveTab('details'); // Reset to details on select
+        setIsAddingSite(false);
     };
 
-    const handleDelete = (id: string) => {
-        if (confirm('Are you sure you want to delete this customer?')) {
-            deleteCustomer(id);
-            if (selectedId === id) {
-                setSelectedId(null);
-            }
+    const handleDelete = async (id: string) => {
+        // deleteCustomer handles confirmation
+        await deleteCustomer(id);
+        if (selectedId === id) {
+            setSelectedId(null);
         }
     };
 
-    const handleSaveRates = () => {
+    const handleAddCustomer = async () => {
+        const name = prompt("Enter new customer name:");
+        if (name && name.trim()) {
+            await addCustomer({
+                name: name.trim(),
+                rates: savedDefaultRates,
+                contacts: [],
+                managedSites: []
+            });
+            // Auto-select is tricky without finding the object, but customers list updates automatically
+        }
+    };
+
+    const handleSaveRates = async () => {
         if (!selectedId) return;
 
-        const customer = savedCustomers.find(c => c.id === selectedId);
+        const customer = customers.find((c: Customer) => c.id === selectedId);
         if (!customer) return;
 
-        saveCustomer({
-            ...customer,
+        await updateCustomer(selectedId, {
             rates: editRates
         });
 
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
     };
+
+    const handleAddNewSite = async () => {
+        if (!selectedId || !newSiteName.trim()) return;
+
+        const siteData: Partial<ManagedSite> = {
+            name: newSiteName.trim(),
+            location: newSiteLocation.trim(),
+            contacts: [], // Can inherit or be empty
+            isLocked: false,
+        };
+
+        await addManagedSite(selectedId, siteData);
+        setNewSiteName('');
+        setNewSiteLocation('');
+        setIsAddingSite(false);
+    };
+
+    const selectedCustomer = customers.find((c: Customer) => c.id === selectedId);
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
@@ -123,18 +172,18 @@ export default function CustomerDashboard({
                 <div className="p-4 border-b border-gray-600 flex justify-between items-center">
                     <h2 className="font-semibold text-slate-200">Customers</h2>
                     <button
-                        disabled
-                        className="bg-gray-600 text-slate-400 p-2 rounded cursor-not-allowed opacity-50 text-xl font-bold"
-                        title="Create customers in the Customer Portal"
+                        onClick={handleAddCustomer}
+                        className="bg-primary-600 hover:bg-primary-500 text-white p-2 rounded transition-colors"
+                        title="Add New Customer"
                     >
-                        +
+                        <UserPlus size={16} />
                     </button>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {savedCustomers.length === 0 && (
+                    {customers.length === 0 && (
                         <p className="text-center text-slate-400 py-4 text-sm">No customers yet.</p>
                     )}
-                    {savedCustomers.map(c => (
+                    {(customers as Customer[]).map(c => (
                         <div
                             key={c.id}
                             onClick={() => handleSelect(c)}
@@ -157,175 +206,212 @@ export default function CustomerDashboard({
 
             {/* Editor */}
             <div className="lg:col-span-2 flex flex-col gap-4 overflow-y-auto">
-                {/* Toggle Default Rates */}
-                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700">
-                    <button
-                        onClick={() => setShowDefaultRates(!showDefaultRates)}
-                        className="w-full bg-gray-700 text-white px-4 py-2 rounded hover:bg-gray-600 transition-colors flex items-center justify-center gap-2 font-medium"
-                    >
-                        {showDefaultRates ? 'Hide' : 'Show'} Default Rates
-                    </button>
-                </div>
 
-                {/* Dedicated Default Rates Management */}
-                {showDefaultRates && (
-                    <div className="bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-700">
-                        <div className="mb-4">
-                            <h2 className="text-lg font-semibold text-slate-200 mb-2">Default Rates Management</h2>
-                            <p className="text-sm text-slate-400">Configure system-wide default rates for new customers</p>
-                        </div>
-                        <RatesConfig
-                            rates={savedDefaultRates}
-                            setRates={saveAsDefaults}
-                            saveAsDefaults={saveAsDefaults}
-                            resetToDefaults={resetToDefaults}
-                        />
+                {!selectedId ? (
+                    <div className="flex-1 flex items-center justify-center text-slate-400 bg-gray-700 rounded-lg border-2 border-dashed border-gray-600">
+                        <p>Select a customer to edit details and managed sites</p>
                     </div>
-                )}
-
-                {/* Customer-Specific Editor (Conditional) */}
-                {selectedId ? (
+                ) : (
                     <>
+                        {/* Header Card */}
                         <div className="bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-700">
-                            {/* Header */}
-                            <div className="mb-6 pb-4 border-b border-gray-600">
-                                <h2 className="text-2xl font-bold text-slate-100 mb-1">Customer Details</h2>
-                                <p className="text-sm text-slate-400">All customer information is managed in the Customer Portal</p>
-                            </div>
+                            {/* Header & Tabs */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-bold text-slate-100">{editName}</h2>
+                                    <p className="text-sm text-slate-400">Manage customer details and sites</p>
+                                </div>
 
-                            {/* Customer Name */}
-                            <div className="mb-6">
-                                <label className="block text-xs uppercase tracking-wide text-slate-500 mb-2">Customer Name</label>
-                                <div className="text-3xl font-bold text-slate-100">
-                                    {editName}
+                                {/* Tabs */}
+                                <div className="flex bg-gray-700 p-1 rounded-lg">
+                                    <button
+                                        onClick={() => setActiveTab('details')}
+                                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'details' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-300 hover:bg-gray-600'}`}
+                                    >
+                                        Customer Details
+                                    </button>
+                                    <button
+                                        onClick={() => setActiveTab('sites')}
+                                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'sites' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-300 hover:bg-gray-600'}`}
+                                    >
+                                        Managed Sites
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Contacts and Rate Notes Section */}
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            {/* CONTENT: CUSTOMER DETAILS */}
+                            {activeTab === 'details' && (
+                                <div className="animate-fade-in">
+                                    {/* Default Rates Toggle */}
+                                    <div className="mb-6 flex justify-end">
+                                        <button
+                                            onClick={() => setShowDefaultRates(!showDefaultRates)}
+                                            className="text-xs text-primary-400 hover:text-primary-300 underline"
+                                        >
+                                            {showDefaultRates ? 'Hide' : 'Configure'} Default System Rates
+                                        </button>
+                                    </div>
 
-                                {/* Contacts Display (Read-Only) */}
-                                <div>
-                                    <label className="block text-sm text-slate-300 mb-2 flex items-center gap-2">
-                                        <UserPlus size={16} /> Main Quote Contacts
-                                    </label>
-
-                                    {/* Contacts List - Easy to Copy */}
-                                    {editContacts.length === 0 ? (
-                                        <div className="bg-gray-700/50 p-4 rounded border border-gray-600 text-center text-slate-400 text-sm">
-                                            No contacts added yet
+                                    {showDefaultRates && (
+                                        <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 mb-6">
+                                            <h3 className="text-sm font-bold text-slate-200 mb-2">Default Global Rates</h3>
+                                            <RatesConfig
+                                                rates={savedDefaultRates}
+                                                setRates={saveAsDefaults}
+                                                saveAsDefaults={saveAsDefaults}
+                                                resetToDefaults={resetToDefaults}
+                                            />
                                         </div>
-                                    ) : (
-                                        <div className="space-y-3">
-                                            {editContacts.map((contact, index) => (
-                                                <div
-                                                    key={index}
-                                                    className="bg-gray-800/50 p-3 rounded-lg"
-                                                >
-                                                    <div className="text-sm font-bold text-slate-100 mb-2">{contact.name}</div>
-                                                    {contact.phone && (
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="text-xs">📞</span>
-                                                            <div
-                                                                className="text-xs text-slate-300 font-mono select-all cursor-pointer hover:bg-gray-600/50 rounded px-1 py-0.5 break-all flex-1"
-                                                                title="Click to select and copy"
-                                                            >
-                                                                {contact.phone}
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                    {contact.email && (
-                                                        <div className="flex items-center gap-1">
-                                                            <span className="text-xs">✉️</span>
-                                                            <div
-                                                                className="text-xs text-slate-300 font-mono select-all cursor-pointer hover:bg-gray-600/50 rounded px-1 py-0.5 break-all flex-1"
-                                                                title="Click to select and copy"
-                                                            >
-                                                                {contact.email}
-                                                            </div>
-                                                        </div>
-                                                    )}
+                                    )}
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                                        {/* Contacts */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                                                <UserPlus size={16} /> Main Contacts
+                                            </label>
+                                            <div className="bg-gray-700/30 p-4 rounded border border-gray-600 min-h-[100px]">
+                                                {editContacts.length === 0 ? (
+                                                    <p className="text-sm text-slate-500 text-center italic mt-4">No contacts added.</p>
+                                                ) : (
+                                                    <ul className="space-y-2">
+                                                        {editContacts.map((c, i) => (
+                                                            <li key={i} className="text-sm text-slate-300 bg-gray-800 p-2 rounded flex justify-between">
+                                                                <span>{c.name}</span>
+                                                                <span className="text-slate-500">{c.phone}</span>
+                                                            </li>
+                                                        ))}
+                                                    </ul>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Intro / Notes */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-2">Customer Notes</label>
+                                            <textarea
+                                                className="w-full h-[100px] bg-gray-700/50 border border-gray-600 rounded p-2 text-sm text-slate-200 resize-none"
+                                                value={selectedCustomer?.customerNotes || ''}
+                                                onChange={(e) => updateCustomer(selectedId!, { customerNotes: e.target.value })}
+                                                placeholder="Enter notes about this customer..."
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Rates Config */}
+                                    <div className="border-t border-gray-600 pt-6">
+                                        <h3 className="text-lg font-semibold text-slate-200 mb-4">Customer Specific Rates</h3>
+                                        <RatesConfig
+                                            rates={editRates}
+                                            setRates={setEditRates}
+                                            saveAsDefaults={saveAsDefaults}
+                                            resetToDefaults={() => setEditRates(savedDefaultRates)}
+                                        />
+                                        <div className="mt-6">
+                                            <button
+                                                onClick={handleSaveRates}
+                                                className={`w-full py-3 rounded-lg font-bold text-white transition-colors flex items-center justify-center gap-2 ${saveSuccess ? 'bg-green-600' : 'bg-primary-600 hover:bg-primary-500'}`}
+                                            >
+                                                {saveSuccess ? <><Check size={18} /> Saved!</> : <><Save size={18} /> Save Customer Details</>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* CONTENT: MANAGED SITES */}
+                            {activeTab === 'sites' && (
+                                <div className="animate-fade-in">
+                                    <div className="flex justify-between items-center mb-4">
+                                        <h3 className="text-lg font-semibold text-slate-200">Managed Sites</h3>
+                                        <button
+                                            onClick={() => setIsAddingSite(!isAddingSite)}
+                                            className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2"
+                                        >
+                                            <Plus size={16} /> Add Site
+                                        </button>
+                                    </div>
+
+                                    {isAddingSite && (
+                                        <div className="bg-gray-700 p-4 rounded-lg border border-gray-600 mb-4 animate-slide-down">
+                                            <h4 className="text-sm font-bold text-cyan-400 mb-3 uppercase">New Site Details</h4>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">Site Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white"
+                                                        placeholder="e.g. Banyo Processing Plant"
+                                                        value={newSiteName}
+                                                        onChange={e => setNewSiteName(e.target.value)}
+                                                    />
                                                 </div>
-                                            ))}
+                                                <div>
+                                                    <label className="text-xs text-slate-400 block mb-1">Location / Address</label>
+                                                    <input
+                                                        type="text"
+                                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white"
+                                                        placeholder="e.g. 192 Granite St, Geebung"
+                                                        value={newSiteLocation}
+                                                        onChange={e => setNewSiteLocation(e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-end gap-2">
+                                                <button
+                                                    onClick={() => setIsAddingSite(false)}
+                                                    className="px-3 py-1.5 text-slate-400 hover:text-white"
+                                                >
+                                                    Cancel
+                                                </button>
+                                                <button
+                                                    onClick={handleAddNewSite}
+                                                    disabled={!newSiteName.trim()}
+                                                    className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-4 py-1.5 rounded font-medium"
+                                                >
+                                                    Create Site
+                                                </button>
+                                            </div>
                                         </div>
                                     )}
+
+                                    <div className="space-y-3">
+                                        {(selectedCustomer?.managedSites || []).length === 0 ? (
+                                            <div className="text-center py-8 text-slate-500 bg-gray-900/30 rounded border border-gray-700 border-dashed">
+                                                <Building2 size={32} className="mx-auto mb-2 opacity-50" />
+                                                <p>No managed sites found for {selectedCustomer?.name}</p>
+                                                <p className="text-xs mt-1">Add sites to track maintenance data and generate specific quotes</p>
+                                            </div>
+                                        ) : (
+                                            (selectedCustomer?.managedSites || []).map((site: ManagedSite) => (
+                                                <div key={site.id} className="bg-gray-700/30 border border-gray-600 p-4 rounded flex justify-between items-start group hover:bg-gray-700/50 transition-colors">
+                                                    <div>
+                                                        <div className="flex items-center gap-2 mb-1">
+                                                            <h4 className="font-bold text-slate-200 text-lg">{site.name}</h4>
+                                                            {site.isLocked && <span className="text-xs bg-red-900/50 text-red-200 px-1.5 py-0.5 rounded">LOCKED</span>}
+                                                        </div>
+                                                        <div className="flex items-center gap-4 text-sm text-slate-400">
+                                                            <span className="flex items-center gap-1"><MapPin size={14} /> {site.location || 'No location set'}</span>
+                                                            <span className="flex items-center gap-1"><Layout size={14} /> {site.rates ? 'Custom Rates' : 'Default/Customer Rates'}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => deleteManagedSite(selectedId!, site.id)}
+                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-gray-600 rounded transition-colors"
+                                                            title="Delete Site"
+                                                        >
+                                                            <Trash2 size={16} />
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))
+                                        )}
+                                    </div>
                                 </div>
-
-                                {/* Customer Notes */}
-                                <div>
-                                    <label className="block text-sm text-slate-300 mb-1">
-                                        Customer Notes
-                                    </label>
-                                    <textarea
-                                        rows={4}
-                                        value={savedCustomers.find(c => c.id === selectedId)?.customerNotes || ''}
-                                        onChange={(e) => {
-                                            const updatedCustomer = savedCustomers.find(c => c.id === selectedId);
-                                            if (updatedCustomer && !updatedCustomer.isLocked) {
-                                                saveCustomer({ ...updatedCustomer, customerNotes: e.target.value });
-                                            }
-                                        }}
-                                        disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
-                                        className={`w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:border-primary-500 focus:ring-1 focus:ring-primary-500 outline-none resize-none ${savedCustomers.find(c => c.id === selectedId)?.isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                                        placeholder="1. Special billing requirements&#10;2. Contact preferences&#10;3. Payment terms"
-                                    />
-                                    <p className="text-xs text-cyan-400 mt-2 flex items-center gap-1">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                            <circle cx="12" cy="12" r="10"></circle>
-                                            <path d="M12 16v-4"></path>
-                                            <path d="M12 8h.01"></path>
-                                        </svg>
-                                        Notes appear under the Customer dropdown in Job Details (small cyan text with 📝 icon)
-                                    </p>
-                                </div>
-                            </div>
-
-                        </div>
-
-                        <div className="bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-700">
-                            <div className="mb-4">
-                                <h3 className="text-lg font-semibold text-slate-200">Customer-Specific Rates</h3>
-                                <p className="text-sm text-slate-400">Override default rates for this specific customer</p>
-                            </div>
-                            <RatesConfig
-                                rates={editRates}
-                                setRates={setEditRates}
-                                saveAsDefaults={saveAsDefaults}
-                                resetToDefaults={() => setEditRates(savedDefaultRates)}
-                            />
-
-                            {/* Save Button */}
-                            <div className="mt-6 pt-6 border-t border-gray-600">
-                                <button
-                                    onClick={handleSaveRates}
-                                    disabled={savedCustomers.find(c => c.id === selectedId)?.isLocked}
-                                    className={`w-full px-6 py-3 rounded-lg font-semibold text-white flex items-center justify-center gap-2 transition-all ${saveSuccess
-                                        ? 'bg-green-600 hover:bg-green-700'
-                                        : 'bg-primary-600 hover:bg-primary-700'
-                                        } disabled:opacity-50 disabled:cursor-not-allowed`}
-                                >
-                                    {saveSuccess ? (
-                                        <>
-                                            <Check size={20} />
-                                            Rates Saved Successfully!
-                                        </>
-                                    ) : (
-                                        <>
-                                            <Save size={20} />
-                                            Save Customer Rates
-                                        </>
-                                    )}
-                                </button>
-                                <p className="text-xs text-slate-400 mt-2 text-center">
-                                    Changes will be saved to this customer's profile and applied to future quotes
-                                </p>
-                            </div>
+                            )}
                         </div>
                     </>
-                ) : (
-                    <div className="flex-1 flex items-center justify-center text-slate-400 bg-gray-700 rounded-lg border-2 border-dashed border-gray-600">
-                        <p>Select a customer to edit their specific rates</p>
-                    </div>
                 )}
             </div>
         </div>

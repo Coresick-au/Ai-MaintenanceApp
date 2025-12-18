@@ -8,6 +8,7 @@ import { InventoryApp } from './apps/InventoryApp';
 import { QuotingWrapper } from './apps/quoting/QuotingWrapper';
 import { CustomerApp } from './apps/CustomerPortal/CustomerApp';
 import { EmployeeApp } from './apps/employees/EmployeeApp';
+import JobSheetPage from './pages/JobSheetPage';
 
 const Portal = () => {
     const { currentUser, userRole, logout } = useAuth();
@@ -72,6 +73,17 @@ const Portal = () => {
             component: <QuotingWrapper onBack={() => setActiveApp(null)} />,
             // PERMISSION: Admin or Manager only
             restricted: !['admin', 'manager'].includes(userRole)
+        },
+        {
+            id: 'jobsheet',
+            name: 'Job Sheet',
+            fullName: 'Job Tracking System',
+            description: 'Track jobs, POs, invoices, and parts orders in a spreadsheet-style view.',
+            icon: '📋',
+            color: 'sky',
+            component: <JobSheetPage onBack={() => setActiveApp(null)} currentUser={currentUser} userRole={userRole} />,
+            // PERMISSION: Admin only
+            restricted: userRole !== 'admin'
         }
     ];
 
