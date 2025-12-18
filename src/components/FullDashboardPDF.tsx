@@ -1,5 +1,5 @@
 import React from 'react';
-import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer';
 
 // Asset interface for TypeScript
 interface Asset {
@@ -24,23 +24,24 @@ interface SiteData {
 interface FullDashboardPDFProps {
   site: SiteData;
   generatedDate: string;
+  reportType?: 'service' | 'roller' | 'full';
 }
 
-// Dark theme color palette (matching the app UI)
+// Light theme color palette (matching the preview - print friendly)
 const colors = {
-  pageBg: '#0f172a',       // slate-900
-  cardBg: '#1e293b',       // slate-800
-  borderColor: '#334155',  // slate-700
-  textPrimary: '#f1f5f9',  // slate-100
-  textSecondary: '#94a3b8', // slate-400
-  textMuted: '#64748b',    // slate-500
-  critical: '#ef4444',     // red-500
-  criticalBg: '#7f1d1d',   // red-900
-  warning: '#f59e0b',      // amber-500
-  warningBg: '#78350f',    // amber-900
-  healthy: '#10b981',      // emerald-500
-  healthyBg: '#064e3b',    // emerald-900
-  accent: '#06b6d4',       // cyan-500
+  pageBg: '#ffffff',       // white
+  cardBg: '#f9fafb',       // gray-50
+  borderColor: '#d1d5db',  // gray-300
+  textPrimary: '#000000',  // black
+  textSecondary: '#000000', // black
+  textMuted: '#6b7280',    // gray-500
+  critical: '#dc2626',     // red-600
+  criticalBg: '#fef2f2',   // red-50
+  warning: '#d97706',      // amber-600
+  warningBg: '#fffbeb',    // amber-50
+  healthy: '#16a34a',      // green-600
+  healthyBg: '#f0fdf4',    // green-50
+  accent: '#000000',       // black (for headers/titles)
 };
 
 const styles = StyleSheet.create({
@@ -211,6 +212,86 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: 'bold',
   },
+  // Dashboard Summary styles
+  dashboardSummaryContainer: {
+    marginBottom: 20,
+  },
+  dashboardSummaryTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#000000',
+    borderBottomWidth: 1,
+    borderBottomColor: '#d1d5db',
+    paddingBottom: 8,
+    marginBottom: 12,
+  },
+  healthBarContainer: {
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 6,
+    backgroundColor: '#ffffff',
+    marginTop: 12,
+  },
+  healthBarHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  healthBarLabel: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    color: '#6b7280',
+    textTransform: 'uppercase',
+  },
+  healthBarLegend: {
+    flexDirection: 'row',
+  },
+  healthBarLegendItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 8,
+  },
+  healthDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+  },
+  healthPercentText: {
+    fontSize: 8,
+    fontWeight: 'bold',
+    marginLeft: 3,
+  },
+  healthBarOuter: {
+    height: 10,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 5,
+    flexDirection: 'row',
+    overflow: 'hidden',
+  },
+  healthBarCritical: {
+    backgroundColor: '#ef4444',
+  },
+  healthBarWarning: {
+    backgroundColor: '#f59e0b',
+  },
+  healthBarHealthy: {
+    backgroundColor: '#22c55e',
+  },
+  healthBarFooter: {
+    marginTop: 8,
+    alignItems: 'center',
+  },
+  healthBarFooterText: {
+    fontSize: 10,
+    color: '#dc2626',
+    fontWeight: 'bold',
+  },
+  healthBarFooterSubtext: {
+    fontSize: 8,
+    color: '#6b7280',
+  },
 });
 
 const getStatusStyle = (asset: Asset) => {
@@ -249,7 +330,7 @@ const SectionStatsCards = ({ stats, label }: { stats: ReturnType<typeof calculat
       <Text style={[styles.statsValue, { color: colors.textPrimary }]}>{stats.total}</Text>
     </View>
     <View style={[styles.statsBox, { borderColor: colors.critical, backgroundColor: colors.criticalBg }]}>
-      <Text style={[styles.statsTitle, { color: colors.critical }]}>Critical</Text>
+      <Text style={[styles.statsTitle, { color: colors.critical }]}>Overdue</Text>
       <Text style={[styles.statsValue, { color: colors.critical }]}>{stats.critical}</Text>
     </View>
     <View style={[styles.statsBox, { borderColor: colors.warning, backgroundColor: colors.warningBg }]}>
@@ -265,32 +346,105 @@ const SectionStatsCards = ({ stats, label }: { stats: ReturnType<typeof calculat
 
 export const FullDashboardPDF: React.FC<FullDashboardPDFProps> = ({
   site,
-  generatedDate
+  generatedDate,
+  reportType = 'full'
 }) => {
   // Calculate separate stats for each section
   const serviceStats = calculateStats(site.serviceData);
   const rollerStats = calculateStats(site.rollerData);
+
+  // Dynamic title based on report type
+  const getTitle = () => {
+    if (reportType === 'service') return 'SERVICE EQUIPMENT DASHBOARD';
+    if (reportType === 'roller') return 'ROLLER EQUIPMENT DASHBOARD';
+    return 'FULL DASHBOARD REPORT';
+  };
 
   return (
     <Document>
       <Page size="A4" style={styles.page}>
         {/* Header */}
         <View style={styles.header}>
-          <Image
-            src="/logos/ai-logo.png"
-            style={styles.logo}
-          />
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>FULL DASHBOARD REPORT</Text>
-            <Text style={[styles.subtitle, { color: colors.accent }]}>| {site.customer}</Text>
+            <Text style={styles.title}>{getTitle()}</Text>
+            {site.customer ? (
+              <Text style={[styles.subtitle, { color: colors.accent }]}>{site.customer}</Text>
+            ) : null}
           </View>
         </View>
 
         {/* Site Information */}
         <View style={styles.siteInfoBox}>
-          <Text style={styles.siteInfoText}>📍 {site.location}</Text>
+          <Text style={styles.siteInfoText}>{site.location}</Text>
           <Text style={styles.siteInfoText}>Generated: {generatedDate}</Text>
         </View>
+
+        {/* Dashboard Summary Section - Only show for full reports */}
+        {reportType === 'full' && (() => {
+          const allAssets = [...(site.serviceData || []), ...(site.rollerData || [])].filter(a => a.active !== false);
+          const totalAssets = allAssets.length;
+          const criticalCount = allAssets.filter(a => a.remaining < 0).length;
+          const dueSoonCount = allAssets.filter(a => a.remaining >= 0 && a.remaining < 30).length;
+          const healthyCount = allAssets.filter(a => a.remaining >= 30).length;
+          const criticalPct = totalAssets > 0 ? Math.round((criticalCount / totalAssets) * 100) : 0;
+          const dueSoonPct = totalAssets > 0 ? Math.round((dueSoonCount / totalAssets) * 100) : 0;
+          const healthyPct = totalAssets > 0 ? Math.round((healthyCount / totalAssets) * 100) : 0;
+
+          return (
+            <View style={styles.dashboardSummaryContainer}>
+              <Text style={styles.dashboardSummaryTitle}>Dashboard Summary</Text>
+
+              {/* Stats Cards */}
+              <View style={styles.statsContainer}>
+                <View style={[styles.statsBox, { borderColor: colors.borderColor, backgroundColor: colors.cardBg }]}>
+                  <Text style={[styles.statsTitle, { color: colors.textMuted }]}>Total Assets</Text>
+                  <Text style={[styles.statsValue, { color: colors.textPrimary }]}>{totalAssets}</Text>
+                </View>
+                <View style={[styles.statsBox, { borderColor: colors.borderColor, backgroundColor: colors.criticalBg }]}>
+                  <Text style={[styles.statsTitle, { color: colors.critical }]}>Overdue</Text>
+                  <Text style={[styles.statsValue, { color: colors.critical }]}>{criticalCount}</Text>
+                </View>
+                <View style={[styles.statsBox, { borderColor: colors.borderColor, backgroundColor: colors.warningBg }]}>
+                  <Text style={[styles.statsTitle, { color: colors.warning }]}>Due Soon</Text>
+                  <Text style={[styles.statsValue, { color: colors.warning }]}>{dueSoonCount}</Text>
+                </View>
+                <View style={[styles.statsBox, styles.statsBoxLast, { borderColor: colors.borderColor, backgroundColor: colors.healthyBg }]}>
+                  <Text style={[styles.statsTitle, { color: colors.healthy }]}>Healthy</Text>
+                  <Text style={[styles.statsValue, { color: colors.healthy }]}>{healthyCount}</Text>
+                </View>
+              </View>
+
+              {/* Overall Health Bar */}
+              <View style={styles.healthBarContainer}>
+                <View style={styles.healthBarHeader}>
+                  <Text style={styles.healthBarLabel}>Overall Health</Text>
+                  <View style={styles.healthBarLegend}>
+                    <View style={styles.healthBarLegendItem}>
+                      <View style={[styles.healthDot, { backgroundColor: '#ef4444' }]} />
+                      <Text style={[styles.healthPercentText, { color: '#dc2626' }]}>{criticalPct}%</Text>
+                    </View>
+                    <View style={styles.healthBarLegendItem}>
+                      <View style={[styles.healthDot, { backgroundColor: '#f59e0b' }]} />
+                      <Text style={[styles.healthPercentText, { color: '#d97706' }]}>{dueSoonPct}%</Text>
+                    </View>
+                    <View style={styles.healthBarLegendItem}>
+                      <View style={[styles.healthDot, { backgroundColor: '#22c55e' }]} />
+                      <Text style={[styles.healthPercentText, { color: '#16a34a' }]}>{healthyPct}%</Text>
+                    </View>
+                  </View>
+                </View>
+                <View style={styles.healthBarOuter}>
+                  {criticalPct > 0 && <View style={[styles.healthBarCritical, { flex: criticalPct }]} />}
+                  {dueSoonPct > 0 && <View style={[styles.healthBarWarning, { flex: dueSoonPct }]} />}
+                  {healthyPct > 0 && <View style={[styles.healthBarHealthy, { flex: healthyPct }]} />}
+                </View>
+                <View style={styles.healthBarFooter}>
+                  <Text style={styles.healthBarFooterText}>{criticalPct}% Overdue <Text style={styles.healthBarFooterSubtext}>({criticalCount} assets)</Text></Text>
+                </View>
+              </View>
+            </View>
+          );
+        })()}
 
         {/* Service Equipment Section */}
         {site.serviceData && site.serviceData.length > 0 && (

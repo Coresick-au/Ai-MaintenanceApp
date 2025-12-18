@@ -93,12 +93,12 @@ export const CustomerReportModal = ({
             ['Total Service Equipment', sortedService.length],
             ['Total Roller Equipment', sortedRoller.length],
             ['Total Assets', countUniqueAssets(serviceData, rollerData)],
-            ['Critical (Overdue)', [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length],
+            ['Overdue', [...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length],
             ['Due Soon (0-30 days)', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length],
             ['Operational', [...sortedService, ...sortedRoller].filter(i => i.remaining >= 30).length],
             [''],
             ['Health Distribution'],
-            ['Critical Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%'],
+            ['Overdue Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining < 0).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%'],
             ['Warning Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%'],
             ['Healthy Percentage', Math.round((([...sortedService, ...sortedRoller].filter(i => i.remaining >= 30).length / (sortedService.length + sortedRoller.length)) * 100) || 0) + '%']
         ];
@@ -202,7 +202,7 @@ export const CustomerReportModal = ({
         // === SHEET 5: CRITICAL ASSETS ALERT ===
         const criticalAssets = [...sortedService, ...sortedRoller].filter(i => i.remaining < 0 || i.opStatus === 'Down');
         const criticalData = [
-            ['CRITICAL ASSETS - IMMEDIATE ATTENTION REQUIRED'],
+            ['OVERDUE ASSETS - IMMEDIATE ATTENTION REQUIRED'],
             [''],
             ['Asset Name', 'Code', 'Type', 'Days Overdue', 'Operational Status', 'Operational Notes', 'Last Service', 'Due Date', 'Weigher ID']
         ];
@@ -222,7 +222,7 @@ export const CustomerReportModal = ({
         });
 
         const criticalWs = XLSX.utils.aoa_to_sheet(criticalData);
-        XLSX.utils.book_append_sheet(wb, criticalWs, 'Critical Assets');
+        XLSX.utils.book_append_sheet(wb, criticalWs, 'Overdue Assets');
 
         // === SHEET 6: DUE SOON ASSETS ===
         const dueSoonAssets = [...sortedService, ...sortedRoller].filter(i => i.remaining >= 0 && i.remaining < 30);
@@ -255,14 +255,14 @@ export const CustomerReportModal = ({
 
     // Helper for operational status text
     const getStatusText = (opStatus) => {
-        if (opStatus === 'Down') return 'DOWN/CRITICAL';
+        if (opStatus === 'Down') return 'DOWN/OVERDUE';
         if (opStatus === 'Warning') return 'WARNING';
         return 'OPERATIONAL';
     };
 
     // Helper for preview status text and color (STRICTLY OPERATION STATUS)
     const getPreviewStatus = (item) => {
-        if (item.opStatus === 'Down') return 'DOWN/CRITICAL';
+        if (item.opStatus === 'Down') return 'DOWN/OVERDUE';
         if (item.opStatus === 'Warning') return 'WARNING';
         return 'OPERATIONAL';
     };
@@ -308,7 +308,6 @@ export const CustomerReportModal = ({
                                 <h1 className="text-3xl font-black uppercase tracking-wider text-black mb-1">Maintenance Report</h1>
                                 <div className="text-black font-medium">{site.customer} | {site.name}</div>
                                 <div className="text-sm text-black mt-1">
-                                    <span>📍 </span>
                                     {site.location}
                                 </div>
                             </div>
@@ -340,7 +339,7 @@ export const CustomerReportModal = ({
                                             <div className="text-2xl font-bold text-black">{totalAssets}</div>
                                         </div>
                                         <div className="p-4 border border-gray-300 rounded bg-white">
-                                            <div className="text-xs font-bold text-black uppercase">Critical Attention</div>
+                                            <div className="text-xs font-bold text-black uppercase">Overdue Attention</div>
                                             <div className="text-2xl font-bold text-red-600">{criticalCount}</div>
                                         </div>
                                         <div className="p-4 border border-gray-300 rounded bg-white">
@@ -364,7 +363,7 @@ export const CustomerReportModal = ({
                                             <div className="bg-green-500 transition-all duration-500" style={{ width: `${healthyPct}%` }}></div>
                                         </div>
                                         <div className="mt-2 text-center text-xs text-gray-400">
-                                            <span className="font-bold text-red-600 text-sm">{criticalPct}% Critical</span> ({criticalCount} assets)
+                                            <span className="font-bold text-red-600 text-sm">{criticalPct}% Overdue</span> ({criticalCount} assets)
                                         </div>
                                     </div>
                                 </section>

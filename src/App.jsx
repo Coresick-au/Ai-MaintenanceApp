@@ -1725,69 +1725,13 @@ export function App() {
             {activeTab !== 'issues' && (
               <div className="w-full space-y-6">
 
-                {/* ===== TOP ROW: Critical/Overdue + Due Soon + Healthy (Left) + Maintenance Calendar (Right) ===== */}
+                {/* ===== TOP ROW: Maintenance Calendar (Full Width) ===== */}
                 <section
-                  aria-label="Overview Statistics and Maintenance Calendar"
-                  className="grid grid-cols-1 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                  aria-label="Maintenance Calendar"
+                  className="w-full"
                 >
-                  {/* Asset Analytics - KPI Cards (1/3 or 1/4 width) */}
-                  <div className="lg:col-span-1 flex">
-                    <div className="flex flex-col gap-3 no-print w-full">
-                      {/* Critical / Overdue */}
-                      <div
-                        onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
-                        className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'overdue'
-                          ? 'bg-red-600/30 border-2 border-red-500 ring-2 ring-red-500/50'
-                          : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-red-500/50'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <Icons.AlertTriangle className="text-red-400" size={20} />
-                          <span className={`text-2xl font-bold ${filterStatus === 'overdue' ? 'text-white' : 'text-slate-200'}`}>{stats.overdue}</span>
-                        </div>
-                        <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'overdue' ? 'text-red-100' : 'text-slate-400'}`}>
-                          Critical (Overdue)
-                        </div>
-                      </div>
-
-                      {/* Due Soon */}
-                      <div
-                        onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
-                        className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'dueSoon'
-                          ? 'bg-amber-500/30 border-2 border-amber-500 ring-2 ring-amber-500/50'
-                          : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-amber-500/50'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <Icons.Clock className="text-amber-400" size={20} />
-                          <span className={`text-2xl font-bold ${filterStatus === 'dueSoon' ? 'text-white' : 'text-slate-200'}`}>{stats.dueSoon}</span>
-                        </div>
-                        <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'dueSoon' ? 'text-amber-100' : 'text-slate-400'}`}>
-                          Due Soon
-                        </div>
-                      </div>
-
-                      {/* Healthy */}
-                      <div
-                        onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
-                        className={`cursor-pointer transition-all duration-200 rounded-xl p-4 shadow-md flex-1 ${filterStatus === 'healthy'
-                          ? 'bg-emerald-500/30 border-2 border-emerald-500 ring-2 ring-emerald-500/50'
-                          : 'bg-slate-800/80 border border-slate-700 hover:bg-slate-700/80 hover:border-emerald-500/50'
-                          }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <Icons.CheckCircle className="text-emerald-400" size={20} />
-                          <span className={`text-2xl font-bold ${filterStatus === 'healthy' ? 'text-white' : 'text-slate-200'}`}>{stats.total - stats.overdue - stats.dueSoon}</span>
-                        </div>
-                        <div className={`text-xs font-semibold uppercase tracking-wide ${filterStatus === 'healthy' ? 'text-emerald-100' : 'text-slate-400'}`}>
-                          Healthy
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Maintenance Calendar (2/3 or 3/4 width) */}
-                  <div className="lg:col-span-2 xl:col-span-3 h-full">
+                  {/* Maintenance Calendar (Full Width) */}
+                  <div className="w-full h-full">
                     {expandedSection === 'calendar' ? (
                       <FullScreenContainer title="Maintenance Calendar" id="calendar" onClose={() => setExpandedSection(null)} className="bg-slate-900">
                         <CalendarWidget
@@ -1876,21 +1820,41 @@ export function App() {
                       </div>
                       {/* Equipment Type Stats */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
-                          <div className="text-xs font-bold text-black uppercase">{activeTab === 'service' ? 'Service' : 'Roller'} Equipment</div>
-                          <div className="text-2xl font-bold text-black">{activeTab === 'service' ? serviceStats.total : rollerStats.total}</div>
+                        <div
+                          onClick={() => { setFilterStatus('all'); setSelectedRowIds(new Set()); }}
+                          className={`p-4 border rounded cursor-pointer transition-all duration-200 ${filterStatus === 'all'
+                            ? 'border-slate-400 bg-slate-700 ring-2 ring-slate-400/50'
+                            : 'border-slate-700 bg-slate-800 hover:bg-slate-700'}`}
+                        >
+                          <div className="text-xs font-bold text-slate-400 uppercase">{activeTab === 'service' ? 'Service' : 'Roller'} Equipment</div>
+                          <div className="text-2xl font-bold text-slate-200">{activeTab === 'service' ? serviceStats.total : rollerStats.total}</div>
                         </div>
-                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
-                          <div className="text-xs font-bold text-red-600 uppercase">Critical</div>
-                          <div className="text-2xl font-bold text-red-600">{activeTab === 'service' ? serviceStats.critical : rollerStats.critical}</div>
+                        <div
+                          onClick={() => { setFilterStatus('overdue'); setSelectedRowIds(new Set()); }}
+                          className={`p-4 border rounded cursor-pointer transition-all duration-200 ${filterStatus === 'overdue'
+                            ? 'border-red-500 bg-red-900/30 ring-2 ring-red-500/50'
+                            : 'border-red-900/50 bg-red-900/10 hover:bg-red-900/20'}`}
+                        >
+                          <div className="text-xs font-bold text-red-400 uppercase">Overdue</div>
+                          <div className="text-2xl font-bold text-red-400">{activeTab === 'service' ? serviceStats.critical : rollerStats.critical}</div>
                         </div>
-                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
-                          <div className="text-xs font-bold text-amber-600 uppercase">Due Soon</div>
-                          <div className="text-2xl font-bold text-amber-600">{activeTab === 'service' ? serviceStats.dueSoon : rollerStats.dueSoon}</div>
+                        <div
+                          onClick={() => { setFilterStatus('dueSoon'); setSelectedRowIds(new Set()); }}
+                          className={`p-4 border rounded cursor-pointer transition-all duration-200 ${filterStatus === 'dueSoon'
+                            ? 'border-amber-500 bg-amber-900/30 ring-2 ring-amber-500/50'
+                            : 'border-amber-900/50 bg-amber-900/10 hover:bg-amber-900/20'}`}
+                        >
+                          <div className="text-xs font-bold text-amber-400 uppercase">Due Soon</div>
+                          <div className="text-2xl font-bold text-amber-400">{activeTab === 'service' ? serviceStats.dueSoon : rollerStats.dueSoon}</div>
                         </div>
-                        <div className="p-4 border border-gray-300 rounded bg-gray-50">
-                          <div className="text-xs font-bold text-green-600 uppercase">Healthy</div>
-                          <div className="text-2xl font-bold text-green-600">{activeTab === 'service' ? serviceStats.healthy : rollerStats.healthy}</div>
+                        <div
+                          onClick={() => { setFilterStatus('healthy'); setSelectedRowIds(new Set()); }}
+                          className={`p-4 border rounded cursor-pointer transition-all duration-200 ${filterStatus === 'healthy'
+                            ? 'border-green-500 bg-green-900/30 ring-2 ring-green-500/50'
+                            : 'border-green-900/50 bg-green-900/10 hover:bg-green-900/20'}`}
+                        >
+                          <div className="text-xs font-bold text-green-400 uppercase">Healthy</div>
+                          <div className="text-2xl font-bold text-green-400">{activeTab === 'service' ? serviceStats.healthy : rollerStats.healthy}</div>
                         </div>
                       </div>
                     </div>

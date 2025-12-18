@@ -4,7 +4,7 @@ import React from 'react';
 // Changes made to this PDF Layout (MaintenanceReportPDF.tsx) MUST be mirrored 
 // in the Report Preview (CustomerReportModal.jsx) to ensure Visual Consistency.
 // ==========================================
-import { Document, Page, Text, View, StyleSheet, Font, Image } from '@react-pdf/renderer';
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer';
 import { countUniqueAssets } from '../utils/assetUtils';
 
 // Asset interface for TypeScript
@@ -292,7 +292,7 @@ export const MaintenanceReportPDF: React.FC<MaintenanceReportPDFProps> = ({
             <Image src={site.logo} style={styles.logo} />
           ) : null}
           <View style={styles.titleContainer}>
-            <Text style={styles.title}>Accurate Industries</Text>
+            <Text style={styles.title}>{site.customer || 'Accurate Industries'}</Text>
             <Text style={styles.subtitle}>Maintenance Report</Text>
           </View>
         </View>

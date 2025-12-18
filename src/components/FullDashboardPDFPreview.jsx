@@ -67,33 +67,48 @@ export const FullDashboardPDFPreview = ({
     return sortConfig.direction === 'asc' ? <span className="ml-1">↑</span> : <span className="ml-1">↓</span>;
   };
 
-  const handlePrint = async (event) => {
+  // reportType: 'service' | 'roller' | 'full'
+  const handlePrint = async (event, reportType = 'full') => {
     let originalHTML;
     try {
       // Show loading state
       const button = event.currentTarget;
       originalHTML = button.innerHTML;
-      button.innerHTML = '<Icons.Loader className="animate-spin" size={18} /> Generating PDF...';
+      button.innerHTML = '<span class="animate-pulse">Generating PDF...</span>';
       button.disabled = true;
 
       // Sort the data using current sort configuration
       const sortedServiceData = sortData(site.serviceData || [], sortConfig);
       const sortedRollerData = sortData(site.rollerData || [], sortConfig);
 
+      // Determine which data to include based on report type
+      let siteDataForPDF = { ...site };
+      let filePrefix = 'full-dashboard';
+
+      if (reportType === 'service') {
+        siteDataForPDF.serviceData = sortedServiceData;
+        siteDataForPDF.rollerData = []; // Empty roller data
+        filePrefix = 'service-report';
+      } else if (reportType === 'roller') {
+        siteDataForPDF.serviceData = []; // Empty service data
+        siteDataForPDF.rollerData = sortedRollerData;
+        filePrefix = 'roller-report';
+      } else {
+        siteDataForPDF.serviceData = sortedServiceData;
+        siteDataForPDF.rollerData = sortedRollerData;
+      }
+
       // Create PDF using react-pdf with sorted data
       const blob = await pdf((
         <FullDashboardPDF
-          site={{
-            ...site,
-            serviceData: sortedServiceData,
-            rollerData: sortedRollerData
-          }}
+          site={siteDataForPDF}
           generatedDate={generatedDate}
+          reportType={reportType}
         />
       )).toBlob();
 
       // Generate filename and download
-      const fileName = `full-dashboard-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.pdf`;
+      const fileName = `${filePrefix}-${site.customer}-${site.name}-${new Date().toISOString().split('T')[0]}.pdf`;
       saveAs(blob, fileName);
 
     } catch (error) {
@@ -119,9 +134,19 @@ export const FullDashboardPDFPreview = ({
             <h3 className="font-bold text-lg text-slate-200 print:text-black">Full Dashboard Preview</h3>
             <p className="text-sm text-slate-400 print:text-black">Review the layout before printing.</p>
           </div>
-          <div className="flex gap-2">
-            <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
-              <Icons.Printer size={18} /> Print to PDF
+          <div className="flex gap-2 flex-wrap justify-end">
+            {site.serviceData && site.serviceData.length > 0 && (
+              <button onClick={(e) => handlePrint(e, 'service')} className="bg-cyan-600 hover:bg-cyan-700 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors text-sm">
+                <Icons.Printer size={16} /> Service Report
+              </button>
+            )}
+            {site.rollerData && site.rollerData.length > 0 && (
+              <button onClick={(e) => handlePrint(e, 'roller')} className="bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors text-sm">
+                <Icons.Printer size={16} /> Roller Report
+              </button>
+            )}
+            <button onClick={(e) => handlePrint(e, 'full')} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors text-sm">
+              <Icons.Printer size={16} /> Full Report
             </button>
             <button onClick={onClose} className="bg-slate-700 hover:bg-slate-600 text-slate-300 print:text-black px-4 py-2 rounded-lg font-bold transition-colors">
               Close
@@ -139,7 +164,6 @@ export const FullDashboardPDFPreview = ({
                 <h1 className="text-3xl font-black uppercase tracking-wider text-black mb-2">Full Dashboard Report</h1>
                 <div className="text-black font-medium text-lg">{site.customer} | {site.name}</div>
                 <div className="text-sm text-black mt-1">
-                  <span>📍 </span>
                   {site.location}
                 </div>
                 <div className="text-sm text-black mt-2">
@@ -156,7 +180,7 @@ export const FullDashboardPDFPreview = ({
                     <div className="text-2xl font-bold text-black">{countUniqueAssets(site.serviceData, site.rollerData)}</div>
                   </div>
                   <div className="p-4 border border-gray-300 rounded bg-red-50">
-                    <div className="text-xs font-bold text-black uppercase">Critical</div>
+                    <div className="text-xs font-bold text-black uppercase">Overdue</div>
                     <div className="text-2xl font-bold text-red-600">
                       {[...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length}
                     </div>
@@ -191,7 +215,7 @@ export const FullDashboardPDFPreview = ({
                     <div className="bg-green-500 transition-all duration-500" style={{ width: `${([...site.serviceData, ...site.rollerData].filter(i => i.remaining >= 30).length / ([...site.serviceData, ...site.rollerData].length)) * 100}%` }}></div>
                   </div>
                   <div className="mt-2 text-center text-xs text-gray-400">
-                    <span className="font-bold text-red-600 text-sm">{Math.round(([...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length / ([...site.serviceData, ...site.rollerData].length)) * 100)}% Critical</span> ({[...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length} assets)
+                    <span className="font-bold text-red-600 text-sm">{Math.round(([...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length / ([...site.serviceData, ...site.rollerData].length)) * 100)}% Overdue</span> ({[...site.serviceData, ...site.rollerData].filter(i => i.remaining < 0).length} assets)
                   </div>
                 </div>
               </section>

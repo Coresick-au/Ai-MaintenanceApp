@@ -554,7 +554,7 @@ export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
   const statusOptions = [
     { value: 'Operational', label: 'Operational', color: 'bg-green-600', hoverColor: 'hover:bg-green-700', borderColor: 'border-green-500' },
     { value: 'Warning', label: 'Warning', color: 'bg-yellow-600', hoverColor: 'hover:bg-yellow-700', borderColor: 'border-yellow-500' },
-    { value: 'Down', label: 'Critical', color: 'bg-red-600', hoverColor: 'hover:bg-red-700', borderColor: 'border-red-500' },
+    { value: 'Down', label: 'Overdue', color: 'bg-red-600', hoverColor: 'hover:bg-red-700', borderColor: 'border-red-500' },
     { value: 'Out of Service', label: 'Out of Service', color: 'bg-slate-700', hoverColor: 'hover:bg-slate-600', borderColor: 'border-slate-500' }
   ];
 
@@ -577,7 +577,7 @@ export const OperationalStatusModal = ({ isOpen, onClose, onSave, asset }) => {
               >
                 <div className="flex items-center gap-3">
                   <div className={`w-4 h-4 rounded-full ${opStatus === option.value ? 'bg-slate-800' : option.color}`}></div>
-                  <span className="font-bold">{option.label}</span>
+                  <span className="font-bold">{option.label === 'Critical' ? 'Overdue' : option.label}</span>
                 </div>
               </button>
             ))}

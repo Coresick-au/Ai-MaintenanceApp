@@ -72,7 +72,7 @@ export function useQuote() {
         customers,
         addCustomer: addGlobalCustomer,
         updateCustomer: updateGlobalCustomer,
-        deleteCustomer: deleteGlobalCustomer,
+        deleteCustomer: deleteGlobal,
     } = useGlobalData(); // Use Global Data Context
 
     // Transform customers to include managed sites as separate entries

@@ -26,14 +26,14 @@ export const getOverallSiteHealth = (siteData) => {
   ];
 
   // Check for critical issues first (highest priority)
-  const hasCritical = allAssets.some(a => 
+  const hasCritical = allAssets.some(a =>
     a.remaining < 0 || a.opStatus === 'Down'
   );
 
   if (hasCritical) return 'critical';
 
   // Check for warning issues (medium priority)
-  const hasWarning = allAssets.some(a => 
+  const hasWarning = allAssets.some(a =>
     (a.remaining >= 0 && a.remaining < 30) || a.opStatus === 'Warning'
   );
 
@@ -62,7 +62,7 @@ export const getSiteHealthStyling = (status) => {
       textClass: 'text-red-400',
       bgColor: 'bg-red-900/40',
       borderColor: 'border-red-900/60',
-      statusText: 'Critical'
+      statusText: 'Overdue'
     },
     warning: {
       circleClass: 'bg-amber-500',
