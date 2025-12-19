@@ -408,20 +408,20 @@ export function useQuote() {
         ? (rates?.travelChargeExBrisbane || 0) * jobDetails.technicians.length
         : 0;
 
-    const totalCost = shifts.reduce((acc, shift) => acc + (calculateShiftBreakdown(shift).cost || 0), 0) +
+    const totalCost = shifts.filter(s => !s.isTravelDay).reduce((acc, shift) => acc + (calculateShiftBreakdown(shift).cost || 0), 0) +
         extras.reduce((acc, item) => acc + (item.cost || 0), 0) +
         (reportingCost || 0) +
         (travelChargeCost || 0);
 
-    const totalHours = shifts.reduce((acc, shift) => acc + calculateShiftBreakdown(shift).breakdown.totalHours, 0);
+    const totalHours = shifts.filter(s => !s.isTravelDay).reduce((acc, shift) => acc + calculateShiftBreakdown(shift).breakdown.totalHours, 0);
 
-    // Calculate total hours across all shifts
-    const totalNTHrs = shifts.reduce((acc, shift) => {
+    // Calculate total hours across all shifts (excluding travel days)
+    const totalNTHrs = shifts.filter(s => !s.isTravelDay).reduce((acc, shift) => {
         const { breakdown } = calculateShiftBreakdown(shift);
         return acc + breakdown.siteNT + breakdown.travelInNT + breakdown.travelOutNT;
     }, 0);
 
-    const totalOTHrs = shifts.reduce((acc, shift) => {
+    const totalOTHrs = shifts.filter(s => !s.isTravelDay).reduce((acc, shift) => {
         const { breakdown } = calculateShiftBreakdown(shift);
         return acc + breakdown.siteOT + breakdown.travelInOT + breakdown.travelOutOT;
     }, 0);

@@ -79,9 +79,12 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
         }
 
     } else if (shift.dayType === 'weekend') {
-        // Weekend: All Site = Weekend Rate. Travel = Weekend Rate (unified).
-        breakdown.siteNT = siteHours; // Using NT bucket for base hours
+        // Weekend: All hours at Weekend Rate - put in OT buckets for correct display
+        breakdown.siteNT = 0;
+        breakdown.siteOT = siteHours;
+        breakdown.travelInNT = 0;
         breakdown.travelInOT = shift.travelIn;
+        breakdown.travelOutNT = 0;
         breakdown.travelOutOT = shift.travelOut;
 
         // Unified cost: All hours at weekend rate
@@ -90,10 +93,13 @@ export const calculateShiftBreakdown = (shift: Shift, rates: Rates): CalculatedS
         cost += totalHours * rates.weekend;
 
     } else if (shift.dayType === 'publicHoliday') {
-        // Public Holiday: All hours = PH Rate.
-        breakdown.siteNT = siteHours;
-        breakdown.travelInNT = shift.travelIn;
-        breakdown.travelOutNT = shift.travelOut;
+        // Public Holiday: All hours at PH Rate - put in OT buckets for correct display
+        breakdown.siteNT = 0;
+        breakdown.siteOT = siteHours;
+        breakdown.travelInNT = 0;
+        breakdown.travelInOT = shift.travelIn;
+        breakdown.travelOutNT = 0;
+        breakdown.travelOutOT = shift.travelOut;
 
         // Unified cost: All hours at public holiday rate
         // Round each component to 2 decimal places before multiplying

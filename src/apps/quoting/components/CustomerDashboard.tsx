@@ -91,6 +91,7 @@ export default function CustomerDashboard({
     const [editName, setEditName] = useState('');
     const [editRates, setEditRates] = useState<Rates>(DEFAULT_RATES);
     const [editContacts, setEditContacts] = useState<Contact[]>([]);
+    const [editIsLocked, setEditIsLocked] = useState(false);
     const [showDefaultRates, setShowDefaultRates] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -107,6 +108,7 @@ export default function CustomerDashboard({
         setEditName(customer.name);
         setEditRates(customer.rates || savedDefaultRates);
         setEditContacts(customer.contacts || []);
+        setEditIsLocked(customer.isLocked || false);
         setSaveSuccess(false);
         setActiveTab('details'); // Reset to details on select
         setIsAddingSite(false);
@@ -140,7 +142,8 @@ export default function CustomerDashboard({
         if (!customer) return;
 
         await updateCustomer(selectedId, {
-            rates: editRates
+            rates: editRates,
+            isLocked: editIsLocked
         });
 
         setSaveSuccess(true);
@@ -306,6 +309,8 @@ export default function CustomerDashboard({
                                             setRates={setEditRates}
                                             saveAsDefaults={saveAsDefaults}
                                             resetToDefaults={() => setEditRates(savedDefaultRates)}
+                                            isLocked={editIsLocked}
+                                            onLockChange={setEditIsLocked}
                                         />
                                         <div className="mt-6">
                                             <button

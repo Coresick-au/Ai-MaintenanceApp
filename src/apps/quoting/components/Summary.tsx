@@ -131,7 +131,9 @@ export default function Summary({ quote }: SummaryProps) {
 
     const generateInvoiceString = () => {
         // Calculate Totals - Unified labor costs with proper rounding
-        const totalNTCost = shifts.reduce((acc, s) => {
+        const billableShifts = shifts.filter(s => !s.isTravelDay);
+
+        const totalNTCost = billableShifts.reduce((acc, s) => {
             const { breakdown } = calculateShiftBreakdown(s);
             // Round each component to 2 decimal places before multiplying
             const siteNTCost = Math.round(breakdown.siteNT * 100) / 100 * rates.siteNormal;
@@ -139,7 +141,7 @@ export default function Summary({ quote }: SummaryProps) {
             return acc + siteNTCost + travelNTCost;
         }, 0);
 
-        const totalOTCost = shifts.reduce((acc, s) => {
+        const totalOTCost = billableShifts.reduce((acc, s) => {
             const { breakdown } = calculateShiftBreakdown(s);
             const rate = s.dayType === 'publicHoliday' ? rates.publicHoliday : (s.dayType === 'weekend' ? rates.weekend : rates.siteOvertime);
             // Round each component to 2 decimal places before multiplying
@@ -165,6 +167,35 @@ export default function Summary({ quote }: SummaryProps) {
                 body += `\nReason: ${jobDetails.varianceReason}`;
             }
             body += '\n';
+        }
+
+        // Day-by-day breakdown section
+        const shiftsByDate = new Map<string, typeof shifts>();
+        shifts.forEach(shift => {
+            if (!shiftsByDate.has(shift.date)) {
+                shiftsByDate.set(shift.date, []);
+            }
+            shiftsByDate.get(shift.date)!.push(shift);
+        });
+
+        const sortedDates = Array.from(shiftsByDate.keys()).sort();
+        if (sortedDates.length > 0) {
+            body += '\n';
+            let dayNumber = 1;
+            sortedDates.forEach(dateStr => {
+                const dayShifts = shiftsByDate.get(dateStr)!;
+                const date = new Date(dateStr + 'T00:00:00');
+                const dayName = date.toLocaleDateString('en-AU', { weekday: 'long' });
+                const monthName = date.toLocaleDateString('en-AU', { month: 'long' });
+                const dayOfMonth = date.getDate();
+
+                // Check if any shift on this day is marked as travel
+                const isTravelDay = dayShifts.some(s => s.isTravelDay);
+                const dayLabel = isTravelDay ? 'Travel' : 'Site works';
+
+                body += `Day ${dayNumber} - ${dayName} ${monthName} ${dayOfMonth} - ${dayLabel}\n`;
+                dayNumber++;
+            });
         }
 
         // Financial Breakdown - Consolidated Labor

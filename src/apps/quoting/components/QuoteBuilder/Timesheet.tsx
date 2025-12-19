@@ -59,6 +59,7 @@ export default function Timesheet({
                         <th className="p-3 w-10 text-center">PH?</th>
                         <th className="p-3 w-10 text-center">Veh?</th>
                         <th className="p-3 w-10 text-center">P.D?</th>
+                        <th className="p-3 w-10 text-center text-cyan-400" title="Travel Day - Uncharged">Trav?</th>
                         <th className="p-3 text-right">Charge</th>
                         <th className="p-3 w-10"></th>
                     </tr>
@@ -71,7 +72,7 @@ export default function Timesheet({
                         const isPublicHoliday = shift.dayType === 'publicHoliday';
 
                         return (
-                            <tr key={shift.id} className="hover:bg-gray-700">
+                            <tr key={shift.id} className={`hover:bg-gray-700 ${shift.isTravelDay ? 'bg-cyan-900/20 opacity-75' : ''}`}>
                                 <td className="p-3">
                                     <div className="flex items-center gap-2">
                                         <input
@@ -204,8 +205,18 @@ export default function Timesheet({
                                         className="w-4 h-4 accent-primary-600"
                                     />
                                 </td>
+                                <td className="p-3 text-center">
+                                    <input
+                                        disabled={isLocked}
+                                        type="checkbox"
+                                        checked={shift.isTravelDay || false}
+                                        onChange={(e) => updateShift(shift.id, 'isTravelDay', e.target.checked)}
+                                        className="w-4 h-4 accent-cyan-600"
+                                        title="Travel Day - Shown in breakdown but not billed"
+                                    />
+                                </td>
                                 <td className="p-3 text-right font-mono text-xs">
-                                    {formatMoney(cost)}
+                                    {shift.isTravelDay ? <span className="text-cyan-400 italic">Travel</span> : formatMoney(cost)}
                                 </td>
                                 <td className="p-3 text-center">
                                     {!isLocked && (

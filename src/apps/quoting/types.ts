@@ -84,6 +84,7 @@ export interface Shift {
     perDiem: boolean;
     tech: string;
     isNightShift?: boolean;
+    isTravelDay?: boolean; // Travel-only day - shown in breakdown but not billed
 }
 
 export interface ExtraItem {

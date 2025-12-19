@@ -9,9 +9,10 @@ interface RatesConfigProps {
     saveAsDefaults?: (rates: Rates) => void;
     resetToDefaults?: () => void;
     isLocked?: boolean;
+    onLockChange?: (isLocked: boolean) => void;
 }
 
-export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false }: RatesConfigProps) {
+export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false, onLockChange }: RatesConfigProps) {
     const [isLocked, setIsLocked] = useState(propIsLocked);
     const [calcKm, setCalcKm] = useState<number>(0);
     const [calcHours, setCalcHours] = useState<number>(0);
@@ -26,16 +27,19 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
             if (confirm("Are you sure you want to edit rates? These are typically fixed once set up for a customer.")) {
                 setIsLocked(false);
                 setHasBeenUnlocked(true);
+                onLockChange?.(false);
             }
         } else {
             // First time unlocking from initial state, no confirmation needed
             setIsLocked(false);
             setHasBeenUnlocked(true);
+            onLockChange?.(false);
         }
     };
 
     const handleLock = () => {
         setIsLocked(true);
+        onLockChange?.(true);
     };
 
     const calculateTotal = () => {
