@@ -222,6 +222,9 @@ const YearlyPerformanceChart = ({ data, onDrillDown }) => {
 
 // Monthly Revenue Bar Chart
 const MonthlyRevenueChart = ({ data, onDrillDown }) => {
+    // Calculate dynamic interval for X-axis labels
+    const interval = data.length > 24 ? Math.floor(data.length / 12) : data.length > 12 ? 1 : 0;
+
     return (
         <Card className="p-6">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
@@ -234,8 +237,12 @@ const MonthlyRevenueChart = ({ data, onDrillDown }) => {
                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                         <XAxis
                             dataKey="month"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "#94a3b8", fontSize: 10 }}
                             axisLine={{ stroke: "#475569" }}
+                            interval={interval}
+                            angle={data.length > 12 ? -45 : 0}
+                            textAnchor={data.length > 12 ? "end" : "middle"}
+                            height={data.length > 12 ? 60 : 30}
                         />
                         <YAxis
                             tick={{ fill: "#94a3b8", fontSize: 11 }}
@@ -300,56 +307,125 @@ const CustomerJobsChart = ({ data, onDrillDown }) => {
     );
 };
 
-// Jobs Over Time Area Chart
-const JobsTrendChart = ({ data, onDrillDown }) => {
+// Lead Time PO to Invoice Chart
+const LeadTimeChart = ({ data, onDrillDown }) => {
+    // Calculate dynamic interval for X-axis labels
+    const interval = data.length > 24 ? Math.floor(data.length / 12) : data.length > 12 ? 1 : 0;
+
+    return (
+        <Card className="p-6 col-span-full lg:col-span-2">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Clock size={20} className="text-amber-400" />
+                Lead Time: PO to Invoice (Days)
+            </h3>
+            <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis
+                            dataKey="month"
+                            tick={{ fill: "#94a3b8", fontSize: 10 }}
+                            axisLine={{ stroke: "#475569" }}
+                            interval={interval}
+                            angle={data.length > 12 ? -45 : 0}
+                            textAnchor={data.length > 12 ? "end" : "middle"}
+                            height={data.length > 12 ? 60 : 30}
+                        />
+                        <YAxis
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            axisLine={{ stroke: "#475569" }}
+                            label={{ value: 'Days', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 11 }}
+                        />
+                        <Tooltip
+                            {...TOOLTIP_STYLE}
+                            formatter={(value) => [`${value.toFixed(1)} days`, "Avg Lead Time"]}
+                            cursor={{ fill: "#334155" }}
+                        />
+                        <Bar
+                            dataKey="avgDays"
+                            fill="#f59e0b"
+                            radius={[4, 4, 0, 0]}
+                            name="Avg Lead Time"
+                            cursor="pointer"
+                            onClick={(data) => onDrillDown && onDrillDown('month', data.monthKey)}
+                        />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </Card>
+    );
+};
+
+// Monthly Revenue by Job Type (Line Chart - not stacked for clarity)
+const RevenueByTypeChart = ({ data }) => {
+    // Calculate dynamic interval for X-axis labels
+    const interval = data.length > 24 ? Math.floor(data.length / 12) : data.length > 12 ? 1 : 0;
+
     return (
         <Card className="p-6 col-span-full">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                <Clock size={20} className="text-sky-400" />
-                Jobs Over Time
+                <TrendingUp size={20} className="text-violet-400" />
+                Monthly Revenue Trend by Job Type
             </h3>
-            <div className="h-[200px]">
+            <div className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={data}>
                         <defs>
-                            <linearGradient id="jobsGradient" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.4} />
-                                <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0} />
+                            <linearGradient id="projectsGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.6} />
+                                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id="serviceGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#eab308" stopOpacity={0.6} />
+                                <stop offset="95%" stopColor="#eab308" stopOpacity={0.1} />
+                            </linearGradient>
+                            <linearGradient id="partsGradient" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.6} />
+                                <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.1} />
                             </linearGradient>
                         </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                         <XAxis
                             dataKey="month"
-                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            tick={{ fill: "#94a3b8", fontSize: 10 }}
                             axisLine={{ stroke: "#475569" }}
+                            interval={interval}
+                            angle={data.length > 12 ? -45 : 0}
+                            textAnchor={data.length > 12 ? "end" : "middle"}
+                            height={data.length > 12 ? 60 : 30}
                         />
                         <YAxis
                             tick={{ fill: "#94a3b8", fontSize: 11 }}
                             axisLine={{ stroke: "#475569" }}
+                            tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`}
                         />
-                        <Tooltip {...TOOLTIP_STYLE} cursor={{ stroke: "#0ea5e9", strokeWidth: 2 }} />
+                        <Tooltip
+                            {...TOOLTIP_STYLE}
+                            formatter={(value, name) => [`$${value.toLocaleString()}`, name]}
+                            cursor={{ stroke: "#64748b", strokeWidth: 1 }}
+                        />
+                        <Legend wrapperStyle={{ fontSize: "12px" }} />
                         <Area
                             type="monotone"
-                            dataKey="jobs"
-                            stroke="#0ea5e9"
+                            dataKey="Projects"
+                            stroke="#06b6d4"
                             strokeWidth={2}
-                            fillOpacity={1}
-                            fill="url(#jobsGradient)"
-                        >
-                            <Label
-                                content={({ x, y, value }) => (
-                                    <text
-                                        x={x}
-                                        y={y - 10}
-                                        fill="#94a3b8"
-                                        fontSize={11}
-                                        textAnchor="middle"
-                                    >
-                                        {value}
-                                    </text>
-                                )}
-                            />
-                        </Area>
+                            fill="url(#projectsGradient)"
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="Service"
+                            stroke="#eab308"
+                            strokeWidth={2}
+                            fill="url(#serviceGradient)"
+                        />
+                        <Area
+                            type="monotone"
+                            dataKey="Parts"
+                            stroke="#8b5cf6"
+                            strokeWidth={2}
+                            fill="url(#partsGradient)"
+                        />
                     </AreaChart>
                 </ResponsiveContainer>
             </div>
@@ -357,8 +433,122 @@ const JobsTrendChart = ({ data, onDrillDown }) => {
     );
 };
 
+// Jobs Over Time Bar Chart
+const JobsTrendChart = ({ data, onDrillDown }) => {
+    // Calculate dynamic interval for X-axis labels
+    const interval = data.length > 24 ? Math.floor(data.length / 12) : data.length > 12 ? 1 : 0;
+
+    return (
+        <Card className="p-6 col-span-full">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <Clock size={20} className="text-sky-400" />
+                Jobs Over Time
+            </h3>
+            <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis
+                            dataKey="month"
+                            tick={{ fill: "#94a3b8", fontSize: 10 }}
+                            axisLine={{ stroke: "#475569" }}
+                            interval={interval}
+                            angle={data.length > 12 ? -45 : 0}
+                            textAnchor={data.length > 12 ? "end" : "middle"}
+                            height={data.length > 12 ? 60 : 30}
+                        />
+                        <YAxis
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            axisLine={{ stroke: "#475569" }}
+                        />
+                        <Tooltip {...TOOLTIP_STYLE} cursor={{ fill: "#334155" }} />
+                        <Bar
+                            dataKey="jobs"
+                            fill="#0ea5e9"
+                            radius={[4, 4, 0, 0]}
+                            cursor="pointer"
+                            onClick={(data) => onDrillDown && onDrillDown('month', data.monthKey)}
+                        />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </Card>
+    );
+};
+
+// Monthly Jobs Bar Chart
+const MonthlyJobsChart = ({ data, onDrillDown }) => {
+    // Calculate dynamic interval for X-axis labels
+    const interval = data.length > 24 ? Math.floor(data.length / 12) : data.length > 12 ? 1 : 0;
+
+    return (
+        <Card className="p-6">
+            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <FileText size={20} className="text-cyan-400" />
+                Monthly Jobs
+            </h3>
+            <div className="h-[250px]">
+                <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={data}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis
+                            dataKey="month"
+                            tick={{ fill: "#94a3b8", fontSize: 10 }}
+                            axisLine={{ stroke: "#475569" }}
+                            interval={interval}
+                            angle={data.length > 12 ? -45 : 0}
+                            textAnchor={data.length > 12 ? "end" : "middle"}
+                            height={data.length > 12 ? 60 : 30}
+                        />
+                        <YAxis
+                            tick={{ fill: "#94a3b8", fontSize: 11 }}
+                            axisLine={{ stroke: "#475569" }}
+                        />
+                        <Tooltip {...TOOLTIP_STYLE} cursor={{ fill: "#334155" }} />
+                        <Bar
+                            dataKey="jobs"
+                            fill="#22d3d1"
+                            radius={[4, 4, 0, 0]}
+                            cursor="pointer"
+                            onClick={(data) => onDrillDown && onDrillDown('month', data.monthKey)}
+                        />
+                    </BarChart>
+                </ResponsiveContainer>
+            </div>
+        </Card>
+    );
+};
+
 export default function JobSheetDashboard({ filteredData, allData, onDrillDown, drillDownFilter, yearType, onYearTypeChange }) {
-    // Calculate stats from filtered data
+    // Helper: Get month sort key based on year type
+    const getMonthSortKey = (date, yearType) => {
+        const month = date.getMonth(); // 0-11
+        const year = date.getFullYear();
+        if (yearType === "financial") {
+            // FY: Jul=01, Aug=02, ..., Jun=12
+            const fy = month < 6 ? year : year + 1;
+            const fyMonth = month < 6 ? month + 7 : month - 5;
+            return `${fy}-${String(fyMonth).padStart(2, '0')}`;
+        }
+        // Calendar: Jan=01, ..., Dec=12
+        return `${year}-${String(month + 1).padStart(2, '0')}`;
+    };
+
+    // Helper: Get month display label
+    const getMonthLabel = (date, yearType) => {
+        const month = date.getMonth();
+        const year = date.getFullYear();
+        const monthName = date.toLocaleDateString('en-AU', { month: 'short' });
+        const yearShort = String(year).slice(-2);
+        return `${monthName} ${yearShort}`;
+    };
+
+    // Helper: Get month key for drill-down (YYYY-MM format)
+    const getMonthKey = (date) => {
+        return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    };
+
+    // Calculate stats from filtered data (total overview)
     const stats = useMemo(() => {
         const totalJobs = filteredData.length;
         const totalPOValue = filteredData.reduce((sum, r) => sum + (parseFloat(r.poValueExGst) || 0), 0);
@@ -379,52 +569,30 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
         return Object.entries(counts).map(([name, value]) => ({ name, value }));
     }, [filteredData]);
 
-    // Monthly revenue data with monthKey for drilldown
+    // Monthly PO Value data
     const monthlyData = useMemo(() => {
         const months = {};
         filteredData.forEach(r => {
             if (r.poDate && r.poDate !== 'Invalid Date') {
                 const date = new Date(r.poDate);
-                if (isNaN(date.getTime())) return; // Skip invalid dates
+                if (isNaN(date.getTime())) return;
 
-                let periodKey, sortKey;
-                if (yearType === "financial") {
-                    // Group by FY period
-                    const month = date.getMonth(); // 0-11
-                    const year = date.getFullYear();
-                    const fy = month < 6 ? year : year + 1;
-                    // FY month: July=1, August=2, ..., June=12
-                    const fyMonth = month < 6 ? month + 7 : month - 5;
-                    periodKey = `FY${fy}-${String(month + 1).padStart(2, '0')}`;
-                    sortKey = `${fy}-${String(fyMonth).padStart(2, '0')}`; // For proper FY sorting
-                } else {
-                    periodKey = r.poDate.substring(0, 7); // YYYY-MM
-                    sortKey = periodKey;
-                }
-
+                const sortKey = getMonthSortKey(date, yearType);
+                const monthKey = getMonthKey(date);
+                const displayLabel = getMonthLabel(date, yearType);
                 const value = parseFloat(r.poValueExGst) || 0;
-                if (!months[periodKey]) months[periodKey] = { value: 0, monthKey: periodKey, sortKey };
-                months[periodKey].value += value;
+
+                if (!months[sortKey]) months[sortKey] = { value: 0, monthKey, displayLabel, sortKey };
+                months[sortKey].value += value;
             }
         });
-        return Object.entries(months)
-            .sort(([, a], [, b]) => a.sortKey.localeCompare(b.sortKey))
-            .slice(-12) // Last 12 periods
-            .map(([key, data]) => {
-                let displayLabel;
-                if (yearType === "financial") {
-                    // Extract month from FY key (FY2024-07 -> Jul)
-                    const monthNum = parseInt(key.split('-')[1]) - 1;
-                    displayLabel = new Date(2000, monthNum, 1).toLocaleDateString('en-AU', { month: 'short' });
-                } else {
-                    displayLabel = new Date(key + "-01").toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
-                }
-                return {
-                    month: displayLabel,
-                    monthKey: key,
-                    value: data.value
-                };
-            });
+        return Object.values(months)
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(data => ({
+                month: data.displayLabel,
+                monthKey: data.monthKey,
+                value: data.value
+            }));
     }, [filteredData, yearType]);
 
     // Customer PO value data (for key accounts)
@@ -441,43 +609,29 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
             .sort((a, b) => b.value - a.value);
     }, [filteredData]);
 
-    // Jobs trend by month
+    // Jobs trend by month (Jobs Over Time)
     const trendData = useMemo(() => {
         const months = {};
         filteredData.forEach(r => {
             if (r.poDate && r.poDate !== 'Invalid Date') {
                 const date = new Date(r.poDate);
-                if (isNaN(date.getTime())) return; // Skip invalid dates
+                if (isNaN(date.getTime())) return;
 
-                let periodKey, sortKey;
-                if (yearType === "financial") {
-                    const month = date.getMonth();
-                    const year = date.getFullYear();
-                    const fy = month < 6 ? year : year + 1;
-                    const fyMonth = month < 6 ? month + 7 : month - 5;
-                    periodKey = `FY${fy}-${String(month + 1).padStart(2, '0')}`;
-                    sortKey = `${fy}-${String(fyMonth).padStart(2, '0')}`;
-                } else {
-                    periodKey = r.poDate.substring(0, 7);
-                    sortKey = periodKey;
-                }
-                if (!months[periodKey]) months[periodKey] = { jobs: 0, sortKey };
-                months[periodKey].jobs += 1;
+                const sortKey = getMonthSortKey(date, yearType);
+                const monthKey = getMonthKey(date);
+                const displayLabel = getMonthLabel(date, yearType);
+
+                if (!months[sortKey]) months[sortKey] = { jobs: 0, monthKey, displayLabel, sortKey };
+                months[sortKey].jobs += 1;
             }
         });
-        return Object.entries(months)
-            .sort(([, a], [, b]) => a.sortKey.localeCompare(b.sortKey))
-            .slice(-12)
-            .map(([key, data]) => {
-                let displayLabel;
-                if (yearType === "financial") {
-                    const monthNum = parseInt(key.split('-')[1]) - 1;
-                    displayLabel = new Date(2000, monthNum, 1).toLocaleDateString('en-AU', { month: 'short' });
-                } else {
-                    displayLabel = new Date(key + "-01").toLocaleDateString('en-AU', { month: 'short', year: '2-digit' });
-                }
-                return { month: displayLabel, jobs: data.jobs };
-            });
+        return Object.values(months)
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(data => ({
+                month: data.displayLabel,
+                monthKey: data.monthKey,
+                jobs: data.jobs
+            }));
     }, [filteredData, yearType]);
 
     // Year-over-year performance data
@@ -485,17 +639,16 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
         const years = {};
         filteredData.forEach(r => {
             if (r.poDate) {
+                const date = new Date(r.poDate);
+                if (isNaN(date.getTime())) return;
+
                 let yearKey;
                 if (yearType === "financial") {
-                    // Australian FY: July-June (FY2024 = Jul 2023 - Jun 2024)
-                    const date = new Date(r.poDate);
-                    const month = date.getMonth(); // 0-11
+                    const month = date.getMonth();
                     const year = date.getFullYear();
-                    // If month is 0-5 (Jan-Jun), it's the current FY. If 6-11 (Jul-Dec), it's next FY
                     yearKey = month < 6 ? `FY${year}` : `FY${year + 1}`;
                 } else {
-                    // Calendar year
-                    yearKey = r.poDate.substring(0, 4);
+                    yearKey = String(date.getFullYear());
                 }
 
                 const value = parseFloat(r.poValueExGst) || 0;
@@ -525,6 +678,94 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
             .map(([name, jobs]) => ({ name, jobs }))
             .sort((a, b) => b.jobs - a.jobs);
     }, [filteredData]);
+
+    // Lead Time: PO to Invoice (average days per month)
+    // Cap at 365 days to filter out data errors/outliers
+    const leadTimeData = useMemo(() => {
+        const months = {};
+        filteredData.forEach(r => {
+            if (r.poDate && r.invDate && r.poDate !== 'Invalid Date' && r.invDate !== 'Invalid Date') {
+                const poDate = new Date(r.poDate);
+                const invDate = new Date(r.invDate);
+                if (isNaN(poDate.getTime()) || isNaN(invDate.getTime())) return;
+
+                const daysDiff = (invDate - poDate) / (1000 * 60 * 60 * 24);
+                // Skip invalid data: negative days or more than 365 days (likely data errors)
+                if (daysDiff < 0 || daysDiff > 365) return;
+
+                const sortKey = getMonthSortKey(poDate, yearType);
+                const monthKey = getMonthKey(poDate);
+                const displayLabel = getMonthLabel(poDate, yearType);
+
+                if (!months[sortKey]) months[sortKey] = { totalDays: 0, count: 0, monthKey, displayLabel, sortKey };
+                months[sortKey].totalDays += daysDiff;
+                months[sortKey].count += 1;
+            }
+        });
+        return Object.values(months)
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(data => ({
+                month: data.displayLabel,
+                monthKey: data.monthKey,
+                avgDays: data.count > 0 ? data.totalDays / data.count : 0
+            }));
+    }, [filteredData, yearType]);
+
+    // Monthly Revenue by Job Type (for stacked area chart)
+    const revenueByTypeData = useMemo(() => {
+        const months = {};
+        filteredData.forEach(r => {
+            if (r.poDate && r.poDate !== 'Invalid Date') {
+                const date = new Date(r.poDate);
+                if (isNaN(date.getTime())) return;
+
+                const sortKey = getMonthSortKey(date, yearType);
+                const monthKey = getMonthKey(date);
+                const displayLabel = getMonthLabel(date, yearType);
+                const value = parseFloat(r.poValueExGst) || 0;
+                const type = r.type || 'Other';
+
+                if (!months[sortKey]) months[sortKey] = { Service: 0, Parts: 0, Projects: 0, monthKey, displayLabel, sortKey };
+                if (type === 'Service') months[sortKey].Service += value;
+                else if (type === 'Parts') months[sortKey].Parts += value;
+                else if (type === 'Projects') months[sortKey].Projects += value;
+            }
+        });
+        return Object.values(months)
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(data => ({
+                month: data.displayLabel,
+                monthKey: data.monthKey,
+                Service: data.Service,
+                Parts: data.Parts,
+                Projects: data.Projects
+            }));
+    }, [filteredData, yearType]);
+
+    // Monthly Jobs count data (new chart)
+    const monthlyJobsData = useMemo(() => {
+        const months = {};
+        filteredData.forEach(r => {
+            if (r.poDate && r.poDate !== 'Invalid Date') {
+                const date = new Date(r.poDate);
+                if (isNaN(date.getTime())) return;
+
+                const sortKey = getMonthSortKey(date, yearType);
+                const monthKey = getMonthKey(date);
+                const displayLabel = getMonthLabel(date, yearType);
+
+                if (!months[sortKey]) months[sortKey] = { jobs: 0, monthKey, displayLabel, sortKey };
+                months[sortKey].jobs += 1;
+            }
+        });
+        return Object.values(months)
+            .sort((a, b) => a.sortKey.localeCompare(b.sortKey))
+            .map(data => ({
+                month: data.displayLabel,
+                monthKey: data.monthKey,
+                jobs: data.jobs
+            }));
+    }, [filteredData, yearType]);
 
     return (
         <div className="space-y-6">
@@ -628,10 +869,15 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
                 <MonthlyRevenueChart data={monthlyData} onDrillDown={onDrillDown} />
                 <CustomerJobsChart data={customerData} onDrillDown={onDrillDown} />
                 <YearlyPerformanceChart data={yearlyData} onDrillDown={onDrillDown} />
+                <MonthlyJobsChart data={monthlyJobsData} onDrillDown={onDrillDown} />
+                <LeadTimeChart data={leadTimeData} onDrillDown={onDrillDown} />
             </div>
 
-            {/* Full Width Trend Chart */}
+            {/* Full Width Jobs Over Time */}
             <JobsTrendChart data={trendData} onDrillDown={onDrillDown} />
+
+            {/* Monthly Revenue by Job Type */}
+            <RevenueByTypeChart data={revenueByTypeData} />
         </div>
     );
 }
