@@ -211,7 +211,8 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
     );
 }
 
-export default function JobSheetPage({ onBack, currentUser }) {
+export default function JobSheetPage({ onBack, currentUser, userRole }) {
+    const isTech = userRole === "tech";
     const { customers } = useGlobalData();
 
     const [rows, setRows] = useState([]);
@@ -297,6 +298,17 @@ export default function JobSheetPage({ onBack, currentUser }) {
                     if (!r.poDate) return false;
                     const year = r.poDate.substring(0, 4);
                     if (!yearFilters.includes(year)) return false;
+                }
+                // Role-based visibility for Technicians
+                if (isTech) {
+                    const techAllowedStatuses = [
+                        "Ready for Invoicing",
+                        "PO Received",
+                        "Job in Progress",
+                        "Parts Required",
+                        "Job Completed"
+                    ];
+                    if (!techAllowedStatuses.includes(r.status)) return false;
                 }
                 return true;
             })
@@ -409,12 +421,8 @@ export default function JobSheetPage({ onBack, currentUser }) {
     }
 
     function exportJson() {
-        const blob = new Blob([JSON.stringify(rows, null, 2)], { type: "application/json" });
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `job-sheet-${new Date().toISOString().slice(0, 10)}.json`;
-        a.click();
-        URL.revokeObjectURL(a.href);
+        // Feature removed as per user request
+        return;
     }
 
     function print() {
@@ -641,57 +649,66 @@ export default function JobSheetPage({ onBack, currentUser }) {
 
     const right = (
         <>
-            {/* View Toggle */}
-            <div className="flex rounded-lg border border-slate-700 overflow-hidden">
-                <button
-                    onClick={() => setViewMode("table")}
-                    className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "table"
-                        ? "bg-cyan-500/20 text-cyan-300"
-                        : "bg-slate-900 text-slate-400 hover:bg-slate-800"
-                        }`}
-                >
-                    <Table size={14} /> Table
-                </button>
-                <button
-                    onClick={() => setViewMode("dashboard")}
-                    className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "dashboard"
-                        ? "bg-cyan-500/20 text-cyan-300"
-                        : "bg-slate-900 text-slate-400 hover:bg-slate-800"
-                        }`}
-                >
-                    <LayoutDashboard size={14} /> Dashboard
-                </button>
-            </div>
-            <NeonButton variant="slate" onClick={onBack}>
-                <ArrowLeft size={16} /> Back
-            </NeonButton>
-            <NeonButton variant="sky" onClick={openAddModal}>
-                <Plus size={16} /> New Job
-            </NeonButton>
-            <NeonButton variant="cyan" onClick={exportJson}>
-                <Download size={16} /> Export JSON
-            </NeonButton>
-            {/* TEMPORARY: CSV Import Button */}
-            <label className="cursor-pointer inline-flex items-center gap-2 rounded-lg px-3 py-2 border backdrop-blur-sm transition active:scale-95 hover:brightness-110 bg-amber-500/10 border-amber-500/50 text-amber-200 hover:bg-amber-500/20 hover:shadow-[0_0_15px_rgba(245,158,11,0.65)]">
-                <input
-                    type="file"
-                    accept=".csv"
-                    onChange={handleCsvImport}
-                    className="hidden"
-                />
-                <Download size={16} className="rotate-180" /> Temp Import CSV
-            </label>
+            {/* View Toggle - Hidden for Techs */}
+            {!isTech && (
+                <div className="flex rounded-lg border border-slate-700 overflow-hidden">
+                    <button
+                        onClick={() => setViewMode("table")}
+                        className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "table"
+                            ? "bg-cyan-500/20 text-cyan-300"
+                            : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                            }`}
+                    >
+                        <Table size={14} /> Table
+                    </button>
+                    <button
+                        onClick={() => setViewMode("dashboard")}
+                        className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "dashboard"
+                            ? "bg-cyan-500/20 text-cyan-300"
+                            : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                            }`}
+                    >
+                        <LayoutDashboard size={14} /> Dashboard
+                    </button>
+                </div>
+            )}
+            {!isTech && (
+                <>
+                    <NeonButton variant="sky" onClick={openAddModal}>
+                        <Plus size={16} /> New Job
+                    </NeonButton>
+                    <label className="cursor-pointer inline-flex items-center gap-2 rounded-lg px-3 py-2 border backdrop-blur-sm transition active:scale-95 hover:brightness-110 bg-amber-500/10 border-amber-500/50 text-amber-200 hover:bg-amber-500/20 hover:shadow-[0_0_15px_rgba(245,158,11,0.65)] text-sm">
+                        <input
+                            type="file"
+                            accept=".csv"
+                            onChange={handleCsvImport}
+                            className="hidden"
+                        />
+                        <Download size={16} className="rotate-180" /> Temp Import CSV
+                    </label>
+                </>
+            )}
             <NeonButton variant="slate" onClick={print}>
                 <Printer size={16} /> Print / Save PDF
             </NeonButton>
-            <HoldToConfirmButton variant="danger" seconds={3} onConfirm={resetToSeed}>
-                <RotateCcw size={16} /> Reset (Hold)
-            </HoldToConfirmButton>
         </>
     );
 
     return (
-        <PageShell title="Job Sheet" right={right}>
+        <PageShell
+            title={
+                <div className="flex items-center gap-4">
+                    <button
+                        onClick={onBack}
+                        className="group flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/50 hover:bg-slate-800 transition-all active:scale-95"
+                    >
+                        <ArrowLeft size={20} className="text-slate-400 group-hover:text-cyan-400 transition-colors" />
+                    </button>
+                    <span>Job Sheet</span>
+                </div>
+            }
+            right={right}
+        >
             {/* Filters Card - needs relative positioning for dropdowns */}
             <Card className="p-4 mb-4 print:hidden relative z-30">
                 <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
@@ -708,7 +725,13 @@ export default function JobSheetPage({ onBack, currentUser }) {
                     <div>
                         <label className="text-xs text-slate-400 block mb-1">Status Filter</label>
                         <MultiSelectDropdown
-                            options={STATUSES}
+                            options={isTech ? [
+                                "Ready for Invoicing",
+                                "PO Received",
+                                "Job in Progress",
+                                "Parts Required",
+                                "Job Completed"
+                            ] : STATUSES}
                             selected={statusFilters}
                             onChange={setStatusFilters}
                             placeholder="All Statuses"
@@ -765,8 +788,8 @@ export default function JobSheetPage({ onBack, currentUser }) {
                 </div>
             </Card>
 
-            {/* Dashboard View */}
-            {viewMode === "dashboard" && (
+            {/* Dashboard View - Only for non-techs */}
+            {viewMode === "dashboard" && !isTech && (
                 <>
                     <JobSheetDashboard
                         filteredData={filtered}
@@ -916,7 +939,7 @@ export default function JobSheetPage({ onBack, currentUser }) {
                                                             openEditModal(r);
                                                         }}
                                                     >
-                                                        <Edit2 size={12} /> Edit
+                                                        {isTech ? <Eye size={12} /> : <Edit2 size={12} />} {isTech ? "View" : "Edit"}
                                                         {r.notes && (
                                                             <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center" title="Has notes">
                                                                 <MessageSquare size={10} className="text-slate-900" />
@@ -955,10 +978,12 @@ export default function JobSheetPage({ onBack, currentUser }) {
                 title={isEditing ? `Edit Job Record (${formData.jobNumber})` : "Add New Job"}
                 footer={
                     <>
-                        <NeonButton variant="slate" onClick={() => setIsModalOpen(false)}>Cancel</NeonButton>
-                        <NeonButton variant="sky" onClick={handleSave}>
-                            {isEditing ? "Update Record" : "Create Job"}
-                        </NeonButton>
+                        <NeonButton variant="slate" onClick={() => setIsModalOpen(false)}>{isTech ? "Close" : "Cancel"}</NeonButton>
+                        {!isTech && (
+                            <NeonButton variant="sky" onClick={handleSave}>
+                                {isEditing ? "Update Record" : "Create Job"}
+                            </NeonButton>
+                        )}
                     </>
                 }
             >
@@ -976,12 +1001,12 @@ export default function JobSheetPage({ onBack, currentUser }) {
                         <div className="flex gap-2">
                             <TextInput
                                 value={formData.jobNumber}
-                                readOnly={!isJobNumberEditable}
-                                disabled={!isJobNumberEditable}
+                                readOnly={isTech || !isJobNumberEditable}
+                                disabled={isTech || !isJobNumberEditable}
                                 onChange={e => setFormData({ ...formData, jobNumber: e.target.value })}
-                                className={`flex-1 ${!isJobNumberEditable ? "opacity-70 bg-slate-950 font-bold text-cyan-400" : "bg-slate-900"}`}
+                                className={`flex-1 ${(isTech || !isJobNumberEditable) ? "opacity-70 bg-slate-950 font-bold text-cyan-400" : "bg-slate-900"}`}
                             />
-                            {!isJobNumberEditable && (
+                            {!isTech && !isJobNumberEditable && (
                                 <button
                                     type="button"
                                     onClick={handleJobNumberOverride}

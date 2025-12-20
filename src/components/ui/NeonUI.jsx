@@ -27,7 +27,7 @@ export function PageShell({ title, right, children }) {
                     <div>
                         <h1 className="text-2xl font-bold text-slate-100">{title}</h1>
                         <p className="text-sm text-slate-400">
-                            Softer Industrial Cyberpunk • Job Sheet
+                            Accurate Industries job sheet
                         </p>
                     </div>
                     <div className="flex gap-2 flex-wrap justify-end">{right}</div>
