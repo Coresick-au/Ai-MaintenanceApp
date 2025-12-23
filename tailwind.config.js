@@ -9,22 +9,35 @@ export default {
   theme: {
     extend: {
       colors: {
-        // Structural tokens
-        'bg-primary': '#0f172a', // slate-950
-        'bg-secondary': '#1e293b', // slate-800
-        'bg-tertiary': '#334155',  // slate-700
+        // 3-Layer Background System (reference CSS vars)
+        'bg-app': 'var(--bg-app)',
+        'bg-surface': 'var(--bg-surface)',
+        'bg-active': 'var(--bg-active)',
 
-        // Aliases & Accents
-        primary: colors.cyan,    // Maps primary-50, primary-100 etc to cyan
+        // Text Hierarchy
+        'text-primary': 'var(--text-primary)',
+        'text-secondary': 'var(--text-secondary)',
+        'text-muted': 'var(--text-muted)',
 
-        'accent-primary': '#06b6d4', // cyan-500
-        'accent-hover': '#22d3ee',   // cyan-400
-        'danger': '#ef4444',         // red-500
-        'success': '#22c55e',        // green-500
+        // Accent
+        'accent': 'var(--accent)',
+        'accent-hover': 'var(--accent-hover)',
+
+        // Status Colors
+        'status-green': 'var(--status-green)',
+        'status-blue': 'var(--status-blue)',
+        'status-yellow': 'var(--status-yellow)',
+        'status-orange': 'var(--status-orange)',
+        'status-red': 'var(--status-red)',
+        'status-grey': 'var(--status-grey)',
+
+        // Keep primary alias for compatibility
+        primary: colors.cyan,
       },
-      boxShadow: {
-        'blue-glow': '0 0 10px rgba(6, 182, 212, 0.5)', // cyan-500 glow
-      }
+      borderColor: {
+        'subtle': 'var(--border-subtle)',
+        'default': 'var(--border-default)',
+      },
     },
   },
   darkMode: 'class',

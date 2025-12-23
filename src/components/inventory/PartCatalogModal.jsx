@@ -2,33 +2,54 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
-import { addPartToCatalog, updatePart } from '../../services/inventoryService';
-import { addCategory } from '../../services/categoryService';
-import { generateNextSKU, checkSKUExists } from '../../utils/skuGenerator';
+import { addPartToCatalog, updatePart, filterSuppliersByCategories } from '../../services/inventoryService';
+import { generateNextSKU } from '../../utils/skuGenerator';
+import { CategoryProvider } from '../../context/CategoryContext';
+import { PartPricingTab } from './PartPricingTab';
+import { ListPriceToggle } from './ListPriceToggle';
+import { CategorySelect } from './categories/CategorySelect';
+import { getLowestSupplierPrice } from '../../services/partPricingService';
+import { generateNextPartSKU, checkPartSKUExists } from '../../utils/skuGenerator';
 
 export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     const [categories, setCategories] = useState([]);
-    const [showAddCategory, setShowAddCategory] = useState(false);
-    const [newCategoryName, setNewCategoryName] = useState('');
+    const [suppliers, setSuppliers] = useState([]);
+    const [filteredSuppliers, setFilteredSuppliers] = useState([]);
+    const [selectedSupplier, setSelectedSupplier] = useState('');
+    const [activeTab, setActiveTab] = useState('details');
+    const [lowestSupplierPrice, setLowestSupplierPrice] = useState(null);
+    const [listPriceSource, setListPriceSource] = useState('MANUAL');
     const [generatingSKU, setGeneratingSKU] = useState(false);
     const [formData, setFormData] = useState({
         sku: '',
         name: '',
-        category: '',
+        category: '', // Legacy field
+        categoryId: null,
+        subcategoryId: null,
+        suppliers: [],
         description: '',
         costPrice: '',
+        costPriceSource: 'MANUAL',
         listPrice: '',
         targetMarginPercent: 30,
         isSerialized: false,
+        isSaleable: false,
+        trackStock: true,
         reorderLevel: 10
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
 
-    // Load categories from Firestore
+    // Preserve list price and margin when toggling saleable
+    const [preservedListPrice, setPreservedListPrice] = useState('');
+    const [preservedTargetMargin, setPreservedTargetMargin] = useState(30);
+
+    // Load categories from Firestore (filter for part categories)
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'part_categories'), (snap) => {
-            const categoriesList = snap.docs.map(doc => doc.data());
+            const categoriesList = snap.docs
+                .map(doc => doc.data())
+                .filter(cat => cat.type === 'part'); // Filter only part categories
             categoriesList.sort((a, b) => a.name.localeCompare(b.name));
             setCategories(categoriesList);
 
@@ -41,59 +62,127 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         return () => unsubscribe();
     }, []);
 
+    // Load suppliers from Firestore
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, 'suppliers'), (snap) => {
+            const suppliersList = snap.docs.map(doc => doc.data());
+            suppliersList.sort((a, b) => a.name.localeCompare(b.name));
+            setSuppliers(suppliersList);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // Filter suppliers by part's categories
+    useEffect(() => {
+        const categoryIds = [];
+        if (formData.categoryId) categoryIds.push(formData.categoryId);
+        if (formData.subcategoryId) categoryIds.push(formData.subcategoryId);
+
+        const filtered = filterSuppliersByCategories(suppliers, categoryIds);
+        setFilteredSuppliers(filtered);
+    }, [suppliers, formData.categoryId, formData.subcategoryId]);
+
     useEffect(() => {
         if (editingPart) {
             setFormData({
                 sku: editingPart.sku,
                 name: editingPart.name,
-                category: editingPart.category,
+                category: editingPart.category, // Legacy field
+                categoryId: editingPart.categoryId || null,
+                subcategoryId: editingPart.subcategoryId || null,
+                suppliers: editingPart.suppliers || [],
                 description: editingPart.description || '',
                 costPrice: (editingPart.costPrice / 100).toFixed(2),
+                costPriceSource: editingPart.costPriceSource || 'MANUAL',
                 listPrice: (editingPart.listPrice / 100).toFixed(2),
                 targetMarginPercent: editingPart.targetMarginPercent,
                 isSerialized: editingPart.isSerialized,
+                isSaleable: editingPart.isSaleable || false,
+                trackStock: editingPart.trackStock !== undefined ? editingPart.trackStock : true,
                 reorderLevel: editingPart.reorderLevel
             });
+            setListPriceSource(editingPart.listPriceSource || 'MANUAL');
         } else {
             setFormData({
                 sku: '',
                 name: '',
-                category: categories.length > 0 ? categories[0].name : '',
+                category: categories.length > 0 ? categories[0].name : '', // Legacy field
+                categoryId: null,
+                subcategoryId: null,
+                suppliers: [],
                 description: '',
                 costPrice: '',
+                costPriceSource: 'MANUAL',
                 listPrice: '',
                 targetMarginPercent: 30,
                 isSerialized: false,
+                isSaleable: false,
+                trackStock: true,
                 reorderLevel: 10
             });
+            setListPriceSource('MANUAL');
         }
         setError('');
-        setShowAddCategory(false);
-        setNewCategoryName('');
+        setActiveTab('details'); // Reset to details tab
     }, [editingPart, isOpen, categories]);
 
-    const handleAddCategory = async () => {
-        if (!newCategoryName.trim()) return;
+    // Load lowest supplier price when editing
+    useEffect(() => {
+        const loadLowestPrice = async () => {
+            if (editingPart?.id) {
+                try {
+                    const validSuppliers = editingPart.suppliers || [];
+                    const lowest = await getLowestSupplierPrice(editingPart.id, new Date(), validSuppliers);
+                    setLowestSupplierPrice(lowest);
+                } catch (err) {
+                    console.error('Error loading lowest supplier price:', err);
+                }
+            } else {
+                setLowestSupplierPrice(null);
+            }
+        };
 
-        try {
-            await addCategory(newCategoryName);
-            setFormData(prev => ({ ...prev, category: newCategoryName.trim() }));
-            setNewCategoryName('');
-            setShowAddCategory(false);
-        } catch (err) {
-            setError(err.message || 'Failed to add category');
+        if (isOpen) {
+            loadLowestPrice();
         }
+    }, [editingPart?.id, isOpen, formData.suppliers]);
+
+    const handleAddSupplier = () => {
+        if (!selectedSupplier) return;
+
+        // Prevent duplicates
+        const currentSuppliers = formData.suppliers || [];
+        if (currentSuppliers.includes(selectedSupplier)) {
+            setError(`"${selectedSupplier}" is already added`);
+            setTimeout(() => setError(''), 3000);
+            return;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            suppliers: [...(prev.suppliers || []), selectedSupplier]
+        }));
+        setSelectedSupplier('');
+        setError('');
+    };
+
+    const handleRemoveSupplier = (supplierToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            suppliers: (prev.suppliers || []).filter(s => s !== supplierToRemove)
+        }));
     };
 
     const handleGenerateSKU = async () => {
-        if (!formData.category) {
+        if (!formData.categoryId) {
             setError('Please select a category first');
             return;
         }
 
         setGeneratingSKU(true);
         try {
-            const newSKU = await generateNextSKU(formData.category);
+            const newSKU = await generateNextPartSKU(formData.categoryId, formData.subcategoryId);
             setFormData(prev => ({ ...prev, sku: newSKU }));
         } catch (err) {
             setError(err.message || 'Failed to generate SKU');
@@ -102,45 +191,69 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         }
     };
 
-    // Auto-generate SKU when category changes (only for new parts)
-    useEffect(() => {
-        if (!editingPart && formData.category && !formData.sku) {
-            handleGenerateSKU();
-        }
-    }, [formData.category]);
+    // Calculate list price when in CALCULATED mode for saleable parts
+    const calculatedListPrice = useMemo(() => {
+        if (formData.isSaleable && listPriceSource === 'CALCULATED') {
+            // Use active cost price based on source
+            let costPrice;
+            if (formData.costPriceSource === 'SUPPLIER_LOWEST' && lowestSupplierPrice) {
+                costPrice = lowestSupplierPrice.costPrice; // Already in cents
+            } else {
+                costPrice = parseFloat(formData.costPrice || 0) * 100; // Convert to cents
+            }
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+            const marginPercent = parseFloat(formData.targetMarginPercent || 0) / 100;
+
+            if (marginPercent >= 1 || costPrice === 0) {
+                return 0;
+            }
+
+            return Math.round(costPrice / (1 - marginPercent));
+        }
+        return 0;
+    }, [formData.isSaleable, listPriceSource, formData.costPrice, formData.costPriceSource, formData.targetMarginPercent, lowestSupplierPrice]);
+
+    const handleSubmit = async () => {
         setError('');
         setSaving(true);
 
         try {
-            // Check for duplicate SKU
-            const skuExists = await checkSKUExists(formData.sku.trim(), editingPart?.id);
-            if (skuExists) {
-                setError(`SKU "${formData.sku}" already exists. Please use a different SKU.`);
-                setSaving(false);
-                return;
-            }
-
-            // Convert dollars to cents, handle empty/optional values
-            const costPriceValue = parseFloat(formData.costPrice || '0');
-            const listPriceValue = parseFloat(formData.listPrice || '0');
-
-            const costPriceCents = Math.round(costPriceValue * 100);
-            const listPriceCents = Math.round(listPriceValue * 100);
-
+            // Start with base part data
+            // NOTE: costPriceSource is NOT included here because it's managed independently
+            // in the PartPricingTab to avoid overwriting changes with stale formData
             const partData = {
                 sku: formData.sku.trim(),
                 name: formData.name.trim(),
-                category: formData.category,
+                category: formData.category.trim(), // Legacy field
+                categoryId: formData.categoryId,
+                subcategoryId: formData.subcategoryId,
+                suppliers: formData.suppliers || [],
                 description: formData.description.trim(),
-                costPrice: costPriceCents,
-                listPrice: listPriceCents,
+                listPriceSource: formData.isSaleable ? listPriceSource : 'MANUAL',
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
                 isSerialized: formData.isSerialized,
+                isSaleable: formData.isSaleable,
+                trackStock: formData.trackStock,
                 reorderLevel: parseInt(formData.reorderLevel || '0')
             };
+
+            // For new parts, initialize costPriceSource to MANUAL and set initial cost price
+            if (!editingPart) {
+                partData.costPriceSource = 'MANUAL';
+                // Convert dollars to cents for new parts
+                const costPriceValue = parseFloat(formData.costPrice || '0');
+                partData.costPrice = Math.round(costPriceValue * 100);
+            }
+            // NOTE: When editing, we DO NOT update costPrice here because it's managed 
+            // independently in the PartPricingTab based on costPriceSource setting
+
+            // Calculate list price based on source
+            if (formData.isSaleable && listPriceSource === 'CALCULATED') {
+                partData.listPrice = calculatedListPrice;
+            } else {
+                const listPriceValue = parseFloat(formData.listPrice || '0');
+                partData.listPrice = Math.round(listPriceValue * 100);
+            }
 
             if (editingPart) {
                 await updatePart(editingPart.id, partData);
@@ -157,252 +270,412 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     };
 
     const calculatedMargin = useMemo(() => {
-        const cost = parseFloat(formData.costPrice) || 0;
+        // Determine active cost based on cost source
+        const activeCost = formData.costPriceSource === 'SUPPLIER_LOWEST' && lowestSupplierPrice
+            ? lowestSupplierPrice.costPrice / 100  // Convert from cents to dollars
+            : parseFloat(formData.costPrice) || 0;
+
         const list = parseFloat(formData.listPrice) || 0;
         if (list === 0) return 0;
-        return ((list - cost) / list * 100).toFixed(1);
-    }, [formData.costPrice, formData.listPrice]);
+        return ((list - activeCost) / list * 100).toFixed(1);
+    }, [formData.costPrice, formData.listPrice, formData.costPriceSource, lowestSupplierPrice]);
 
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-                {/* Header */}
-                <div className="flex items-center justify-between p-6 border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
-                    <h2 className="text-xl font-bold text-white">
-                        {editingPart ? 'Edit Part' : 'Add New Part'}
-                    </h2>
-                    <button
-                        onClick={onClose}
-                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                    >
-                        <Icons.X size={20} className="text-slate-400" />
-                    </button>
-                </div>
-
-                {/* Form */}
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                    {error && (
-                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                            {error}
+        <CategoryProvider>
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+                    {/* Header */}
+                    <div className="border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
+                        <div className="flex items-center justify-between p-6 pb-0">
+                            <h2 className="text-xl font-bold text-white">
+                                {editingPart ? 'Edit Part' : 'Add New Part'}
+                            </h2>
+                            <button
+                                onClick={onClose}
+                                className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                            >
+                                <Icons.X size={20} className="text-slate-400" />
+                            </button>
                         </div>
-                    )}
 
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* SKU */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1">
-                                SKU <span className="text-red-400">*</span>
-                            </label>
-                            <div className="flex gap-2">
-                                <input
-                                    type="text"
-                                    required
-                                    value={formData.sku}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                                    className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    placeholder="INT-001"
-                                />
+                        {/* Tab Navigation */}
+                        {editingPart && (
+                            <div className="flex gap-2 px-6 pt-4">
                                 <button
                                     type="button"
-                                    onClick={handleGenerateSKU}
-                                    disabled={generatingSKU || !formData.category}
-                                    className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Auto-generate SKU"
+                                    onClick={() => setActiveTab('details')}
+                                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'details'
+                                        ? 'bg-slate-800 text-white border-b-2 border-cyan-500'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                                        }`}
                                 >
-                                    {generatingSKU ? (
-                                        <Icons.Loader size={16} className="animate-spin" />
-                                    ) : (
-                                        <Icons.RotateCcw size={16} />
-                                    )}
+                                    Details
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => setActiveTab('pricing')}
+                                    className={`px-4 py-2 rounded-t-lg font-medium transition-colors ${activeTab === 'pricing'
+                                        ? 'bg-slate-800 text-white border-b-2 border-cyan-500'
+                                        : 'text-slate-400 hover:text-white hover:bg-slate-800/50'
+                                        }`}
+                                >
+                                    Pricing
                                 </button>
                             </div>
-                            <p className="text-xs text-slate-400 mt-1">
-                                Auto-generates based on category
-                            </p>
-                        </div>
+                        )}
+                    </div>
 
-                        {/* Category */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1">
-                                Category <span className="text-red-400">*</span>
-                            </label>
-                            {showAddCategory ? (
-                                <div className="flex gap-2">
+                    {/* Tab Content */}
+                    {activeTab === 'details' ? (
+                        /* Form */
+                        <form className="p-6 space-y-4">{error && (
+                            <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                                {error}
+                            </div>
+                        )}
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* SKU */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        SKU <span className="text-red-400">*</span>
+                                    </label>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            required
+                                            value={formData.sku}
+                                            onChange={(e) => {
+                                                if (editingPart) {
+                                                    // Show confirmation when trying to edit existing SKU
+                                                    if (confirm('WARNING: Changing the SKU of an existing item can cause data inconsistencies. Are you sure you want to proceed?')) {
+                                                        setFormData(prev => ({ ...prev, sku: e.target.value }));
+                                                    }
+                                                } else {
+                                                    setFormData(prev => ({ ...prev, sku: e.target.value }));
+                                                }
+                                            }}
+                                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="PART-001"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleGenerateSKU}
+                                            disabled={generatingSKU || !formData.categoryId}
+                                            className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                            title="Auto-generate SKU"
+                                        >
+                                            {generatingSKU ? (
+                                                <Icons.Loader size={16} className="animate-spin" />
+                                            ) : (
+                                                <Icons.RotateCcw size={16} />
+                                            )}
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        {editingPart
+                                            ? '⚠️ SKU is locked after creation - changing it may cause issues'
+                                            : 'Auto-generates based on category/subcategory'
+                                        }
+                                    </p>
+                                </div>
+
+                                {/* Name */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        Name <span className="text-red-400">*</span>
+                                    </label>
                                     <input
                                         type="text"
-                                        value={newCategoryName}
-                                        onChange={(e) => setNewCategoryName(e.target.value)}
-                                        onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddCategory())}
-                                        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="New category name"
-                                        autoFocus
-                                    />
-                                    <button
-                                        type="button"
-                                        onClick={handleAddCategory}
-                                        className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors"
-                                    >
-                                        <Icons.Check size={16} />
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddCategory(false)}
-                                        className="px-3 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                                    >
-                                        <Icons.X size={16} />
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className="flex gap-2">
-                                    <select
                                         required
-                                        value={formData.category}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
-                                        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    >
-                                        {categories.map(cat => (
-                                            <option key={cat.id} value={cat.name}>{cat.name}</option>
-                                        ))}
-                                    </select>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowAddCategory(true)}
-                                        className="px-3 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors"
-                                        title="Add new category"
-                                    >
-                                        <Icons.Plus size={16} />
-                                    </button>
+                                        value={formData.name}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        placeholder="Conveyor Belt..."
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Category Selection */}
+                            <CategorySelect
+                                value={{ categoryId: formData.categoryId, subcategoryId: formData.subcategoryId }}
+                                onChange={(selection) => setFormData(prev => ({
+                                    ...prev,
+                                    categoryId: selection.categoryId,
+                                    subcategoryId: selection.subcategoryId
+                                }))}
+                                required={true}
+                            />
+
+                            {/* Suppliers */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-2">
+                                    Suppliers
+                                </label>
+                                <div className="space-y-3">
+                                    {/* Add Supplier */}
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={selectedSupplier}
+                                            onChange={(e) => setSelectedSupplier(e.target.value)}
+                                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        >
+                                            <option value="">-- Select Supplier --</option>
+                                            {filteredSuppliers.map(supplier => (
+                                                <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={handleAddSupplier}
+                                            disabled={!selectedSupplier}
+                                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                        >
+                                            <Icons.Plus size={16} />
+                                            Add
+                                        </button>
+                                    </div>
+
+                                    {/* Suppliers List */}
+                                    {formData.suppliers?.length > 0 && (
+                                        <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                            <p className="text-xs text-slate-400 mb-2">Added Suppliers:</p>
+                                            <div className="space-y-1">
+                                                {formData.suppliers.map((supplier, index) => (
+                                                    <div key={index} className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
+                                                        <span className="text-sm text-white">{supplier}</span>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveSupplier(supplier)}
+                                                            className="p-1 hover:bg-red-500/20 rounded text-red-400 transition-colors"
+                                                            title="Remove supplier"
+                                                        >
+                                                            <Icons.X size={16} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    Description
+                                </label>
+                                <textarea
+                                    value={formData.description}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                    rows="2"
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="Optional details..."
+                                />
+                            </div>
+
+                            {/* List Price - Only show if saleable */}
+                            {formData.isSaleable && (
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        List Price ($)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={formData.listPrice}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, listPrice: e.target.value }))}
+                                        disabled={listPriceSource === 'CALCULATED'}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        placeholder="0.00"
+                                    />
                                 </div>
                             )}
-                        </div>
-                    </div>
 
-                    {/* Name */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                            Name <span className="text-red-400">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            required
-                            value={formData.name}
-                            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            placeholder="Schenck Integrator"
+                            {/* List Price Source Toggle - Only show if saleable */}
+                            {formData.isSaleable && (
+                                <ListPriceToggle
+                                    listPriceSource={listPriceSource}
+                                    onChange={setListPriceSource}
+                                    itemType="part"
+                                />
+                            )}
+
+                            {/* Calculated List Price Display - Only show if saleable and CALCULATED */}
+                            {formData.isSaleable && listPriceSource === 'CALCULATED' && (
+                                <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30 space-y-2">
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-slate-300">
+                                            Cost Price ({formData.costPriceSource === 'SUPPLIER_LOWEST' ? 'Supplier Lowest' : 'Manual'}):
+                                        </span>
+                                        <span className="font-mono text-white">
+                                            ${(() => {
+                                                if (formData.costPriceSource === 'SUPPLIER_LOWEST' && lowestSupplierPrice) {
+                                                    return (lowestSupplierPrice.costPrice / 100).toFixed(2);
+                                                }
+                                                return formData.costPrice || '0.00';
+                                            })()}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm">
+                                        <span className="text-slate-300">Target Margin:</span>
+                                        <span className="font-mono text-white">{formData.targetMarginPercent}%</span>
+                                    </div>
+                                    <div className="h-px bg-cyan-500/30"></div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="font-semibold text-white">Calculated List Price:</span>
+                                        <span className="text-xl font-bold text-cyan-400">
+                                            ${(calculatedListPrice / 100).toFixed(2)}
+                                        </span>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2">
+                                        <Icons.Info size={12} className="inline mr-1" />
+                                        This price will update automatically when cost price changes
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="col-span-2"></div>
+
+                                {/* Target Margin - Only show if saleable */}
+                                {formData.isSaleable && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Target Margin
+                                        </label>
+                                        <div className="relative">
+                                            <input
+                                                type="number"
+                                                step="1"
+                                                value={formData.targetMarginPercent}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, targetMarginPercent: e.target.value }))}
+                                                className="w-full pr-7 pl-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            />
+                                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Calculated Margin Display - Only show if saleable */}
+                            {formData.isSaleable && (
+                                <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-sm text-slate-400">Calculated Margin:</span>
+                                        <span className={`text-lg font-bold ${parseFloat(calculatedMargin) >= formData.targetMarginPercent
+                                            ? 'text-emerald-400'
+                                            : 'text-amber-400'
+                                            }`}>
+                                            {calculatedMargin}%
+                                        </span>
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="grid grid-cols-3 gap-4">
+                                {/* Serialized Toggle */}
+                                <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        id="isSerialized"
+                                        checked={formData.isSerialized}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, isSerialized: e.target.checked }))}
+                                        className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                    />
+                                    <label htmlFor="isSerialized" className="text-sm text-slate-300 cursor-pointer">
+                                        Track by Serial Number
+                                    </label>
+                                </div>
+
+                                {/* Saleable Toggle */}
+                                <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        id="isSaleable"
+                                        checked={formData.isSaleable}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            if (!checked) {
+                                                // Unchecking: Preserve values then clear
+                                                setPreservedListPrice(formData.listPrice);
+                                                setPreservedTargetMargin(formData.targetMarginPercent);
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    isSaleable: false,
+                                                    listPrice: '',
+                                                    targetMarginPercent: 30
+                                                }));
+                                            } else {
+                                                // Checking: Restore preserved values
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    isSaleable: true,
+                                                    listPrice: preservedListPrice,
+                                                    targetMarginPercent: preservedTargetMargin
+                                                }));
+                                            }
+                                        }}
+                                        className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-slate-900"
+                                    />
+                                    <label htmlFor="isSaleable" className="text-sm text-slate-300 cursor-pointer">
+                                        Saleable to Customers
+                                    </label>
+                                </div>
+
+                                {/* Track Stock Toggle */}
+                                <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                    <input
+                                        type="checkbox"
+                                        id="trackStock"
+                                        checked={formData.trackStock}
+                                        onChange={(e) => {
+                                            const checked = e.target.checked;
+                                            // Confirm when unchecking
+                                            if (!checked) {
+                                                if (confirm('Are you sure you want to stop tracking stock for this part? This will remove it from stock take and hide reorder level.')) {
+                                                    setFormData(prev => ({ ...prev, trackStock: false }));
+                                                }
+                                            } else {
+                                                setFormData(prev => ({ ...prev, trackStock: true }));
+                                            }
+                                        }}
+                                        className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900"
+                                    />
+                                    <label htmlFor="trackStock" className="text-sm text-slate-300 cursor-pointer">
+                                        Track Stock
+                                    </label>
+                                </div>
+
+                                {/* Reorder Level - Only show if tracking stock */}
+                                {formData.trackStock && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Reorder Level
+                                        </label>
+                                        <input
+                                            type="number"
+                                            value={formData.reorderLevel}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, reorderLevel: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </form>
+                    ) : (
+                        /* Pricing Tab */
+                        <PartPricingTab
+                            part={editingPart}
+                            suppliers={formData.suppliers || []}
                         />
-                    </div>
+                    )}
 
-                    {/* Description */}
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                            Description
-                        </label>
-                        <textarea
-                            value={formData.description}
-                            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                            rows="2"
-                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            placeholder="Optional details..."
-                        />
-                    </div>
-
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Cost Price ($)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={formData.costPrice}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    placeholder="0.00"
-                                />
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    List Price ($)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    step="0.01"
-                                    value={formData.listPrice}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, listPrice: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    placeholder="0.00"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Target Margin */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1">
-                                Target Margin
-                            </label>
-                            <div className="relative">
-                                <input
-                                    type="number"
-                                    step="1"
-                                    value={formData.targetMarginPercent}
-                                    onChange={(e) => setFormData(prev => ({ ...prev, targetMarginPercent: e.target.value }))}
-                                    className="w-full pr-7 pl-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                />
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Calculated Margin Display */}
-                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                        <div className="flex items-center justify-between">
-                            <span className="text-sm text-slate-400">Calculated Margin:</span>
-                            <span className={`text-lg font-bold ${parseFloat(calculatedMargin) >= formData.targetMarginPercent
-                                ? 'text-emerald-400'
-                                : 'text-amber-400'
-                                }`}>
-                                {calculatedMargin}%
-                            </span>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        {/* Serialized Toggle */}
-                        <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                            <input
-                                type="checkbox"
-                                id="isSerialized"
-                                checked={formData.isSerialized}
-                                onChange={(e) => setFormData(prev => ({ ...prev, isSerialized: e.target.checked }))}
-                                className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
-                            />
-                            <label htmlFor="isSerialized" className="text-sm text-slate-300 cursor-pointer">
-                                Track by Serial Number
-                            </label>
-                        </div>
-
-                        {/* Reorder Level */}
-                        <div>
-                            <label className="block text-sm font-medium text-slate-300 mb-1">
-                                Reorder Level
-                            </label>
-                            <input
-                                type="number"
-                                value={formData.reorderLevel}
-                                onChange={(e) => setFormData(prev => ({ ...prev, reorderLevel: e.target.value }))}
-                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                    {/* Action Buttons - Always visible at bottom */}
+                    <div className="flex justify-end gap-3 p-6 pt-4 border-t border-slate-700 bg-slate-900">
                         <button
                             type="button"
                             onClick={onClose}
@@ -411,15 +684,16 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                             Cancel
                         </button>
                         <button
-                            type="submit"
+                            type="button"
+                            onClick={handleSubmit}
                             disabled={saving}
                             className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {saving ? 'Saving...' : (editingPart ? 'Update Part' : 'Add Part')}
                         </button>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
+        </CategoryProvider>
     );
 };

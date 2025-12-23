@@ -20,3 +20,14 @@ export const formatDate = (dateString, includeTime = false) => {
 
     return result;
 };
+
+// ==========================================
+// HELPER: CURRENCY FORMATTER
+// ==========================================
+export const formatCurrency = (cents) => {
+    if (cents === undefined || cents === null) return '';
+    return new Intl.NumberFormat('en-AU', {
+        style: 'currency',
+        currency: 'AUD'
+    }).format(cents / 100);
+};

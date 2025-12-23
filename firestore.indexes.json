@@ -1,0 +1,19 @@
+{
+    "indexes": [
+        {
+            "collectionGroup": "part_supplier_pricing",
+            "queryScope": "COLLECTION",
+            "fields": [
+                {
+                    "fieldPath": "partId",
+                    "order": "ASCENDING"
+                },
+                {
+                    "fieldPath": "effectiveDate",
+                    "order": "DESCENDING"
+                }
+            ]
+        }
+    ],
+    "fieldOverrides": []
+}

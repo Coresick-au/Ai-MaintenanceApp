@@ -93,49 +93,40 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   z-index: 9999;
 }
 
-/* =========================================
-   SOFTER INDUSTRIAL THEME
-   ========================================= */
-
 :root {
-  /* Navy Background */
-  --bg-primary: #0a1628;
-  --bg-secondary: #0f172a;
-  --bg-tertiary: #1e293b;
+  /* ========================================
+     3-LAYER BACKGROUND SYSTEM
+     ======================================== */
+  --bg-app: #0a1220;        /* Layer 1: App shell (darkest) */
+  --bg-surface: #0f1b2d;    /* Layer 2: Cards, tables, filters */
+  --bg-active: #162743;     /* Layer 3: Hover, selected, interactive */
 
-  /* Engineering Blues/Teals */
-  --accent-primary: #0ea5e9;
-  --accent-secondary: #06b6d4;
-  --accent-hover: #38bdf8;
+  /* Text Hierarchy */
+  --text-primary: #e5e7eb;   /* Almost white - main content */
+  --text-secondary: #9ca3af; /* Muted grey - secondary info */
+  --text-muted: #6b7280;     /* Dim - labels, placeholders */
 
-  /* Status Colors - Softer */
-  --success: #10b981;
-  --success-dark: #059669;
-  --warning: #f59e0b;
-  --warning-dark: #d97706;
-  --danger: #dc2626;
-  --danger-dark: #b91c1c;
+  /* Single Accent Color (Cyan) */
+  --accent: #22d3ee;         /* cyan-400 */
+  --accent-hover: #67e8f9;   /* cyan-300 */
 
-  /* Neutrals */
-  --slate-50: #f8fafc;
-  --slate-100: #f1f5f9;
-  --slate-200: #e2e8f0;
-  --slate-300: #cbd5e1;
-  --slate-400: #94a3b8;
-  --slate-500: #64748b;
-  --slate-600: #475569;
-  --slate-700: #334155;
-  --slate-800: #1e293b;
-  --slate-900: #0f172a;
+  /* Status Colors (Desaturated for calm UI) */
+  --status-green: #22c55e;   /* Invoiced, Paid, Completed */
+  --status-blue: #3b82f6;    /* In Progress, Quoted */
+  --status-yellow: #eab308;  /* Parts Required/Ordered */
+  --status-orange: #f97316;  /* Ready for Invoicing */
+  --status-red: #ef4444;     /* Overdue, Cancelled */
+  --status-grey: #64748b;    /* Neutral/Unknown */
+
+  /* Borders */
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-default: rgba(255, 255, 255, 0.10);
 }
 
 body {
-  background-color: var(--bg-primary);
-  color: var(--slate-200);
+  background-color: var(--bg-app);
+  color: var(--text-primary);
   font-family: 'Inter', 'Roboto', 'Segoe UI', sans-serif;
-  background-image:
-    radial-gradient(circle at 50% 50%, rgba(10, 22, 40, 0.95) 0%, rgba(6, 12, 25, 1) 100%),
-    url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%231e293b' fill-opacity='0.3'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
 h1,

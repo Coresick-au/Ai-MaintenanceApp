@@ -107,9 +107,10 @@ export class BaseRepository {
                 // Update existing document
                 docId = data.id;
                 docRef = doc(db, this.collectionName, docId);
-                const { id, createdAt, ...restData } = data;
+                const { createdAt: _createdAt, ...restData } = data;
                 docData = {
                     ...restData,
+                    id: docId, // Ensure id is always in the document
                     updatedAt: now
                 };
                 await setDoc(docRef, docData, { merge: true });
@@ -119,6 +120,7 @@ export class BaseRepository {
                 docId = docRef.id;
                 docData = {
                     ...data,
+                    id: docId, // Include id in the document
                     createdAt: now,
                     updatedAt: now
                 };

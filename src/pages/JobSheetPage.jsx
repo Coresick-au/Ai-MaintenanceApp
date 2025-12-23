@@ -52,36 +52,51 @@ const columns = [
     { key: "invDueDate", label: "Inv Due Date", w: "w-[140px]", sortable: true },
 ];
 
+// Status tone mapping for badges
 const statusTone = (s) => {
     const v = String(s || "").toLowerCase();
-    if (["paid", "complete", "completed", "job completed", "closed"].includes(v)) return "success";
+
+    // Success (Green) - Completed states
+    if (["paid", "complete", "completed", "job completed", "closed", "shipped", "invoiced"].includes(v)) return "success";
+
+    // Danger (Red) - Problem states
     if (["overdue", "late", "cancelled", "canceled"].includes(v)) return "danger";
+
+    // Orange - Needs immediate action
+    if (["ready for invoicing"].includes(v)) return "orange";
+
+    // Warning (Yellow) - Parts-related
     if (["ordered", "parts ordered", "awaiting parts", "parts required", "awaiting", "pending"].includes(v)) return "warning";
-    if (["wip", "in progress", "job in progress", "progress"].includes(v)) return "info";
-    return "slate";
+
+    // Info (Blue) - In Progress states
+    if (["wip", "in progress", "job in progress", "progress", "quoted", "po received"].includes(v)) return "info";
+
+    return "grey";
 };
 
-// Helper to get row background color based on status (matching Excel color scheme)
+// Row background tints (improved contrast per UX spec - WCAG AA compliant)
 const statusRowColor = (status) => {
     switch (status) {
-        // Yellow group - needs action/attention
         case "Ready for Invoicing":
+            return "bg-orange-500/15 hover:bg-orange-500/25 border-l-2 border-l-orange-400";
         case "Parts Ordered":
         case "Parts Required":
-            return "bg-yellow-500/30 hover:bg-yellow-500/40";
-        // Green group - completed/paid
+            return "bg-yellow-500/15 hover:bg-yellow-500/25 border-l-2 border-l-yellow-400";
         case "Paid":
         case "Job Completed":
-            return "bg-emerald-500/30 hover:bg-emerald-500/40";
-        // Blue group - in progress/invoiced
+            return "bg-green-500/15 hover:bg-green-500/25 border-l-2 border-l-green-400";
         case "Shipped":
         case "Invoiced":
         case "Job In Progress":
         case "PO Received":
         case "Quoted":
-            return "bg-sky-500/30 hover:bg-sky-500/40";
+            return "bg-blue-500/15 hover:bg-blue-500/25 border-l-2 border-l-blue-400";
+        case "Overdue":
+        case "Late":
+        case "Cancelled":
+            return "bg-red-500/15 hover:bg-red-500/25 border-l-2 border-l-red-400";
         default:
-            return "hover:bg-slate-800/30";
+            return "hover:bg-[var(--bg-active)]";
     }
 };
 
@@ -253,7 +268,12 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
 
     useEffect(() => {
         const loaded = loadJobSheet();
-        setRows(Array.isArray(loaded) && loaded.length ? loaded.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)) : jobSheetSeed);
+        // If loaded is null/undefined (no saved data), use seed. Otherwise use loaded data (even if empty array)
+        if (loaded !== null && loaded !== undefined) {
+            setRows(Array.isArray(loaded) ? loaded.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)) : jobSheetSeed);
+        } else {
+            setRows(jobSheetSeed);
+        }
     }, []);
 
     useEffect(() => {
@@ -631,7 +651,11 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 }
 
                 if (confirm(`Found ${importedJobs.length} jobs. Add to database?`)) {
-                    setRows(prev => [...importedJobs, ...prev]);
+                    setRows(prev => {
+                        const newRows = [...importedJobs, ...prev];
+                        saveJobSheet(newRows);
+                        return newRows;
+                    });
                     alert(`Imported ${importedJobs.length} jobs successfully.`);
                 }
 
@@ -649,14 +673,13 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
 
     const right = (
         <>
-            {/* View Toggle - Hidden for Techs */}
             {!isTech && (
-                <div className="flex rounded-lg border border-slate-700 overflow-hidden">
+                <div className="flex rounded-lg border border-[var(--border-default)] overflow-hidden">
                     <button
                         onClick={() => setViewMode("table")}
                         className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "table"
-                            ? "bg-cyan-500/20 text-cyan-300"
-                            : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                            ? "bg-[var(--accent)]/20 text-[var(--accent)]"
+                            : "bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-active)]"
                             }`}
                     >
                         <Table size={14} /> Table
@@ -664,8 +687,8 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                     <button
                         onClick={() => setViewMode("dashboard")}
                         className={`px-3 py-2 flex items-center gap-1 text-sm transition ${viewMode === "dashboard"
-                            ? "bg-cyan-500/20 text-cyan-300"
-                            : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                            ? "bg-[var(--accent)]/20 text-[var(--accent)]"
+                            : "bg-[var(--bg-surface)] text-[var(--text-muted)] hover:bg-[var(--bg-active)]"
                             }`}
                     >
                         <LayoutDashboard size={14} /> Dashboard
@@ -674,10 +697,10 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
             )}
             {!isTech && (
                 <>
-                    <NeonButton variant="sky" onClick={openAddModal}>
+                    <NeonButton variant="primary" onClick={openAddModal}>
                         <Plus size={16} /> New Job
                     </NeonButton>
-                    <label className="cursor-pointer inline-flex items-center gap-2 rounded-lg px-3 py-2 border backdrop-blur-sm transition active:scale-95 hover:brightness-110 bg-amber-500/10 border-amber-500/50 text-amber-200 hover:bg-amber-500/20 hover:shadow-[0_0_15px_rgba(245,158,11,0.65)] text-sm">
+                    <label className="cursor-pointer inline-flex items-center gap-2 rounded-lg px-3 py-2 border text-sm transition bg-orange-500/15 border-orange-500/30 text-orange-400 hover:bg-orange-500/25">
                         <input
                             type="file"
                             accept=".csv"
@@ -688,7 +711,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                     </label>
                 </>
             )}
-            <NeonButton variant="slate" onClick={print}>
+            <NeonButton variant="secondary" onClick={print}>
                 <Printer size={16} /> Print / Save PDF
             </NeonButton>
         </>
@@ -700,9 +723,9 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 <div className="flex items-center gap-4">
                     <button
                         onClick={onBack}
-                        className="group flex items-center justify-center w-10 h-10 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-500/50 hover:bg-slate-800 transition-all active:scale-95"
+                        className="group flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--accent)]/50 hover:bg-[var(--bg-active)] transition-all"
                     >
-                        <ArrowLeft size={20} className="text-slate-400 group-hover:text-cyan-400 transition-colors" />
+                        <ArrowLeft size={20} className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors" />
                     </button>
                     <span>Job Sheet</span>
                 </div>
@@ -857,26 +880,26 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 <Card className="overflow-hidden print:border print:bg-white flex-1">
                     <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
                         <table className="w-full text-sm border-collapse">
-                            <thead className="bg-slate-900 border-b border-slate-700 print:bg-white print:border-gray-300 sticky top-0 z-20">
+                            <thead className="bg-[var(--bg-surface)] border-b border-[var(--border-default)] print:bg-white print:border-gray-300 sticky top-0 z-20">
                                 <tr>
                                     {columns.map((c) => (
                                         <th
                                             key={c.key}
-                                            className={`p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 cursor-pointer hover:bg-slate-800 select-none ${c.w ?? ""}`}
+                                            className={`p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] cursor-pointer hover:bg-[var(--bg-active)] select-none ${c.w ?? ""}`}
                                             onClick={() => handleSort(c.key)}
                                         >
                                             <div className="flex items-center gap-1">
                                                 {c.label}
                                                 {sortColumn === c.key && (
                                                     sortDirection === "asc"
-                                                        ? <ChevronUp size={14} className="text-cyan-400" />
-                                                        : <ChevronDown size={14} className="text-cyan-400" />
+                                                        ? <ChevronUp size={14} className="text-[var(--accent)]" />
+                                                        : <ChevronDown size={14} className="text-[var(--accent)]" />
                                                 )}
                                             </div>
                                         </th>
                                     ))}
-                                    <th className="p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 w-[120px]">Last Updated</th>
-                                    <th className="sticky right-0 z-10 bg-[#0f172a] p-3 text-left text-xs font-bold uppercase tracking-wider text-slate-400 border-l border-slate-800/70 w-[100px] print:bg-white">Actions</th>
+                                    <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] w-[120px]">Last Updated</th>
+                                    <th className="sticky right-0 z-10 bg-[var(--bg-surface)] p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] border-l border-[var(--border-default)] w-[100px] print:bg-white">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -886,8 +909,8 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                                         <tr
                                             key={r.id}
                                             className={[
-                                                "print:border-gray-300 group border-b border-slate-800/30",
-                                                selected ? "ring-2 ring-cyan-500/50 bg-cyan-500/10" : statusRowColor(r.status),
+                                                "print:border-gray-300 group border-b border-[var(--border-subtle)]",
+                                                selected ? "ring-1 ring-[var(--accent)]/30 bg-[var(--bg-active)]" : statusRowColor(r.status),
                                                 "transition-colors",
                                             ].join(" ")}
                                             onClick={() => setSelectedId(r.id)}
@@ -912,27 +935,26 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                                                     );
                                                 }
 
-                                                // Formatting money columns in table
                                                 const displayValue = (key.toLowerCase().includes("value") && value && !isNaN(value))
                                                     ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                    : value || <span className="text-slate-600 italic">...</span>;
+                                                    : value || <span className="text-[var(--text-muted)] italic">...</span>;
 
                                                 return (
-                                                    <td key={key} className="p-3 text-slate-200 truncate font-medium">
+                                                    <td key={key} className="p-3 text-[var(--text-primary)] truncate font-medium">
                                                         {displayValue}
                                                     </td>
                                                 );
                                             })}
 
-                                            <td className="p-3 text-[10px] text-slate-500 font-mono">
+                                            <td className="p-3 text-[10px] text-[var(--text-muted)] font-mono">
                                                 {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ""}
                                             </td>
 
-                                            {/* Actions column - now at the end */}
-                                            <td className="sticky right-0 z-10 bg-[#0f172a] print:bg-white p-2 border-l border-slate-800/70 print:border-gray-300">
+                                            {/* Actions column */}
+                                            <td className="sticky right-0 z-10 bg-[var(--bg-surface)] print:bg-white p-2 border-l border-[var(--border-default)] print:border-gray-300">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <NeonButton
-                                                        variant="cyan"
+                                                        variant="primary"
                                                         className="px-3 py-1.5 text-[10px] uppercase font-bold print:hidden relative"
                                                         onClick={(e) => {
                                                             e.stopPropagation();

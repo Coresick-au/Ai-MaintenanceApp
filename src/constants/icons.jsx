@@ -77,7 +77,16 @@ import {
     FolderTree,
     Lock,
     AlertOctagon,
-    LayoutTemplate
+    LayoutTemplate,
+    Box,
+    Filter,
+    Frame,
+    Weight,
+    Circle,
+    Calculator,
+    RefreshCw,
+    DollarSign,
+    TrendingUp
 } from 'lucide-react';
 
 export const Icons = {
@@ -159,5 +168,14 @@ export const Icons = {
     FolderTree,
     Lock,
     AlertOctagon,
-    LayoutTemplate
+    LayoutTemplate,
+    Box,
+    Filter,
+    Frame,
+    Weight,
+    Circle,
+    Calculator,
+    RefreshCw,
+    DollarSign,
+    TrendingUp
 };

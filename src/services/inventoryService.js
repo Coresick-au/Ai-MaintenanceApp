@@ -6,7 +6,6 @@ import {
     setDoc,
     updateDoc,
     deleteDoc,
-    getDoc,
     getDocs,
     query,
     where,
@@ -68,6 +67,62 @@ export const deletePart = async (partId) => {
         console.log('[Inventory] Part deleted:', partId);
     } catch (error) {
         console.error('[Inventory] Error deleting part:', error);
+        throw error;
+    }
+};
+
+// ==========================================
+// FASTENER CATALOG OPERATIONS
+// ==========================================
+
+export const addFastenerToCatalog = async (fastenerData) => {
+    try {
+        const fastenerId = `fastener-${Date.now()}`;
+        const now = new Date().toISOString();
+
+        const newFastener = {
+            id: fastenerId,
+            ...fastenerData,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        await setDoc(doc(db, 'fastener_catalog', fastenerId), newFastener);
+        console.log('[Inventory] Fastener added to catalog:', fastenerId);
+        return fastenerId;
+    } catch (error) {
+        console.error('[Inventory] Error adding fastener:', error);
+        throw new Error('Failed to add fastener to catalog');
+    }
+};
+
+export const updateFastener = async (fastenerId, updates) => {
+    try {
+        await updateDoc(doc(db, 'fastener_catalog', fastenerId), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
+        console.log('[Inventory] Fastener updated:', fastenerId);
+    } catch (error) {
+        console.error('[Inventory] Error updating fastener:', error);
+        throw new Error('Failed to update fastener');
+    }
+};
+
+export const deleteFastener = async (fastenerId) => {
+    try {
+        // Check for existing inventory or serialized assets
+        const inventorySnap = await getDocs(query(collection(db, 'inventory_state'), where('partId', '==', fastenerId)));
+        const assetsSnap = await getDocs(query(collection(db, 'serialized_assets'), where('partId', '==', fastenerId)));
+
+        if (!inventorySnap.empty || !assetsSnap.empty) {
+            throw new Error('Cannot delete fastener with existing inventory or serialized assets');
+        }
+
+        await deleteDoc(doc(db, 'fastener_catalog', fastenerId));
+        console.log('[Inventory] Fastener deleted:', fastenerId);
+    } catch (error) {
+        console.error('[Inventory] Error deleting fastener:', error);
         throw error;
     }
 };
@@ -331,6 +386,24 @@ export const updateLocation = async (locationId, updates) => {
     }
 };
 
+export const deleteLocation = async (locationId) => {
+    try {
+        // Check for existing inventory at this location
+        const inventorySnap = await getDocs(query(collection(db, 'inventory_state'), where('locationId', '==', locationId)));
+        const assetsSnap = await getDocs(query(collection(db, 'serialized_assets'), where('currentLocationId', '==', locationId)));
+
+        if (!inventorySnap.empty || !assetsSnap.empty) {
+            throw new Error('Cannot delete location with existing inventory or assets. Please move all stock first.');
+        }
+
+        await deleteDoc(doc(db, 'locations', locationId));
+        console.log('[Inventory] Location deleted:', locationId);
+    } catch (error) {
+        console.error('[Inventory] Error deleting location:', error);
+        throw error;
+    }
+};
+
 // ==========================================
 // SUPPLIER OPERATIONS
 // ==========================================
@@ -363,6 +436,16 @@ export const updateSupplier = async (supplierId, updates) => {
     }
 };
 
+export const deleteSupplier = async (supplierId) => {
+    try {
+        await deleteDoc(doc(db, 'suppliers', supplierId));
+        console.log('[Inventory] Supplier deleted:', supplierId);
+    } catch (error) {
+        console.error('[Inventory] Error deleting supplier:', error);
+        throw new Error('Failed to delete supplier');
+    }
+};
+
 export const linkPartToSupplier = async (partId, supplierId, supplierPartNumber, leadTimeDays, isPrimary = false) => {
     try {
         const linkId = `${partId}_${supplierId}`;
@@ -385,11 +468,36 @@ export const linkPartToSupplier = async (partId, supplierId, supplierPartNumber,
     }
 };
 
+/**
+ * Filter suppliers by categories (OR logic)
+ * Returns suppliers that have at least one category in common with the provided list
+ * @param {Array} suppliers - All suppliers
+ * @param {Array<string>} itemCategoryIds - Category IDs to match against
+ * @returns {Array} Filtered suppliers
+ */
+export const filterSuppliersByCategories = (suppliers, itemCategoryIds) => {
+    if (!itemCategoryIds || itemCategoryIds.length === 0) {
+        // No item categories - show all suppliers
+        return suppliers;
+    }
+
+    return suppliers.filter(supplier => {
+        if (!supplier.categoryIds || supplier.categoryIds.length === 0) {
+            // Supplier has no categories - don't show
+            return false;
+        }
+
+        // Check if supplier has ANY category that matches the item (OR logic)
+        return supplier.categoryIds.some(catId => itemCategoryIds.includes(catId));
+    });
+};
+
+
 // ==========================================
 // QUERY OPERATIONS
 // ==========================================
 
-export const getStockMovementHistory = async (partId = null, locationId = null, limit = 100) => {
+export const getStockMovementHistory = async (partId = null, locationId = null) => {
     try {
         let q = collection(db, 'stock_movements');
         const constraints = [orderBy('timestamp', 'desc')];

@@ -3,30 +3,12 @@ import { X } from "lucide-react";
 
 export function PageShell({ title, right, children }) {
     return (
-        <div className="min-h-screen bg-[#0a1628] text-slate-200 relative">
-            {/* subtle grid overlay */}
-            <div
-                className="pointer-events-none absolute inset-0 opacity-25"
-                style={{
-                    backgroundImage:
-                        "linear-gradient(rgba(148,163,184,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,0.08) 1px, transparent 1px)",
-                    backgroundSize: "28px 28px",
-                }}
-            />
-            {/* radial edge darken */}
-            <div
-                className="pointer-events-none absolute inset-0"
-                style={{
-                    background:
-                        "radial-gradient(circle at 50% 20%, rgba(14,165,233,0.10), transparent 55%), radial-gradient(circle at 50% 60%, rgba(15,23,42,0.0), rgba(10,22,40,0.95) 70%)",
-                }}
-            />
-
-            <div className="relative px-6 py-6">
+        <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)]">
+            <div className="px-6 py-6">
                 <div className="flex items-start justify-between gap-3 mb-4">
                     <div>
-                        <h1 className="text-2xl font-bold text-slate-100">{title}</h1>
-                        <p className="text-sm text-slate-400">
+                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">{title}</h1>
+                        <p className="text-sm text-[var(--text-muted)]">
                             Accurate Industries job sheet
                         </p>
                     </div>
@@ -43,7 +25,7 @@ export function Card({ className = "", children }) {
     return (
         <div
             className={[
-                "rounded-xl bg-slate-900/70 border border-slate-700/60 backdrop-blur-sm shadow-sm",
+                "rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)]",
                 className,
             ].join(" ")}
         >
@@ -54,26 +36,23 @@ export function Card({ className = "", children }) {
 
 export function NeonButton({
     children,
-    variant = "sky", // sky | cyan | danger | slate
+    variant = "primary", // primary | secondary | danger
     className = "",
     ...props
 }) {
     const palette = {
-        sky: "text-sky-200 border-sky-500/50 bg-sky-500/10 hover:bg-sky-500/20 hover:shadow-[0_0_15px_rgba(14,165,233,0.65)]",
-        cyan: "text-cyan-200 border-cyan-500/50 bg-cyan-500/10 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(6,182,212,0.65)]",
-        danger:
-            "text-red-200 border-red-500/50 bg-red-500/10 hover:bg-red-500/20 hover:shadow-[0_0_15px_rgba(220,38,38,0.65)]",
-        slate:
-            "text-slate-200 border-slate-600/60 bg-slate-500/10 hover:bg-slate-500/15 hover:shadow-[0_0_15px_rgba(148,163,184,0.35)]",
+        primary: "bg-[var(--accent)] text-slate-900 hover:bg-[var(--accent-hover)] font-semibold",
+        secondary: "bg-white/5 text-white border border-[var(--border-default)] hover:bg-white/10",
+        danger: "bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30",
     };
 
     return (
         <button
             className={[
-                "inline-flex items-center gap-2 rounded-lg px-3 py-2 border backdrop-blur-sm",
-                "transition active:scale-95 hover:brightness-110",
+                "inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm",
+                "transition-colors duration-150",
                 "disabled:opacity-50 disabled:cursor-not-allowed",
-                palette[variant],
+                palette[variant] || palette.secondary,
                 className,
             ].join(" ")}
             {...props}
@@ -87,10 +66,10 @@ export function TextInput({ className = "", ...props }) {
     return (
         <input
             className={[
-                "w-full rounded-lg bg-slate-900 border border-slate-600/70 px-3 py-2 text-sm",
-                "text-slate-200 placeholder:text-slate-500",
-                "focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500",
-                "transition",
+                "w-full rounded-lg bg-[var(--bg-surface)] border border-[var(--border-default)] px-3 py-2 text-sm",
+                "text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+                "focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]",
+                "transition-colors",
                 className,
             ].join(" ")}
             {...props}
@@ -102,10 +81,10 @@ export function Select({ className = "", children, ...props }) {
     return (
         <select
             className={[
-                "w-full rounded-lg bg-slate-900 border border-slate-600/70 px-3 py-2 text-sm",
-                "text-slate-200",
-                "focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500",
-                "transition",
+                "w-full rounded-lg bg-[var(--bg-surface)] border border-[var(--border-default)] px-3 py-2 text-sm",
+                "text-[var(--text-primary)]",
+                "focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]",
+                "transition-colors",
                 className,
             ].join(" ")}
             {...props}
@@ -119,10 +98,10 @@ export function TextArea({ className = "", ...props }) {
     return (
         <textarea
             className={[
-                "w-full rounded-lg bg-slate-900 border border-slate-600/70 px-3 py-2 text-sm",
-                "text-slate-200 placeholder:text-slate-500",
-                "focus:outline-none focus:ring-2 focus:ring-cyan-500/40 focus:border-cyan-500",
-                "transition min-h-[80px]",
+                "w-full rounded-lg bg-[var(--bg-surface)] border border-[var(--border-default)] px-3 py-2 text-sm",
+                "text-[var(--text-primary)] placeholder:text-[var(--text-muted)]",
+                "focus:outline-none focus:ring-1 focus:ring-[var(--accent)]/50 focus:border-[var(--accent)]",
+                "transition-colors min-h-[80px]",
                 className,
             ].join(" ")}
             {...props}
@@ -136,14 +115,14 @@ export function Modal({ isOpen, onClose, title, children, footer }) {
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             {/* Backdrop */}
             <div
-                className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                 onClick={onClose}
             />
             {/* Content */}
-            <Card className="relative w-full max-w-4xl bg-slate-900 border-slate-700 shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in duration-200">
-                <div className="flex items-center justify-between p-4 border-b border-slate-800">
-                    <h2 className="text-xl font-bold text-slate-100">{title}</h2>
-                    <button onClick={onClose} className="text-slate-400 hover:text-white transition p-1 hover:bg-slate-800 rounded-md">
+            <Card className="relative w-full max-w-4xl bg-[var(--bg-surface)] shadow-2xl flex flex-col max-h-[95vh] animate-in fade-in zoom-in duration-200">
+                <div className="flex items-center justify-between p-4 border-b border-[var(--border-default)]">
+                    <h2 className="text-xl font-bold text-[var(--text-primary)]">{title}</h2>
+                    <button onClick={onClose} className="text-[var(--text-muted)] hover:text-white transition p-1 hover:bg-[var(--bg-active)] rounded-md">
                         <X size={20} />
                     </button>
                 </div>
@@ -151,7 +130,7 @@ export function Modal({ isOpen, onClose, title, children, footer }) {
                     {children}
                 </div>
                 {footer && (
-                    <div className="p-4 border-t border-slate-800 flex justify-end gap-3 bg-slate-900/50">
+                    <div className="p-4 border-t border-[var(--border-default)] flex justify-end gap-3 bg-[var(--bg-surface)]">
                         {footer}
                     </div>
                 )}
@@ -160,21 +139,36 @@ export function Modal({ isOpen, onClose, title, children, footer }) {
     );
 }
 
-export function StatusBadge({ tone = "slate", children }) {
+export function StatusBadge({ tone = "grey", children, showIcon = true }) {
     const tones = {
-        success: "bg-emerald-900/50 text-emerald-200 border-emerald-800",
-        warning: "bg-amber-900/50 text-amber-200 border-amber-800",
-        danger: "bg-red-900/50 text-red-200 border-red-800",
-        info: "bg-sky-900/50 text-sky-200 border-sky-800",
-        slate: "bg-slate-800/60 text-slate-200 border-slate-700",
+        success: "bg-green-500/20 text-green-300 border-green-400/40",
+        warning: "bg-yellow-500/20 text-yellow-300 border-yellow-400/40",
+        danger: "bg-red-500/20 text-red-300 border-red-400/40",
+        info: "bg-blue-500/20 text-blue-300 border-blue-400/40",
+        orange: "bg-orange-500/20 text-orange-300 border-orange-400/40",
+        grey: "bg-slate-500/20 text-slate-300 border-slate-400/40",
     };
+
+    // Accessible icons for each status type
+    const icons = {
+        success: "✓",
+        warning: "⚠",
+        danger: "✕",
+        info: "●",
+        orange: "◐",
+        grey: "○",
+    };
+
     return (
         <span
             className={[
-                "inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium",
-                tones[tone] || tones.slate,
+                "inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium",
+                tones[tone] || tones.grey,
             ].join(" ")}
+            role="status"
+            aria-label={`Status: ${children}`}
         >
+            {showIcon && <span aria-hidden="true">{icons[tone] || icons.grey}</span>}
             {children}
         </span>
     );
