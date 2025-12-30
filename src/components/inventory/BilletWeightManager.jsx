@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
@@ -6,11 +6,13 @@ import {
     addBilletWeight,
     updateBilletWeight,
     deleteBilletWeight,
+    importBilletWeights,
     MATERIAL_TYPES,
     getBilletWeightCategory,
     formatCurrency,
     filterSuppliersByCategories
 } from '../../services/specializedComponentsService';
+import { exportToCSV, importFromCSV } from '../../utils/csvExportImport';
 import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
@@ -21,15 +23,20 @@ export const BilletWeightManager = () => {
     const [editingWeight, setEditingWeight] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [sortField, setSortField] = useState('effectiveDate');
     const [sortDirection, setSortDirection] = useState('desc');
     const { categories } = useCategories();
     const [suppliers, setSuppliers] = useState([]);
     const [filteredSuppliers, setFilteredSuppliers] = useState([]);
     const [selectedSupplier, setSelectedSupplier] = useState('');
+    const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
         weightKg: 0,
         materialType: 'STAINLESS_STEEL',
+        isCBW: false,
+        isPlateWeight: false,
+        plateWeightQuantity: '',
         categoryId: null,
         subcategoryId: null,
         suppliers: [],
@@ -109,6 +116,9 @@ export const BilletWeightManager = () => {
             setFormData({
                 weightKg: weight.weightKg,
                 materialType: weight.materialType,
+                isCBW: weight.isCBW || false,
+                isPlateWeight: weight.isPlateWeight || false,
+                plateWeightQuantity: weight.plateWeightQuantity || '',
                 categoryId: weight.categoryId || null,
                 subcategoryId: weight.subcategoryId || null,
                 suppliers: weight.suppliers || [],
@@ -122,6 +132,9 @@ export const BilletWeightManager = () => {
             setFormData({
                 weightKg: 0,
                 materialType: 'STAINLESS_STEEL',
+                isCBW: false,
+                isPlateWeight: false,
+                plateWeightQuantity: '',
                 categoryId: null,
                 subcategoryId: null,
                 suppliers: [],
@@ -153,6 +166,9 @@ export const BilletWeightManager = () => {
             const weightData = {
                 weightKg: parseFloat(formData.weightKg),
                 materialType: formData.materialType,
+                isCBW: formData.isCBW,
+                isPlateWeight: formData.isPlateWeight,
+                plateWeightQuantity: formData.plateWeightQuantity ? parseInt(formData.plateWeightQuantity) : null,
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
@@ -183,6 +199,47 @@ export const BilletWeightManager = () => {
             await deleteBilletWeight(weightId);
         } catch (err) {
             setError(err.message || 'Failed to delete billet weight');
+        }
+    };
+
+    const handleExport = () => {
+        try {
+            if (billetWeights.length === 0) {
+                setError('No data to export');
+                return;
+            }
+            const filename = `billet_weights_history_${new Date().toISOString().split('T')[0]}.csv`;
+            exportToCSV(billetWeights, filename);
+            setSuccessMessage(`Exported ${billetWeights.length} records successfully`);
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (err) {
+            setError(err.message || 'Failed to export data');
+        }
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            setError('');
+            setSuccessMessage('Importing data...');
+            const data = await importFromCSV(file);
+            const results = await importBilletWeights(data);
+            let message = `Import complete: ${results.success} added`;
+            if (results.skipped > 0) message += `, ${results.skipped} skipped (duplicates)`;
+            if (results.failed > 0) message += `, ${results.failed} failed`;
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(''), 5000);
+            if (results.errors.length > 0) console.warn('Import errors:', results.errors);
+        } catch (err) {
+            setError(err.message || 'Failed to import data');
+            setSuccessMessage('');
+        } finally {
+            e.target.value = '';
         }
     };
 
@@ -256,19 +313,50 @@ export const BilletWeightManager = () => {
                             Track historical cost data for billet weights (&lt;250kg and ≥250kg)
                         </p>
                     </div>
-                    <button
-                        onClick={() => handleOpenForm()}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Icons.Plus size={20} />
-                        Add Billet Weight
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExport}
+                            disabled={billetWeights.length === 0}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Icons.Download size={20} />
+                            Export CSV
+                        </button>
+                        <button
+                            onClick={handleImportClick}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Icons.Upload size={20} />
+                            Import CSV
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
+                        <button
+                            onClick={() => handleOpenForm()}
+                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Icons.Plus size={20} />
+                            Add Billet Weight
+                        </button>
+                    </div>
                 </div>
 
                 {/* Error Display */}
                 {error && (
                     <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                         {error}
+                    </div>
+                )}
+
+                {/* Success Message */}
+                {successMessage && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm">
+                        {successMessage}
                     </div>
                 )}
 
@@ -308,7 +396,21 @@ export const BilletWeightManager = () => {
                                                     {getBilletWeightCategory(weight.weightKg)}
                                                 </span>
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{MATERIAL_TYPES[weight.materialType]}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-300">
+                                                <div className="flex items-center gap-2">
+                                                    <span>{MATERIAL_TYPES[weight.materialType]}</span>
+                                                    {weight.isCBW && (
+                                                        <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded text-xs font-medium">
+                                                            CBW
+                                                        </span>
+                                                    )}
+                                                    {weight.isPlateWeight && (
+                                                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs font-medium">
+                                                            Plate Weight {weight.plateWeightQuantity ? `(Qty: ${weight.plateWeightQuantity})` : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
                                             <td className="px-4 py-3 text-sm">
                                                 {getCategoryName(weight.categoryId) || getCategoryName(weight.subcategoryId) ? (
                                                     <div className="flex flex-wrap gap-1">
@@ -340,7 +442,20 @@ export const BilletWeightManager = () => {
                                                     <span className="text-slate-500 text-xs">-</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">{formatCurrency(weight.costPrice)}</td>
+                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">
+                                                {weight.isPlateWeight && weight.plateWeightQuantity ? (
+                                                    <div>
+                                                        <div className="text-emerald-400">
+                                                            {formatCurrency(weight.costPrice)} × {weight.plateWeightQuantity}
+                                                        </div>
+                                                        <div className="text-xs text-slate-400 mt-0.5">
+                                                            Total: {formatCurrency(weight.costPrice * weight.plateWeightQuantity)}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    formatCurrency(weight.costPrice)
+                                                )}
+                                            </td>
                                             <td className="px-4 py-3 text-sm font-mono text-slate-300">
                                                 {weight.setupCost ? formatCurrency(weight.setupCost) : '-'}
                                             </td>
@@ -428,7 +543,57 @@ export const BilletWeightManager = () => {
                                             <option value="GALVANISED">{MATERIAL_TYPES.GALVANISED}</option>
                                         </select>
                                     </div>
+
+                                    {/* CBW Checkbox */}
+                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                        <input
+                                            type="checkbox"
+                                            id="isCBW"
+                                            checked={formData.isCBW}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, isCBW: e.target.checked }))}
+                                            className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                        />
+                                        <label htmlFor="isCBW" className="text-sm text-slate-300 cursor-pointer">
+                                            CBW (Compact Belt Weigher)
+                                        </label>
+                                    </div>
+
+                                    {/* Plate Weight Checkbox */}
+                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                        <input
+                                            type="checkbox"
+                                            id="isPlateWeight"
+                                            checked={formData.isPlateWeight}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, isPlateWeight: e.target.checked }))}
+                                            className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                        />
+                                        <label htmlFor="isPlateWeight" className="text-sm text-slate-300 cursor-pointer">
+                                            Plate Weight
+                                        </label>
+                                    </div>
                                 </div>
+
+                                {/* Plate Weight Quantity - Conditional */}
+                                {formData.isPlateWeight && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Plate Weight Quantity <span className="text-red-400">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            required={formData.isPlateWeight}
+                                            min="1"
+                                            step="1"
+                                            value={formData.plateWeightQuantity}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, plateWeightQuantity: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            placeholder="e.g., 2, 4, 6..."
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Number of weights for cost calculation
+                                        </p>
+                                    </div>
+                                )}
 
                                 {/* Category Selection */}
                                 <CategorySelect
@@ -496,7 +661,7 @@ export const BilletWeightManager = () => {
                                     {/* Cost Price */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Cost Price ($) <span className="text-red-400">*</span>
+                                            Cost Price ($) {formData.isPlateWeight && '(per unit)'} <span className="text-red-400">*</span>
                                         </label>
                                         <input
                                             type="number"
@@ -508,6 +673,11 @@ export const BilletWeightManager = () => {
                                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                             placeholder="0.00"
                                         />
+                                        {formData.isPlateWeight && formData.plateWeightQuantity && formData.costPrice && (
+                                            <p className="text-xs text-purple-400 mt-1">
+                                                Total: ${(parseFloat(formData.costPrice) * parseInt(formData.plateWeightQuantity)).toFixed(2)}
+                                            </p>
+                                        )}
                                     </div>
 
                                     {/* Setup Cost */}

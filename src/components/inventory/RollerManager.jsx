@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
@@ -6,11 +6,13 @@ import {
     addRoller,
     updateRoller,
     deleteRoller,
+    importRollers,
     ROLLER_MATERIAL_TYPES,
     STANDARD_ROLLER_DIAMETERS,
     formatCurrency,
     filterSuppliersByCategories
 } from '../../services/specializedComponentsService';
+import { exportToCSV, importFromCSV } from '../../utils/csvExportImport';
 import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
@@ -21,12 +23,14 @@ export const RollerManager = () => {
     const [editingRoller, setEditingRoller] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [sortField, setSortField] = useState('effectiveDate');
     const [sortDirection, setSortDirection] = useState('desc');
     const { categories } = useCategories();
     const [suppliers, setSuppliers] = useState([]);
     const [filteredSuppliers, setFilteredSuppliers] = useState([]);
     const [selectedSupplier, setSelectedSupplier] = useState('');
+    const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
         diameter: 102,
         faceLength: 0,
@@ -190,6 +194,58 @@ export const RollerManager = () => {
         }
     };
 
+    // Export to CSV
+    const handleExport = () => {
+        try {
+            if (rollers.length === 0) {
+                setError('No data to export');
+                return;
+            }
+
+            const filename = `rollers_history_${new Date().toISOString().split('T')[0]}.csv`;
+            exportToCSV(rollers, filename);
+            setSuccessMessage(`Exported ${rollers.length} records successfully`);
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (err) {
+            setError(err.message || 'Failed to export data');
+        }
+    };
+
+    // Import from CSV
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        try {
+            setError('');
+            setSuccessMessage('Importing data...');
+
+            const data = await importFromCSV(file);
+            const results = await importRollers(data);
+
+            let message = `Import complete: ${results.success} added`;
+            if (results.skipped > 0) message += `, ${results.skipped} skipped (duplicates)`;
+            if (results.failed > 0) message += `, ${results.failed} failed`;
+
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(''), 5000);
+
+            if (results.errors.length > 0) {
+                console.warn('Import errors:', results.errors);
+            }
+        } catch (err) {
+            setError(err.message || 'Failed to import data');
+            setSuccessMessage('');
+        } finally {
+            // Reset file input
+            e.target.value = '';
+        }
+    };
+
     const getCategoryName = (categoryId) => {
         if (!categoryId) return null;
         const category = categories.find(c => c.id === categoryId);
@@ -272,19 +328,52 @@ export const RollerManager = () => {
                             Track historical cost data for conveyor rollers
                         </p>
                     </div>
-                    <button
-                        onClick={() => handleOpenForm()}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Icons.Plus size={20} />
-                        Add Roller
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExport}
+                            disabled={rollers.length === 0}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Export to CSV"
+                        >
+                            <Icons.Download size={20} />
+                            Export CSV
+                        </button>
+                        <button
+                            onClick={handleImportClick}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            title="Import from CSV"
+                        >
+                            <Icons.Upload size={20} />
+                            Import CSV
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
+                        <button
+                            onClick={() => handleOpenForm()}
+                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Icons.Plus size={20} />
+                            Add Roller
+                        </button>
+                    </div>
                 </div>
 
                 {/* Error Display */}
                 {error && (
                     <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                         {error}
+                    </div>
+                )}
+
+                {/* Success Message */}
+                {successMessage && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm">
+                        {successMessage}
                     </div>
                 )}
 

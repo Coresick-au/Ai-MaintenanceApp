@@ -8,6 +8,7 @@ import { CategoryProvider } from '../../context/CategoryContext';
 import { PartPricingTab } from './PartPricingTab';
 import { ListPriceToggle } from './ListPriceToggle';
 import { CategorySelect } from './categories/CategorySelect';
+import { LocationSelect } from './LocationSelect';
 import { getLowestSupplierPrice } from '../../services/partPricingService';
 import { generateNextPartSKU, checkPartSKUExists } from '../../utils/skuGenerator';
 
@@ -28,6 +29,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         subcategoryId: null,
         suppliers: [],
         description: '',
+        material: '', // Optional material field
         costPrice: '',
         costPriceSource: 'MANUAL',
         listPrice: '',
@@ -35,7 +37,8 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         isSerialized: false,
         isSaleable: false,
         trackStock: true,
-        reorderLevel: 10
+        reorderLevel: 10,
+        locationId: null
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -93,6 +96,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 subcategoryId: editingPart.subcategoryId || null,
                 suppliers: editingPart.suppliers || [],
                 description: editingPart.description || '',
+                material: editingPart.material || '',
                 costPrice: (editingPart.costPrice / 100).toFixed(2),
                 costPriceSource: editingPart.costPriceSource || 'MANUAL',
                 listPrice: (editingPart.listPrice / 100).toFixed(2),
@@ -100,7 +104,8 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 isSerialized: editingPart.isSerialized,
                 isSaleable: editingPart.isSaleable || false,
                 trackStock: editingPart.trackStock !== undefined ? editingPart.trackStock : true,
-                reorderLevel: editingPart.reorderLevel
+                reorderLevel: editingPart.reorderLevel,
+                locationId: editingPart.locationId || null
             });
             setListPriceSource(editingPart.listPriceSource || 'MANUAL');
         } else {
@@ -112,6 +117,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 subcategoryId: null,
                 suppliers: [],
                 description: '',
+                material: '',
                 costPrice: '',
                 costPriceSource: 'MANUAL',
                 listPrice: '',
@@ -119,7 +125,8 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 isSerialized: false,
                 isSaleable: false,
                 trackStock: true,
-                reorderLevel: 10
+                reorderLevel: 10,
+                locationId: null
             });
             setListPriceSource('MANUAL');
         }
@@ -229,6 +236,8 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
                 description: formData.description.trim(),
+                material: formData.material || '',
+                locationId: formData.locationId,
                 listPriceSource: formData.isSaleable ? listPriceSource : 'MANUAL',
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
                 isSerialized: formData.isSerialized,
@@ -475,6 +484,31 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                     placeholder="Optional details..."
                                 />
                             </div>
+
+                            {/* Material */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    Material
+                                </label>
+                                <select
+                                    value={formData.material}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                    <option value="">-- None --</option>
+                                    <option value="Stainless 304">Stainless 304</option>
+                                    <option value="Stainless 316">Stainless 316</option>
+                                    <option value="Galvanised">Galvanised</option>
+                                </select>
+                                <p className="text-xs text-slate-400 mt-1">Optional material specification</p>
+                            </div>
+
+                            {/* Location */}
+                            <LocationSelect
+                                value={formData.locationId}
+                                onChange={(locationId) => setFormData(prev => ({ ...prev, locationId }))}
+                                required={false}
+                            />
 
                             {/* List Price - Only show if saleable */}
                             {formData.isSaleable && (

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../constants/icons';
 import { addProduct, updateProduct, addPartToBOM, removePartFromBOM, updatePartQuantity, addFastenerToBOM, removeFastenerFromBOM, updateFastenerQuantity } from '../../services/productService';
+import { generateNextProductSKU } from '../../utils/skuGenerator';
 import { CategorySelect } from './categories/CategorySelect';
+import { LocationSelect } from './LocationSelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { BOMEditor } from './BOMEditor';
 import { ProductCostToggle } from './ProductCostToggle';
@@ -35,7 +37,8 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
         trackStock: true,
         reorderLevel: 10,
         labourHours: 0,
-        labourMinutes: 0
+        labourMinutes: 0,
+        locationId: null
     });
     const [bomEntries, setBomEntries] = useState([]);
     const [bomFastenerEntries, setBomFastenerEntries] = useState([]);
@@ -44,6 +47,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
     const [bomCost, setBomCost] = useState(0);
     const [activeTab, setActiveTab] = useState('details');
     const [saving, setSaving] = useState(false);
+    const [generatingSKU, setGeneratingSKU] = useState(false);
     const [error, setError] = useState('');
 
     // Load product data when editing
@@ -63,7 +67,8 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                     trackStock: editingProduct.trackStock !== undefined ? editingProduct.trackStock : true,
                     reorderLevel: editingProduct.reorderLevel || 10,
                     labourHours: editingProduct.labourHours || 0,
-                    labourMinutes: editingProduct.labourMinutes || 0
+                    labourMinutes: editingProduct.labourMinutes || 0,
+                    locationId: editingProduct.locationId || null
                 });
                 setCostType(editingProduct.costType || 'CALCULATED');
                 setListPriceSource(editingProduct.listPriceSource || 'MANUAL');
@@ -94,7 +99,8 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                     trackStock: true,
                     reorderLevel: 10,
                     labourHours: 0,
-                    labourMinutes: 0
+                    labourMinutes: 0,
+                    locationId: null
                 });
                 setBomEntries([]);
                 setBomFastenerEntries([]);
@@ -195,6 +201,23 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
         ));
     };
 
+    const handleGenerateSKU = async () => {
+        if (!formData.categoryId) {
+            setError('Please select a category first');
+            return;
+        }
+
+        setGeneratingSKU(true);
+        try {
+            const newSKU = await generateNextProductSKU(formData.categoryId, formData.subcategoryId);
+            setFormData(prev => ({ ...prev, sku: newSKU }));
+        } catch (err) {
+            setError(err.message || 'Failed to generate SKU');
+        } finally {
+            setGeneratingSKU(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
@@ -223,6 +246,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
                 listPrice: listPriceCents,
                 listPriceSource: listPriceSource,
+                locationId: formData.locationId,
                 manualCost: costType === 'MANUAL' ? manualCostCents : 0,
                 costType: costType,
                 trackStock: formData.trackStock,
@@ -361,14 +385,43 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                         <label className="block text-sm font-medium text-slate-300 mb-1">
                                             SKU <span className="text-red-400">*</span>
                                         </label>
-                                        <input
-                                            type="text"
-                                            required
-                                            value={formData.sku}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, sku: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="PROD-001"
-                                        />
+                                        <div className="flex gap-2">
+                                            <input
+                                                type="text"
+                                                required
+                                                value={formData.sku}
+                                                onChange={(e) => {
+                                                    if (editingProduct) {
+                                                        if (confirm('WARNING: Changing the SKU of an existing product can cause data inconsistencies. Are you sure?')) {
+                                                            setFormData(prev => ({ ...prev, sku: e.target.value }));
+                                                        }
+                                                    } else {
+                                                        setFormData(prev => ({ ...prev, sku: e.target.value }));
+                                                    }
+                                                }}
+                                                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                placeholder="PROD-001"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleGenerateSKU}
+                                                disabled={generatingSKU || !formData.categoryId}
+                                                className="px-3 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Auto-generate SKU"
+                                            >
+                                                {generatingSKU ? (
+                                                    <Icons.Loader size={16} className="animate-spin" />
+                                                ) : (
+                                                    <Icons.RotateCcw size={16} />
+                                                )}
+                                            </button>
+                                        </div>
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            {editingProduct
+                                                ? '⚠️ SKU is locked after creation - changing it may cause issues'
+                                                : 'Auto-generates based on category/subcategory'
+                                            }
+                                        </p>
                                     </div>
 
                                     {/* Category Selection */}

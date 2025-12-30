@@ -111,6 +111,7 @@ export const StockOverview = ({ onAdjustStock }) => {
             }
 
             const isLowStock = totalQuantity < part.reorderLevel;
+            const isAtReorderLevel = totalQuantity === part.reorderLevel;
 
             allItems.push({
                 item: part,
@@ -120,7 +121,8 @@ export const StockOverview = ({ onAdjustStock }) => {
                 serializedAssets: part.isSerialized
                     ? serializedAssets.filter(a => a.partId === part.id && a.status === 'IN_STOCK')
                     : [],
-                isLowStock
+                isLowStock,
+                isAtReorderLevel
             });
         });
 
@@ -142,6 +144,7 @@ export const StockOverview = ({ onAdjustStock }) => {
                 });
 
             const isLowStock = totalQuantity < (fastener.reorderLevel || 0);
+            const isAtReorderLevel = totalQuantity === (fastener.reorderLevel || 0);
 
             allItems.push({
                 item: fastener,
@@ -149,7 +152,8 @@ export const StockOverview = ({ onAdjustStock }) => {
                 totalQuantity,
                 locationBreakdown,
                 serializedAssets: [],
-                isLowStock
+                isLowStock,
+                isAtReorderLevel
             });
         });
 
@@ -171,6 +175,7 @@ export const StockOverview = ({ onAdjustStock }) => {
                 });
 
             const isLowStock = totalQuantity < (product.reorderLevel || 0);
+            const isAtReorderLevel = totalQuantity === (product.reorderLevel || 0);
 
             allItems.push({
                 item: product,
@@ -178,7 +183,8 @@ export const StockOverview = ({ onAdjustStock }) => {
                 totalQuantity,
                 locationBreakdown,
                 serializedAssets: [],
-                isLowStock
+                isLowStock,
+                isAtReorderLevel
             });
         });
 
@@ -196,9 +202,10 @@ export const StockOverview = ({ onAdjustStock }) => {
         // Filter by status
         if (statusFilter !== 'all') {
             filtered = filtered.filter(item => {
-                if (statusFilter === 'low') return item.isLowStock && item.totalQuantity > 0;
                 if (statusFilter === 'out') return item.totalQuantity === 0;
-                if (statusFilter === 'ok') return !item.isLowStock && item.totalQuantity > 0;
+                if (statusFilter === 'reorder') return item.isAtReorderLevel;
+                if (statusFilter === 'low') return item.isLowStock && item.totalQuantity > 0;
+                if (statusFilter === 'good') return !item.isLowStock && !item.isAtReorderLevel && item.totalQuantity > 0;
                 return true;
             });
         }
@@ -440,9 +447,10 @@ export const StockOverview = ({ onAdjustStock }) => {
                                         className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                     >
                                         <option value="all">All</option>
-                                        <option value="low">Low Stock</option>
                                         <option value="out">Out of Stock</option>
-                                        <option value="ok">OK</option>
+                                        <option value="reorder">Reorder</option>
+                                        <option value="low">Low Stock</option>
+                                        <option value="good">Good</option>
                                     </select>
                                 </div>
                             </div>
@@ -626,6 +634,11 @@ export const StockOverview = ({ onAdjustStock }) => {
                                                             <Icons.XCircle size={12} />
                                                             No Stock
                                                         </span>
+                                                    ) : stockItem.isAtReorderLevel ? (
+                                                        <span className="flex items-center justify-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded text-xs text-amber-400 font-medium">
+                                                            <Icons.AlertTriangle size={12} />
+                                                            Reorder
+                                                        </span>
                                                     ) : stockItem.isLowStock ? (
                                                         <span className="flex items-center justify-center gap-1 px-2 py-1 bg-red-500/20 border border-red-500/30 rounded text-xs text-red-400 font-medium">
                                                             <Icons.AlertTriangle size={12} />
@@ -633,7 +646,7 @@ export const StockOverview = ({ onAdjustStock }) => {
                                                         </span>
                                                     ) : (
                                                         <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-medium">
-                                                            OK
+                                                            Good
                                                         </span>
                                                     )}
                                                 </td>

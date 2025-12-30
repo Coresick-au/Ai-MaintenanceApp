@@ -25,6 +25,7 @@ import { FilterPanel } from './categories/FilterPanel';
  */
 export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigger = 0 }) => {
     const [products, setProducts] = useState([]);
+    const [inventory, setInventory] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [manufacturingCosts, setManufacturingCosts] = useState({});
@@ -77,6 +78,22 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
         return () => unsubscribe();
     }, []);
 
+    // Real-time listener for inventory state
+    useEffect(() => {
+        const unsubscribe = onSnapshot(
+            collection(db, 'inventory_state'),
+            (snapshot) => {
+                const inventoryList = snapshot.docs.map(doc => doc.data());
+                setInventory(inventoryList);
+            },
+            (error) => {
+                console.error('[ProductCatalog] Error fetching inventory:', error);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
     // Load manufacturing costs for all products
     useEffect(() => {
         const loadCosts = async () => {
@@ -116,8 +133,21 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
         return category ? category.name : '';
     };
 
+    // Enhance products with actual stock counts
+    const productsWithStock = products.map(product => {
+        // Calculate actual stock count from inventory_state
+        const actualStockCount = inventory
+            .filter(inv => inv.partId === product.id)
+            .reduce((total, inv) => total + (inv.quantity || 0), 0);
+
+        return {
+            ...product,
+            actualStockCount
+        };
+    });
+
     // Filter products based on search term and category filters
-    let filteredProducts = products.filter(product => {
+    let filteredProducts = productsWithStock.filter(product => {
         const searchLower = searchTerm.toLowerCase();
         const categoryName = getCategoryName(product.categoryId)?.toLowerCase() || '';
         const subcategoryName = getCategoryName(product.subcategoryId)?.toLowerCase() || '';
@@ -238,6 +268,9 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                     </th>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
                                         Margin
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-xs font-medium text-slate-400 uppercase tracking-wider">
+                                        Stock
                                     </th>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
                                         Actions
@@ -372,6 +405,20 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                                     </div>
                                                 );
                                             })()}
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            {product.trackStock ? (
+                                                <span className={`font-medium ${product.actualStockCount <= product.reorderLevel
+                                                    ? 'text-red-400'
+                                                    : product.actualStockCount <= product.reorderLevel * 1.5
+                                                        ? 'text-amber-400'
+                                                        : 'text-emerald-400'
+                                                    }`}>
+                                                    {product.actualStockCount || 0}
+                                                </span>
+                                            ) : (
+                                                <span className="text-slate-600 text-xs">-</span>
+                                            )}
                                         </td>
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-2">

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../constants/icons';
-import { getStockMovementHistory } from '../../services/inventoryService';
+import { getStockMovementHistory, deleteStockMovement } from '../../services/inventoryService';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 
@@ -19,6 +19,22 @@ export const StockMovementHistory = () => {
     const [loading, setLoading] = useState(true);
     const [filterPartId, setFilterPartId] = useState('all');
     const [filterLocationId, setFilterLocationId] = useState('all');
+    const [deleting, setDeleting] = useState(null);
+
+    const handleDelete = async (movementId, movementType, partName) => {
+        if (!confirm(`Delete this ${movementType.replace('_', ' ').toLowerCase()} record for ${partName}?\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        setDeleting(movementId);
+        try {
+            await deleteStockMovement(movementId);
+        } catch (err) {
+            alert(err.message || 'Failed to delete movement record');
+        } finally {
+            setDeleting(null);
+        }
+    };
 
     useEffect(() => {
         const unsubMovements = onSnapshot(collection(db, 'stock_movements'), (snap) => {
@@ -95,12 +111,13 @@ export const StockMovementHistory = () => {
                             <th className="px-4 py-3 text-right">Quantity</th>
                             <th className="px-4 py-3">User</th>
                             <th className="px-4 py-3">Notes</th>
+                            <th className="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700">
                         {filteredMovements.length === 0 ? (
                             <tr>
-                                <td colSpan="7" className="px-4 py-8 text-center text-slate-400">
+                                <td colSpan="8" className="px-4 py-8 text-center text-slate-400">
                                     {filterPartId !== 'all' || filterLocationId !== 'all'
                                         ? 'No movements match your filters'
                                         : 'No stock movements yet. Movements will appear here as you adjust inventory.'}
@@ -130,8 +147,8 @@ export const StockMovementHistory = () => {
                                         <td className="px-4 py-3 text-slate-300">{location?.name || 'Unknown'}</td>
                                         <td className="px-4 py-3 text-right">
                                             <span className={`font-mono font-bold ${movement.quantityDelta > 0 ? 'text-emerald-400' :
-                                                    movement.quantityDelta < 0 ? 'text-red-400' :
-                                                        'text-slate-400'
+                                                movement.quantityDelta < 0 ? 'text-red-400' :
+                                                    'text-slate-400'
                                                 }`}>
                                                 {movement.quantityDelta > 0 ? '+' : ''}{movement.quantityDelta}
                                             </span>
@@ -139,6 +156,16 @@ export const StockMovementHistory = () => {
                                         <td className="px-4 py-3 text-slate-300">{movement.userId}</td>
                                         <td className="px-4 py-3 text-slate-400 text-xs max-w-xs truncate">
                                             {movement.notes || '-'}
+                                        </td>
+                                        <td className="px-4 py-3 text-right">
+                                            <button
+                                                onClick={() => handleDelete(movement.id, movement.movementType, part?.name || 'Unknown')}
+                                                disabled={deleting === movement.id}
+                                                className="px-2 py-1 text-red-400 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
+                                                title="Delete this movement record"
+                                            >
+                                                <Icons.Trash size={14} />
+                                            </button>
                                         </td>
                                     </tr>
                                 );

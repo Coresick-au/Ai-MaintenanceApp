@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
@@ -6,13 +6,16 @@ import {
     addIdlerFrame,
     updateIdlerFrame,
     deleteIdlerFrame,
+    importIdlerFrames,
     MATERIAL_TYPES,
     STANDARD_BELT_WIDTHS,
     TRANSOM_TYPES,
     ROLLER_DESIGNS,
+    SCALE_POSITION,
     formatCurrency,
     filterSuppliersByCategories
 } from '../../services/specializedComponentsService';
+import { exportToCSV, importFromCSV } from '../../utils/csvExportImport';
 import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
@@ -23,12 +26,14 @@ export const IdlerFrameManager = () => {
     const [editingFrame, setEditingFrame] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [successMessage, setSuccessMessage] = useState('');
     const [sortField, setSortField] = useState('effectiveDate');
     const [sortDirection, setSortDirection] = useState('desc');
     const { categories } = useCategories();
     const [suppliers, setSuppliers] = useState([]);
     const [filteredSuppliers, setFilteredSuppliers] = useState([]);
     const [selectedSupplier, setSelectedSupplier] = useState('');
+    const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
         beltWidth: 1200,
         materialType: 'STAINLESS_STEEL',
@@ -36,6 +41,7 @@ export const IdlerFrameManager = () => {
         quantity: 1,
         transomType: 'ANGLE',
         rollerDesign: 'THREE_ROLLER',
+        scalePosition: 'OFF_SCALE',
         hasCams: false,
         categoryId: null,
         subcategoryId: null,
@@ -120,6 +126,7 @@ export const IdlerFrameManager = () => {
                 quantity: frame.quantity,
                 transomType: frame.transomType,
                 rollerDesign: frame.rollerDesign,
+                scalePosition: frame.scalePosition || 'OFF_SCALE',
                 hasCams: frame.hasCams,
                 categoryId: frame.categoryId || null,
                 subcategoryId: frame.subcategoryId || null,
@@ -137,6 +144,7 @@ export const IdlerFrameManager = () => {
                 quantity: 1,
                 transomType: 'ANGLE',
                 rollerDesign: 'THREE_ROLLER',
+                scalePosition: 'OFF_SCALE',
                 hasCams: false,
                 categoryId: null,
                 subcategoryId: null,
@@ -171,6 +179,7 @@ export const IdlerFrameManager = () => {
                 quantity: parseInt(formData.quantity),
                 transomType: formData.transomType,
                 rollerDesign: formData.rollerDesign,
+                scalePosition: formData.scalePosition,
                 hasCams: formData.hasCams,
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
@@ -201,6 +210,47 @@ export const IdlerFrameManager = () => {
             await deleteIdlerFrame(frameId);
         } catch (err) {
             setError(err.message || 'Failed to delete idler frame');
+        }
+    };
+
+    const handleExport = () => {
+        try {
+            if (idlerFrames.length === 0) {
+                setError('No data to export');
+                return;
+            }
+            const filename = `idler_frames_history_${new Date().toISOString().split('T')[0]}.csv`;
+            exportToCSV(idlerFrames, filename);
+            setSuccessMessage(`Exported ${idlerFrames.length} records successfully`);
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (err) {
+            setError(err.message || 'Failed to export data');
+        }
+    };
+
+    const handleImportClick = () => {
+        fileInputRef.current?.click();
+    };
+
+    const handleFileSelect = async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        try {
+            setError('');
+            setSuccessMessage('Importing data...');
+            const data = await importFromCSV(file);
+            const results = await importIdlerFrames(data);
+            let message = `Import complete: ${results.success} added`;
+            if (results.skipped > 0) message += `, ${results.skipped} skipped (duplicates)`;
+            if (results.failed > 0) message += `, ${results.failed} failed`;
+            setSuccessMessage(message);
+            setTimeout(() => setSuccessMessage(''), 5000);
+            if (results.errors.length > 0) console.warn('Import errors:', results.errors);
+        } catch (err) {
+            setError(err.message || 'Failed to import data');
+            setSuccessMessage('');
+        } finally {
+            e.target.value = '';
         }
     };
 
@@ -287,19 +337,50 @@ export const IdlerFrameManager = () => {
                             Track historical cost data for conveyor idler frames
                         </p>
                     </div>
-                    <button
-                        onClick={() => handleOpenForm()}
-                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                    >
-                        <Icons.Plus size={20} />
-                        Add Idler Frame
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={handleExport}
+                            disabled={idlerFrames.length === 0}
+                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Icons.Download size={20} />
+                            Export CSV
+                        </button>
+                        <button
+                            onClick={handleImportClick}
+                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Icons.Upload size={20} />
+                            Import CSV
+                        </button>
+                        <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept=".csv"
+                            onChange={handleFileSelect}
+                            className="hidden"
+                        />
+                        <button
+                            onClick={() => handleOpenForm()}
+                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                        >
+                            <Icons.Plus size={20} />
+                            Add Idler Frame
+                        </button>
+                    </div>
                 </div>
 
                 {/* Error Display */}
                 {error && (
                     <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
                         {error}
+                    </div>
+                )}
+
+                {/* Success Message */}
+                {successMessage && (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm">
+                        {successMessage}
                     </div>
                 )}
 
@@ -315,6 +396,7 @@ export const IdlerFrameManager = () => {
                                     <SortableHeader field="quantity">Qty</SortableHeader>
                                     <SortableHeader field="transomType">Transom</SortableHeader>
                                     <SortableHeader field="rollerDesign">Roller Design</SortableHeader>
+                                    <SortableHeader field="scalePosition">Scale Position</SortableHeader>
                                     <SortableHeader field="hasCams">Cams</SortableHeader>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Category</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Suppliers</th>
@@ -340,6 +422,14 @@ export const IdlerFrameManager = () => {
                                             <td className="px-4 py-3 text-sm text-slate-300">{frame.quantity}</td>
                                             <td className="px-4 py-3 text-sm text-slate-300">{TRANSOM_TYPES[frame.transomType]}</td>
                                             <td className="px-4 py-3 text-sm text-slate-300">{ROLLER_DESIGNS[frame.rollerDesign]}</td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <span className={`px-2 py-1 rounded text-xs ${frame.scalePosition === 'ON_SCALE'
+                                                    ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                                                    : 'bg-slate-500/20 text-slate-300 border border-slate-500/30'
+                                                    }`}>
+                                                    {SCALE_POSITION[frame.scalePosition] || SCALE_POSITION.OFF_SCALE}
+                                                </span>
+                                            </td>
                                             <td className="px-4 py-3 text-sm text-slate-300">
                                                 {frame.hasCams ? (
                                                     <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs">Yes</span>
@@ -530,6 +620,22 @@ export const IdlerFrameManager = () => {
                                             <option value="ONE_ROLLER">{ROLLER_DESIGNS.ONE_ROLLER}</option>
                                             <option value="THREE_ROLLER">{ROLLER_DESIGNS.THREE_ROLLER}</option>
                                             <option value="FIVE_ROLLER">{ROLLER_DESIGNS.FIVE_ROLLER}</option>
+                                        </select>
+                                    </div>
+
+                                    {/* Scale Position */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Scale Position <span className="text-red-400">*</span>
+                                        </label>
+                                        <select
+                                            required
+                                            value={formData.scalePosition}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, scalePosition: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        >
+                                            <option value="OFF_SCALE">{SCALE_POSITION.OFF_SCALE}</option>
+                                            <option value="ON_SCALE">{SCALE_POSITION.ON_SCALE}</option>
                                         </select>
                                     </div>
                                 </div>

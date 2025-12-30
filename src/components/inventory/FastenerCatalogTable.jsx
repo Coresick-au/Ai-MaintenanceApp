@@ -4,12 +4,13 @@ import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { getLowestSupplierPrice } from '../../services/partPricingService';
 import { formatCurrency } from '../../utils/helpers';
-import { deletePart } from '../../services/inventoryService';
+import { deleteFastener } from '../../services/inventoryService';
 import { FilterPanel } from './categories/FilterPanel';
 import { useCategories } from '../../context/CategoryContext';
 
 export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
     const [fasteners, setFasteners] = useState([]);
+    const [inventory, setInventory] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'sku', direction: 'ascending' });
     const [loading, setLoading] = useState(true);
@@ -31,6 +32,22 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
             (error) => {
                 console.error('[FastenerCatalog] Error fetching fasteners:', error);
                 setLoading(false);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
+    // Real-time listener for inventory state
+    useEffect(() => {
+        const unsubscribe = onSnapshot(
+            collection(db, 'inventory_state'),
+            (snapshot) => {
+                const inventoryList = snapshot.docs.map(doc => doc.data());
+                setInventory(inventoryList);
+            },
+            (error) => {
+                console.error('[FastenerCatalog] Error fetching inventory:', error);
             }
         );
 
@@ -62,7 +79,7 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
         }
     }, [fasteners]);
 
-    // Calculate actual margin for each fastener using active cost
+    // Calculate actual margin and stock for each fastener
     const fastenersWithMargins = useMemo(() => {
         return fasteners.map(fastener => {
             // Determine active cost based on source
@@ -74,13 +91,19 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                 ? ((fastener.listPrice - activeCost) / fastener.listPrice) * 100
                 : 0;
 
+            // Calculate actual stock count from inventory_state
+            const actualStockCount = inventory
+                .filter(inv => inv.partId === fastener.id)
+                .reduce((total, inv) => total + (inv.quantity || 0), 0);
+
             return {
                 ...fastener,
                 activeCost,
-                actualMarginPercent: actualMargin
+                actualMarginPercent: actualMargin,
+                actualStockCount
             };
         });
-    }, [fasteners, lowestPrices]);
+    }, [fasteners, lowestPrices, inventory]);
 
     // Helper to get category name by ID
     const getCategoryName = (categoryId) => {
@@ -364,13 +387,13 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         {fastener.trackStock ? (
-                                            <span className={`font-medium ${fastener.stockCount <= fastener.reorderLevel
-                                                    ? 'text-red-400'
-                                                    : fastener.stockCount <= fastener.reorderLevel * 1.5
-                                                        ? 'text-amber-400'
-                                                        : 'text-emerald-400'
+                                            <span className={`font-medium ${fastener.actualStockCount <= fastener.reorderLevel
+                                                ? 'text-red-400'
+                                                : fastener.actualStockCount <= fastener.reorderLevel * 1.5
+                                                    ? 'text-amber-400'
+                                                    : 'text-emerald-400'
                                                 }`}>
-                                                {fastener.stockCount || 0}
+                                                {fastener.actualStockCount || 0}
                                             </span>
                                         ) : (
                                             <span className="text-slate-600 text-xs">-</span>
@@ -438,11 +461,11 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                                     <button
                                         onClick={async () => {
                                             try {
-                                                await deletePart(viewingFastener.id);
+                                                await deleteFastener(viewingFastener.id);
                                                 setViewingFastener(null);
                                             } catch (error) {
                                                 console.error('Error deleting fastener:', error);
-                                                alert('Failed to delete fastener. Please try again.');
+                                                alert(error.message || 'Failed to delete fastener. Please try again.');
                                             }
                                         }}
                                         className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"

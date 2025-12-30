@@ -11,13 +11,15 @@ import {
     ROLLER_DESIGNS,
     ROLLER_MATERIAL_TYPES,
     STANDARD_ROLLER_DIAMETERS,
+    SPEED_SENSOR_DESIGNS,
     formatCurrency
 } from '../../services/specializedComponentsService';
 import {
     estimateWeighModuleCost,
     estimateIdlerFrameCost,
     estimateBilletWeightCost,
-    estimateRollerCost
+    estimateRollerCost,
+    estimateSpeedSensorCost
 } from '../../services/costEstimationService';
 
 export const CostEstimator = () => {
@@ -61,6 +63,13 @@ export const CostEstimator = () => {
         quantity: 1
     });
 
+    const [speedSensorParams, setSpeedSensorParams] = useState({
+        materialType: 'STAINLESS_STEEL',
+        design: 'HARD_ROCK',
+        beltWidth: 1200,
+        quantity: 1
+    });
+
     // Load weigher models
     useEffect(() => {
         const unsubscribe = onSnapshot(
@@ -99,6 +108,9 @@ export const CostEstimator = () => {
                     break;
                 case 'roller':
                     estimationResult = await estimateRollerCost(rollerParams, dateRange);
+                    break;
+                case 'speed-sensor':
+                    estimationResult = await estimateSpeedSensorCost(speedSensorParams, dateRange);
                     break;
                 default:
                     throw new Error('Invalid component type');
@@ -205,6 +217,16 @@ export const CostEstimator = () => {
                             >
                                 <Icons.Circle size={20} className="mx-auto mb-1" />
                                 <div className="text-xs">Roller</div>
+                            </button>
+                            <button
+                                onClick={() => { setComponentType('speed-sensor'); setResult(null); }}
+                                className={`p-3 rounded-lg border-2 transition-all ${componentType === 'speed-sensor'
+                                    ? 'border-purple-500 bg-purple-500/10 text-white'
+                                    : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
+                                    }`}
+                            >
+                                <Icons.Activity size={20} className="mx-auto mb-1" />
+                                <div className="text-xs">Speed Sensor</div>
                             </button>
                         </div>
                     </div>
@@ -468,6 +490,60 @@ export const CostEstimator = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Speed Sensor Parameters */}
+                        {componentType === 'speed-sensor' && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Material</label>
+                                        <select
+                                            value={speedSensorParams.materialType}
+                                            onChange={(e) => setSpeedSensorParams(prev => ({ ...prev, materialType: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        >
+                                            <option value="STAINLESS_STEEL">{MATERIAL_TYPES.STAINLESS_STEEL}</option>
+                                            <option value="GALVANISED">{MATERIAL_TYPES.GALVANISED}</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Design</label>
+                                        <select
+                                            value={speedSensorParams.design}
+                                            onChange={(e) => setSpeedSensorParams(prev => ({ ...prev, design: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        >
+                                            <option value="HARD_ROCK">{SPEED_SENSOR_DESIGNS.HARD_ROCK}</option>
+                                            <option value="SOFT_ROCK">{SPEED_SENSOR_DESIGNS.SOFT_ROCK}</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Belt Width (mm)</label>
+                                        <select
+                                            value={speedSensorParams.beltWidth}
+                                            onChange={(e) => setSpeedSensorParams(prev => ({ ...prev, beltWidth: parseInt(e.target.value) }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        >
+                                            {STANDARD_BELT_WIDTHS.map(w => (
+                                                <option key={w} value={w}>{w}mm</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Quantity</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={speedSensorParams.quantity}
+                                            onChange={(e) => setSpeedSensorParams(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Estimate Button */}
@@ -539,6 +615,15 @@ export const CostEstimator = () => {
                                     <span className="text-xs text-slate-400">Confidence:</span>
                                     {getConfidenceBadge(result.confidence)}
                                 </div>
+                                {result.quantityAdjusted && (
+                                    <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400">
+                                        <Icons.CheckCircle size={14} />
+                                        <span>Quantity-based pricing applied</span>
+                                        {result.quantityRange && (
+                                            <span className="text-slate-400">({result.quantityRange} units)</span>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Estimation Details */}
@@ -597,6 +682,7 @@ export const CostEstimator = () => {
                                                     {entry.weightKg && `${entry.weightKg}kg • `}
                                                     {entry.diameter && `⌀${entry.diameter}mm • `}
                                                     {entry.faceLength && `L${entry.faceLength}mm • `}
+                                                    {entry.rhsCutLength && `RHS L${entry.rhsCutLength}mm • `}
                                                     {entry.quantity && `Qty: ${entry.quantity}`}
                                                 </div>
                                             </div>

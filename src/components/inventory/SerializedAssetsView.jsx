@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
-import { addSerializedAsset, updateSerializedAsset, moveSerializedAsset } from '../../services/inventoryService';
+import { addSerializedAsset, updateSerializedAsset, moveSerializedAsset, deleteSerializedAsset } from '../../services/inventoryService';
 
 const STATUS_COLORS = {
     IN_STOCK: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -368,6 +368,23 @@ const AssetDetailModal = ({ asset, part, locations, onClose }) => {
         }
     };
 
+    const handleDelete = async () => {
+        if (!confirm(`Are you sure you want to delete this serialized asset?\n\nSerial Number: ${asset.serialNumber}\nPart: ${part?.name || 'Unknown'}\n\nThis action cannot be undone.`)) {
+            return;
+        }
+
+        setSaving(true);
+        try {
+            const userId = 'current-user'; // TODO: Get from auth context
+            await deleteSerializedAsset(asset.id, userId, 'Asset deleted by user');
+            onClose();
+        } catch (err) {
+            alert(err.message || 'Failed to delete asset');
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const location = locations.find(l => l.id === asset.currentLocationId);
 
     return (
@@ -465,31 +482,43 @@ const AssetDetailModal = ({ asset, part, locations, onClose }) => {
                         )}
                     </div>
 
-                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
-                        {isEditing ? (
-                            <>
+                    <div className="flex justify-between gap-3 pt-4 border-t border-slate-700">
+                        <button
+                            onClick={handleDelete}
+                            disabled={saving}
+                            className="px-4 py-2 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-400 rounded-lg font-medium transition-colors disabled:opacity-50"
+                            title="Delete this serialized asset"
+                        >
+                            <Icons.Trash size={16} className="inline mr-2" />
+                            Delete Asset
+                        </button>
+
+                        <div className="flex gap-3">
+                            {isEditing ? (
+                                <>
+                                    <button
+                                        onClick={() => setIsEditing(false)}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSave}
+                                        disabled={saving}
+                                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                                    >
+                                        {saving ? 'Saving...' : 'Save Changes'}
+                                    </button>
+                                </>
+                            ) : (
                                 <button
-                                    onClick={() => setIsEditing(false)}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                    onClick={() => setIsEditing(true)}
+                                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
                                 >
-                                    Cancel
+                                    Edit Asset
                                 </button>
-                                <button
-                                    onClick={handleSave}
-                                    disabled={saving}
-                                    className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                                >
-                                    {saving ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            </>
-                        ) : (
-                            <button
-                                onClick={() => setIsEditing(true)}
-                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
-                            >
-                                Edit Asset
-                            </button>
-                        )}
+                            )}
+                        </div>
                     </div>
                 </div>
             </div>

@@ -3,14 +3,13 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import {
-    addWeighModule,
-    updateWeighModule,
-    deleteWeighModule,
-    importWeighModules,
-    getAllWeigherModels,
+    addSpeedSensor,
+    updateSpeedSensor,
+    deleteSpeedSensor,
+    importSpeedSensors,
     MATERIAL_TYPES,
+    SPEED_SENSOR_DESIGNS,
     STANDARD_BELT_WIDTHS,
-    IDLER_SPACING_OPTIONS,
     formatCurrency,
     filterSuppliersByCategories
 } from '../../services/specializedComponentsService';
@@ -19,11 +18,10 @@ import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
 
-export const WeighModuleManager = () => {
-    const [weighModules, setWeighModules] = useState([]);
-    const [weigherModels, setWeigherModels] = useState([]);
+export const SpeedSensorManager = () => {
+    const [speedSensors, setSpeedSensors] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingModule, setEditingModule] = useState(null);
+    const [editingSensor, setEditingSensor] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -35,11 +33,11 @@ export const WeighModuleManager = () => {
     const [selectedSupplier, setSelectedSupplier] = useState('');
     const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
-        modelId: '',
-        beltWidth: 1200,
         materialType: 'STAINLESS_STEEL',
-        capacityKgPerM: 0,
-        idlerSpacing: 1000,
+        design: 'HARD_ROCK',
+        rhsCutLength: '',
+        beltWidth: '',
+        quantity: 1,
         categoryId: null,
         subcategoryId: null,
         suppliers: [],
@@ -48,32 +46,18 @@ export const WeighModuleManager = () => {
         notes: ''
     });
 
-    // Load weigh modules from Firestore
+    // Load speed sensors from Firestore
     useEffect(() => {
         const unsubscribe = onSnapshot(
-            collection(db, 'weigh_modules_cost_history'),
+            collection(db, 'speed_sensors_cost_history'),
             (snapshot) => {
-                const modules = snapshot.docs.map(doc => doc.data());
-                modules.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
-                setWeighModules(modules);
+                const sensors = snapshot.docs.map(doc => doc.data());
+                sensors.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
+                setSpeedSensors(sensors);
             },
             (error) => {
-                console.error('Error loading weigh modules:', error);
-                setError('Failed to load weigh modules');
-            }
-        );
-
-        return () => unsubscribe();
-    }, []);
-
-    // Load weigher models
-    useEffect(() => {
-        const unsubscribe = onSnapshot(
-            collection(db, 'weigher_models'),
-            (snapshot) => {
-                const models = snapshot.docs.map(doc => doc.data());
-                models.sort((a, b) => a.code.localeCompare(b.code));
-                setWeigherModels(models);
+                console.error('Error loading speed sensors:', error);
+                setError('Failed to load speed sensors');
             }
         );
 
@@ -126,30 +110,30 @@ export const WeighModuleManager = () => {
         }));
     };
 
-    const handleOpenForm = (module = null) => {
-        if (module) {
-            setEditingModule(module);
+    const handleOpenForm = (sensor = null) => {
+        if (sensor) {
+            setEditingSensor(sensor);
             setFormData({
-                modelId: module.modelId,
-                beltWidth: module.beltWidth,
-                materialType: module.materialType,
-                capacityKgPerM: module.capacityKgPerM,
-                idlerSpacing: module.idlerSpacing,
-                categoryId: module.categoryId || null,
-                subcategoryId: module.subcategoryId || null,
-                suppliers: module.suppliers || [],
-                costPrice: (module.costPrice / 100).toFixed(2),
-                effectiveDate: module.effectiveDate,
-                notes: module.notes || ''
+                materialType: sensor.materialType,
+                design: sensor.design,
+                rhsCutLength: sensor.rhsCutLength,
+                beltWidth: sensor.beltWidth || '',
+                quantity: sensor.quantity,
+                categoryId: sensor.categoryId || null,
+                subcategoryId: sensor.subcategoryId || null,
+                suppliers: sensor.suppliers || [],
+                costPrice: (sensor.costPrice / 100).toFixed(2),
+                effectiveDate: sensor.effectiveDate,
+                notes: sensor.notes || ''
             });
         } else {
-            setEditingModule(null);
+            setEditingSensor(null);
             setFormData({
-                modelId: '',
-                beltWidth: 1200,
                 materialType: 'STAINLESS_STEEL',
-                capacityKgPerM: 0,
-                idlerSpacing: 1000,
+                design: 'HARD_ROCK',
+                rhsCutLength: '',
+                beltWidth: '',
+                quantity: 1,
                 categoryId: null,
                 subcategoryId: null,
                 suppliers: [],
@@ -164,7 +148,7 @@ export const WeighModuleManager = () => {
 
     const handleCloseForm = () => {
         setIsFormOpen(false);
-        setEditingModule(null);
+        setEditingSensor(null);
         setError('');
     };
 
@@ -176,12 +160,12 @@ export const WeighModuleManager = () => {
         try {
             const costPriceCents = Math.round(parseFloat(formData.costPrice) * 100);
 
-            const moduleData = {
-                modelId: formData.modelId,
-                beltWidth: parseInt(formData.beltWidth),
+            const sensorData = {
                 materialType: formData.materialType,
-                capacityKgPerM: parseFloat(formData.capacityKgPerM),
-                idlerSpacing: parseInt(formData.idlerSpacing),
+                design: formData.design,
+                rhsCutLength: parseInt(formData.rhsCutLength),
+                beltWidth: formData.beltWidth ? parseInt(formData.beltWidth) : null,
+                quantity: parseInt(formData.quantity),
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
@@ -190,39 +174,39 @@ export const WeighModuleManager = () => {
                 notes: formData.notes.trim()
             };
 
-            if (editingModule) {
-                await updateWeighModule(editingModule.id, moduleData);
+            if (editingSensor) {
+                await updateSpeedSensor(editingSensor.id, sensorData);
             } else {
-                await addWeighModule(moduleData);
+                await addSpeedSensor(sensorData);
             }
 
             handleCloseForm();
         } catch (err) {
-            setError(err.message || 'Failed to save weigh module');
+            setError(err.message || 'Failed to save speed sensor');
         } finally {
             setSaving(false);
         }
     };
 
-    const handleDelete = async (moduleId) => {
-        if (!confirm('Are you sure you want to delete this weigh module entry?')) return;
+    const handleDelete = async (sensorId) => {
+        if (!confirm('Are you sure you want to delete this speed sensor entry?')) return;
 
         try {
-            await deleteWeighModule(moduleId);
+            await deleteSpeedSensor(sensorId);
         } catch (err) {
-            setError(err.message || 'Failed to delete weigh module');
+            setError(err.message || 'Failed to delete speed sensor');
         }
     };
 
     const handleExport = () => {
         try {
-            if (weighModules.length === 0) {
+            if (speedSensors.length === 0) {
                 setError('No data to export');
                 return;
             }
-            const filename = `weigh_modules_history_${new Date().toISOString().split('T')[0]}.csv`;
-            exportToCSV(weighModules, filename);
-            setSuccessMessage(`Exported ${weighModules.length} records successfully`);
+            const filename = `speed_sensors_history_${new Date().toISOString().split('T')[0]}.csv`;
+            exportToCSV(speedSensors, filename);
+            setSuccessMessage(`Exported ${speedSensors.length} records successfully`);
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err) {
             setError(err.message || 'Failed to export data');
@@ -240,7 +224,7 @@ export const WeighModuleManager = () => {
             setError('');
             setSuccessMessage('Importing data...');
             const data = await importFromCSV(file);
-            const results = await importWeighModules(data);
+            const results = await importSpeedSensors(data);
             let message = `Import complete: ${results.success} added`;
             if (results.skipped > 0) message += `, ${results.skipped} skipped (duplicates)`;
             if (results.failed > 0) message += `, ${results.failed} failed`;
@@ -253,11 +237,6 @@ export const WeighModuleManager = () => {
         } finally {
             e.target.value = '';
         }
-    };
-
-    const getModelName = (modelId) => {
-        const model = weigherModels.find(m => m.id === modelId);
-        return model ? `${model.code} - ${model.name}` : 'Unknown';
     };
 
     const getCategoryName = (categoryId) => {
@@ -275,25 +254,29 @@ export const WeighModuleManager = () => {
         }
     };
 
-    const getSortedModules = () => {
-        const sorted = [...weighModules].sort((a, b) => {
+    const getSortedSensors = () => {
+        const sorted = [...speedSensors].sort((a, b) => {
             let aVal, bVal;
 
             switch (sortField) {
-                case 'model':
-                    aVal = getModelName(a.modelId);
-                    bVal = getModelName(b.modelId);
-                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                case 'rhsCutLength':
                 case 'beltWidth':
-                case 'capacityKgPerM':
-                case 'idlerSpacing':
+                case 'quantity':
                 case 'costPrice':
-                    aVal = a[sortField];
-                    bVal = b[sortField];
+                    aVal = a[sortField] || 0;
+                    bVal = b[sortField] || 0;
+                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                case 'totalCost':
+                    aVal = a.costPrice * a.quantity;
+                    bVal = b.costPrice * b.quantity;
                     return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
                 case 'materialType':
                     aVal = MATERIAL_TYPES[a.materialType];
                     bVal = MATERIAL_TYPES[b.materialType];
+                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                case 'design':
+                    aVal = SPEED_SENSOR_DESIGNS[a.design];
+                    bVal = SPEED_SENSOR_DESIGNS[b.design];
                     return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 case 'effectiveDate':
                     aVal = new Date(a.effectiveDate);
@@ -328,15 +311,15 @@ export const WeighModuleManager = () => {
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-2xl font-bold text-white">Weigh Modules</h2>
+                        <h2 className="text-2xl font-bold text-white">Spiral Cage Speed Sensors</h2>
                         <p className="text-sm text-slate-400 mt-1">
-                            Track historical cost data for precision belt weighers
+                            Track historical cost data for spiral cage speed sensors
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleExport}
-                            disabled={weighModules.length === 0}
+                            disabled={speedSensors.length === 0}
                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <Icons.Download size={20} />
@@ -361,7 +344,7 @@ export const WeighModuleManager = () => {
                             className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                         >
                             <Icons.Plus size={20} />
-                            Add Weigh Module
+                            Add Speed Sensor
                         </button>
                     </div>
                 </div>
@@ -386,44 +369,47 @@ export const WeighModuleManager = () => {
                         <table className="w-full">
                             <thead className="bg-slate-800 border-b border-slate-700">
                                 <tr>
-                                    <SortableHeader field="model">Model</SortableHeader>
-                                    <SortableHeader field="beltWidth">Belt Width</SortableHeader>
                                     <SortableHeader field="materialType">Material</SortableHeader>
-                                    <SortableHeader field="capacityKgPerM">Capacity</SortableHeader>
-                                    <SortableHeader field="idlerSpacing">Idler Spacing</SortableHeader>
+                                    <SortableHeader field="design">Design</SortableHeader>
+                                    <SortableHeader field="rhsCutLength">RHS Cut Length</SortableHeader>
+                                    <SortableHeader field="beltWidth">Belt Width</SortableHeader>
+                                    <SortableHeader field="quantity">Qty</SortableHeader>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Category</th>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Suppliers</th>
-                                    <SortableHeader field="costPrice">Cost Price</SortableHeader>
+                                    <SortableHeader field="costPrice">Cost/Unit</SortableHeader>
+                                    <SortableHeader field="totalCost">Total Cost</SortableHeader>
                                     <SortableHeader field="effectiveDate">Effective Date</SortableHeader>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700">
-                                {getSortedModules().length === 0 ? (
+                                {getSortedSensors().length === 0 ? (
                                     <tr>
                                         <td colSpan="10" className="px-4 py-8 text-center text-slate-400">
-                                            No weigh modules added yet. Click "Add Weigh Module" to get started.
+                                            No speed sensors added yet. Click "Add Speed Sensor" to get started.
                                         </td>
                                     </tr>
                                 ) : (
-                                    getSortedModules().map(module => (
-                                        <tr key={module.id} className="hover:bg-slate-800/50 transition-colors">
-                                            <td className="px-4 py-3 text-sm text-white">{getModelName(module.modelId)}</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.beltWidth}mm</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{MATERIAL_TYPES[module.materialType]}</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.capacityKgPerM} kg/m</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.idlerSpacing}mm</td>
+                                    getSortedSensors().map(sensor => (
+                                        <tr key={sensor.id} className="hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-4 py-3 text-sm text-slate-300">{MATERIAL_TYPES[sensor.materialType]}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-300">{SPEED_SENSOR_DESIGNS[sensor.design]}</td>
+                                            <td className="px-4 py-3 text-sm text-white">{sensor.rhsCutLength}mm</td>
+                                            <td className="px-4 py-3 text-sm text-white">
+                                                {sensor.beltWidth ? `${sensor.beltWidth}mm` : <span className="text-slate-500 text-xs">-</span>}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-300">{sensor.quantity}</td>
                                             <td className="px-4 py-3 text-sm">
-                                                {getCategoryName(module.categoryId) || getCategoryName(module.subcategoryId) ? (
+                                                {getCategoryName(sensor.categoryId) || getCategoryName(sensor.subcategoryId) ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {getCategoryName(module.categoryId) && (
+                                                        {getCategoryName(sensor.categoryId) && (
                                                             <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded text-xs">
-                                                                {getCategoryName(module.categoryId)}
+                                                                {getCategoryName(sensor.categoryId)}
                                                             </span>
                                                         )}
-                                                        {getCategoryName(module.subcategoryId) && (
+                                                        {getCategoryName(sensor.subcategoryId) && (
                                                             <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs">
-                                                                {getCategoryName(module.subcategoryId)}
+                                                                {getCategoryName(sensor.subcategoryId)}
                                                             </span>
                                                         )}
                                                     </div>
@@ -432,9 +418,9 @@ export const WeighModuleManager = () => {
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-sm">
-                                                {module.suppliers && module.suppliers.length > 0 ? (
+                                                {sensor.suppliers && sensor.suppliers.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {module.suppliers.map((supplier, idx) => (
+                                                        {sensor.suppliers.map((supplier, idx) => (
                                                             <span key={idx} className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-xs">
                                                                 {supplier}
                                                             </span>
@@ -444,19 +430,22 @@ export const WeighModuleManager = () => {
                                                     <span className="text-slate-500 text-xs">-</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">{formatCurrency(module.costPrice)}</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.effectiveDate}</td>
+                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">{formatCurrency(sensor.costPrice)}</td>
+                                            <td className="px-4 py-3 text-sm font-mono text-cyan-400">
+                                                {formatCurrency(sensor.costPrice * sensor.quantity)}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-slate-300">{sensor.effectiveDate}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => handleOpenForm(module)}
+                                                        onClick={() => handleOpenForm(sensor)}
                                                         className="p-1.5 hover:bg-slate-700 rounded text-cyan-400 transition-colors"
                                                         title="Edit"
                                                     >
                                                         <Icons.Edit size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(module.id)}
+                                                        onClick={() => handleDelete(sensor.id)}
                                                         className="p-1.5 hover:bg-slate-700 rounded text-red-400 transition-colors"
                                                         title="Delete"
                                                     >
@@ -479,7 +468,7 @@ export const WeighModuleManager = () => {
                             <div className="border-b border-slate-700 p-6">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-xl font-bold text-white">
-                                        {editingModule ? 'Edit Weigh Module' : 'Add Weigh Module'}
+                                        {editingSensor ? 'Edit Speed Sensor' : 'Add Speed Sensor'}
                                     </h3>
                                     <button
                                         onClick={handleCloseForm}
@@ -491,45 +480,6 @@ export const WeighModuleManager = () => {
                             </div>
 
                             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Weigher Model */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Weigher Model <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.modelId}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, modelId: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            <option value="">-- Select Model --</option>
-                                            {weigherModels.map(model => (
-                                                <option key={model.id} value={model.id}>
-                                                    {model.code} - {model.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Belt Width */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Belt Width (mm) <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.beltWidth}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, beltWidth: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            {STANDARD_BELT_WIDTHS.map(width => (
-                                                <option key={width} value={width}>{width}mm</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                </div>
-
                                 <div className="grid grid-cols-2 gap-4">
                                     {/* Material Type */}
                                     <div>
@@ -547,58 +497,102 @@ export const WeighModuleManager = () => {
                                         </select>
                                     </div>
 
-                                    {/* Capacity */}
+                                    {/* Design */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Capacity (kg/m) <span className="text-red-400">*</span>
+                                            Design <span className="text-red-400">*</span>
+                                        </label>
+                                        <select
+                                            required
+                                            value={formData.design}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, design: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        >
+                                            <option value="HARD_ROCK">{SPEED_SENSOR_DESIGNS.HARD_ROCK}</option>
+                                            <option value="SOFT_ROCK">{SPEED_SENSOR_DESIGNS.SOFT_ROCK}</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    {/* RHS Cut Length */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            RHS Cut Length (mm) <span className="text-red-400">*</span>
                                         </label>
                                         <input
                                             type="number"
                                             required
                                             min="0"
-                                            step="0.1"
-                                            value={formData.capacityKgPerM}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, capacityKgPerM: e.target.value }))}
+                                            step="1"
+                                            value={formData.rhsCutLength}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, rhsCutLength: e.target.value }))}
                                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="150"
+                                            placeholder="1000"
+                                        />
+                                    </div>
+
+                                    {/* Quantity */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Quantity <span className="text-red-400">*</span>
+                                        </label>
+                                        <input
+                                            type="number"
+                                            required
+                                            min="1"
+                                            step="1"
+                                            value={formData.quantity}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="1"
                                         />
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
-                                    {/* Idler Spacing */}
+                                    {/* Belt Width */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Idler Spacing (mm) <span className="text-red-400">*</span>
+                                            Belt Width (mm)
                                         </label>
                                         <select
-                                            required
-                                            value={formData.idlerSpacing}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, idlerSpacing: e.target.value }))}
+                                            value={formData.beltWidth}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, beltWidth: e.target.value }))}
                                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                         >
-                                            {IDLER_SPACING_OPTIONS.map(spacing => (
-                                                <option key={spacing} value={spacing}>{spacing}mm</option>
+                                            <option value="">-- Select Belt Width --</option>
+                                            {STANDARD_BELT_WIDTHS.map(width => (
+                                                <option key={width} value={width}>{width}mm</option>
                                             ))}
                                         </select>
+                                        <p className="text-xs text-slate-400 mt-1">Optional - for tracking purposes</p>
                                     </div>
 
-                                    {/* Cost Price */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Cost Price ($) <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.costPrice}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
+                                    {/* Empty div for grid spacing */}
+                                    <div></div>
+                                </div>
+
+                                {/* Cost Price */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        Cost Price per Unit ($) <span className="text-red-400">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="0"
+                                        step="0.01"
+                                        value={formData.costPrice}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        placeholder="0.00"
+                                    />
+                                    {formData.quantity > 1 && formData.costPrice && (
+                                        <p className="text-xs text-cyan-400 mt-1">
+                                            Total: ${(parseFloat(formData.costPrice) * parseInt(formData.quantity)).toFixed(2)}
+                                        </p>
+                                    )}
                                 </div>
 
                                 {/* Category Selection */}
@@ -618,7 +612,6 @@ export const WeighModuleManager = () => {
                                         Suppliers
                                     </label>
                                     <div className="space-y-3">
-                                        {/* Add Supplier */}
                                         <div className="flex gap-2">
                                             <select
                                                 value={selectedSupplier}
@@ -641,7 +634,6 @@ export const WeighModuleManager = () => {
                                             </button>
                                         </div>
 
-                                        {/* Supplier List */}
                                         {formData.suppliers?.length > 0 && (
                                             <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                                 <p className="text-xs text-slate-400 mb-2">Added Suppliers:</p>
@@ -664,7 +656,6 @@ export const WeighModuleManager = () => {
                                         )}
                                     </div>
                                 </div>
-
 
                                 {/* Effective Date */}
                                 <div>
@@ -708,7 +699,7 @@ export const WeighModuleManager = () => {
                                         disabled={saving}
                                         className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {saving ? 'Saving...' : (editingModule ? 'Update' : 'Add')}
+                                        {saving ? 'Saving...' : (editingSensor ? 'Update' : 'Add')}
                                     </button>
                                 </div>
                             </form>

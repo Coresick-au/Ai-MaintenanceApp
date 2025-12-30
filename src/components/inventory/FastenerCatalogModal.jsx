@@ -5,6 +5,7 @@ import { Icons } from '../../constants/icons';
 import { addFastenerToCatalog, updateFastener, filterSuppliersByCategories } from '../../services/inventoryService';
 import { generateNextFastenerSKU, checkFastenerSKUExists } from '../../utils/skuGenerator';
 import { CategorySelect } from './categories/CategorySelect';
+import { LocationSelect } from './LocationSelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { PartPricingTab } from './PartPricingTab';
 import { ListPriceToggle } from './ListPriceToggle';
@@ -36,7 +37,8 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
         isSerialized: false,
         isSaleable: false,
         trackStock: true,
-        reorderLevel: 10
+        reorderLevel: 10,
+        locationId: null
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -102,7 +104,8 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 isSerialized: editingFastener.isSerialized,
                 isSaleable: editingFastener.isSaleable || false,
                 trackStock: editingFastener.trackStock !== undefined ? editingFastener.trackStock : true,
-                reorderLevel: editingFastener.reorderLevel
+                reorderLevel: editingFastener.reorderLevel,
+                locationId: editingFastener.locationId || null
             });
             setListPriceSource(editingFastener.listPriceSource || 'MANUAL');
         } else {
@@ -121,7 +124,8 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 isSerialized: false,
                 isSaleable: false,
                 trackStock: true,
-                reorderLevel: 10
+                reorderLevel: 10,
+                locationId: null
             });
             setListPriceSource('MANUAL');
         }
@@ -261,6 +265,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
                 description: formData.description.trim(),
+                locationId: formData.locationId,
                 listPriceSource: formData.isSaleable ? listPriceSource : 'MANUAL',
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
                 isSerialized: formData.isSerialized,
@@ -507,6 +512,13 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                                     placeholder="Optional details..."
                                 />
                             </div>
+
+                            {/* Location */}
+                            <LocationSelect
+                                value={formData.locationId}
+                                onChange={(locationId) => setFormData(prev => ({ ...prev, locationId }))}
+                                required={false}
+                            />
 
                             {/* List Price - Only show if saleable */}
                             {formData.isSaleable && (

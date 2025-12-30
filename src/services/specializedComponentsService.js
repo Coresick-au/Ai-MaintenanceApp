@@ -45,6 +45,16 @@ export const ROLLER_DESIGNS = {
     FIVE_ROLLER: '5 Roller'
 };
 
+export const SCALE_POSITION = {
+    ON_SCALE: 'On-Scale',
+    OFF_SCALE: 'Off-Scale'
+};
+
+export const SPEED_SENSOR_DESIGNS = {
+    HARD_ROCK: 'HR - Hard Rock',
+    SOFT_ROCK: 'SR - Soft Rock'
+};
+
 export const STANDARD_BELT_WIDTHS = [
     600, 650, 750, 800, 900, 1000, 1050, 1200,
     1350, 1400, 1500, 1600, 1800, 2000, 2200, 2400, 2500
@@ -359,6 +369,290 @@ export const getAllRollers = async () => {
 };
 
 // ==========================================
+// SPIRAL CAGE SPEED SENSORS
+// ==========================================
+
+export const addSpeedSensor = async (sensorData) => {
+    try {
+        const sensorId = `scs-${Date.now()}`;
+        const now = new Date().toISOString();
+
+        const newSensor = {
+            id: sensorId,
+            ...sensorData,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        await setDoc(doc(db, 'speed_sensors_cost_history', sensorId), newSensor);
+        console.log('[SpecializedComponents] Speed sensor added:', sensorId);
+        return sensorId;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error adding speed sensor:', error);
+        throw new Error('Failed to add speed sensor');
+    }
+};
+
+export const updateSpeedSensor = async (sensorId, updates) => {
+    try {
+        await updateDoc(doc(db, 'speed_sensors_cost_history', sensorId), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
+        console.log('[SpecializedComponents] Speed sensor updated:', sensorId);
+    } catch (error) {
+        console.error('[SpecializedComponents] Error updating speed sensor:', error);
+        throw new Error('Failed to update speed sensor');
+    }
+};
+
+export const deleteSpeedSensor = async (sensorId) => {
+    try {
+        await deleteDoc(doc(db, 'speed_sensors_cost_history', sensorId));
+        console.log('[SpecializedComponents] Speed sensor deleted:', sensorId);
+    } catch (error) {
+        console.error('[SpecializedComponents] Error deleting speed sensor:', error);
+        throw error;
+    }
+};
+
+export const getAllSpeedSensors = async () => {
+    try {
+        const snapshot = await getDocs(
+            query(collection(db, 'speed_sensors_cost_history'), orderBy('effectiveDate', 'desc'))
+        );
+        return snapshot.docs.map(doc => doc.data());
+    } catch (error) {
+        console.error('[SpecializedComponents] Error fetching speed sensors:', error);
+        throw new Error('Failed to fetch speed sensors');
+    }
+};
+
+// ==========================================
+// BATCH IMPORT FUNCTIONS
+// ==========================================
+
+/**
+ * Batch import rollers from CSV data
+ * @param {Array} dataArray - Array of roller objects from CSV
+ * @returns {Object} Import result with success/failure counts
+ */
+export const importRollers = async (dataArray) => {
+    const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+
+    try {
+        // Get existing IDs to check for duplicates
+        const existingSnapshot = await getDocs(collection(db, 'rollers_cost_history'));
+        const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+
+        for (const item of dataArray) {
+            try {
+                // Skip if ID already exists
+                if (item.id && existingIds.has(item.id)) {
+                    results.skipped++;
+                    continue;
+                }
+
+                // Generate new ID if not provided
+                const rollerId = item.id || `rol-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const now = new Date().toISOString();
+
+                const newRoller = {
+                    id: rollerId,
+                    ...item,
+                    createdAt: item.createdAt || now,
+                    updatedAt: now
+                };
+
+                await setDoc(doc(db, 'rollers_cost_history', rollerId), newRoller);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row error: ${error.message}`);
+            }
+        }
+
+        console.log('[SpecializedComponents] Roller import complete:', results);
+        return results;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error importing rollers:', error);
+        throw new Error('Failed to import rollers: ' + error.message);
+    }
+};
+
+/**
+ * Batch import weigh modules from CSV data
+ */
+export const importWeighModules = async (dataArray) => {
+    const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+
+    try {
+        const existingSnapshot = await getDocs(collection(db, 'weigh_modules_cost_history'));
+        const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+
+        for (const item of dataArray) {
+            try {
+                if (item.id && existingIds.has(item.id)) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const moduleId = item.id || `wm-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const now = new Date().toISOString();
+
+                const newModule = {
+                    id: moduleId,
+                    ...item,
+                    createdAt: item.createdAt || now,
+                    updatedAt: now
+                };
+
+                await setDoc(doc(db, 'weigh_modules_cost_history', moduleId), newModule);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row error: ${error.message}`);
+            }
+        }
+
+        console.log('[SpecializedComponents] Weigh module import complete:', results);
+        return results;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error importing weigh modules:', error);
+        throw new Error('Failed to import weigh modules: ' + error.message);
+    }
+};
+
+/**
+ * Batch import idler frames from CSV data
+ */
+export const importIdlerFrames = async (dataArray) => {
+    const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+
+    try {
+        const existingSnapshot = await getDocs(collection(db, 'idler_frames_cost_history'));
+        const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+
+        for (const item of dataArray) {
+            try {
+                if (item.id && existingIds.has(item.id)) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const frameId = item.id || `if-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const now = new Date().toISOString();
+
+                const newFrame = {
+                    id: frameId,
+                    ...item,
+                    createdAt: item.createdAt || now,
+                    updatedAt: now
+                };
+
+                await setDoc(doc(db, 'idler_frames_cost_history', frameId), newFrame);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row error: ${error.message}`);
+            }
+        }
+
+        console.log('[SpecializedComponents] Idler frame import complete:', results);
+        return results;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error importing idler frames:', error);
+        throw new Error('Failed to import idler frames: ' + error.message);
+    }
+};
+
+/**
+ * Batch import billet weights from CSV data
+ */
+export const importBilletWeights = async (dataArray) => {
+    const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+
+    try {
+        const existingSnapshot = await getDocs(collection(db, 'billet_weights_cost_history'));
+        const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+
+        for (const item of dataArray) {
+            try {
+                if (item.id && existingIds.has(item.id)) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const weightId = item.id || `bw-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const now = new Date().toISOString();
+
+                const newWeight = {
+                    id: weightId,
+                    ...item,
+                    createdAt: item.createdAt || now,
+                    updatedAt: now
+                };
+
+                await setDoc(doc(db, 'billet_weights_cost_history', weightId), newWeight);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row error: ${error.message}`);
+            }
+        }
+
+        console.log('[SpecializedComponents] Billet weight import complete:', results);
+        return results;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error importing billet weights:', error);
+        throw new Error('Failed to import billet weights: ' + error.message);
+    }
+};
+
+/**
+ * Batch import speed sensors from CSV data
+ */
+export const importSpeedSensors = async (dataArray) => {
+    const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+
+    try {
+        const existingSnapshot = await getDocs(collection(db, 'speed_sensors_cost_history'));
+        const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+
+        for (const item of dataArray) {
+            try {
+                if (item.id && existingIds.has(item.id)) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const sensorId = item.id || `scs-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const now = new Date().toISOString();
+
+                const newSensor = {
+                    id: sensorId,
+                    ...item,
+                    createdAt: item.createdAt || now,
+                    updatedAt: now
+                };
+
+                await setDoc(doc(db, 'speed_sensors_cost_history', sensorId), newSensor);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row error: ${error.message}`);
+            }
+        }
+
+        console.log('[SpecializedComponents] Speed sensor import complete:', results);
+        return results;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error importing speed sensors:', error);
+        throw new Error('Failed to import speed sensors: ' + error.message);
+    }
+};
+
+// ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
 
@@ -369,3 +663,4 @@ export const getBilletWeightCategory = (weightKg) => {
 export const formatCurrency = (cents) => {
     return `$${(cents / 100).toFixed(2)}`;
 };
+

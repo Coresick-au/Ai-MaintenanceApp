@@ -17,6 +17,8 @@ import { LabourRateModal } from '../components/settings/LabourRateModal';
 import { TemplateManager } from '../components/inventory/TemplateManager';
 import { ManufacturedPartCalculator } from '../components/inventory/ManufacturedPartCalculator';
 import { SpecializedComponentsView } from '../components/inventory/SpecializedComponentsView';
+import { ShippingCalculator } from '../components/inventory/ShippingCalculator';
+import { BuildGuideManager } from '../components/inventory/BuildGuideManager';
 import { Icons } from '../constants/icons';
 
 export function InventoryApp({ onBack }) {
@@ -114,9 +116,11 @@ export function InventoryApp({ onBack }) {
         { id: 'catalog', label: 'Part Catalog', icon: Icons.Package },
         { id: 'fasteners', label: 'Fastener Catalog', icon: Icons.Wrench },
         { id: 'products', label: 'Product Catalog', icon: Icons.Box },
+        { id: 'buildguides', label: 'Build Guides', icon: Icons.BookOpen },
         { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
         { id: 'serialized', label: 'Serialized Assets', icon: Icons.Barcode },
         { id: 'specialized', label: 'Specialized', icon: Icons.Scale },
+        { id: 'shipping', label: 'Shipping Calculator', icon: Icons.Truck },
         { id: 'categories', label: 'Categories', icon: Icons.FolderTree },
         { id: 'locations', label: 'Locations', icon: Icons.MapPin },
         { id: 'suppliers', label: 'Suppliers', icon: Icons.Truck },
@@ -207,6 +211,8 @@ export function InventoryApp({ onBack }) {
                             />
                         )}
 
+                        {activeTab === 'buildguides' && <BuildGuideManager />}
+
                         {activeTab === 'stock' && (
                             <StockOverview onAdjustStock={handleAdjustStock} />
                         )}
@@ -214,6 +220,8 @@ export function InventoryApp({ onBack }) {
                         {activeTab === 'serialized' && <SerializedAssetsView />}
 
                         {activeTab === 'specialized' && <SpecializedComponentsView />}
+
+                        {activeTab === 'shipping' && <ShippingCalculator />}
 
                         {activeTab === 'categories' && <CategoryManager />}
 

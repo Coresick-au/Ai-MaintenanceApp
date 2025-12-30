@@ -6,12 +6,14 @@ import { db } from '../firebase';
  * @param {string} partId - The part ID
  * @param {string} partSku - The part SKU (denormalized)
  * @param {string} supplierName - The supplier name
- * @param {number} costPrice - Cost price in cents
+ * @param {number} costPrice - Cost price in cents (per unit)
  * @param {Date} effectiveDate - Date when this price becomes effective
  * @param {string} notes - Optional notes
+ * @param {number} quantity - Number of units (default 1)
+ * @param {boolean} ignoreForTrend - Exclude from trend calculations (default false)
  * @returns {Promise<string>} The new pricing entry ID
  */
-export async function addPricing(partId, partSku, supplierName, costPrice, effectiveDate, notes = '') {
+export async function addPricing(partId, partSku, supplierName, costPrice, effectiveDate, notes = '', quantity = 1, ignoreForTrend = false) {
     try {
         // Convert date to midnight timestamp
         const dateOnly = new Date(effectiveDate);
@@ -21,7 +23,9 @@ export async function addPricing(partId, partSku, supplierName, costPrice, effec
             partId,
             partSku,
             supplierName,
-            costPrice: Math.round(costPrice), // ensure integer
+            costPrice: Math.round(costPrice), // per unit price in cents
+            quantity: parseInt(quantity) || 1, // number of units
+            ignoreForTrend: !!ignoreForTrend, // exclude from trend analysis
             effectiveDate: Timestamp.fromDate(dateOnly),
             notes: notes || '',
             createdAt: Timestamp.now(),
@@ -57,6 +61,16 @@ export async function updatePricing(pricingId, updates) {
         // Ensure costPrice is integer if provided
         if (updates.costPrice !== undefined) {
             updateData.costPrice = Math.round(updates.costPrice);
+        }
+
+        // Ensure quantity is integer if provided
+        if (updates.quantity !== undefined) {
+            updateData.quantity = parseInt(updates.quantity) || 1;
+        }
+
+        // Ensure ignoreForTrend is boolean if provided
+        if (updates.ignoreForTrend !== undefined) {
+            updateData.ignoreForTrend = !!updates.ignoreForTrend;
         }
 
         await updateDoc(doc(db, 'part_supplier_pricing', pricingId), updateData);

@@ -10,6 +10,7 @@ import { useCategories } from '../../context/CategoryContext';
 
 export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
     const [parts, setParts] = useState([]);
+    const [inventory, setInventory] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'sku', direction: 'ascending' });
     const [loading, setLoading] = useState(true);
@@ -31,6 +32,22 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
             (error) => {
                 console.error('[PartCatalog] Error fetching parts:', error);
                 setLoading(false);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
+    // Real-time listener for inventory state
+    useEffect(() => {
+        const unsubscribe = onSnapshot(
+            collection(db, 'inventory_state'),
+            (snapshot) => {
+                const inventoryList = snapshot.docs.map(doc => doc.data());
+                setInventory(inventoryList);
+            },
+            (error) => {
+                console.error('[PartCatalog] Error fetching inventory:', error);
             }
         );
 
@@ -62,7 +79,7 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
         }
     }, [parts]);
 
-    // Calculate actual margin for each part using active cost
+    // Calculate actual margin and stock for each part
     const partsWithMargins = useMemo(() => {
         return parts.map(part => {
             // Determine active cost based on source
@@ -74,13 +91,19 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                 ? ((part.listPrice - activeCost) / part.listPrice) * 100
                 : 0;
 
+            // Calculate actual stock count from inventory_state
+            const actualStockCount = inventory
+                .filter(inv => inv.partId === part.id)
+                .reduce((total, inv) => total + (inv.quantity || 0), 0);
+
             return {
                 ...part,
                 activeCost,
-                actualMarginPercent: actualMargin
+                actualMarginPercent: actualMargin,
+                actualStockCount
             };
         });
-    }, [parts, lowestPrices]);
+    }, [parts, lowestPrices, inventory]);
 
     // Helper to get category name by ID
     const getCategoryName = (categoryId) => {
@@ -252,6 +275,11 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                     Subcategory {getSortIcon('subcategoryId')}
                                 </div>
                             </th>
+                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('material')}>
+                                <div className="flex items-center gap-2">
+                                    Material {getSortIcon('material')}
+                                </div>
+                            </th>
                             <th className="px-4 py-3">
                                 Suppliers
                             </th>
@@ -281,7 +309,7 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                     <tbody className="divide-y divide-slate-700">
                         {filteredAndSortedParts.length === 0 ? (
                             <tr>
-                                <td colSpan="10" className="px-4 py-8 text-center text-slate-400">
+                                <td colSpan="11" className="px-4 py-8 text-center text-slate-400">
                                     {searchTerm ? 'No parts match your search' : 'No parts in catalog. Add your first part to get started.'}
                                 </td>
                             </tr>
@@ -310,6 +338,15 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         {part.subcategoryId ? (
                                             <span className="text-xs px-2 py-1 bg-purple-500/10 text-purple-300 rounded border border-purple-500/30">
                                                 {getCategoryName(part.subcategoryId)}
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-500">-</span>
+                                        )}
+                                    </td>
+                                    <td className="px-4 py-3 text-slate-300">
+                                        {part.material ? (
+                                            <span className="text-xs px-2 py-1 bg-amber-500/10 text-amber-300 rounded border border-amber-500/30">
+                                                {part.material}
                                             </span>
                                         ) : (
                                             <span className="text-slate-500">-</span>
@@ -364,13 +401,13 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         {part.trackStock ? (
-                                            <span className={`font-medium ${part.stockCount <= part.reorderLevel
-                                                    ? 'text-red-400'
-                                                    : part.stockCount <= part.reorderLevel * 1.5
-                                                        ? 'text-amber-400'
-                                                        : 'text-emerald-400'
+                                            <span className={`font-medium ${part.actualStockCount <= part.reorderLevel
+                                                ? 'text-red-400'
+                                                : part.actualStockCount <= part.reorderLevel * 1.5
+                                                    ? 'text-amber-400'
+                                                    : 'text-emerald-400'
                                                 }`}>
-                                                {part.stockCount || 0}
+                                                {part.actualStockCount || 0}
                                             </span>
                                         ) : (
                                             <span className="text-slate-600 text-xs">-</span>
@@ -442,7 +479,7 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                                 setViewingPart(null);
                                             } catch (error) {
                                                 console.error('Error deleting part:', error);
-                                                alert('Failed to delete part. Please try again.');
+                                                alert(error.message || 'Failed to delete part. Please try again.');
                                             }
                                         }}
                                         className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
@@ -481,6 +518,12 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         <label className="block text-xs font-medium text-slate-400 mb-1">Subcategory</label>
                                         <p className="text-white">{getCategoryName(viewingPart.subcategoryId) || '-'}</p>
                                     </div>
+                                    {viewingPart.material && (
+                                        <div>
+                                            <label className="block text-xs font-medium text-slate-400 mb-1">Material</label>
+                                            <p className="text-white">{viewingPart.material}</p>
+                                        </div>
+                                    )}
                                     <div className="col-span-2">
                                         <label className="block text-xs font-medium text-slate-400 mb-1">Type</label>
                                         <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${viewingPart.isSerialized

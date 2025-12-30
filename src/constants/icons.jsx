@@ -68,6 +68,7 @@ import {
     ExternalLink,
     Info,
     Eye,
+    EyeOff,
     ClipboardList,
     StickyNote,
     Package,
@@ -86,7 +87,10 @@ import {
     Calculator,
     RefreshCw,
     DollarSign,
-    TrendingUp
+    TrendingUp,
+    List,
+    BookOpen,
+    Image
 } from 'lucide-react';
 
 export const Icons = {
@@ -158,6 +162,7 @@ export const Icons = {
     Info,
     XCircle,
     Eye,
+    EyeOff,
     ClipboardList,
     StickyNote,
     Package,
@@ -177,5 +182,8 @@ export const Icons = {
     Calculator,
     RefreshCw,
     DollarSign,
-    TrendingUp
+    TrendingUp,
+    List,
+    BookOpen,
+    Image
 };

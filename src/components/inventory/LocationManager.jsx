@@ -2,7 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
-import { addLocation, updateLocation } from '../../services/inventoryService';
+import { addLocation, updateLocation, deleteLocation } from '../../services/inventoryService';
+
+const LOCATION_LEVELS = {
+    0: { name: 'Warehouse', icon: Icons.Building, color: 'blue' },
+    1: { name: 'Zone', icon: Icons.Box, color: 'purple' },
+    2: { name: 'Shelf', icon: Icons.List, color: 'emerald' },
+    3: { name: 'Bin', icon: Icons.Archive, color: 'amber' }
+};
 
 export const LocationManager = () => {
     const [locations, setLocations] = useState([]);
@@ -27,6 +34,28 @@ export const LocationManager = () => {
         return () => unsubscribe();
     }, []);
 
+    // Build hierarchical tree structure
+    const buildLocationTree = () => {
+        const tree = [];
+        const map = {};
+
+        // First pass: create map
+        locations.forEach(loc => {
+            map[loc.id] = { ...loc, children: [] };
+        });
+
+        // Second pass: build tree
+        locations.forEach(loc => {
+            if (loc.parentLocationId && map[loc.parentLocationId]) {
+                map[loc.parentLocationId].children.push(map[loc.id]);
+            } else if (!loc.parentLocationId) {
+                tree.push(map[loc.id]);
+            }
+        });
+
+        return tree;
+    };
+
     const handleAdd = () => {
         setEditingLocation(null);
         setIsModalOpen(true);
@@ -37,16 +66,88 @@ export const LocationManager = () => {
         setIsModalOpen(true);
     };
 
+    const handleDelete = async (location) => {
+        const confirmed = window.confirm(
+            `Are you sure you want to delete "${location.name}"?\n\n` +
+            `This action cannot be undone. The location will only be deleted if it has no inventory or child locations.`
+        );
+
+        if (confirmed) {
+            try {
+                await deleteLocation(location.id);
+            } catch (error) {
+                alert(error.message || 'Failed to delete location');
+            }
+        }
+    };
+
+    const renderLocationNode = (node, depth = 0) => {
+        const levelInfo = LOCATION_LEVELS[node.level || 0];
+        const Icon = levelInfo?.icon || Icons.MapPin;
+        const colorClass = `${levelInfo?.color || 'slate'}-500`;
+
+        return (
+            <div key={node.id} className="mb-2">
+                <div
+                    className="bg-slate-800/60 border border-slate-700 rounded-lg p-3 hover:border-cyan-500/50 transition-colors"
+                    style={{ marginLeft: `${depth * 24}px` }}
+                >
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-2 rounded-lg bg-${colorClass}/20 text-${colorClass}`}>
+                                <Icon size={18} />
+                            </div>
+                            <div>
+                                <h3 className="font-semibold text-white">{node.name}</h3>
+                                <p className="text-xs text-slate-400">
+                                    {levelInfo?.name || 'Location'}
+                                    {node.children?.length > 0 && ` • ${node.children.length} child${node.children.length !== 1 ? 'ren' : ''}`}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            {node.isReorderLocation && (
+                                <div className="flex items-center gap-1 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs text-emerald-400">
+                                    <Icons.CheckCircle size={12} />
+                                    Reorder
+                                </div>
+                            )}
+                            <button
+                                onClick={() => handleEdit(node)}
+                                className="p-1.5 rounded hover:bg-slate-700 text-blue-400 transition-colors"
+                                title="Edit location"
+                            >
+                                <Icons.Edit size={16} />
+                            </button>
+                            <button
+                                onClick={() => handleDelete(node)}
+                                className="p-1.5 rounded hover:bg-slate-700 text-red-400 transition-colors"
+                                title="Delete location"
+                            >
+                                <Icons.Trash size={16} />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                {node.children?.map(child => renderLocationNode(child, depth + 1))}
+            </div>
+        );
+    };
+
     if (loading) {
         return <div className="flex items-center justify-center h-64 text-slate-400">Loading locations...</div>;
     }
+
+    const locationTree = buildLocationTree();
 
     return (
         <div className="flex flex-col h-full">
             <div className="flex justify-between items-center mb-4">
                 <div>
-                    <h2 className="text-xl font-bold text-white">Locations</h2>
-                    <p className="text-sm text-slate-400 mt-1">{locations.length} location{locations.length !== 1 ? 's' : ''}</p>
+                    <h2 className="text-xl font-bold text-white">Warehouse Locations</h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                        {locations.length} location{locations.length !== 1 ? 's' : ''} in hierarchical structure
+                    </p>
                 </div>
                 <button
                     onClick={handleAdd}
@@ -57,47 +158,14 @@ export const LocationManager = () => {
                 </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {locations.map(location => (
-                    <div
-                        key={location.id}
-                        className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 hover:border-cyan-500/50 transition-colors"
-                    >
-                        <div className="flex items-start justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                                <div className={`p-2 rounded-lg ${location.type === 'warehouse' ? 'bg-blue-500/20 text-blue-400' :
-                                        location.type === 'truck' ? 'bg-orange-500/20 text-orange-400' :
-                                            'bg-slate-700 text-slate-400'
-                                    }`}>
-                                    {location.type === 'warehouse' ? <Icons.Building size={20} /> :
-                                        location.type === 'truck' ? <Icons.Truck size={20} /> :
-                                            <Icons.MapPin size={20} />}
-                                </div>
-                                <div>
-                                    <h3 className="font-bold text-white">{location.name}</h3>
-                                    <p className="text-xs text-slate-400 capitalize">{location.type}</p>
-                                </div>
-                            </div>
-                            <button
-                                onClick={() => handleEdit(location)}
-                                className="p-1.5 rounded hover:bg-slate-700 text-blue-400 transition-colors"
-                            >
-                                <Icons.Edit size={16} />
-                            </button>
-                        </div>
-
-                        {location.isReorderLocation && (
-                            <div className="flex items-center gap-2 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-xs text-emerald-400">
-                                <Icons.CheckCircle size={14} />
-                                Reorder Location
-                            </div>
-                        )}
-                    </div>
-                ))}
+            <div className="space-y-2">
+                {locationTree.map(node => renderLocationNode(node))}
 
                 {locations.length === 0 && (
-                    <div className="col-span-full text-center py-12 text-slate-400">
-                        No locations yet. Add your first location to get started.
+                    <div className="text-center py-12 text-slate-400 bg-slate-800/30 rounded-lg border border-slate-700">
+                        <Icons.MapPin size={48} className="mx-auto mb-3 opacity-50" />
+                        <p className="font-medium">No locations yet</p>
+                        <p className="text-sm mt-1">Start by adding a warehouse location</p>
                     </div>
                 )}
             </div>
@@ -106,16 +174,20 @@ export const LocationManager = () => {
                 <LocationModal
                     location={editingLocation}
                     onClose={() => setIsModalOpen(false)}
+                    allLocations={locations}
                 />
             )}
         </div>
     );
 };
 
-const LocationModal = ({ location, onClose }) => {
+const LocationModal = ({ location, onClose, allLocations }) => {
     const [formData, setFormData] = useState({
         name: '',
-        type: 'warehouse',
+        parentLocationId: null,
+        level: 0,
+        coordinates: { x: 0, y: 0 },
+        color: '#3b82f6',
         isReorderLocation: false
     });
     const [saving, setSaving] = useState(false);
@@ -123,17 +195,56 @@ const LocationModal = ({ location, onClose }) => {
 
     useEffect(() => {
         if (location) {
+            // Normalize level to handle old 5-level hierarchy
+            // Old: 0=Warehouse, 1=Zone, 2=Aisle, 3=Shelf, 4=Bin
+            // New: 0=Warehouse, 1=Zone, 2=Shelf, 3=Bin
+            let normalizedLevel = location.level || 0;
+            if (normalizedLevel > 3) {
+                normalizedLevel = 3; // Old Bin (4) becomes new Bin (3)
+            }
+
             setFormData({
                 name: location.name,
-                type: location.type,
-                isReorderLocation: location.isReorderLocation
+                parentLocationId: location.parentLocationId || null,
+                level: normalizedLevel,
+                coordinates: location.coordinates || { x: 0, y: 0 },
+                color: location.color || '#3b82f6',
+                isReorderLocation: location.isReorderLocation || false
             });
         }
     }, [location]);
 
+    // Get available parent locations based on selected level
+    const getAvailableParents = () => {
+        if (formData.level === 0) return []; // Warehouses have no parent
+
+        const parentLevel = formData.level - 1;
+        return allLocations.filter(loc => {
+            // Don't allow selecting self as parent
+            if (location && loc.id === location.id) return false;
+            // Only show locations of the immediate parent level
+            return (loc.level || 0) === parentLevel;
+        });
+    };
+
+    const handleLevelChange = (newLevel) => {
+        setFormData(prev => ({
+            ...prev,
+            level: newLevel,
+            parentLocationId: newLevel === 0 ? null : prev.parentLocationId
+        }));
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
+
+        // Validation
+        if (formData.level > 0 && !formData.parentLocationId) {
+            setError(`Please select a parent ${LOCATION_LEVELS[formData.level - 1].name.toLowerCase()}`);
+            return;
+        }
+
         setSaving(true);
 
         try {
@@ -150,10 +261,13 @@ const LocationModal = ({ location, onClose }) => {
         }
     };
 
+    const availableParents = getAvailableParents();
+    const currentLevel = LOCATION_LEVELS[formData.level] || LOCATION_LEVELS[0]; // Fallback to Warehouse if invalid
+
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-            <div className="bg-slate-900 w-full max-w-md rounded-xl border border-slate-700 shadow-2xl">
-                <div className="flex items-center justify-between p-6 border-b border-slate-700">
+            <div className="bg-slate-900 w-full max-w-md rounded-xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
                     <h2 className="text-xl font-bold text-white">
                         {location ? 'Edit Location' : 'Add Location'}
                     </h2>
@@ -169,9 +283,64 @@ const LocationModal = ({ location, onClose }) => {
                         </div>
                     )}
 
+                    {/* Level Selection */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                            Location Type <span className="text-red-400">*</span>
+                        </label>
+                        <div className="grid grid-cols-2 gap-2">
+                            {Object.entries(LOCATION_LEVELS).map(([level, info]) => {
+                                const Icon = info.icon;
+                                const isSelected = formData.level === parseInt(level);
+                                return (
+                                    <button
+                                        key={level}
+                                        type="button"
+                                        onClick={() => handleLevelChange(parseInt(level))}
+                                        className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${isSelected
+                                            ? `border-${info.color}-500 bg-${info.color}-500/10 text-${info.color}-400`
+                                            : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
+                                            }`}
+                                    >
+                                        <Icon size={18} />
+                                        <span className="font-medium text-sm">{info.name}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Parent Location Selection */}
+                    {formData.level > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Parent {LOCATION_LEVELS[formData.level - 1].name} <span className="text-red-400">*</span>
+                            </label>
+                            <select
+                                required
+                                value={formData.parentLocationId || ''}
+                                onChange={(e) => setFormData(prev => ({ ...prev, parentLocationId: e.target.value || null }))}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            >
+                                <option value="">-- Select Parent --</option>
+                                {availableParents.map(parent => (
+                                    <option key={parent.id} value={parent.id}>
+                                        {parent.name}
+                                    </option>
+                                ))}
+                            </select>
+                            {availableParents.length === 0 && (
+                                <p className="text-xs text-amber-400 mt-1">
+                                    No parent locations available. Create a {LOCATION_LEVELS[formData.level - 1].name.toLowerCase()} first.
+                                </p>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Name */}
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-1">
-                            Name <span className="text-red-400">*</span>
+                            {currentLevel.name} Name <span className="text-red-400">*</span>
                         </label>
                         <input
                             type="text"
@@ -179,26 +348,67 @@ const LocationModal = ({ location, onClose }) => {
                             value={formData.name}
                             onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                            placeholder="Warehouse - Banyo"
+                            placeholder={`e.g., ${currentLevel.name} ${formData.level === 0 ? 'Main' : formData.level === 1 ? 'A' : formData.level === 2 ? 'Top' : '1'}`}
                         />
                     </div>
 
-                    <div>
-                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                            Type <span className="text-red-400">*</span>
-                        </label>
-                        <select
-                            required
-                            value={formData.type}
-                            onChange={(e) => setFormData(prev => ({ ...prev, type: e.target.value }))}
-                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        >
-                            <option value="warehouse">Warehouse</option>
-                            <option value="truck">Truck</option>
-                            <option value="other">Other</option>
-                        </select>
+                    {/* Coordinates for Map */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Grid X Position
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                value={formData.coordinates.x}
+                                onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    coordinates: { ...prev.coordinates, x: parseInt(e.target.value) || 0 }
+                                }))}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Grid Y Position
+                            </label>
+                            <input
+                                type="number"
+                                min="0"
+                                value={formData.coordinates.y}
+                                onChange={(e) => setFormData(prev => ({
+                                    ...prev,
+                                    coordinates: { ...prev.coordinates, y: parseInt(e.target.value) || 0 }
+                                }))}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
                     </div>
 
+                    {/* Color for visualization */}
+                    <div>
+                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                            Display Color
+                        </label>
+                        <div className="flex gap-2">
+                            <input
+                                type="color"
+                                value={formData.color}
+                                onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                                className="w-16 h-10 rounded border border-slate-700 bg-slate-800"
+                            />
+                            <input
+                                type="text"
+                                value={formData.color}
+                                onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                placeholder="#3b82f6"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Reorder Location Toggle */}
                     <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                         <input
                             type="checkbox"
