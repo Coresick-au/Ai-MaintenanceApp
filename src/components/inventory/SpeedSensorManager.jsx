@@ -169,6 +169,7 @@ export const SpeedSensorManager = () => {
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
+                supplierName: (formData.suppliers && formData.suppliers.length > 0) ? formData.suppliers[0] : null,
                 costPrice: costPriceCents,
                 effectiveDate: formData.effectiveDate,
                 notes: formData.notes.trim()

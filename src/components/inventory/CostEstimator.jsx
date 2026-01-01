@@ -19,7 +19,8 @@ import {
     estimateIdlerFrameCost,
     estimateBilletWeightCost,
     estimateRollerCost,
-    estimateSpeedSensorCost
+    estimateSpeedSensorCost,
+    estimateTMDFrameCost
 } from '../../services/costEstimationService';
 
 export const CostEstimator = () => {
@@ -70,6 +71,11 @@ export const CostEstimator = () => {
         quantity: 1
     });
 
+    const [tmdFrameParams, setTMDFrameParams] = useState({
+        beltWidth: 1200,
+        quantity: 1
+    });
+
     // Load weigher models
     useEffect(() => {
         const unsubscribe = onSnapshot(
@@ -111,6 +117,9 @@ export const CostEstimator = () => {
                     break;
                 case 'speed-sensor':
                     estimationResult = await estimateSpeedSensorCost(speedSensorParams, dateRange);
+                    break;
+                case 'tmd-frame':
+                    estimationResult = await estimateTMDFrameCost(tmdFrameParams, dateRange);
                     break;
                 default:
                     throw new Error('Invalid component type');
@@ -227,6 +236,16 @@ export const CostEstimator = () => {
                             >
                                 <Icons.Activity size={20} className="mx-auto mb-1" />
                                 <div className="text-xs">Speed Sensor</div>
+                            </button>
+                            <button
+                                onClick={() => { setComponentType('tmd-frame'); setResult(null); }}
+                                className={`p-3 rounded-lg border-2 transition-all ${componentType === 'tmd-frame'
+                                    ? 'border-purple-500 bg-purple-500/10 text-white'
+                                    : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
+                                    }`}
+                            >
+                                <Icons.AlertOctagon size={20} className="mx-auto mb-1" />
+                                <div className="text-xs">TMD Frame</div>
                             </button>
                         </div>
                     </div>
@@ -475,6 +494,7 @@ export const CostEstimator = () => {
                                             <option value="STEEL">{ROLLER_MATERIAL_TYPES.STEEL}</option>
                                             <option value="STEEL_HYBRID">{ROLLER_MATERIAL_TYPES.STEEL_HYBRID}</option>
                                             <option value="ALUMINIUM">{ROLLER_MATERIAL_TYPES.ALUMINIUM}</option>
+                                            <option value="FRAS">{ROLLER_MATERIAL_TYPES.FRAS}</option>
                                         </select>
                                     </div>
                                     <div>
@@ -544,6 +564,36 @@ export const CostEstimator = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* TMD Frame Parameters */}
+                        {componentType === 'tmd-frame' && (
+                            <div className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Belt Width (mm)</label>
+                                        <select
+                                            value={tmdFrameParams.beltWidth}
+                                            onChange={(e) => setTMDFrameParams(prev => ({ ...prev, beltWidth: parseInt(e.target.value) }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        >
+                                            {STANDARD_BELT_WIDTHS.map(w => (
+                                                <option key={w} value={w}>{w}mm</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs text-slate-400 mb-1">Quantity</label>
+                                        <input
+                                            type="number"
+                                            min="1"
+                                            value={tmdFrameParams.quantity}
+                                            onChange={(e) => setTMDFrameParams(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Estimate Button */}
@@ -580,180 +630,149 @@ export const CostEstimator = () => {
                         </div>
                     )}
 
-                    {result && (
-                        <div className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
-                            {/* Estimated Cost Header */}
-                            <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border-b border-slate-700 p-6">
-                                {result.quantity && result.quantity > 1 ? (
-                                    <>
-                                        <div className="text-sm text-slate-400 mb-1">Estimated Cost</div>
-                                        <div className="flex items-baseline gap-4 mb-3">
-                                            <div>
-                                                <div className="text-xs text-slate-500 mb-0.5">Cost/Unit</div>
-                                                <div className="text-3xl font-bold text-emerald-400">
-                                                    {formatCurrency(result.estimatedCostPerUnit)}
-                                                </div>
-                                            </div>
-                                            <div className="text-2xl text-slate-600">×</div>
-                                            <div>
-                                                <div className="text-xs text-slate-500 mb-0.5">Qty: {result.quantity}</div>
-                                                <div className="text-3xl font-bold text-cyan-400">
-                                                    {formatCurrency(result.estimatedCostTotal)}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="text-sm text-slate-400 mb-1">Estimated Cost</div>
-                                        <div className="text-4xl font-bold text-white mb-3">
-                                            {formatCurrency(result.estimatedCost)}
-                                        </div>
-                                    </>
-                                )}
-                                <div className="flex items-center gap-2">
-                                    <span className="text-xs text-slate-400">Confidence:</span>
-                                    {getConfidenceBadge(result.confidence)}
+                    {result && result.supplierEstimates && result.supplierEstimates.length > 0 && (
+                        <div className="space-y-4">
+                            {/* Header showing total suppliers */}
+                            <div className="bg-slate-900/50 rounded-lg border border-slate-700 p-4">
+                                <div className="flex items-center gap-2 text-sm">
+                                    <Icons.Building size={16} className="text-cyan-400" />
+                                    <span className="text-white font-medium">
+                                        {result.totalSuppliers} Supplier{result.totalSuppliers !== 1 ? 's' : ''} Found
+                                    </span>
+                                    <span className="text-slate-400">- Showing independent estimates</span>
                                 </div>
-                                {result.quantityAdjusted && (
-                                    <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400">
-                                        <Icons.CheckCircle size={14} />
-                                        <span>Quantity-based pricing applied</span>
-                                        {result.quantityRange && (
-                                            <span className="text-slate-400">({result.quantityRange} units)</span>
+                            </div>
+
+                            {/* Supplier Estimate Cards */}
+                            {result.supplierEstimates.map((estimate, idx) => (
+                                <div key={idx} className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+                                    {/* Supplier Header */}
+                                    <div className="bg-gradient-to-r from-purple-600/20 to-cyan-600/20 border-b border-slate-700 p-6">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Icons.Building size={20} className="text-cyan-400" />
+                                            <h3 className="text-lg font-bold text-white">{estimate.supplierName}</h3>
+                                        </div>
+
+                                        {/* Estimated Cost */}
+                                        {estimate.quantity && estimate.quantity > 1 ? (
+                                            <>
+                                                <div className="text-sm text-slate-400 mb-1">Estimated Cost</div>
+                                                <div className="flex items-baseline gap-4 mb-3">
+                                                    <div>
+                                                        <div className="text-xs text-slate-500 mb-0.5">Cost/Unit</div>
+                                                        <div className="text-3xl font-bold text-emerald-400">
+                                                            {formatCurrency(estimate.estimatedCostPerUnit)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-2xl text-slate-600">×</div>
+                                                    <div>
+                                                        <div className="text-xs text-slate-500 mb-0.5">Qty: {estimate.quantity}</div>
+                                                        <div className="text-3xl font-bold text-cyan-400">
+                                                            {formatCurrency(estimate.estimatedCostTotal)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <div className="text-sm text-slate-400 mb-1">Estimated Cost</div>
+                                                <div className="text-4xl font-bold text-white mb-3">
+                                                    {formatCurrency(estimate.estimatedCost)}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        <div className="flex items-center gap-2">
+                                            <span className="text-xs text-slate-400">Confidence:</span>
+                                            {getConfidenceBadge(estimate.confidence)}
+                                        </div>
+
+                                        {estimate.quantityAdjusted && (
+                                            <div className="mt-2 flex items-center gap-2 text-xs text-emerald-400">
+                                                <Icons.CheckCircle size={14} />
+                                                <span>Quantity-based pricing applied</span>
+                                                {estimate.quantityRange && (
+                                                    <span className="text-slate-400">({estimate.quantityRange} units)</span>
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                )}
-                            </div>
 
-                            {/* Estimation Details */}
-                            <div className="p-6 space-y-4">
-                                <div>
-                                    <div className="text-xs text-slate-400 mb-1">Calculation Method</div>
-                                    <div className="text-sm text-white font-medium">{result.method}</div>
-                                </div>
+                                    {/* Estimation Details */}
+                                    <div className="p-6 space-y-4">
+                                        <div>
+                                            <div className="text-xs text-slate-400 mb-1">Calculation Method</div>
+                                            <div className="text-sm text-white font-medium">{estimate.method}</div>
+                                        </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <div className="text-xs text-slate-400 mb-1">Data Points Used</div>
-                                        <div className="text-sm text-white font-medium">{result.dataPoints}</div>
-                                    </div>
-                                    <div>
-                                        <div className="text-xs text-slate-400 mb-1">Date Range</div>
-                                        <div className="text-sm text-white font-medium">{result.dateRange}</div>
-                                    </div>
-                                </div>
-
-                                {result.category && (
-                                    <div>
-                                        <div className="text-xs text-slate-400 mb-1">Weight Category</div>
-                                        <div className="text-sm text-white font-medium">{result.category}</div>
-                                    </div>
-                                )}
-
-                                {/* Matching Entries */}
-                                <div>
-                                    <div className="text-xs text-slate-400 mb-2">Matching Historical Entries</div>
-                                    <div className="bg-slate-800/50 rounded border border-slate-700 divide-y divide-slate-700 max-h-64 overflow-y-auto">
-                                        {result.matchingEntries.map((entry, idx) => (
-                                            <div key={idx} className="p-3 text-xs">
-                                                <div className="flex justify-between items-start mb-1">
-                                                    <div className="flex gap-3">
-                                                        <div>
-                                                            <div className="text-slate-500 text-[10px] mb-0.5">Cost/Unit</div>
-                                                            <span className="text-emerald-400 font-mono">
-                                                                {formatCurrency(entry.costPrice)}
-                                                            </span>
-                                                        </div>
-                                                        {entry.quantity && entry.quantity > 1 && (
-                                                            <div>
-                                                                <div className="text-slate-500 text-[10px] mb-0.5">Total</div>
-                                                                <span className="text-cyan-400 font-mono">
-                                                                    {formatCurrency(entry.costPrice * entry.quantity)}
-                                                                </span>
-                                                            </div>
-                                                        )}
-                                                    </div>
-                                                    <span className="text-slate-500">{entry.effectiveDate}</span>
-                                                </div>
-                                                <div className="text-slate-400">
-                                                    {entry.beltWidth && `${entry.beltWidth}mm • `}
-                                                    {entry.capacity && `${entry.capacity} kg/m • `}
-                                                    {entry.weightKg && `${entry.weightKg}kg • `}
-                                                    {entry.diameter && `⌀${entry.diameter}mm • `}
-                                                    {entry.faceLength && `L${entry.faceLength}mm • `}
-                                                    {entry.rhsCutLength && `RHS L${entry.rhsCutLength}mm • `}
-                                                    {entry.quantity && `Qty: ${entry.quantity}`}
-                                                </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <div className="text-xs text-slate-400 mb-1">Data Points Used</div>
+                                                <div className="text-sm text-white font-medium">{estimate.dataPoints}</div>
                                             </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                            <div>
+                                                <div className="text-xs text-slate-400 mb-1">Date Range</div>
+                                                <div className="text-sm text-white font-medium">{estimate.dateRange}</div>
+                                            </div>
+                                        </div>
 
-                                {/* Cost Trend Chart */}
-                                {result.matchingEntries.length > 1 && (
-                                    <div>
-                                        <div className="text-xs text-slate-400 mb-2">Unit Cost Trend Analysis</div>
-                                        <div className="bg-slate-800/50 rounded border border-slate-700 p-4">
-                                            <ResponsiveContainer width="100%" height={250}>
-                                                <LineChart
-                                                    data={result.matchingEntries
-                                                        .map(entry => ({
-                                                            date: entry.effectiveDate,
-                                                            cost: entry.costPrice, // Already stored as per-unit cost in cents
-                                                            sortDate: new Date(entry.effectiveDate).getTime()
-                                                        }))
-                                                        .sort((a, b) => a.sortDate - b.sortDate)
-                                                    }
-                                                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                                                >
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                                                    <XAxis
-                                                        dataKey="date"
-                                                        stroke="#94a3b8"
-                                                        style={{ fontSize: '11px' }}
-                                                        angle={-45}
-                                                        textAnchor="end"
-                                                        height={60}
-                                                    />
-                                                    <YAxis
-                                                        stroke="#94a3b8"
-                                                        style={{ fontSize: '11px' }}
-                                                        tickFormatter={(value) => formatCurrency(value)}
-                                                    />
-                                                    <Tooltip
-                                                        contentStyle={{
-                                                            backgroundColor: '#1e293b',
-                                                            border: '1px solid #334155',
-                                                            borderRadius: '8px',
-                                                            color: '#fff'
-                                                        }}
-                                                        labelStyle={{ color: '#94a3b8' }}
-                                                        formatter={(value) => [formatCurrency(value), 'Unit Cost']}
-                                                    />
-                                                    <Line
-                                                        type="monotone"
-                                                        dataKey="cost"
-                                                        stroke="#a78bfa"
-                                                        strokeWidth={2}
-                                                        dot={{ fill: '#a78bfa', r: 4 }}
-                                                        activeDot={{ r: 6 }}
-                                                    />
-                                                </LineChart>
-                                            </ResponsiveContainer>
+                                        {estimate.category && (
+                                            <div>
+                                                <div className="text-xs text-slate-400 mb-1">Weight Category</div>
+                                                <div className="text-sm text-white font-medium">{estimate.category}</div>
+                                            </div>
+                                        )}
+
+                                        {/* Matching Entries for this supplier */}
+                                        <div>
+                                            <div className="text-xs text-slate-400 mb-2">Historical Entries ({estimate.supplierName})</div>
+                                            <div className="bg-slate-800/50 rounded border border-slate-700 divide-y divide-slate-700 max-h-48 overflow-y-auto">
+                                                {estimate.matchingEntries.map((entry, entryIdx) => (
+                                                    <div key={entryIdx} className="p-3 text-xs">
+                                                        <div className="flex justify-between items-start mb-1">
+                                                            <div className="flex gap-3">
+                                                                <div>
+                                                                    <div className="text-slate-500 text-[10px] mb-0.5">Cost/Unit</div>
+                                                                    <span className="text-emerald-400 font-mono">
+                                                                        {formatCurrency(entry.costPrice)}
+                                                                    </span>
+                                                                </div>
+                                                                {entry.quantity && entry.quantity > 1 && (
+                                                                    <div>
+                                                                        <div className="text-slate-500 text-[10px] mb-0.5">Total</div>
+                                                                        <span className="text-cyan-400 font-mono">
+                                                                            {formatCurrency(entry.costPrice * entry.quantity)}
+                                                                        </span>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-slate-500">{entry.effectiveDate}</span>
+                                                        </div>
+                                                        <div className="text-slate-400">
+                                                            {entry.beltWidth && `${entry.beltWidth}mm • `}
+                                                            {entry.capacity && `${entry.capacity} kg/m • `}
+                                                            {entry.weightKg && `${entry.weightKg}kg • `}
+                                                            {entry.diameter && `⌀${entry.diameter}mm • `}
+                                                            {entry.faceLength && `L${entry.faceLength}mm • `}
+                                                            {entry.rhsCutLength && `RHS L${entry.rhsCutLength}mm • `}
+                                                            {entry.quantity && `Qty: ${entry.quantity}`}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Info Note */}
+                                        <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
+                                            <Icons.Info size={14} className="flex-shrink-0 mt-0.5" />
+                                            <div>
+                                                This estimate is based on historical data from {estimate.supplierName} only.
+                                                Recent entries are weighted more heavily. Always verify with current supplier pricing.
+                                            </div>
                                         </div>
                                     </div>
-                                )}
-
-                                {/* Info Note */}
-                                <div className="flex items-start gap-2 p-3 bg-blue-500/10 border border-blue-500/30 rounded text-xs text-blue-300">
-                                    <Icons.Info size={14} className="flex-shrink-0 mt-0.5" />
-                                    <div>
-                                        This estimate is based on historical data and uses {result.method.toLowerCase()}.
-                                        Recent entries are weighted more heavily. Always verify with current supplier pricing.
-                                    </div>
                                 </div>
-                            </div>
+                            ))}
                         </div>
                     )}
 

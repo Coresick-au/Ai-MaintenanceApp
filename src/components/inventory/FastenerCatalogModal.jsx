@@ -36,7 +36,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
         targetMarginPercent: 30,
         isSerialized: false,
         isSaleable: false,
-        trackStock: true,
+        trackStock: false,
         reorderLevel: 10,
         locationId: null
     });
@@ -103,7 +103,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 targetMarginPercent: editingFastener.targetMarginPercent,
                 isSerialized: editingFastener.isSerialized,
                 isSaleable: editingFastener.isSaleable || false,
-                trackStock: editingFastener.trackStock !== undefined ? editingFastener.trackStock : true,
+                trackStock: editingFastener.trackStock !== undefined ? editingFastener.trackStock : false,
                 reorderLevel: editingFastener.reorderLevel,
                 locationId: editingFastener.locationId || null
             });
@@ -123,7 +123,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 targetMarginPercent: 30,
                 isSerialized: false,
                 isSaleable: false,
-                trackStock: true,
+                trackStock: false,
                 reorderLevel: 10,
                 locationId: null
             });

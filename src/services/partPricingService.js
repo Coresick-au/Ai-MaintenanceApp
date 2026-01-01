@@ -177,6 +177,11 @@ export async function getLowestSupplierPrice(partId, asOfDate = new Date(), vali
                 continue;
             }
 
+            // Skip entries marked as ignored
+            if (pricing.ignoreForTrend) {
+                continue;
+            }
+
             // Only consider prices effective as of the given date
             if (pricing.effectiveDate <= asOfDate) {
                 // Keep the most recent price for each supplier
@@ -233,38 +238,6 @@ export async function getPricingHistory(partId, supplierName) {
         return pricing;
     } catch (error) {
         console.error('[PartPricingService] Error getting pricing history:', error);
-        throw error;
-    }
-}
-
-/**
- * Check if a pricing entry already exists for a supplier on a specific date
- * @param {string} partId - The part ID
- * @param {string} supplierName - The supplier name
- * @param {Date} effectiveDate - The effective date
- * @param {string} excludePricingId - Optional pricing ID to exclude (for updates)
- * @returns {Promise<boolean>} True if duplicate exists
- */
-export async function checkDuplicatePricing(partId, supplierName, effectiveDate, excludePricingId = null) {
-    try {
-        const dateOnly = new Date(effectiveDate);
-        dateOnly.setHours(0, 0, 0, 0);
-
-        const allPricing = await getPricingHistory(partId, supplierName);
-
-        const duplicate = allPricing.find(p => {
-            const pricingDate = new Date(p.effectiveDate);
-            pricingDate.setHours(0, 0, 0, 0);
-
-            const datesMatch = pricingDate.getTime() === dateOnly.getTime();
-            const idsDifferent = p.id !== excludePricingId;
-
-            return datesMatch && idsDifferent;
-        });
-
-        return !!duplicate;
-    } catch (error) {
-        console.error('[PartPricingService] Error checking duplicate pricing:', error);
         throw error;
     }
 }

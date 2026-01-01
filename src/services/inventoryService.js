@@ -690,7 +690,7 @@ export const bulkImportParts = async (partsArray) => {
 // SHIPPING COST TRACKING
 // ==========================================
 
-export const addShippingRecord = async (partId, deliveryCost, units, date, notes = '', userId = 'current-user') => {
+export const addShippingRecord = async (partId, deliveryCost, units, date, notes = '', userId = 'current-user', addressData = null) => {
     try {
         const recordId = `ship-${Date.now()}`;
         const costPerUnit = Math.round(deliveryCost / units);
@@ -705,7 +705,10 @@ export const addShippingRecord = async (partId, deliveryCost, units, date, notes
             notes,
             userId,
             date: date || now.split('T')[0], // Use provided date or default to today
-            createdAt: now
+            createdAt: now,
+            // Address fields
+            originAddress: addressData?.originAddress || null,
+            destinationAddress: addressData?.destinationAddress || null
         };
 
         await setDoc(doc(db, 'shipping_records', recordId), shippingRecord);
@@ -727,7 +730,7 @@ export const deleteShippingRecord = async (recordId) => {
     }
 };
 
-export const updateShippingRecord = async (recordId, deliveryCost, units, date, notes = '') => {
+export const updateShippingRecord = async (recordId, deliveryCost, units, date, notes = '', addressData = null) => {
     try {
         const costPerUnit = Math.round(deliveryCost / units);
 
@@ -736,7 +739,10 @@ export const updateShippingRecord = async (recordId, deliveryCost, units, date, 
             units,
             costPerUnit,
             date,
-            notes
+            notes,
+            // Address fields
+            originAddress: addressData?.originAddress || null,
+            destinationAddress: addressData?.destinationAddress || null
         };
 
         await updateDoc(doc(db, 'shipping_records', recordId), updateData);

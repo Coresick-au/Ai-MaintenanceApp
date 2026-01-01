@@ -172,6 +172,7 @@ export const BilletWeightManager = () => {
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
+                supplierName: (formData.suppliers && formData.suppliers.length > 0) ? formData.suppliers[0] : null,
                 costPrice: costPriceCents,
                 setupCost: setupCostCents,
                 effectiveDate: formData.effectiveDate,

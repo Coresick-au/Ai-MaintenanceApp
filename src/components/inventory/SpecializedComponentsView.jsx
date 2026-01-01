@@ -5,6 +5,7 @@ import { IdlerFrameManager } from './IdlerFrameManager';
 import { BilletWeightManager } from './BilletWeightManager';
 import { RollerManager } from './RollerManager';
 import { SpeedSensorManager } from './SpeedSensorManager';
+import { TMDFrameManager } from './TMDFrameManager';
 import { WeigherModelConfig } from './WeigherModelConfig';
 import { CostEstimator } from './CostEstimator';
 
@@ -17,6 +18,7 @@ export const SpecializedComponentsView = () => {
         { id: 'billet-weights', label: 'Billet Weights', icon: Icons.Weight },
         { id: 'rollers', label: 'Rollers', icon: Icons.Circle },
         { id: 'speed-sensors', label: 'Spiral Cage Speed Sensors', icon: Icons.Activity },
+        { id: 'tmd-frames', label: 'TMD Frames', icon: Icons.AlertOctagon },
         { id: 'estimator', label: 'Cost Estimator', icon: Icons.Calculator },
         { id: 'configuration', label: 'Configuration', icon: Icons.Settings }
     ];
@@ -61,6 +63,7 @@ export const SpecializedComponentsView = () => {
                     {activeTab === 'billet-weights' && <BilletWeightManager />}
                     {activeTab === 'rollers' && <RollerManager />}
                     {activeTab === 'speed-sensors' && <SpeedSensorManager />}
+                    {activeTab === 'tmd-frames' && <TMDFrameManager />}
                     {activeTab === 'estimator' && <CostEstimator />}
                     {activeTab === 'configuration' && (
                         <div className="space-y-6">

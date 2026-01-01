@@ -13,6 +13,21 @@ export const ShippingCalculator = () => {
     const [loading, setLoading] = useState(false);
     const [calculatedCost, setCalculatedCost] = useState(0);
 
+    // Origin address
+    const [originSuburb, setOriginSuburb] = useState('');
+    const [originState, setOriginState] = useState('QLD');
+    const [originPostcode, setOriginPostcode] = useState('');
+
+    // Destination address for context
+    const [destinationSuburb, setDestinationSuburb] = useState('');
+    const [destinationState, setDestinationState] = useState('QLD');
+    const [destinationPostcode, setDestinationPostcode] = useState('');
+
+    // Route matching info
+    const [routeMatched, setRouteMatched] = useState(false);
+    const [allRecords, setAllRecords] = useState([]);
+    const [filteredRecords, setFilteredRecords] = useState([]);
+
     // Load parts from catalog
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'part_catalog'), (snap) => {
@@ -30,17 +45,67 @@ export const ShippingCalculator = () => {
             if (!selectedPartId) {
                 setAverageData(null);
                 setCalculatedCost(0);
+                setAllRecords([]);
+                setFilteredRecords([]);
+                setRouteMatched(false);
                 return;
             }
 
             setLoading(true);
             try {
-                // Get shipping history
+                // Get all shipping history for this part
                 const records = await getShippingHistory(selectedPartId);
+                setAllRecords(records);
 
-                if (records.length >= 2) {
+                // Check if we have origin and destination to filter by route
+                const hasOrigin = originSuburb || originState || originPostcode;
+                const hasDestination = destinationSuburb || destinationState || destinationPostcode;
+
+                let recordsToUse = records;
+                let matched = false;
+
+                if (hasOrigin || hasDestination) {
+                    // Filter records by matching route
+                    const routeFilteredRecords = records.filter(r => {
+                        let originMatch = true;
+                        let destMatch = true;
+
+                        if (hasOrigin && r.originAddress) {
+                            originMatch = (
+                                (!originSuburb || r.originAddress.suburb?.toLowerCase() === originSuburb.toLowerCase()) &&
+                                (!originState || r.originAddress.state === originState) &&
+                                (!originPostcode || r.originAddress.postcode === originPostcode)
+                            );
+                        } else if (hasOrigin) {
+                            originMatch = false; // User specified origin but record has none
+                        }
+
+                        if (hasDestination && r.destinationAddress) {
+                            destMatch = (
+                                (!destinationSuburb || r.destinationAddress.suburb?.toLowerCase() === destinationSuburb.toLowerCase()) &&
+                                (!destinationState || r.destinationAddress.state === destinationState) &&
+                                (!destinationPostcode || r.destinationAddress.postcode === destinationPostcode)
+                            );
+                        } else if (hasDestination) {
+                            destMatch = false; // User specified destination but record has none
+                        }
+
+                        return originMatch && destMatch;
+                    });
+
+                    if (routeFilteredRecords.length > 0) {
+                        recordsToUse = routeFilteredRecords;
+                        matched = true;
+                    }
+                    // If no route match, fall back to all records
+                }
+
+                setFilteredRecords(recordsToUse);
+                setRouteMatched(matched);
+
+                if (recordsToUse.length >= 2) {
                     // Use same quantity-aware model as PartPricingTab
-                    const dataPoints = records.map(r => ({
+                    const dataPoints = recordsToUse.map(r => ({
                         units: r.units,
                         totalCost: r.deliveryCost
                     }));
@@ -52,8 +117,22 @@ export const ShippingCalculator = () => {
                     const sumXY = dataPoints.reduce((sum, p) => sum + (p.units * p.totalCost), 0);
                     const sumX2 = dataPoints.reduce((sum, p) => sum + (p.units * p.units), 0);
 
-                    const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-                    const intercept = (sumY - slope * sumX) / n;
+                    const denominator = n * sumX2 - sumX * sumX;
+
+                    let slope, intercept;
+
+                    if (denominator === 0 || !isFinite(denominator)) {
+                        // All data points have the same X value, can't calculate slope
+                        slope = 0;
+                        intercept = sumY / n; // Use average total cost as base
+                    } else {
+                        slope = (n * sumXY - sumX * sumY) / denominator;
+                        intercept = (sumY - slope * sumX) / n;
+                    }
+
+                    // Handle NaN or Infinity
+                    if (!isFinite(slope)) slope = 0;
+                    if (!isFinite(intercept)) intercept = sumY / n;
 
                     const baseCost = Math.max(0, Math.round(intercept));
                     const perUnitCost = Math.max(0, Math.round(slope));
@@ -61,7 +140,7 @@ export const ShippingCalculator = () => {
                     setAverageData({
                         baseCost,
                         perUnitCost,
-                        totalRecords: records.length
+                        totalRecords: recordsToUse.length
                     });
 
                     // Calculate cost if units are entered
@@ -70,16 +149,22 @@ export const ShippingCalculator = () => {
                         const cost = baseCost + (perUnitCost * quantity);
                         setCalculatedCost(cost);
                     }
-                } else {
-                    // Fallback to simple average for single record
+                } else if (recordsToUse.length === 1) {
+                    // Single record - use simple average
                     const data = await calculateAverageShippingCost(selectedPartId);
-                    setAverageData(data);
+                    setAverageData({
+                        ...data,
+                        totalRecords: recordsToUse.length
+                    });
 
                     if (units && parseFloat(units) > 0) {
                         const quantity = parseFloat(units);
                         const cost = data.averageCostPerUnit * quantity;
                         setCalculatedCost(cost);
                     }
+                } else {
+                    // No records
+                    setAverageData({ totalRecords: 0 });
                 }
             } catch (err) {
                 console.error('Error loading shipping data:', err);
@@ -90,7 +175,7 @@ export const ShippingCalculator = () => {
         };
 
         loadShippingData();
-    }, [selectedPartId]);
+    }, [selectedPartId, originSuburb, originState, originPostcode, destinationSuburb, destinationState, destinationPostcode]);
 
     // Recalculate when units change
     useEffect(() => {
@@ -161,6 +246,103 @@ export const ShippingCalculator = () => {
                         />
                     </div>
 
+                    {/* Shipping Route */}
+                    <div className="bg-slate-800/30 rounded-lg border border-slate-700 p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                            <Icons.MapPin size={16} className="text-cyan-400" />
+                            <span className="text-sm font-medium text-white">Shipping Route</span>
+                            <span className="text-xs text-slate-400">(optional - filters historical data)</span>
+                        </div>
+
+                        {/* Origin Address */}
+                        <div className="space-y-2">
+                            <div className="text-xs font-medium text-emerald-400">From (Origin)</div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <input
+                                    type="text"
+                                    value={originSuburb}
+                                    onChange={(e) => setOriginSuburb(e.target.value)}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="Suburb"
+                                />
+                                <select
+                                    value={originState}
+                                    onChange={(e) => setOriginState(e.target.value)}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                    <option value="QLD">QLD</option>
+                                    <option value="NSW">NSW</option>
+                                    <option value="VIC">VIC</option>
+                                    <option value="SA">SA</option>
+                                    <option value="WA">WA</option>
+                                    <option value="TAS">TAS</option>
+                                    <option value="NT">NT</option>
+                                    <option value="ACT">ACT</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    value={originPostcode}
+                                    onChange={(e) => setOriginPostcode(e.target.value)}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="P/code"
+                                    maxLength={4}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Destination Address */}
+                        <div className="space-y-2">
+                            <div className="text-xs font-medium text-amber-400">To (Destination)</div>
+                            <div className="grid grid-cols-3 gap-2">
+                                <input
+                                    type="text"
+                                    value={destinationSuburb}
+                                    onChange={(e) => setDestinationSuburb(e.target.value)}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="Suburb"
+                                />
+                                <select
+                                    value={destinationState}
+                                    onChange={(e) => setDestinationState(e.target.value)}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                    <option value="QLD">QLD</option>
+                                    <option value="NSW">NSW</option>
+                                    <option value="VIC">VIC</option>
+                                    <option value="SA">SA</option>
+                                    <option value="WA">WA</option>
+                                    <option value="TAS">TAS</option>
+                                    <option value="NT">NT</option>
+                                    <option value="ACT">ACT</option>
+                                </select>
+                                <input
+                                    type="text"
+                                    value={destinationPostcode}
+                                    onChange={(e) => setDestinationPostcode(e.target.value)}
+                                    className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="P/code"
+                                    maxLength={4}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Route Match Indicator */}
+                        {selectedPartId && allRecords.length > 0 && (
+                            <div className="text-xs text-slate-400 flex items-center gap-2">
+                                <Icons.Info size={12} />
+                                {routeMatched ? (
+                                    <span className="text-emerald-400">
+                                        ✓ Using {filteredRecords.length} record{filteredRecords.length !== 1 ? 's' : ''} matching this route
+                                    </span>
+                                ) : (
+                                    <span className="text-amber-400">
+                                        No exact route match - showing all {allRecords.length} record{allRecords.length !== 1 ? 's' : ''} for this part
+                                    </span>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
                     {/* No Data Message */}
                     {selectedPartId && averageData && averageData.totalRecords === 0 && (
                         <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-lg">
@@ -200,11 +382,11 @@ export const ShippingCalculator = () => {
                                     <div className="p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
                                         <div className="text-xs text-slate-400 mb-2">Cost Formula:</div>
                                         <div className="font-mono text-white text-sm">
-                                            <span className="text-cyan-400">${(averageData.baseCost / 100).toFixed(2)}</span>
-                                            {averageData.perUnitCost > 0 && (
+                                            <span className="text-cyan-400">${((averageData.baseCost || 0) / 100).toFixed(2)}</span>
+                                            {(averageData.perUnitCost || 0) > 0 && (
                                                 <>
                                                     <span className="text-slate-400"> + </span>
-                                                    <span className="text-emerald-400">${(averageData.perUnitCost / 100).toFixed(2)}</span>
+                                                    <span className="text-emerald-400">${((averageData.perUnitCost || 0) / 100).toFixed(2)}</span>
                                                     <span className="text-slate-400"> × units</span>
                                                 </>
                                             )}
@@ -216,13 +398,13 @@ export const ShippingCalculator = () => {
                                         <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                             <div className="text-xs text-slate-400 mb-1">Base Cost</div>
                                             <div className="text-lg font-bold text-cyan-400">
-                                                {formatCurrency(averageData.baseCost)}
+                                                {formatCurrency(averageData.baseCost || 0)}
                                             </div>
                                         </div>
                                         <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                             <div className="text-xs text-slate-400 mb-1">Per-Unit</div>
                                             <div className="text-lg font-bold text-emerald-400">
-                                                {formatCurrency(averageData.perUnitCost)}
+                                                {formatCurrency(averageData.perUnitCost || 0)}
                                             </div>
                                         </div>
                                     </div>
@@ -231,7 +413,7 @@ export const ShippingCalculator = () => {
                                 <div className="p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                                     <div className="text-xs text-slate-400 mb-1">Avg Cost/Unit</div>
                                     <div className="text-lg font-bold text-cyan-400">
-                                        {formatCurrency(averageData.averageCostPerUnit)}
+                                        {formatCurrency(averageData.averageCostPerUnit || 0)}
                                     </div>
                                 </div>
                             )}
@@ -245,13 +427,13 @@ export const ShippingCalculator = () => {
                                             <>
                                                 <div className="flex items-center justify-between text-slate-300">
                                                     <span>Base cost:</span>
-                                                    <span>{formatCurrency(averageData.baseCost)}</span>
+                                                    <span>{formatCurrency(averageData.baseCost || 0)}</span>
                                                 </div>
-                                                {averageData.perUnitCost > 0 && (
+                                                {(averageData.perUnitCost || 0) > 0 && (
                                                     <>
                                                         <div className="flex items-center justify-between text-slate-300">
-                                                            <span>{formatCurrency(averageData.perUnitCost)} × {parseFloat(units)} units:</span>
-                                                            <span>{formatCurrency(averageData.perUnitCost * parseFloat(units))}</span>
+                                                            <span>{formatCurrency(averageData.perUnitCost || 0)} × {parseFloat(units)} units:</span>
+                                                            <span>{formatCurrency((averageData.perUnitCost || 0) * parseFloat(units))}</span>
                                                         </div>
                                                     </>
                                                 )}
@@ -259,13 +441,13 @@ export const ShippingCalculator = () => {
                                         ) : (
                                             <div className="flex items-center justify-between text-slate-300">
                                                 <span>Cost per unit:</span>
-                                                <span>{formatCurrency(averageData.averageCostPerUnit)}</span>
+                                                <span>{formatCurrency(averageData.averageCostPerUnit || 0)}</span>
                                             </div>
                                         )}
                                         <div className="h-px bg-cyan-500/30"></div>
                                         <div className="flex items-center justify-between text-white font-bold text-lg">
                                             <span>Estimated Total:</span>
-                                            <span className="text-cyan-400">{formatCurrency(calculatedCost)}</span>
+                                            <span className="text-cyan-400">{formatCurrency(calculatedCost || 0)}</span>
                                         </div>
                                     </div>
                                 </div>

@@ -21,6 +21,20 @@ const TOLERANCES = {
 };
 
 /**
+ * Group data by supplier
+ */
+const groupBySupplier = (data) => {
+    return data.reduce((acc, item) => {
+        const supplier = item.supplierName || 'Unknown Supplier';
+        if (!acc[supplier]) {
+            acc[supplier] = [];
+        }
+        acc[supplier].push(item);
+        return acc;
+    }, {});
+};
+
+/**
  * Filter data by date range
  */
 export const filterByDateRange = (data, months) => {
@@ -212,6 +226,119 @@ const adjustPriceForQuantity = (quantityGroups, requestedQuantity) => {
 };
 
 /**
+ * Estimate Weigh Module Cost - Core logic for a single supplier's data
+ */
+const estimateWeighModuleCostForSupplier = (matches, params, dateRangeMonths, supplierName) => {
+    // Try exact match on all fields including belt width and capacity
+    const exactMatches = matches.filter(m =>
+        m.beltWidth === params.beltWidth &&
+        Math.abs(m.capacityKgPerM - params.capacityKgPerM) < 1
+    );
+
+    if (exactMatches.length > 0) {
+        // Calculate weighted average
+        const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedCost = exactMatches.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
+        const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: Math.round(weightedCost),
+            confidence,
+            method: 'Exact Match',
+            dataPoints: exactMatches.length,
+            matchingEntries: exactMatches.slice(0, 5).map(m => ({
+                beltWidth: m.beltWidth,
+                capacity: m.capacityKgPerM,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Try interpolation on belt width
+    const belowWidth = matches.filter(m => m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
+    const aboveWidth = matches.filter(m => m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
+
+    if (belowWidth.length > 0 && aboveWidth.length > 0) {
+        const lower = belowWidth[0];
+        const upper = aboveWidth[0];
+
+        const estimatedCost = interpolateLinear(
+            lower.beltWidth, lower.costPrice,
+            upper.beltWidth, upper.costPrice,
+            params.beltWidth
+        );
+
+        const usedData = [lower, upper];
+        const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
+        const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: Math.round(estimatedCost),
+            confidence,
+            method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm)`,
+            dataPoints: usedData.length,
+            matchingEntries: usedData.map(m => ({
+                beltWidth: m.beltWidth,
+                capacity: m.capacityKgPerM,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Fuzzy match - find nearest belt width
+    const sorted = matches.sort((a, b) =>
+        Math.abs(a.beltWidth - params.beltWidth) - Math.abs(b.beltWidth - params.beltWidth)
+    );
+
+    if (sorted.length > 0) {
+        const nearest = sorted.slice(0, 3);
+        const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedCost = nearest.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
+        const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: Math.round(weightedCost),
+            confidence,
+            method: 'Fuzzy Match (Nearest Belt Width)',
+            dataPoints: nearest.length,
+            matchingEntries: nearest.map(m => ({
+                beltWidth: m.beltWidth,
+                capacity: m.capacityKgPerM,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    return {
+        success: false,
+        error: 'Insufficient data for estimation'
+    };
+};
+
+/**
  * Estimate Weigh Module Cost
  */
 export const estimateWeighModuleCost = async (params, dateRangeMonths = 12) => {
@@ -226,7 +353,8 @@ export const estimateWeighModuleCost = async (params, dateRangeMonths = 12) => {
         if (data.length === 0) {
             return {
                 success: false,
-                error: 'No historical data available for the specified date range'
+                error: 'No historical data available for the specified date range',
+                supplierEstimates: []
             };
         }
 
@@ -237,119 +365,200 @@ export const estimateWeighModuleCost = async (params, dateRangeMonths = 12) => {
         if (matches.length === 0) {
             return {
                 success: false,
-                error: 'No matching data found for the specified model, material, and idler spacing'
+                error: 'No matching data found for the specified model, material, and idler spacing',
+                supplierEstimates: []
             };
         }
 
-        // Try exact match on all fields including belt width and capacity
-        const exactMatches = matches.filter(m =>
-            m.beltWidth === params.beltWidth &&
-            Math.abs(m.capacityKgPerM - params.capacityKgPerM) < 1
-        );
+        // Group by supplier
+        const supplierGroups = groupBySupplier(matches);
 
-        if (exactMatches.length > 0) {
-            // Calculate weighted average
-            const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedCost = exactMatches.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
+        // Calculate estimate for each supplier
+        const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
+            return estimateWeighModuleCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+        }).filter(est => est.success);
 
-            const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
-            const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
-
-            return {
-                success: true,
-                estimatedCost: Math.round(weightedCost),
-                confidence,
-                method: 'Exact Match',
-                dataPoints: exactMatches.length,
-                matchingEntries: exactMatches.slice(0, 5).map(m => ({
-                    beltWidth: m.beltWidth,
-                    capacity: m.capacityKgPerM,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        // Try interpolation on belt width
-        const belowWidth = matches.filter(m => m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
-        const aboveWidth = matches.filter(m => m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
-
-        if (belowWidth.length > 0 && aboveWidth.length > 0) {
-            const lower = belowWidth[0];
-            const upper = aboveWidth[0];
-
-            const estimatedCost = interpolateLinear(
-                lower.beltWidth, lower.costPrice,
-                upper.beltWidth, upper.costPrice,
-                params.beltWidth
-            );
-
-            const usedData = [lower, upper];
-            const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
-            const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
-
-            return {
-                success: true,
-                estimatedCost: Math.round(estimatedCost),
-                confidence,
-                method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm)`,
-                dataPoints: usedData.length,
-                matchingEntries: usedData.map(m => ({
-                    beltWidth: m.beltWidth,
-                    capacity: m.capacityKgPerM,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        // Fuzzy match - find nearest belt width
-        const sorted = matches.sort((a, b) =>
-            Math.abs(a.beltWidth - params.beltWidth) - Math.abs(b.beltWidth - params.beltWidth)
-        );
-
-        if (sorted.length > 0) {
-            const nearest = sorted.slice(0, 3);
-            const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedCost = nearest.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
-            const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
-
-            return {
-                success: true,
-                estimatedCost: Math.round(weightedCost),
-                confidence,
-                method: 'Fuzzy Match (Nearest Belt Width)',
-                dataPoints: nearest.length,
-                matchingEntries: nearest.map(m => ({
-                    beltWidth: m.beltWidth,
-                    capacity: m.capacityKgPerM,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
+        if (supplierEstimates.length === 0) {
+            return { success: false, error: 'Insufficient data for estimation across all suppliers', supplierEstimates: [] };
         }
 
         return {
-            success: false,
-            error: 'Insufficient data for estimation'
+            success: true,
+            supplierEstimates,
+            totalSuppliers: supplierEstimates.length
         };
 
     } catch (error) {
         console.error('Error estimating weigh module cost:', error);
         return {
             success: false,
-            error: error.message || 'Failed to estimate cost'
+            error: error.message || 'Failed to estimate cost',
+            supplierEstimates: []
         };
     }
+};
+
+
+/**
+ * Estimate Idler Frame Cost - Core logic for a single supplier's data
+ */
+const estimateIdlerFrameCostForSupplier = (matches, params, dateRangeMonths, supplierName) => {
+    // Try exact match
+    const exactMatches = matches.filter(m =>
+        m.beltWidth === params.beltWidth &&
+        Math.abs(m.capacityKgPerM - params.capacityKgPerM) < 1 &&
+        m.quantity === params.quantity
+    );
+
+    if (exactMatches.length > 0) {
+        const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedCost = exactMatches.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
+        const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+
+        const unitCost = Math.round(weightedCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Exact Match',
+            dataPoints: exactMatches.length,
+            matchingEntries: exactMatches.slice(0, 5).map(m => ({
+                beltWidth: m.beltWidth,
+                capacity: m.capacityKgPerM,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Check for quantity variations - prioritize quantity-based pricing if available
+    const quantityGroups = findQuantityVariations(matches);
+
+    if (Object.keys(quantityGroups).length > 1) {
+        // Multiple quantities available - use quantity-based adjustment
+        const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
+
+        if (adjustment) {
+            const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
+
+            return {
+                success: true,
+                supplierName,
+                estimatedCost: adjustment.unitCost * params.quantity,
+                estimatedCostPerUnit: adjustment.unitCost,
+                estimatedCostTotal: adjustment.unitCost * params.quantity,
+                quantity: params.quantity,
+                confidence,
+                method: adjustment.method,
+                dataPoints: adjustment.dataPoints,
+                quantityAdjusted: true,
+                quantityRange: adjustment.quantityRange,
+                matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
+                    beltWidth: m.beltWidth,
+                    capacity: m.capacityKgPerM,
+                    quantity: m.quantity,
+                    costPrice: m.costPrice,
+                    effectiveDate: m.effectiveDate,
+                    supplierName: m.supplierName
+                })),
+                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+            };
+        }
+    }
+
+    // Try belt width interpolation
+    const belowWidth = matches.filter(m => m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
+    const aboveWidth = matches.filter(m => m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
+
+    if (belowWidth.length > 0 && aboveWidth.length > 0) {
+        const lower = belowWidth[0];
+        const upper = aboveWidth[0];
+
+        const unitCost = Math.round(interpolateLinear(
+            lower.beltWidth, lower.costPrice,
+            upper.beltWidth, upper.costPrice,
+            params.beltWidth
+        ));
+
+        // Scale by quantity
+        const estimatedCost = unitCost * params.quantity;
+
+        const usedData = [lower, upper];
+        const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
+        const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: estimatedCost,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: estimatedCost,
+            quantity: params.quantity,
+            confidence,
+            method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm)`,
+            dataPoints: usedData.length,
+            matchingEntries: usedData.map(m => ({
+                beltWidth: m.beltWidth,
+                capacity: m.capacityKgPerM,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Fuzzy match
+    const sorted = matches.sort((a, b) =>
+        Math.abs(a.beltWidth - params.beltWidth) - Math.abs(b.beltWidth - params.beltWidth)
+    );
+
+    if (sorted.length > 0) {
+        const nearest = sorted.slice(0, 3);
+        const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedCost = nearest.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
+        const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
+
+        const unitCost = Math.round(weightedCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Fuzzy Match',
+            dataPoints: nearest.length,
+            matchingEntries: nearest.map(m => ({
+                beltWidth: m.beltWidth,
+                capacity: m.capacityKgPerM,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    return { success: false, error: 'Insufficient data for estimation' };
 };
 
 /**
@@ -363,7 +572,11 @@ export const estimateIdlerFrameCost = async (params, dateRangeMonths = 12) => {
         data = filterByDateRange(data, dateRangeMonths);
 
         if (data.length === 0) {
-            return { success: false, error: 'No historical data available' };
+            return {
+                success: false,
+                error: 'No historical data available',
+                supplierEstimates: []
+            };
         }
 
         // Exact match on categorical fields
@@ -371,162 +584,149 @@ export const estimateIdlerFrameCost = async (params, dateRangeMonths = 12) => {
         let matches = findExactMatches(data, params, categoricalFields);
 
         if (matches.length === 0) {
-            return { success: false, error: 'No matching data found for the specified configuration' };
-        }
-
-        // Try exact match
-        const exactMatches = matches.filter(m =>
-            m.beltWidth === params.beltWidth &&
-            Math.abs(m.capacityKgPerM - params.capacityKgPerM) < 1 &&
-            m.quantity === params.quantity
-        );
-
-        if (exactMatches.length > 0) {
-            const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedCost = exactMatches.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
-            const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
-
-            const unitCost = Math.round(weightedCost);
             return {
-                success: true,
-                estimatedCost: unitCost * params.quantity,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: unitCost * params.quantity,
-                quantity: params.quantity,
-                confidence,
-                method: 'Exact Match',
-                dataPoints: exactMatches.length,
-                matchingEntries: exactMatches.slice(0, 5).map(m => ({
-                    beltWidth: m.beltWidth,
-                    capacity: m.capacityKgPerM,
-                    quantity: m.quantity,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+                success: false,
+                error: 'No matching data found for the specified configuration',
+                supplierEstimates: []
             };
         }
 
-        // Check for quantity variations - prioritize quantity-based pricing if available
-        const quantityGroups = findQuantityVariations(matches);
+        // Group by supplier
+        const supplierGroups = groupBySupplier(matches);
 
-        if (Object.keys(quantityGroups).length > 1) {
-            // Multiple quantities available - use quantity-based adjustment
-            const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
+        // Calculate estimate for each supplier
+        const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
+            return estimateIdlerFrameCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+        }).filter(est => est.success);
 
-            if (adjustment) {
-                const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
-
-                return {
-                    success: true,
-                    estimatedCost: adjustment.unitCost * params.quantity,
-                    estimatedCostPerUnit: adjustment.unitCost,
-                    estimatedCostTotal: adjustment.unitCost * params.quantity,
-                    quantity: params.quantity,
-                    confidence,
-                    method: adjustment.method,
-                    dataPoints: adjustment.dataPoints,
-                    quantityAdjusted: true,
-                    quantityRange: adjustment.quantityRange,
-                    matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
-                        beltWidth: m.beltWidth,
-                        capacity: m.capacityKgPerM,
-                        quantity: m.quantity,
-                        costPrice: m.costPrice,
-                        effectiveDate: m.effectiveDate
-                    })),
-                    dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-                };
-            }
+        if (supplierEstimates.length === 0) {
+            return { success: false, error: 'Insufficient data for estimation across all suppliers', supplierEstimates: [] };
         }
 
-        // Try belt width interpolation
-        const belowWidth = matches.filter(m => m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
-        const aboveWidth = matches.filter(m => m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
-
-        if (belowWidth.length > 0 && aboveWidth.length > 0) {
-            const lower = belowWidth[0];
-            const upper = aboveWidth[0];
-
-            const unitCost = Math.round(interpolateLinear(
-                lower.beltWidth, lower.costPrice,
-                upper.beltWidth, upper.costPrice,
-                params.beltWidth
-            ));
-
-            // Scale by quantity
-            const estimatedCost = unitCost * params.quantity;
-
-            const usedData = [lower, upper];
-            const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
-            const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
-
-            return {
-                success: true,
-                estimatedCost: estimatedCost,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: estimatedCost,
-                quantity: params.quantity,
-                confidence,
-                method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm)`,
-                dataPoints: usedData.length,
-                matchingEntries: usedData.map(m => ({
-                    beltWidth: m.beltWidth,
-                    capacity: m.capacityKgPerM,
-                    quantity: m.quantity,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        // Fuzzy match
-        const sorted = matches.sort((a, b) =>
-            Math.abs(a.beltWidth - params.beltWidth) - Math.abs(b.beltWidth - params.beltWidth)
-        );
-
-        if (sorted.length > 0) {
-            const nearest = sorted.slice(0, 3);
-            const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedCost = nearest.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
-            const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
-
-            const unitCost = Math.round(weightedCost);
-            return {
-                success: true,
-                estimatedCost: unitCost * params.quantity,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: unitCost * params.quantity,
-                quantity: params.quantity,
-                confidence,
-                method: 'Fuzzy Match',
-                dataPoints: nearest.length,
-                matchingEntries: nearest.map(m => ({
-                    beltWidth: m.beltWidth,
-                    capacity: m.capacityKgPerM,
-                    quantity: m.quantity,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        return { success: false, error: 'Insufficient data for estimation' };
+        return {
+            success: true,
+            supplierEstimates,
+            totalSuppliers: supplierEstimates.length
+        };
 
     } catch (error) {
         console.error('Error estimating idler frame cost:', error);
-        return { success: false, error: error.message || 'Failed to estimate cost' };
+        return {
+            success: false,
+            error: error.message || 'Failed to estimate cost',
+            supplierEstimates: []
+        };
     }
+};
+
+
+/**
+ * Estimate Billet Weight Cost - Core logic for a single supplier's data
+ */
+const estimateBilletWeightCostForSupplier = (matches, params, dateRangeMonths, supplierName, category) => {
+    // Exact match
+    const exactMatches = matches.filter(m => Math.abs(m.weightKg - params.weightKg) < 1);
+
+    if (exactMatches.length > 0) {
+        const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedCost = exactMatches.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
+        const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: Math.round(weightedCost),
+            confidence,
+            method: 'Exact Match',
+            dataPoints: exactMatches.length,
+            category,
+            matchingEntries: exactMatches.slice(0, 5).map(m => ({
+                weightKg: m.weightKg,
+                costPrice: m.costPrice,
+                setupCost: m.setupCost,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Interpolation within same category
+    const below = matches.filter(m => m.weightKg < params.weightKg).sort((a, b) => b.weightKg - a.weightKg);
+    const above = matches.filter(m => m.weightKg > params.weightKg).sort((a, b) => a.weightKg - b.weightKg);
+
+    if (below.length > 0 && above.length > 0) {
+        const lower = below[0];
+        const upper = above[0];
+
+        const estimatedCost = interpolateLinear(
+            lower.weightKg, lower.unitCost || lower.costPrice,
+            upper.weightKg, upper.unitCost || upper.costPrice,
+            params.weightKg
+        );
+
+        const usedData = [lower, upper];
+        const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
+        const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: Math.round(estimatedCost),
+            confidence,
+            method: `Linear Interpolation (${lower.weightKg}kg - ${upper.weightKg}kg)`,
+            dataPoints: usedData.length,
+            category,
+            matchingEntries: usedData.map(m => ({
+                weightKg: m.weightKg,
+                costPrice: m.costPrice,
+                setupCost: m.setupCost,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Fuzzy match - nearest weight
+    const sorted = matches.sort((a, b) =>
+        Math.abs(a.weightKg - params.weightKg) - Math.abs(b.weightKg - params.weightKg)
+    );
+
+    if (sorted.length > 0) {
+        const nearest = sorted.slice(0, 3);
+        const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedCost = nearest.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
+        const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: Math.round(weightedCost),
+            confidence,
+            method: 'Fuzzy Match (Nearest Weight)',
+            dataPoints: nearest.length,
+            category,
+            matchingEntries: nearest.map(m => ({
+                weightKg: m.weightKg,
+                costPrice: m.costPrice,
+                setupCost: m.setupCost,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    return { success: false, error: 'Insufficient data for estimation' };
 };
 
 /**
@@ -540,14 +740,22 @@ export const estimateBilletWeightCost = async (params, dateRangeMonths = 12) => 
         data = filterByDateRange(data, dateRangeMonths);
 
         if (data.length === 0) {
-            return { success: false, error: 'No historical data available' };
+            return {
+                success: false,
+                error: 'No historical data available',
+                supplierEstimates: []
+            };
         }
 
         // Filter by material type
         let matches = data.filter(m => m.materialType === params.materialType);
 
         if (matches.length === 0) {
-            return { success: false, error: 'No matching data found for the specified material' };
+            return {
+                success: false,
+                error: 'No matching data found for the specified material',
+                supplierEstimates: []
+            };
         }
 
         // Important: Don't interpolate across the 250kg breakpoint
@@ -555,115 +763,200 @@ export const estimateBilletWeightCost = async (params, dateRangeMonths = 12) => 
         matches = matches.filter(m => getBilletWeightCategory(m.weightKg) === category);
 
         if (matches.length === 0) {
-            return { success: false, error: `No ${category.toLowerCase()} weight data available` };
-        }
-
-        // Exact match
-        const exactMatches = matches.filter(m => Math.abs(m.weightKg - params.weightKg) < 1);
-
-        if (exactMatches.length > 0) {
-            const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedCost = exactMatches.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
-            const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
-
             return {
-                success: true,
-                estimatedCost: Math.round(weightedCost),
-                confidence,
-                method: 'Exact Match',
-                dataPoints: exactMatches.length,
-                category,
-                matchingEntries: exactMatches.slice(0, 5).map(m => ({
-                    weightKg: m.weightKg,
-                    costPrice: m.costPrice,
-                    setupCost: m.setupCost,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+                success: false,
+                error: `No ${category.toLowerCase()} weight data available`,
+                supplierEstimates: []
             };
         }
 
-        // Interpolation within same category
-        const below = matches.filter(m => m.weightKg < params.weightKg).sort((a, b) => b.weightKg - a.weightKg);
-        const above = matches.filter(m => m.weightKg > params.weightKg).sort((a, b) => a.weightKg - b.weightKg);
+        // Group by supplier
+        const supplierGroups = groupBySupplier(matches);
 
-        if (below.length > 0 && above.length > 0) {
-            const lower = below[0];
-            const upper = above[0];
+        // Calculate estimate for each supplier
+        const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
+            return estimateBilletWeightCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName, category);
+        }).filter(est => est.success);
 
-            const estimatedCost = interpolateLinear(
-                lower.weightKg, lower.costPrice,
-                upper.weightKg, upper.costPrice,
-                params.weightKg
-            );
-
-            const usedData = [lower, upper];
-            const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
-            const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
-
-            return {
-                success: true,
-                estimatedCost: Math.round(estimatedCost),
-                confidence,
-                method: `Linear Interpolation (${lower.weightKg}kg - ${upper.weightKg}kg)`,
-                dataPoints: usedData.length,
-                category,
-                matchingEntries: usedData.map(m => ({
-                    weightKg: m.weightKg,
-                    costPrice: m.costPrice,
-                    setupCost: m.setupCost,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
+        if (supplierEstimates.length === 0) {
+            return { success: false, error: 'Insufficient data for estimation across all suppliers', supplierEstimates: [] };
         }
 
-        // Fuzzy match - nearest weight
-        const sorted = matches.sort((a, b) =>
-            Math.abs(a.weightKg - params.weightKg) - Math.abs(b.weightKg - params.weightKg)
-        );
-
-        if (sorted.length > 0) {
-            const nearest = sorted.slice(0, 3);
-            const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedCost = nearest.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
-            const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
-
-            return {
-                success: true,
-                estimatedCost: Math.round(weightedCost),
-                confidence,
-                method: 'Fuzzy Match (Nearest Weight)',
-                dataPoints: nearest.length,
-                category,
-                matchingEntries: nearest.map(m => ({
-                    weightKg: m.weightKg,
-                    costPrice: m.costPrice,
-                    setupCost: m.setupCost,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        return { success: false, error: 'Insufficient data for estimation' };
+        return {
+            success: true,
+            supplierEstimates,
+            totalSuppliers: supplierEstimates.length
+        };
 
     } catch (error) {
         console.error('Error estimating billet weight cost:', error);
-        return { success: false, error: error.message || 'Failed to estimate cost' };
+        return {
+            success: false,
+            error: error.message || 'Failed to estimate cost',
+            supplierEstimates: []
+        };
     }
 };
 
+
 /**
- * Estimate Roller Cost
+ * Estimate Roller Cost - Core logic for a single supplier's data
+ */
+const estimateRollerCostForSupplier = (matches, params, dateRangeMonths, supplierName) => {
+    // Exact match including face length
+    const exactMatches = matches.filter(m => Math.abs(m.faceLength - params.faceLength) < 10);
+
+    if (exactMatches.length > 0) {
+        const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedUnitCost = exactMatches.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
+        const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+
+        const unitCost = Math.round(weightedUnitCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Exact Match',
+            dataPoints: exactMatches.length,
+            matchingEntries: exactMatches.slice(0, 10).map(m => ({
+                diameter: m.diameter,
+                faceLength: m.faceLength,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Check for quantity variations
+    const quantityGroups = findQuantityVariations(matches);
+
+    if (Object.keys(quantityGroups).length > 1) {
+        const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
+
+        if (adjustment) {
+            const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
+
+            return {
+                success: true,
+                supplierName,
+                estimatedCost: adjustment.unitCost * params.quantity,
+                estimatedCostPerUnit: adjustment.unitCost,
+                estimatedCostTotal: adjustment.unitCost * params.quantity,
+                quantity: params.quantity,
+                confidence,
+                method: adjustment.method,
+                dataPoints: adjustment.dataPoints,
+                quantityAdjusted: true,
+                quantityRange: adjustment.quantityRange,
+                matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
+                    diameter: m.diameter,
+                    faceLength: m.faceLength,
+                    quantity: m.quantity,
+                    costPrice: m.costPrice,
+                    effectiveDate: m.effectiveDate,
+                    supplierName: m.supplierName
+                })),
+                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+            };
+        }
+    }
+
+    // Interpolation on face length
+    const below = matches.filter(m => m.faceLength < params.faceLength).sort((a, b) => b.faceLength - a.faceLength);
+    const above = matches.filter(m => m.faceLength > params.faceLength).sort((a, b) => a.faceLength - b.faceLength);
+
+    if (below.length > 0 && above.length > 0) {
+        const lower = below[0];
+        const upper = above[0];
+
+        const unitCost = Math.round(interpolateLinear(
+            lower.faceLength, lower.costPrice,
+            upper.faceLength, upper.costPrice,
+            params.faceLength
+        ));
+
+        const estimatedCost = unitCost * params.quantity;
+
+        const usedData = [lower, upper];
+        const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
+        const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: estimatedCost,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: estimatedCost,
+            quantity: params.quantity,
+            confidence,
+            method: `Linear Interpolation (${lower.faceLength}mm - ${upper.faceLength}mm)`,
+            dataPoints: usedData.length,
+            matchingEntries: usedData.map(m => ({
+                diameter: m.diameter,
+                faceLength: m.faceLength,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Fuzzy match - nearest face length
+    const sorted = matches.sort((a, b) =>
+        Math.abs(a.faceLength - params.faceLength) - Math.abs(b.faceLength - params.faceLength)
+    );
+
+    if (sorted.length > 0) {
+        const nearest = sorted.slice(0, 3);
+        const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedUnitCost = nearest.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
+        const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
+
+        const unitCost = Math.round(weightedUnitCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Fuzzy Match',
+            dataPoints: nearest.length,
+            matchingEntries: nearest.map(m => ({
+                diameter: m.diameter,
+                faceLength: m.faceLength,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    return { success: false, supplierName, error: 'Insufficient data for estimation' };
+};
+
+/**
+ * Estimate Roller Cost - Returns per-supplier estimates
  */
 export const estimateRollerCost = async (params, dateRangeMonths = 12) => {
     try {
@@ -673,7 +966,7 @@ export const estimateRollerCost = async (params, dateRangeMonths = 12) => {
         data = filterByDateRange(data, dateRangeMonths);
 
         if (data.length === 0) {
-            return { success: false, error: 'No historical data available' };
+            return { success: false, error: 'No historical data available', supplierEstimates: [] };
         }
 
         // Exact match on categorical fields
@@ -683,87 +976,123 @@ export const estimateRollerCost = async (params, dateRangeMonths = 12) => {
         );
 
         if (matches.length === 0) {
-            return { success: false, error: 'No matching data found for the specified diameter and material' };
+            return { success: false, error: 'No matching data found for the specified diameter and material', supplierEstimates: [] };
         }
 
-        // Exact match including face length
-        const exactMatches = matches.filter(m => Math.abs(m.faceLength - params.faceLength) < 10);
+        // Group by supplier
+        const supplierGroups = groupBySupplier(matches);
 
-        if (exactMatches.length > 0) {
-            const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedUnitCost = exactMatches.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
+        // Calculate estimate for each supplier
+        const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
+            return estimateRollerCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+        }).filter(est => est.success); // Only include successful estimates
 
-            const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
-            const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+        if (supplierEstimates.length === 0) {
+            return { success: false, error: 'Insufficient data for estimation across all suppliers', supplierEstimates: [] };
+        }
 
-            const unitCost = Math.round(weightedUnitCost);
+        // Return multiple estimates
+        return {
+            success: true,
+            supplierEstimates,
+            totalSuppliers: supplierEstimates.length
+        };
+
+    } catch (error) {
+        console.error('Error estimating roller cost:', error);
+        return { success: false, error: error.message || 'Failed to estimate cost', supplierEstimates: [] };
+    }
+};
+
+/**
+ * Estimate Speed Sensor Cost - Core logic for a single supplier's data
+ */
+const estimateSpeedSensorCostForSupplier = (matches, params, dateRangeMonths, supplierName) => {
+    // Try exact match
+    const exactMatches = matches.filter(m =>
+        m.rhsCutLength === params.rhsCutLength &&
+        m.quantity === params.quantity
+    );
+
+    if (exactMatches.length > 0) {
+        const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedUnitCost = exactMatches.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
+        const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+
+        const unitCost = Math.round(weightedUnitCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Exact Match',
+            dataPoints: exactMatches.length,
+            matchingEntries: exactMatches.slice(0, 5).map(m => ({
+                beltWidth: m.beltWidth,
+                rhsCutLength: m.rhsCutLength,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Check for quantity variations
+    const quantityGroups = findQuantityVariations(matches);
+
+    if (Object.keys(quantityGroups).length > 1) {
+        const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
+
+        if (adjustment) {
+            const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
+
             return {
                 success: true,
-                estimatedCost: unitCost * params.quantity,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: unitCost * params.quantity,
+                supplierName,
+                estimatedCost: adjustment.unitCost * params.quantity,
+                estimatedCostPerUnit: adjustment.unitCost,
+                estimatedCostTotal: adjustment.unitCost * params.quantity,
                 quantity: params.quantity,
                 confidence,
-                method: 'Exact Match',
-                dataPoints: exactMatches.length,
-                matchingEntries: exactMatches.slice(0, 5).map(m => ({
-                    diameter: m.diameter,
-                    faceLength: m.faceLength,
+                method: adjustment.method,
+                dataPoints: adjustment.dataPoints,
+                quantityAdjusted: true,
+                quantityRange: adjustment.quantityRange,
+                matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
+                    beltWidth: m.beltWidth,
+                    rhsCutLength: m.rhsCutLength,
                     quantity: m.quantity,
                     costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
+                    effectiveDate: m.effectiveDate,
+                    supplierName: m.supplierName
                 })),
                 dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
             };
         }
+    }
 
-        // Check for quantity variations - prioritize quantity-based pricing if available
-        const quantityGroups = findQuantityVariations(matches);
+    // Try interpolation on belt width (if belt width is tracked)
+    if (params.beltWidth) {
+        const belowWidth = matches.filter(m => m.beltWidth && m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
+        const aboveWidth = matches.filter(m => m.beltWidth && m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
 
-        if (Object.keys(quantityGroups).length > 1) {
-            // Multiple quantities available - use quantity-based adjustment
-            const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
-
-            if (adjustment) {
-                const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
-
-                return {
-                    success: true,
-                    estimatedCost: adjustment.unitCost * params.quantity,
-                    estimatedCostPerUnit: adjustment.unitCost,
-                    estimatedCostTotal: adjustment.unitCost * params.quantity,
-                    quantity: params.quantity,
-                    confidence,
-                    method: adjustment.method,
-                    dataPoints: adjustment.dataPoints,
-                    quantityAdjusted: true,
-                    quantityRange: adjustment.quantityRange,
-                    matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
-                        diameter: m.diameter,
-                        faceLength: m.faceLength,
-                        quantity: m.quantity,
-                        costPrice: m.costPrice,
-                        effectiveDate: m.effectiveDate
-                    })),
-                    dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-                };
-            }
-        }
-
-        // Interpolation on face length
-        const below = matches.filter(m => m.faceLength < params.faceLength).sort((a, b) => b.faceLength - a.faceLength);
-        const above = matches.filter(m => m.faceLength > params.faceLength).sort((a, b) => a.faceLength - b.faceLength);
-
-        if (below.length > 0 && above.length > 0) {
-            const lower = below[0];
-            const upper = above[0];
+        if (belowWidth.length > 0 && aboveWidth.length > 0) {
+            const lower = belowWidth[0];
+            const upper = aboveWidth[0];
 
             const unitCost = Math.round(interpolateLinear(
-                lower.faceLength, lower.costPrice,
-                upper.faceLength, upper.costPrice,
-                params.faceLength
+                lower.beltWidth, lower.costPrice,
+                upper.beltWidth, upper.costPrice,
+                params.beltWidth
             ));
 
             const estimatedCost = unitCost * params.quantity;
@@ -774,66 +1103,71 @@ export const estimateRollerCost = async (params, dateRangeMonths = 12) => {
 
             return {
                 success: true,
+                supplierName,
                 estimatedCost: estimatedCost,
                 estimatedCostPerUnit: unitCost,
                 estimatedCostTotal: estimatedCost,
                 quantity: params.quantity,
                 confidence,
-                method: `Linear Interpolation (${lower.faceLength}mm - ${upper.faceLength}mm)`,
+                method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm belt width)`,
                 dataPoints: usedData.length,
                 matchingEntries: usedData.map(m => ({
-                    diameter: m.diameter,
-                    faceLength: m.faceLength,
+                    beltWidth: m.beltWidth,
+                    rhsCutLength: m.rhsCutLength,
                     quantity: m.quantity,
                     costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
+                    effectiveDate: m.effectiveDate,
+                    supplierName: m.supplierName
                 })),
                 dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
             };
         }
-
-        // Fuzzy match - nearest face length
-        const sorted = matches.sort((a, b) =>
-            Math.abs(a.faceLength - params.faceLength) - Math.abs(b.faceLength - params.faceLength)
-        );
-
-        if (sorted.length > 0) {
-            const nearest = sorted.slice(0, 3);
-            const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedUnitCost = nearest.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
-            const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
-
-            const unitCost = Math.round(weightedUnitCost);
-            return {
-                success: true,
-                estimatedCost: unitCost * params.quantity,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: unitCost * params.quantity,
-                quantity: params.quantity,
-                confidence,
-                method: 'Fuzzy Match',
-                dataPoints: nearest.length,
-                matchingEntries: nearest.map(m => ({
-                    diameter: m.diameter,
-                    faceLength: m.faceLength,
-                    quantity: m.quantity,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        return { success: false, error: 'Insufficient data for estimation' };
-
-    } catch (error) {
-        console.error('Error estimating roller cost:', error);
-        return { success: false, error: error.message || 'Failed to estimate cost' };
     }
+
+    // Fuzzy match - nearest match
+    const sorted = params.beltWidth
+        ? matches.sort((a, b) => {
+            // Prefer entries with belt width that matches, then by closest value
+            const aBeltDiff = a.beltWidth ? Math.abs(a.beltWidth - params.beltWidth) : 999999;
+            const bBeltDiff = b.beltWidth ? Math.abs(b.beltWidth - params.beltWidth) : 999999;
+            return aBeltDiff - bBeltDiff;
+        })
+        : matches; // If no belt width specified, just use all matches
+
+    if (sorted.length > 0) {
+        const nearest = sorted.slice(0, 3);
+        const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedUnitCost = nearest.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
+        const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
+
+        const unitCost = Math.round(weightedUnitCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Fuzzy Match',
+            dataPoints: nearest.length,
+            matchingEntries: nearest.map(m => ({
+                beltWidth: m.beltWidth,
+                rhsCutLength: m.rhsCutLength,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    return { success: false, error: 'Insufficient data for estimation' };
 };
 
 /**
@@ -847,177 +1181,266 @@ export const estimateSpeedSensorCost = async (params, dateRangeMonths = 12) => {
         data = filterByDateRange(data, dateRangeMonths);
 
         if (data.length === 0) {
-            return { success: false, error: 'No historical data available' };
+            return {
+                success: false,
+                error: 'No historical data available',
+                supplierEstimates: []
+            };
         }
 
         // Exact match on categorical fields
-        let matches = data.filter(m =>
-            m.materialType === params.materialType &&
-            m.design === params.design
-        );
+        const categoricalFields = ['designType'];
+        let matches = findExactMatches(data, params, categoricalFields);
 
         if (matches.length === 0) {
-            return { success: false, error: 'No matching data found for the specified material and design' };
-        }
-
-        // Exact match including belt width
-        const exactMatches = matches.filter(m => {
-            // Match on belt width if provided, otherwise allow any
-            const beltWidthMatch = !m.beltWidth || !params.beltWidth || Math.abs(m.beltWidth - params.beltWidth) < 10;
-            return beltWidthMatch;
-        });
-
-        if (exactMatches.length > 0) {
-            const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedUnitCost = exactMatches.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
-            const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
-
-            const unitCost = Math.round(weightedUnitCost);
             return {
-                success: true,
-                estimatedCost: unitCost * params.quantity,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: unitCost * params.quantity,
-                quantity: params.quantity,
-                confidence,
-                method: 'Exact Match',
-                dataPoints: exactMatches.length,
-                matchingEntries: exactMatches.slice(0, 5).map(m => ({
-                    beltWidth: m.beltWidth,
-                    rhsCutLength: m.rhsCutLength,
-                    quantity: m.quantity,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+                success: false,
+                error: 'No matching data found for the specified design',
+                supplierEstimates: []
             };
         }
 
-        // Check for quantity variations - prioritize quantity-based pricing if available
-        const quantityGroups = findQuantityVariations(matches);
+        // Group by supplier
+        const supplierGroups = groupBySupplier(matches);
 
-        if (Object.keys(quantityGroups).length > 1) {
-            // Multiple quantities available - use quantity-based adjustment
-            const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
+        // Calculate estimate for each supplier
+        const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
+            return estimateSpeedSensorCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+        }).filter(est => est.success);
 
-            if (adjustment) {
-                const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
-
-                return {
-                    success: true,
-                    estimatedCost: adjustment.unitCost * params.quantity,
-                    estimatedCostPerUnit: adjustment.unitCost,
-                    estimatedCostTotal: adjustment.unitCost * params.quantity,
-                    quantity: params.quantity,
-                    confidence,
-                    method: adjustment.method,
-                    dataPoints: adjustment.dataPoints,
-                    quantityAdjusted: true,
-                    quantityRange: adjustment.quantityRange,
-                    matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
-                        beltWidth: m.beltWidth,
-                        rhsCutLength: m.rhsCutLength,
-                        quantity: m.quantity,
-                        costPrice: m.costPrice,
-                        effectiveDate: m.effectiveDate
-                    })),
-                    dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-                };
-            }
+        if (supplierEstimates.length === 0) {
+            return { success: false, error: 'Insufficient data for estimation across all suppliers', supplierEstimates: [] };
         }
 
-        // Try interpolation on belt width (if belt width is tracked)
-        if (params.beltWidth) {
-            const belowWidth = matches.filter(m => m.beltWidth && m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
-            const aboveWidth = matches.filter(m => m.beltWidth && m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
-
-            if (belowWidth.length > 0 && aboveWidth.length > 0) {
-                const lower = belowWidth[0];
-                const upper = aboveWidth[0];
-
-                const unitCost = Math.round(interpolateLinear(
-                    lower.beltWidth, lower.costPrice,
-                    upper.beltWidth, upper.costPrice,
-                    params.beltWidth
-                ));
-
-                const estimatedCost = unitCost * params.quantity;
-
-                const usedData = [lower, upper];
-                const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
-                const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
-
-                return {
-                    success: true,
-                    estimatedCost: estimatedCost,
-                    estimatedCostPerUnit: unitCost,
-                    estimatedCostTotal: estimatedCost,
-                    quantity: params.quantity,
-                    confidence,
-                    method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm belt width)`,
-                    dataPoints: usedData.length,
-                    matchingEntries: usedData.map(m => ({
-                        beltWidth: m.beltWidth,
-                        rhsCutLength: m.rhsCutLength,
-                        quantity: m.quantity,
-                        costPrice: m.costPrice,
-                        effectiveDate: m.effectiveDate
-                    })),
-                    dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-                };
-            }
-        }
-
-        // Fuzzy match - nearest match
-        const sorted = params.beltWidth
-            ? matches.sort((a, b) => {
-                // Prefer entries with belt width that matches, then by closest value
-                const aBeltDiff = a.beltWidth ? Math.abs(a.beltWidth - params.beltWidth) : 999999;
-                const bBeltDiff = b.beltWidth ? Math.abs(b.beltWidth - params.beltWidth) : 999999;
-                return aBeltDiff - bBeltDiff;
-            })
-            : matches; // If no belt width specified, just use all matches
-
-        if (sorted.length > 0) {
-            const nearest = sorted.slice(0, 3);
-            const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
-            const weightedUnitCost = nearest.reduce((sum, m) =>
-                sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
-            ) / totalWeight;
-
-            const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
-            const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
-
-            const unitCost = Math.round(weightedUnitCost);
-            return {
-                success: true,
-                estimatedCost: unitCost * params.quantity,
-                estimatedCostPerUnit: unitCost,
-                estimatedCostTotal: unitCost * params.quantity,
-                quantity: params.quantity,
-                confidence,
-                method: 'Fuzzy Match',
-                dataPoints: nearest.length,
-                matchingEntries: nearest.map(m => ({
-                    beltWidth: m.beltWidth,
-                    rhsCutLength: m.rhsCutLength,
-                    quantity: m.quantity,
-                    costPrice: m.costPrice,
-                    effectiveDate: m.effectiveDate
-                })),
-                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
-            };
-        }
-
-        return { success: false, error: 'Insufficient data for estimation' };
+        return {
+            success: true,
+            supplierEstimates,
+            totalSuppliers: supplierEstimates.length
+        };
 
     } catch (error) {
         console.error('Error estimating speed sensor cost:', error);
-        return { success: false, error: error.message || 'Failed to estimate cost' };
+        return {
+            success: false,
+            error: error.message || 'Failed to estimate cost',
+            supplierEstimates: []
+        };
     }
 };
 
+/**
+ * Estimate TMD Frame Cost - Core logic for a single supplier's data
+ */
+const estimateTMDFrameCostForSupplier = (matches, params, dateRangeMonths, supplierName) => {
+    // Try exact match
+    const exactMatches = matches.filter(m =>
+        m.beltWidth === params.beltWidth &&
+        m.quantity === params.quantity
+    );
+
+    if (exactMatches.length > 0) {
+        const totalWeight = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedUnitCost = exactMatches.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = exactMatches.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / exactMatches.length;
+        const confidence = calculateConfidence('exact', exactMatches.length, avgRecency);
+
+        const unitCost = Math.round(weightedUnitCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Exact Match',
+            dataPoints: exactMatches.length,
+            matchingEntries: exactMatches.slice(0, 10).map(m => ({
+                beltWidth: m.beltWidth,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Check for quantity variations
+    const quantityGroups = findQuantityVariations(matches);
+
+    if (Object.keys(quantityGroups).length > 1) {
+        const adjustment = adjustPriceForQuantity(quantityGroups, params.quantity);
+
+        if (adjustment) {
+            const confidence = calculateConfidence(adjustment.matchType, adjustment.dataPoints, adjustment.avgRecency);
+
+            return {
+                success: true,
+                supplierName,
+                estimatedCost: adjustment.unitCost * params.quantity,
+                estimatedCostPerUnit: adjustment.unitCost,
+                estimatedCostTotal: adjustment.unitCost * params.quantity,
+                quantity: params.quantity,
+                confidence,
+                method: adjustment.method,
+                dataPoints: adjustment.dataPoints,
+                quantityAdjusted: true,
+                quantityRange: adjustment.quantityRange,
+                matchingEntries: adjustment.allEntries.slice(0, 10).map(m => ({
+                    beltWidth: m.beltWidth,
+                    quantity: m.quantity,
+                    costPrice: m.costPrice,
+                    effectiveDate: m.effectiveDate,
+                    supplierName: m.supplierName
+                })),
+                dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+            };
+        }
+    }
+
+    // Try belt width interpolation
+    const belowWidth = matches.filter(m => m.beltWidth < params.beltWidth).sort((a, b) => b.beltWidth - a.beltWidth);
+    const aboveWidth = matches.filter(m => m.beltWidth > params.beltWidth).sort((a, b) => a.beltWidth - b.beltWidth);
+
+    if (belowWidth.length > 0 && aboveWidth.length > 0) {
+        const lower = belowWidth[0];
+        const upper = aboveWidth[0];
+
+        const unitCost = Math.round(interpolateLinear(
+            lower.beltWidth, lower.costPrice,
+            upper.beltWidth, upper.costPrice,
+            params.beltWidth
+        ));
+
+        const estimatedCost = unitCost * params.quantity;
+
+        const usedData = [lower, upper];
+        const avgRecency = usedData.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / usedData.length;
+        const confidence = calculateConfidence('interpolated', usedData.length, avgRecency);
+
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: estimatedCost,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: estimatedCost,
+            quantity: params.quantity,
+            confidence,
+            method: `Linear Interpolation (${lower.beltWidth}mm - ${upper.beltWidth}mm)`,
+            dataPoints: usedData.length,
+            matchingEntries: usedData.map(m => ({
+                beltWidth: m.beltWidth,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    // Fuzzy match - nearest belt width
+    const sorted = matches.sort((a, b) =>
+        Math.abs(a.beltWidth - params.beltWidth) - Math.abs(b.beltWidth - params.beltWidth)
+    );
+
+    if (sorted.length > 0) {
+        const nearest = sorted.slice(0, 3);
+        const totalWeight = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0);
+        const weightedUnitCost = nearest.reduce((sum, m) =>
+            sum + (m.costPrice * getRecencyWeight(m.effectiveDate)), 0
+        ) / totalWeight;
+
+        const avgRecency = nearest.reduce((sum, m) => sum + getRecencyWeight(m.effectiveDate), 0) / nearest.length;
+        const confidence = calculateConfidence('fuzzy', nearest.length, avgRecency);
+
+        const unitCost = Math.round(weightedUnitCost);
+        return {
+            success: true,
+            supplierName,
+            estimatedCost: unitCost * params.quantity,
+            estimatedCostPerUnit: unitCost,
+            estimatedCostTotal: unitCost * params.quantity,
+            quantity: params.quantity,
+            confidence,
+            method: 'Fuzzy Match',
+            dataPoints: nearest.length,
+            matchingEntries: nearest.map(m => ({
+                beltWidth: m.beltWidth,
+                quantity: m.quantity,
+                costPrice: m.costPrice,
+                effectiveDate: m.effectiveDate,
+                supplierName: m.supplierName
+            })),
+            dateRange: dateRangeMonths === 'all' ? 'All time' : `Last ${dateRangeMonths} months`
+        };
+    }
+
+    return { success: false, error: 'Insufficient data for estimation' };
+};
+
+/**
+ * Estimate TMD Frame Cost
+ */
+export const estimateTMDFrameCost = async (params, dateRangeMonths = 12) => {
+    try {
+        const snapshot = await getDocs(collection(db, 'tmd_frames_cost_history'));
+        let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        data = filterByDateRange(data, dateRangeMonths);
+
+        if (data.length === 0) {
+            return {
+                success: false,
+                error: 'No historical data available',
+                supplierEstimates: []
+            };
+        }
+
+        // Match on belt width
+        let matches = data.filter(m => m.beltWidth === params.beltWidth);
+
+        // If no exact belt width matches, use all data for interpolation
+        if (matches.length === 0) {
+            matches = data;
+        }
+
+        if (matches.length === 0) {
+            return {
+                success: false,
+                error: 'No matching data found',
+                supplierEstimates: []
+            };
+        }
+
+        // Group by supplier
+        const supplierGroups = groupBySupplier(matches);
+
+        // Calculate estimate for each supplier
+        const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
+            return estimateTMDFrameCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+        }).filter(est => est.success);
+
+        if (supplierEstimates.length === 0) {
+            return { success: false, error: 'Insufficient data for estimation across all suppliers', supplierEstimates: [] };
+        }
+
+        return {
+            success: true,
+            supplierEstimates,
+            totalSuppliers: supplierEstimates.length
+        };
+
+    } catch (error) {
+        console.error('Error estimating TMD Frame cost:', error);
+        return {
+            success: false,
+            error: error.message || 'Failed to estimate cost',
+            supplierEstimates: []
+        };
+    }
+};

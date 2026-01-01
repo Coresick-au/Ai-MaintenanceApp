@@ -17,6 +17,7 @@ import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
 
+
 export const RollerManager = () => {
     const [rollers, setRollers] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -165,6 +166,7 @@ export const RollerManager = () => {
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
+                supplierName: (formData.suppliers && formData.suppliers.length > 0) ? formData.suppliers[0] : null, // Use first supplier for cost estimation
                 costPrice: costPriceCents,
                 effectiveDate: formData.effectiveDate,
                 notes: formData.notes.trim()
@@ -294,6 +296,11 @@ export const RollerManager = () => {
                     aVal = new Date(a.effectiveDate);
                     bVal = new Date(b.effectiveDate);
                     return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                case 'suppliers':
+                    // Sort by first supplier name
+                    aVal = a.suppliers && a.suppliers.length > 0 ? a.suppliers[0] : '';
+                    bVal = b.suppliers && b.suppliers.length > 0 ? b.suppliers[0] : '';
+                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 default:
                     return 0;
             }
@@ -388,7 +395,7 @@ export const RollerManager = () => {
                                     <SortableHeader field="materialType">Material</SortableHeader>
                                     <SortableHeader field="quantity">Qty</SortableHeader>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Category</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Suppliers</th>
+                                    <SortableHeader field="suppliers">Suppliers</SortableHeader>
                                     <SortableHeader field="costPrice">Cost/Unit</SortableHeader>
                                     <SortableHeader field="totalCost">Total Cost</SortableHeader>
                                     <SortableHeader field="effectiveDate">Effective Date</SortableHeader>

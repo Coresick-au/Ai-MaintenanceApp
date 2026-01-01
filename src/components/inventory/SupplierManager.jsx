@@ -300,7 +300,13 @@ const SupplierModal = ({ supplier, categories, onClose }) => {
         defaultLeadTimeDays: 14,
         categoryIds: [],
         subcategoryIds: [],
-        notes: ''
+        notes: '',
+        // Address fields
+        addressStreet: '',
+        addressStreet2: '',
+        addressSuburb: '',
+        addressState: 'QLD',
+        addressPostcode: ''
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -323,7 +329,13 @@ const SupplierModal = ({ supplier, categories, onClose }) => {
                 defaultLeadTimeDays: supplier.defaultLeadTimeDays,
                 categoryIds: supplier.categoryIds || [],
                 subcategoryIds: supplier.subcategoryIds || [],
-                notes: supplier.notes || ''
+                notes: supplier.notes || '',
+                // Address fields
+                addressStreet: supplier.addressStreet || '',
+                addressStreet2: supplier.addressStreet2 || '',
+                addressSuburb: supplier.addressSuburb || '',
+                addressState: supplier.addressState || 'QLD',
+                addressPostcode: supplier.addressPostcode || ''
             });
         }
     }, [supplier]);
@@ -554,6 +566,88 @@ const SupplierModal = ({ supplier, categories, onClose }) => {
                             </p>
                         </div>
                     )}
+
+                    {/* Address Section */}
+                    <div className="bg-slate-800/30 rounded-lg border border-slate-700 p-4 space-y-4">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Icons.MapPin size={16} className="text-cyan-400" />
+                            <h3 className="text-sm font-semibold text-white">Supplier Address</h3>
+                            <span className="text-xs text-slate-400">(for delivery tracking)</span>
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Street Address
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.addressStreet}
+                                onChange={(e) => setFormData(prev => ({ ...prev, addressStreet: e.target.value }))}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                placeholder="123 Industrial Way"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                Address Line 2
+                            </label>
+                            <input
+                                type="text"
+                                value={formData.addressStreet2}
+                                onChange={(e) => setFormData(prev => ({ ...prev, addressStreet2: e.target.value }))}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                placeholder="Unit 5, Building B (optional)"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-3">
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    Suburb
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.addressSuburb}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, addressSuburb: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="Brisbane"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    State
+                                </label>
+                                <select
+                                    value={formData.addressState}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, addressState: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                    <option value="QLD">QLD</option>
+                                    <option value="NSW">NSW</option>
+                                    <option value="VIC">VIC</option>
+                                    <option value="SA">SA</option>
+                                    <option value="WA">WA</option>
+                                    <option value="TAS">TAS</option>
+                                    <option value="NT">NT</option>
+                                    <option value="ACT">ACT</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    Postcode
+                                </label>
+                                <input
+                                    type="text"
+                                    value={formData.addressPostcode}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, addressPostcode: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    placeholder="4000"
+                                    maxLength={4}
+                                />
+                            </div>
+                        </div>
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium text-slate-300 mb-1">

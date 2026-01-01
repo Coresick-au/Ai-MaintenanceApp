@@ -31,7 +31,8 @@ export const ROLLER_MATERIAL_TYPES = {
     HDPE: 'HDPE',
     STEEL: 'Steel',
     STEEL_HYBRID: 'Steel Hybrid',
-    ALUMINIUM: 'Aluminium'
+    ALUMINIUM: 'Aluminium',
+    FRAS: 'FRAS'
 };
 
 export const TRANSOM_TYPES = {
@@ -65,7 +66,7 @@ for (let i = 700; i <= 2000; i += 100) {
     IDLER_SPACING_OPTIONS.push(i);
 }
 
-export const STANDARD_ROLLER_DIAMETERS = [102, 114, 127, 152];
+export const STANDARD_ROLLER_DIAMETERS = [102, 114, 127, 152, 177, 193];
 
 // ==========================================
 // WEIGHER MODEL CONFIGURATION
@@ -649,6 +650,99 @@ export const importSpeedSensors = async (dataArray) => {
     } catch (error) {
         console.error('[SpecializedComponents] Error importing speed sensors:', error);
         throw new Error('Failed to import speed sensors: ' + error.message);
+    }
+};
+
+// ==========================================
+// TMD FRAMES (Tramp Metal Detector Frames)
+// ==========================================
+
+export const addTMDFrame = async (frameData) => {
+    try {
+        const frameId = `tmd-${Date.now()}`;
+        const now = new Date().toISOString();
+
+        const newFrame = {
+            id: frameId,
+            ...frameData,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        await setDoc(doc(db, 'tmd_frames_cost_history', frameId), newFrame);
+        console.log('[SpecializedComponents] TMD Frame added:', frameId);
+        return frameId;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error adding TMD Frame:', error);
+        throw new Error('Failed to add TMD Frame');
+    }
+};
+
+export const updateTMDFrame = async (frameId, updates) => {
+    try {
+        const updateData = {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        };
+
+        await updateDoc(doc(db, 'tmd_frames_cost_history', frameId), updateData);
+        console.log('[SpecializedComponents] TMD Frame updated:', frameId);
+    } catch (error) {
+        console.error('[SpecializedComponents] Error updating TMD Frame:', error);
+        throw new Error('Failed to update TMD Frame');
+    }
+};
+
+export const deleteTMDFrame = async (frameId) => {
+    try {
+        await deleteDoc(doc(db, 'tmd_frames_cost_history', frameId));
+        console.log('[SpecializedComponents] TMD Frame deleted:', frameId);
+    } catch (error) {
+        console.error('[SpecializedComponents] Error deleting TMD Frame:', error);
+        throw new Error('Failed to delete TMD Frame');
+    }
+};
+
+/**
+ * Batch import TMD Frames from CSV data
+ */
+export const importTMDFrames = async (dataArray) => {
+    const results = { success: 0, failed: 0, skipped: 0, errors: [] };
+
+    try {
+        const existingSnapshot = await getDocs(collection(db, 'tmd_frames_cost_history'));
+        const existingIds = new Set(existingSnapshot.docs.map(doc => doc.id));
+
+        for (const item of dataArray) {
+            try {
+                if (item.id && existingIds.has(item.id)) {
+                    results.skipped++;
+                    continue;
+                }
+
+                const frameId = item.id || `tmd-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+                const now = new Date().toISOString();
+
+                const newFrame = {
+                    id: frameId,
+                    ...item,
+                    createdAt: item.createdAt || now,
+                    updatedAt: now
+                };
+
+                await setDoc(doc(db, 'tmd_frames_cost_history', frameId), newFrame);
+                results.success++;
+            } catch (error) {
+                results.failed++;
+                results.errors.push(`Row error: ${error.message}`);
+            }
+        }
+
+        console.log('[SpecializedComponents] TMD Frame import complete:', results);
+        return results;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error importing TMD Frames:', error);
+        throw new Error('Failed to import TMD Frames: ' + error.message);
     }
 };
 

@@ -6,8 +6,7 @@ import {
     getPricingForPart,
     addPricing,
     updatePricing,
-    deletePricing,
-    checkDuplicatePricing
+    deletePricing
 } from '../../services/partPricingService';
 import {
     addShippingRecord,
@@ -51,7 +50,14 @@ export const PartPricingTab = ({ part, suppliers }) => {
         deliveryCost: '',
         units: '',
         date: new Date().toISOString().split('T')[0], // Default to today
-        notes: ''
+        notes: '',
+        // Address fields
+        originSuburb: '',
+        originState: 'QLD',
+        originPostcode: '',
+        destinationSuburb: '',
+        destinationState: 'QLD',
+        destinationPostcode: ''
     });
 
     // Load pricing entries
@@ -110,19 +116,6 @@ export const PartPricingTab = ({ part, suppliers }) => {
 
             if (quantity <= 0) {
                 setError('Quantity must be greater than 0');
-                return;
-            }
-
-            // Check for duplicates
-            const isDuplicate = await checkDuplicatePricing(
-                part.id,
-                formData.supplier,
-                new Date(formData.effectiveDate),
-                editingId
-            );
-
-            if (isDuplicate) {
-                setError(`Pricing already exists for ${formData.supplier} on this date`);
                 return;
             }
 
@@ -216,12 +209,26 @@ export const PartPricingTab = ({ part, suppliers }) => {
                 return;
             }
 
+            // Prepare address data
+            const addressData = {
+                originAddress: {
+                    suburb: shippingForm.originSuburb || '',
+                    state: shippingForm.originState || 'QLD',
+                    postcode: shippingForm.originPostcode || ''
+                },
+                destinationAddress: {
+                    suburb: shippingForm.destinationSuburb || '',
+                    state: shippingForm.destinationState || 'QLD',
+                    postcode: shippingForm.destinationPostcode || ''
+                }
+            };
+
             if (editingShippingId) {
                 // Update existing record
-                await updateShippingRecord(editingShippingId, deliveryCostCents, units, shippingForm.date, shippingForm.notes);
+                await updateShippingRecord(editingShippingId, deliveryCostCents, units, shippingForm.date, shippingForm.notes, addressData);
             } else {
                 // Add new record
-                await addShippingRecord(part.id, deliveryCostCents, units, shippingForm.date, shippingForm.notes);
+                await addShippingRecord(part.id, deliveryCostCents, units, shippingForm.date, shippingForm.notes, 'current-user', addressData);
             }
 
             // Reload shipping data
@@ -233,7 +240,13 @@ export const PartPricingTab = ({ part, suppliers }) => {
                 deliveryCost: '',
                 units: '',
                 date: new Date().toISOString().split('T')[0],
-                notes: ''
+                notes: '',
+                originSuburb: '',
+                originState: 'QLD',
+                originPostcode: '',
+                destinationSuburb: '',
+                destinationState: 'QLD',
+                destinationPostcode: ''
             });
         } catch (err) {
             console.error('Error adding shipping record:', err);
@@ -247,7 +260,14 @@ export const PartPricingTab = ({ part, suppliers }) => {
             deliveryCost: (record.deliveryCost / 100).toFixed(2),
             units: record.units.toString(),
             date: record.date,
-            notes: record.notes || ''
+            notes: record.notes || '',
+            // Load address data
+            originSuburb: record.originAddress?.suburb || '',
+            originState: record.originAddress?.state || 'QLD',
+            originPostcode: record.originAddress?.postcode || '',
+            destinationSuburb: record.destinationAddress?.suburb || '',
+            destinationState: record.destinationAddress?.state || 'QLD',
+            destinationPostcode: record.destinationAddress?.postcode || ''
         });
         setError('');
     };
@@ -258,7 +278,13 @@ export const PartPricingTab = ({ part, suppliers }) => {
             deliveryCost: '',
             units: '',
             date: new Date().toISOString().split('T')[0],
-            notes: ''
+            notes: '',
+            originSuburb: '',
+            originState: 'QLD',
+            originPostcode: '',
+            destinationSuburb: '',
+            destinationState: 'QLD',
+            destinationPostcode: ''
         });
         setError('');
     };
@@ -343,17 +369,34 @@ export const PartPricingTab = ({ part, suppliers }) => {
                 const sumX2 = dataPoints.reduce((sum, p) => sum + (p.units * p.units), 0);
 
                 // Calculate slope (per-unit cost) and intercept (base cost)
-                const slope = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-                const intercept = (sumY - slope * sumX) / n;
+                const denominator = n * sumX2 - sumX * sumX;
 
-                // Calculate R² (coefficient of determination)
-                const meanY = sumY / n;
-                const ssTotal = dataPoints.reduce((sum, p) => sum + Math.pow(p.totalCost - meanY, 2), 0);
-                const ssResidual = dataPoints.reduce((sum, p) => {
-                    const predicted = slope * p.units + intercept;
-                    return sum + Math.pow(p.totalCost - predicted, 2);
-                }, 0);
-                const r2 = 1 - (ssResidual / ssTotal);
+                let slope, intercept, r2;
+
+                if (denominator === 0 || !isFinite(denominator)) {
+                    // All data points have the same X value (units), can't calculate slope
+                    // Fall back to average cost per unit
+                    slope = 0;
+                    intercept = sumY / n; // Use average total cost as base
+                    r2 = 0; // No meaningful R² when there's no variance in X
+                } else {
+                    slope = (n * sumXY - sumX * sumY) / denominator;
+                    intercept = (sumY - slope * sumX) / n;
+
+                    // Calculate R² (coefficient of determination)
+                    const meanY = sumY / n;
+                    const ssTotal = dataPoints.reduce((sum, p) => sum + Math.pow(p.totalCost - meanY, 2), 0);
+                    const ssResidual = dataPoints.reduce((sum, p) => {
+                        const predicted = slope * p.units + intercept;
+                        return sum + Math.pow(p.totalCost - predicted, 2);
+                    }, 0);
+                    r2 = ssTotal > 0 ? 1 - (ssResidual / ssTotal) : 0;
+                }
+
+                // Handle NaN or Infinity values
+                if (!isFinite(slope)) slope = 0;
+                if (!isFinite(intercept)) intercept = sumY / n;
+                if (!isFinite(r2)) r2 = 0;
 
                 // Forecast for common quantities
                 const forecastSmall = Math.max(0, slope * 1 + intercept); // 1 unit
@@ -364,9 +407,9 @@ export const PartPricingTab = ({ part, suppliers }) => {
                     baseCost: Math.max(0, Math.round(intercept)), // Minimum shipping cost in cents
                     perUnitCost: Math.max(0, Math.round(slope)), // Additional cost per unit in cents
                     confidence: Math.max(0, Math.min(1, r2)), // R² bounded 0-1
-                    forecastSmall,
-                    forecastMedium,
-                    forecastLarge,
+                    forecastSmall: isFinite(forecastSmall) ? forecastSmall : 0,
+                    forecastMedium: isFinite(forecastMedium) ? forecastMedium : 0,
+                    forecastLarge: isFinite(forecastLarge) ? forecastLarge : 0,
                     dataPoints: n
                 });
             } else {
@@ -928,6 +971,89 @@ export const PartPricingTab = ({ part, suppliers }) => {
                                 />
                             </div>
                         </div>
+
+                        {/* Address Section */}
+                        <div className="bg-slate-800/30 rounded-lg border border-slate-700 p-3 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Icons.MapPin size={14} className="text-cyan-400" />
+                                <span className="text-sm font-medium text-white">Shipping Route</span>
+                                <span className="text-xs text-slate-400">(optional)</span>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                {/* Origin Address */}
+                                <div className="space-y-2">
+                                    <div className="text-xs font-medium text-emerald-400">From (Origin)</div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value={shippingForm.originSuburb}
+                                            onChange={(e) => setShippingForm(prev => ({ ...prev, originSuburb: e.target.value }))}
+                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="Suburb"
+                                        />
+                                        <select
+                                            value={shippingForm.originState}
+                                            onChange={(e) => setShippingForm(prev => ({ ...prev, originState: e.target.value }))}
+                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        >
+                                            <option value="QLD">QLD</option>
+                                            <option value="NSW">NSW</option>
+                                            <option value="VIC">VIC</option>
+                                            <option value="SA">SA</option>
+                                            <option value="WA">WA</option>
+                                            <option value="TAS">TAS</option>
+                                            <option value="NT">NT</option>
+                                            <option value="ACT">ACT</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={shippingForm.originPostcode}
+                                            onChange={(e) => setShippingForm(prev => ({ ...prev, originPostcode: e.target.value }))}
+                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="P/code"
+                                            maxLength={4}
+                                        />
+                                    </div>
+                                </div>
+
+                                {/* Destination Address */}
+                                <div className="space-y-2">
+                                    <div className="text-xs font-medium text-amber-400">To (Destination)</div>
+                                    <div className="grid grid-cols-3 gap-2">
+                                        <input
+                                            type="text"
+                                            value={shippingForm.destinationSuburb}
+                                            onChange={(e) => setShippingForm(prev => ({ ...prev, destinationSuburb: e.target.value }))}
+                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="Suburb"
+                                        />
+                                        <select
+                                            value={shippingForm.destinationState}
+                                            onChange={(e) => setShippingForm(prev => ({ ...prev, destinationState: e.target.value }))}
+                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        >
+                                            <option value="QLD">QLD</option>
+                                            <option value="NSW">NSW</option>
+                                            <option value="VIC">VIC</option>
+                                            <option value="SA">SA</option>
+                                            <option value="WA">WA</option>
+                                            <option value="TAS">TAS</option>
+                                            <option value="NT">NT</option>
+                                            <option value="ACT">ACT</option>
+                                        </select>
+                                        <input
+                                            type="text"
+                                            value={shippingForm.destinationPostcode}
+                                            onChange={(e) => setShippingForm(prev => ({ ...prev, destinationPostcode: e.target.value }))}
+                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="P/code"
+                                            maxLength={4}
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                         <div className="flex gap-2">
                             {editingShippingId && (
                                 <button
@@ -959,7 +1085,7 @@ export const PartPricingTab = ({ part, suppliers }) => {
                                     key={record.id}
                                     className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
                                 >
-                                    <div className="flex items-center gap-4 flex-1">
+                                    <div className="flex items-center gap-4 flex-1 flex-wrap">
                                         <div className="text-sm text-slate-300 font-mono w-24">
                                             {new Date(record.date).toLocaleDateString()}
                                         </div>
@@ -971,6 +1097,19 @@ export const PartPricingTab = ({ part, suppliers }) => {
                                         <div className="text-sm text-cyan-400 font-mono">
                                             = {formatCurrency(record.costPerUnit)}/unit
                                         </div>
+                                        {/* Route Display */}
+                                        {(record.originAddress?.suburb || record.destinationAddress?.suburb) && (
+                                            <div className="flex items-center gap-1 text-xs">
+                                                <Icons.MapPin size={12} className="text-slate-500" />
+                                                <span className="text-emerald-400">
+                                                    {record.originAddress?.suburb || '?'}, {record.originAddress?.state || '?'}
+                                                </span>
+                                                <span className="text-slate-500">→</span>
+                                                <span className="text-amber-400">
+                                                    {record.destinationAddress?.suburb || '?'}, {record.destinationAddress?.state || '?'}
+                                                </span>
+                                            </div>
+                                        )}
                                         {record.notes && (
                                             <div className="text-sm text-slate-400 flex-1 truncate">
                                                 {record.notes}
@@ -1011,17 +1150,17 @@ export const PartPricingTab = ({ part, suppliers }) => {
                         <div className="mb-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
                             <div className="text-xs text-slate-400 mb-2">Estimated Cost Formula:</div>
                             <div className="font-mono text-white">
-                                <span className="text-cyan-400">${(shippingTrendData.baseCost / 100).toFixed(2)}</span>
-                                {shippingTrendData.perUnitCost > 0 && (
+                                <span className="text-cyan-400">${((shippingTrendData.baseCost || 0) / 100).toFixed(2)}</span>
+                                {(shippingTrendData.perUnitCost || 0) > 0 && (
                                     <>
                                         <span className="text-slate-400"> + </span>
-                                        <span className="text-emerald-400">${(shippingTrendData.perUnitCost / 100).toFixed(2)}</span>
+                                        <span className="text-emerald-400">${((shippingTrendData.perUnitCost || 0) / 100).toFixed(2)}</span>
                                         <span className="text-slate-400"> × units</span>
                                     </>
                                 )}
                             </div>
                             <div className="text-xs text-slate-400 mt-1">
-                                Base shipping cost {shippingTrendData.perUnitCost > 0 && '+ per-unit increment'}
+                                Base shipping cost {(shippingTrendData.perUnitCost || 0) > 0 && '+ per-unit increment'}
                             </div>
                         </div>
 
@@ -1029,7 +1168,7 @@ export const PartPricingTab = ({ part, suppliers }) => {
                             <div>
                                 <p className="text-xs text-slate-400 mb-1">Base Shipping Cost</p>
                                 <p className="text-lg font-bold text-cyan-400">
-                                    ${(shippingTrendData.baseCost / 100).toFixed(2)}
+                                    ${((shippingTrendData.baseCost || 0) / 100).toFixed(2)}
                                 </p>
                                 <p className="text-xs text-slate-500">Minimum cost (1 unit)</p>
                             </div>
@@ -1037,24 +1176,24 @@ export const PartPricingTab = ({ part, suppliers }) => {
                             <div>
                                 <p className="text-xs text-slate-400 mb-1">Per-Unit Increment</p>
                                 <p className="text-lg font-bold text-emerald-400">
-                                    ${(shippingTrendData.perUnitCost / 100).toFixed(2)}
+                                    ${((shippingTrendData.perUnitCost || 0) / 100).toFixed(2)}
                                 </p>
                                 <p className="text-xs text-slate-500">Additional cost per unit</p>
                             </div>
 
                             <div>
                                 <div className="text-slate-400 text-xs mb-1">Confidence (R²)</div>
-                                <div className={`font-mono font-bold ${shippingTrendData.confidence >= 0.7 ? 'text-emerald-400' :
-                                    shippingTrendData.confidence >= 0.3 ? 'text-amber-400' : 'text-red-400'
+                                <div className={`font-mono font-bold ${(shippingTrendData.confidence || 0) >= 0.7 ? 'text-emerald-400' :
+                                    (shippingTrendData.confidence || 0) >= 0.3 ? 'text-amber-400' : 'text-red-400'
                                     }`}>
-                                    {(shippingTrendData.confidence * 100).toFixed(1)}%
+                                    {((shippingTrendData.confidence || 0) * 100).toFixed(1)}%
                                 </div>
                             </div>
 
                             <div>
                                 <div className="text-slate-400 text-xs mb-1">Based On</div>
                                 <div className="text-white">
-                                    {shippingTrendData.dataPoints} deliveries
+                                    {shippingTrendData.dataPoints || 0} deliveries
                                 </div>
                             </div>
                         </div>
@@ -1065,20 +1204,20 @@ export const PartPricingTab = ({ part, suppliers }) => {
                             <div className="grid grid-cols-3 gap-3">
                                 <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
                                     <div className="text-xs text-slate-400">1 unit</div>
-                                    <div className="text-white font-bold">${(shippingTrendData.forecastSmall / 100).toFixed(2)}</div>
+                                    <div className="text-white font-bold">${((shippingTrendData.forecastSmall || 0) / 100).toFixed(2)}</div>
                                 </div>
                                 <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
                                     <div className="text-xs text-slate-400">10 units</div>
-                                    <div className="text-white font-bold">${(shippingTrendData.forecastMedium / 100).toFixed(2)}</div>
+                                    <div className="text-white font-bold">${((shippingTrendData.forecastMedium || 0) / 100).toFixed(2)}</div>
                                 </div>
                                 <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
                                     <div className="text-xs text-slate-400">50 units</div>
-                                    <div className="text-white font-bold">${(shippingTrendData.forecastLarge / 100).toFixed(2)}</div>
+                                    <div className="text-white font-bold">${((shippingTrendData.forecastLarge || 0) / 100).toFixed(2)}</div>
                                 </div>
                             </div>
                         </div>
 
-                        {shippingTrendData.confidence < 0.3 && (
+                        {(shippingTrendData.confidence || 0) < 0.3 && (
                             <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300 flex items-start gap-2">
                                 <Icons.AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
                                 <span>Low confidence model. More delivery records with varying quantities needed for accurate forecasting.</span>

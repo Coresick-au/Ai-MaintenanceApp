@@ -74,8 +74,8 @@ export const StockOverview = ({ onAdjustStock }) => {
     const stockOverview = useMemo(() => {
         const allItems = [];
 
-        // Add parts
-        parts.forEach(part => {
+        // Add parts (only those with trackStock enabled, skip serialized parts here)
+        parts.filter(p => p.trackStock).forEach(part => {
             let totalQuantity = 0;
             const locationBreakdown = [];
 

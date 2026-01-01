@@ -36,7 +36,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         targetMarginPercent: 30,
         isSerialized: false,
         isSaleable: false,
-        trackStock: true,
+        trackStock: false,
         reorderLevel: 10,
         locationId: null
     });
@@ -103,7 +103,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 targetMarginPercent: editingPart.targetMarginPercent,
                 isSerialized: editingPart.isSerialized,
                 isSaleable: editingPart.isSaleable || false,
-                trackStock: editingPart.trackStock !== undefined ? editingPart.trackStock : true,
+                trackStock: editingPart.trackStock !== undefined ? editingPart.trackStock : false,
                 reorderLevel: editingPart.reorderLevel,
                 locationId: editingPart.locationId || null
             });
@@ -124,7 +124,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 targetMarginPercent: 30,
                 isSerialized: false,
                 isSaleable: false,
-                trackStock: true,
+                trackStock: false,
                 reorderLevel: 10,
                 locationId: null
             });

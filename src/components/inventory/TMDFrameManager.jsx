@@ -3,14 +3,11 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import {
-    addWeighModule,
-    updateWeighModule,
-    deleteWeighModule,
-    importWeighModules,
-    getAllWeigherModels,
-    MATERIAL_TYPES,
+    addTMDFrame,
+    updateTMDFrame,
+    deleteTMDFrame,
+    importTMDFrames,
     STANDARD_BELT_WIDTHS,
-    IDLER_SPACING_OPTIONS,
     formatCurrency,
     filterSuppliersByCategories
 } from '../../services/specializedComponentsService';
@@ -19,11 +16,10 @@ import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
 
-export const WeighModuleManager = () => {
-    const [weighModules, setWeighModules] = useState([]);
-    const [weigherModels, setWeigherModels] = useState([]);
+export const TMDFrameManager = () => {
+    const [tmdFrames, setTMDFrames] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
-    const [editingModule, setEditingModule] = useState(null);
+    const [editingFrame, setEditingFrame] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
@@ -35,46 +31,28 @@ export const WeighModuleManager = () => {
     const [selectedSupplier, setSelectedSupplier] = useState('');
     const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
-        modelId: '',
         beltWidth: 1200,
-        materialType: 'STAINLESS_STEEL',
-        capacityKgPerM: 0,
-        idlerSpacing: 1000,
+        quantity: 1,
         categoryId: null,
         subcategoryId: null,
         suppliers: [],
         costPrice: '',
         effectiveDate: new Date().toISOString().split('T')[0],
-        notes: '',
-        excludeFromCount: false
+        notes: ''
     });
 
-    // Load weigh modules from Firestore
+    // Load TMD Frames from Firestore
     useEffect(() => {
         const unsubscribe = onSnapshot(
-            collection(db, 'weigh_modules_cost_history'),
+            collection(db, 'tmd_frames_cost_history'),
             (snapshot) => {
-                const modules = snapshot.docs.map(doc => doc.data());
-                modules.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
-                setWeighModules(modules);
+                const framesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                framesList.sort((a, b) => new Date(b.effectiveDate) - new Date(a.effectiveDate));
+                setTMDFrames(framesList);
             },
             (error) => {
-                console.error('Error loading weigh modules:', error);
-                setError('Failed to load weigh modules');
-            }
-        );
-
-        return () => unsubscribe();
-    }, []);
-
-    // Load weigher models
-    useEffect(() => {
-        const unsubscribe = onSnapshot(
-            collection(db, 'weigher_models'),
-            (snapshot) => {
-                const models = snapshot.docs.map(doc => doc.data());
-                models.sort((a, b) => a.code.localeCompare(b.code));
-                setWeigherModels(models);
+                console.error('Error loading TMD Frames:', error);
+                setError('Failed to load TMD Frames');
             }
         );
 
@@ -84,7 +62,7 @@ export const WeighModuleManager = () => {
     // Load suppliers from Firestore
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'suppliers'), (snap) => {
-            const suppliersList = snap.docs.map(doc => doc.data());
+            const suppliersList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             suppliersList.sort((a, b) => a.name.localeCompare(b.name));
             setSuppliers(suppliersList);
         });
@@ -127,38 +105,30 @@ export const WeighModuleManager = () => {
         }));
     };
 
-    const handleOpenForm = (module = null) => {
-        if (module) {
-            setEditingModule(module);
+    const handleOpenForm = (frame = null) => {
+        if (frame) {
+            setEditingFrame(frame);
             setFormData({
-                modelId: module.modelId,
-                beltWidth: module.beltWidth,
-                materialType: module.materialType,
-                capacityKgPerM: module.capacityKgPerM,
-                idlerSpacing: module.idlerSpacing,
-                categoryId: module.categoryId || null,
-                subcategoryId: module.subcategoryId || null,
-                suppliers: module.suppliers || [],
-                costPrice: (module.costPrice / 100).toFixed(2),
-                effectiveDate: module.effectiveDate,
-                notes: module.notes || '',
-                excludeFromCount: module.excludeFromCount || false
+                beltWidth: frame.beltWidth,
+                quantity: frame.quantity,
+                categoryId: frame.categoryId || null,
+                subcategoryId: frame.subcategoryId || null,
+                suppliers: frame.suppliers || [],
+                costPrice: (frame.costPrice / 100).toFixed(2),
+                effectiveDate: frame.effectiveDate,
+                notes: frame.notes || ''
             });
         } else {
-            setEditingModule(null);
+            setEditingFrame(null);
             setFormData({
-                modelId: '',
                 beltWidth: 1200,
-                materialType: 'STAINLESS_STEEL',
-                capacityKgPerM: 0,
-                idlerSpacing: 1000,
+                quantity: 1,
                 categoryId: null,
                 subcategoryId: null,
                 suppliers: [],
                 costPrice: '',
                 effectiveDate: new Date().toISOString().split('T')[0],
-                notes: '',
-                excludeFromCount: false
+                notes: ''
             });
         }
         setIsFormOpen(true);
@@ -167,7 +137,7 @@ export const WeighModuleManager = () => {
 
     const handleCloseForm = () => {
         setIsFormOpen(false);
-        setEditingModule(null);
+        setEditingFrame(null);
         setError('');
     };
 
@@ -179,56 +149,52 @@ export const WeighModuleManager = () => {
         try {
             const costPriceCents = Math.round(parseFloat(formData.costPrice) * 100);
 
-            const moduleData = {
-                modelId: formData.modelId,
+            const frameData = {
                 beltWidth: parseInt(formData.beltWidth),
-                materialType: formData.materialType,
-                capacityKgPerM: parseFloat(formData.capacityKgPerM),
-                idlerSpacing: parseInt(formData.idlerSpacing),
+                quantity: parseInt(formData.quantity),
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
                 supplierName: (formData.suppliers && formData.suppliers.length > 0) ? formData.suppliers[0] : null,
                 costPrice: costPriceCents,
-                costPrice: costPriceCents,
                 effectiveDate: formData.effectiveDate,
-                notes: formData.notes.trim(),
-                excludeFromCount: formData.excludeFromCount
+                notes: formData.notes.trim()
             };
 
-            if (editingModule) {
-                await updateWeighModule(editingModule.id, moduleData);
+            if (editingFrame) {
+                await updateTMDFrame(editingFrame.id, frameData);
             } else {
-                await addWeighModule(moduleData);
+                await addTMDFrame(frameData);
             }
 
             handleCloseForm();
         } catch (err) {
-            setError(err.message || 'Failed to save weigh module');
+            setError(err.message || 'Failed to save TMD Frame');
         } finally {
             setSaving(false);
         }
     };
 
-    const handleDelete = async (moduleId) => {
-        if (!confirm('Are you sure you want to delete this weigh module entry?')) return;
+    const handleDelete = async (frameId) => {
+        if (!confirm('Are you sure you want to delete this TMD Frame entry?')) return;
 
         try {
-            await deleteWeighModule(moduleId);
+            await deleteTMDFrame(frameId);
         } catch (err) {
-            setError(err.message || 'Failed to delete weigh module');
+            setError(err.message || 'Failed to delete TMD Frame');
         }
     };
 
     const handleExport = () => {
         try {
-            if (weighModules.length === 0) {
+            if (tmdFrames.length === 0) {
                 setError('No data to export');
                 return;
             }
-            const filename = `weigh_modules_history_${new Date().toISOString().split('T')[0]}.csv`;
-            exportToCSV(weighModules, filename);
-            setSuccessMessage(`Exported ${weighModules.length} records successfully`);
+
+            const filename = `tmd_frames_history_${new Date().toISOString().split('T')[0]}.csv`;
+            exportToCSV(tmdFrames, filename);
+            setSuccessMessage(`Exported ${tmdFrames.length} records successfully`);
             setTimeout(() => setSuccessMessage(''), 3000);
         } catch (err) {
             setError(err.message || 'Failed to export data');
@@ -242,28 +208,30 @@ export const WeighModuleManager = () => {
     const handleFileSelect = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
+
         try {
             setError('');
             setSuccessMessage('Importing data...');
+
             const data = await importFromCSV(file);
-            const results = await importWeighModules(data);
+            const results = await importTMDFrames(data);
+
             let message = `Import complete: ${results.success} added`;
             if (results.skipped > 0) message += `, ${results.skipped} skipped (duplicates)`;
             if (results.failed > 0) message += `, ${results.failed} failed`;
+
             setSuccessMessage(message);
             setTimeout(() => setSuccessMessage(''), 5000);
-            if (results.errors.length > 0) console.warn('Import errors:', results.errors);
+
+            if (results.errors.length > 0) {
+                console.warn('Import errors:', results.errors);
+            }
         } catch (err) {
             setError(err.message || 'Failed to import data');
             setSuccessMessage('');
         } finally {
             e.target.value = '';
         }
-    };
-
-    const getModelName = (modelId) => {
-        const model = weigherModels.find(m => m.id === modelId);
-        return model ? `${model.code} - ${model.name}` : 'Unknown';
     };
 
     const getCategoryName = (categoryId) => {
@@ -281,30 +249,28 @@ export const WeighModuleManager = () => {
         }
     };
 
-    const getSortedModules = () => {
-        const sorted = [...weighModules].sort((a, b) => {
+    const getSortedFrames = () => {
+        const sorted = [...tmdFrames].sort((a, b) => {
             let aVal, bVal;
-
             switch (sortField) {
-                case 'model':
-                    aVal = getModelName(a.modelId);
-                    bVal = getModelName(b.modelId);
-                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 case 'beltWidth':
-                case 'capacityKgPerM':
-                case 'idlerSpacing':
+                case 'quantity':
                 case 'costPrice':
                     aVal = a[sortField];
                     bVal = b[sortField];
                     return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
-                case 'materialType':
-                    aVal = MATERIAL_TYPES[a.materialType];
-                    bVal = MATERIAL_TYPES[b.materialType];
-                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
+                case 'totalCost':
+                    aVal = a.costPrice * a.quantity;
+                    bVal = b.costPrice * b.quantity;
+                    return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
                 case 'effectiveDate':
                     aVal = new Date(a.effectiveDate);
                     bVal = new Date(b.effectiveDate);
                     return sortDirection === 'asc' ? aVal - bVal : bVal - aVal;
+                case 'suppliers':
+                    aVal = a.suppliers && a.suppliers.length > 0 ? a.suppliers[0] : '';
+                    bVal = b.suppliers && b.suppliers.length > 0 ? b.suppliers[0] : '';
+                    return sortDirection === 'asc' ? aVal.localeCompare(bVal) : bVal.localeCompare(aVal);
                 default:
                     return 0;
             }
@@ -335,20 +301,21 @@ export const WeighModuleManager = () => {
                 <div className="flex items-center justify-between">
                     <div>
                         <div className="flex items-center gap-3">
-                            <h2 className="text-2xl font-bold text-white">Weigh Modules</h2>
+                            <h2 className="text-2xl font-bold text-white">TMD Frames</h2>
                             <span className="px-2.5 py-0.5 rounded-full bg-slate-800 border border-slate-700 text-xs font-medium text-slate-400">
-                                {weighModules.filter(m => !m.excludeFromCount).length} Total
+                                {tmdFrames.length} Total
                             </span>
                         </div>
                         <p className="text-sm text-slate-400 mt-1">
-                            Track historical cost data for precision belt weighers
+                            Track historical cost data for Tramp Metal Detector frames
                         </p>
                     </div>
                     <div className="flex items-center gap-2">
                         <button
                             onClick={handleExport}
-                            disabled={weighModules.length === 0}
+                            disabled={tmdFrames.length === 0}
                             className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            title="Export to CSV"
                         >
                             <Icons.Download size={20} />
                             Export CSV
@@ -356,6 +323,7 @@ export const WeighModuleManager = () => {
                         <button
                             onClick={handleImportClick}
                             className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            title="Import from CSV"
                         >
                             <Icons.Upload size={20} />
                             Import CSV
@@ -372,7 +340,7 @@ export const WeighModuleManager = () => {
                             className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                         >
                             <Icons.Plus size={20} />
-                            Add Weigh Module
+                            Add TMD Frame
                         </button>
                     </div>
                 </div>
@@ -397,49 +365,39 @@ export const WeighModuleManager = () => {
                         <table className="w-full">
                             <thead className="bg-slate-800 border-b border-slate-700">
                                 <tr>
-                                    <SortableHeader field="model">Model</SortableHeader>
                                     <SortableHeader field="beltWidth">Belt Width</SortableHeader>
-                                    <SortableHeader field="materialType">Material</SortableHeader>
-                                    <SortableHeader field="capacityKgPerM">Capacity</SortableHeader>
-                                    <SortableHeader field="idlerSpacing">Idler Spacing</SortableHeader>
+                                    <SortableHeader field="quantity">Qty</SortableHeader>
                                     <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Category</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Suppliers</th>
-                                    <SortableHeader field="costPrice">Cost Price</SortableHeader>
+                                    <SortableHeader field="suppliers">Suppliers</SortableHeader>
+                                    <SortableHeader field="costPrice">Cost/Unit</SortableHeader>
+                                    <SortableHeader field="totalCost">Total Cost</SortableHeader>
                                     <SortableHeader field="effectiveDate">Effective Date</SortableHeader>
                                     <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700">
-                                {getSortedModules().length === 0 ? (
+                                {getSortedFrames().length === 0 ? (
                                     <tr>
-                                        <td colSpan="10" className="px-4 py-8 text-center text-slate-400">
-                                            No weigh modules added yet. Click "Add Weigh Module" to get started.
+                                        <td colSpan="8" className="px-4 py-8 text-center text-slate-400">
+                                            No TMD Frames added yet. Click "Add TMD Frame" to get started.
                                         </td>
                                     </tr>
                                 ) : (
-                                    getSortedModules().map(module => (
-                                        <tr key={module.id} className={`hover:bg-slate-800/50 transition-colors ${module.excludeFromCount ? 'opacity-60' : ''}`}>
-                                            <td className="px-4 py-3 text-sm text-white">
-                                                {getModelName(module.modelId)}
-                                                {module.excludeFromCount && (
-                                                    <span className="ml-2 text-xs text-slate-500 italic">(Excluded)</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.beltWidth}mm</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{MATERIAL_TYPES[module.materialType]}</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.capacityKgPerM} kg/m</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.idlerSpacing}mm</td>
+                                    getSortedFrames().map(frame => (
+                                        <tr key={frame.id} className="hover:bg-slate-800/50 transition-colors">
+                                            <td className="px-4 py-3 text-sm text-white">{frame.beltWidth}mm</td>
+                                            <td className="px-4 py-3 text-sm text-slate-300">{frame.quantity}</td>
                                             <td className="px-4 py-3 text-sm">
-                                                {getCategoryName(module.categoryId) || getCategoryName(module.subcategoryId) ? (
+                                                {getCategoryName(frame.categoryId) || getCategoryName(frame.subcategoryId) ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {getCategoryName(module.categoryId) && (
+                                                        {getCategoryName(frame.categoryId) && (
                                                             <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded text-xs">
-                                                                {getCategoryName(module.categoryId)}
+                                                                {getCategoryName(frame.categoryId)}
                                                             </span>
                                                         )}
-                                                        {getCategoryName(module.subcategoryId) && (
+                                                        {getCategoryName(frame.subcategoryId) && (
                                                             <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs">
-                                                                {getCategoryName(module.subcategoryId)}
+                                                                {getCategoryName(frame.subcategoryId)}
                                                             </span>
                                                         )}
                                                     </div>
@@ -448,9 +406,9 @@ export const WeighModuleManager = () => {
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-sm">
-                                                {module.suppliers && module.suppliers.length > 0 ? (
+                                                {frame.suppliers && frame.suppliers.length > 0 ? (
                                                     <div className="flex flex-wrap gap-1">
-                                                        {module.suppliers.map((supplier, idx) => (
+                                                        {frame.suppliers.map((supplier, idx) => (
                                                             <span key={idx} className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-xs">
                                                                 {supplier}
                                                             </span>
@@ -460,19 +418,20 @@ export const WeighModuleManager = () => {
                                                     <span className="text-slate-500 text-xs">-</span>
                                                 )}
                                             </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">{formatCurrency(module.costPrice)}</td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{module.effectiveDate}</td>
+                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">{formatCurrency(frame.costPrice)}</td>
+                                            <td className="px-4 py-3 text-sm font-mono text-cyan-400">{formatCurrency(frame.costPrice * frame.quantity)}</td>
+                                            <td className="px-4 py-3 text-sm text-slate-300">{frame.effectiveDate}</td>
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => handleOpenForm(module)}
+                                                        onClick={() => handleOpenForm(frame)}
                                                         className="p-1.5 hover:bg-slate-700 rounded text-cyan-400 transition-colors"
                                                         title="Edit"
                                                     >
                                                         <Icons.Edit size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(module.id)}
+                                                        onClick={() => handleDelete(frame.id)}
                                                         className="p-1.5 hover:bg-slate-700 rounded text-red-400 transition-colors"
                                                         title="Delete"
                                                     >
@@ -495,7 +454,7 @@ export const WeighModuleManager = () => {
                             <div className="border-b border-slate-700 p-6">
                                 <div className="flex items-center justify-between">
                                     <h3 className="text-xl font-bold text-white">
-                                        {editingModule ? 'Edit Weigh Module' : 'Add Weigh Module'}
+                                        {editingFrame ? 'Edit TMD Frame' : 'Add TMD Frame'}
                                     </h3>
                                     <button
                                         onClick={handleCloseForm}
@@ -508,26 +467,6 @@ export const WeighModuleManager = () => {
 
                             <form onSubmit={handleSubmit} className="p-6 space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
-                                    {/* Weigher Model */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Weigher Model <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.modelId}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, modelId: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            <option value="">-- Select Model --</option>
-                                            {weigherModels.map(model => (
-                                                <option key={model.id} value={model.id}>
-                                                    {model.code} - {model.name}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
                                     {/* Belt Width */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-300 mb-1">
@@ -544,77 +483,39 @@ export const WeighModuleManager = () => {
                                             ))}
                                         </select>
                                     </div>
-                                </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Material Type */}
+                                    {/* Quantity */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Material Type <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.materialType}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, materialType: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            <option value="STAINLESS_STEEL">{MATERIAL_TYPES.STAINLESS_STEEL}</option>
-                                            <option value="GALVANISED">{MATERIAL_TYPES.GALVANISED}</option>
-                                        </select>
-                                    </div>
-
-                                    {/* Capacity */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Capacity (kg/m) <span className="text-red-400">*</span>
+                                            Quantity <span className="text-red-400">*</span>
                                         </label>
                                         <input
                                             type="number"
                                             required
-                                            min="0"
-                                            step="0.1"
-                                            value={formData.capacityKgPerM}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, capacityKgPerM: e.target.value }))}
+                                            min="1"
+                                            value={formData.quantity}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, quantity: e.target.value }))}
                                             className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="150"
+                                            placeholder="1"
                                         />
                                     </div>
                                 </div>
 
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Idler Spacing */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Idler Spacing (mm) <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.idlerSpacing}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, idlerSpacing: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            {IDLER_SPACING_OPTIONS.map(spacing => (
-                                                <option key={spacing} value={spacing}>{spacing}mm</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Cost Price */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Cost Price ($) <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.costPrice}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
+                                {/* Cost Price */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        Cost Per Unit ($) <span className="text-red-400">*</span>
+                                    </label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="0"
+                                        step="0.01"
+                                        value={formData.costPrice}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        placeholder="0.00"
+                                    />
                                 </div>
 
                                 {/* Category Selection */}
@@ -681,7 +582,6 @@ export const WeighModuleManager = () => {
                                     </div>
                                 </div>
 
-
                                 {/* Effective Date */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-1">
@@ -710,20 +610,6 @@ export const WeighModuleManager = () => {
                                     />
                                 </div>
 
-                                {/* Exclude From Count */}
-                                <div className="flex items-center gap-2">
-                                    <input
-                                        type="checkbox"
-                                        id="excludeFromCount"
-                                        checked={formData.excludeFromCount}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, excludeFromCount: e.target.checked }))}
-                                        className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
-                                    />
-                                    <label htmlFor="excludeFromCount" className="text-sm font-medium text-slate-300">
-                                        Exclude from total count (Costing only)
-                                    </label>
-                                </div>
-
                                 {/* Actions */}
                                 <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
                                     <button
@@ -738,7 +624,7 @@ export const WeighModuleManager = () => {
                                         disabled={saving}
                                         className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {saving ? 'Saving...' : (editingModule ? 'Update' : 'Add')}
+                                        {saving ? 'Saving...' : (editingFrame ? 'Update' : 'Add')}
                                     </button>
                                 </div>
                             </form>
