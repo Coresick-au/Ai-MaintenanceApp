@@ -1,16 +1,46 @@
-import React, { useState, useEffect } from 'react';
-import { PDFViewer, Page, Text, View, Document } from '@react-pdf/renderer';
+import React, { useState } from 'react';
+import { PDFViewer } from '@react-pdf/renderer';
+
+// Import all PDF Components
 import { ServiceReportFixed } from './ServiceReportFixed';
 import { MaintenanceReportPDF } from './MaintenanceReportPDF';
 import { JobSheetPDF } from '../apps/quoting/components/JobSheetPDF';
+import { AssetSpecsPDF } from './AssetSpecsPDF';
+import { FullDashboardPDF } from './FullDashboardPDF';
+import { TimesheetPDF } from '../apps/TimesheetApp/components/TimesheetPDF';
 import { generateSampleSite } from '../data/mockData';
 
-// Generate reuseable mock data
+// --- MOCK DATA SETUP ---
 const mockSite = generateSampleSite();
 mockSite.logo = null; // Disable logo for dev viewer to prevent Image crash
 const mockServiceDate = new Date().toLocaleDateString('en-AU');
 
-// Service Report Mock Data
+// 1. Mock Data for Job Sheet
+const mockQuote = {
+    id: 'Q-1001',
+    jobDetails: {
+        jobNo: 'Q-1001',
+        customer: mockSite.customer,
+        location: mockSite.location,
+        jobDescription: 'Standard Technician Job Sheet Test',
+        description: 'Scope of works description here... Install new belt weigher and calibrate.',
+        techNotes: 'Safety glasses required. Site induction needed.',
+        date: new Date().toISOString(),
+    },
+    shifts: [
+        {
+            date: new Date().toISOString(),
+            startTime: '08:00',
+            finishTime: '16:00',
+            tech: 'Technician A',
+            dayType: 'weekday',
+            isNightShift: false,
+            vehicle: true
+        }
+    ]
+};
+
+// 2. Mock Data for Service Report
 const mockServiceReportData = {
     general: {
         reportId: `REP-${Math.floor(Math.random() * 10000)}`,
@@ -18,7 +48,6 @@ const mockServiceReportData = {
         siteLocation: mockSite.location,
         contactName: mockSite.contacts?.[0]?.name || 'Unknown Contact',
         contactEmail: mockSite.contacts?.[0]?.email || 'unknown@example.com',
-        // customerLogo: mockSite.logo, // Disabled
         assetName: mockSite.serviceData[0]?.name || 'Test Asset',
         conveyorNumber: mockSite.serviceData[0]?.code || 'CV-001',
         serviceDate: mockServiceDate,
@@ -40,44 +69,134 @@ const mockServiceReportData = {
     ]
 };
 
-const mockQuote = {
-    id: 'Q-1001',
-    // customerName: mockSite.customer, // Moved to jobDetails
-    // siteName: mockSite.location,     // Moved to jobDetails
-    jobDetails: {
-        jobNo: 'Q-1001',
-        customer: mockSite.customer,
-        location: mockSite.location,
-        jobDescription: 'Standard Technician Job Sheet Test',
-        // technicians: ['Technician A', 'Technician B'], // Not used in top grid? Checked: Not usage in top grid.
-        description: 'Scope of works description here...', // Mapped to description in component
-        techNotes: 'Safety glasses required.',
-        date: new Date().toISOString(),
-    },
-    shifts: [
-        {
-            date: new Date().toISOString(),
-            startTime: '08:00',
-            finishTime: '16:00', // Component expects finishTime, not endTime
-            tech: 'Technician A', // Component expects tech, not technicians array
-            dayType: 'weekday',
-            isNightShift: false,
-            vehicle: true
-        }
-    ]
-};
+// 3. Mock Data for Asset Specs
+const mockAssetsWithSpecs = mockSite.serviceData.slice(0, 3).map((asset) => ({
+    asset: asset,
+    specs: {
+        description: `Test Spec Description for ${asset.name}`,
+        weigher: `W-${asset.code}`,
+        scaleType: 'Multi-Idler',
+        integratorController: 'Rice Lake',
+        speedSensorType: 'Digital Encoder',
+        loadCellBrand: 'Flintec',
+        loadCellSize: '100kg',
+        loadCellSensitivity: '2mV/V',
+        numberOfLoadCells: '4',
+        rollDims: '133x380x450',
+        adjustmentType: 'Jack Screw',
+        billetWeightType: 'Certified Chain',
+        billetWeightSize: '25',
+        billetWeightIds: ['BW-01', 'BW-02'],
+        notes: [
+            { id: '1', author: 'JD', content: 'Checked load cells, all good.', timestamp: new Date().toISOString() }
+        ]
+    }
+}));
 
+// 4. Mock Data for Timesheet
+const mockTimesheetEntries = [
+    {
+        id: '1',
+        userId: 'dev-user',
+        weekKey: '2026-W01',
+        day: 'Monday',
+        startTime: '08:00',
+        finishTime: '16:00',
+        breakDuration: 0.5,
+        activity: 'Site',
+        jobNo: '25244',
+        isNightshift: false,
+        isOvernight: false,
+        perDiemType: 'none',
+        notes: 'Routine calibration completed'
+    },
+    {
+        id: '2',
+        userId: 'dev-user',
+        weekKey: '2026-W01',
+        day: 'Monday',
+        startTime: '12:30',
+        finishTime: '16:00',
+        breakDuration: 0,
+        activity: 'Travel',
+        jobNo: '25243',
+        isNightshift: false,
+        isOvernight: false,
+        perDiemType: 'half',
+        notes: ''
+    },
+    {
+        id: '3',
+        userId: 'dev-user',
+        weekKey: '2026-W01',
+        day: 'Tuesday',
+        startTime: '06:00',
+        finishTime: '18:00',
+        breakDuration: 0.5,
+        activity: 'Site',
+        jobNo: '25244',
+        isNightshift: false,
+        isOvernight: true,
+        perDiemType: 'full',
+        notes: 'Overnight stay required'
+    }
+];
+
+const mockTimesheetSummary = {
+    totalNetHours: 18.5,
+    totalBaseHours: 15,
+    totalOT15x: 2.5,
+    totalOT20x: 1,
+    totalPerDiem: 127.50,
+    totalChargeableHours: 18.5,
+    utilizationPercent: 49.3
+};
 
 const DevPDFViewer = () => {
     const [selectedReport, setSelectedReport] = useState('job-sheet');
     const [debugMode, setDebugMode] = useState(false);
-    const [zoom, setZoom] = useState(1.0);
 
     const reportOptions = [
-        { id: 'job-sheet', label: 'Technician Job Sheet (Working)' },
-        { id: 'service-report', label: 'Service Report (Placeholder)' },
-        { id: 'maintenance-report', label: 'Maintenance Report (Placeholder)' }
+        { id: 'job-sheet', label: 'Technician Job Sheet' },
+        { id: 'timesheet', label: 'Weekly Timesheet' },
+        { id: 'maintenance-report', label: 'Maintenance Report' },
+        { id: 'full-dashboard', label: 'Full Dashboard Report' },
+        { id: 'asset-specs', label: 'Asset Specifications' },
+        { id: 'service-report', label: 'Service Report (Fixed)' },
     ];
+
+    const renderSelectedPDF = () => {
+        switch (selectedReport) {
+            case 'job-sheet':
+                return <JobSheetPDF quote={mockQuote} debug={debugMode} />;
+
+            case 'timesheet':
+                return (
+                    <TimesheetPDF
+                        entries={mockTimesheetEntries}
+                        summary={mockTimesheetSummary}
+                        weekStart={new Date('2025-12-30')}
+                        weekEnd={new Date('2026-01-05')}
+                        employeeName="Test Technician"
+                    />
+                );
+
+            case 'maintenance-report':
+                return <MaintenanceReportPDF site={mockSite} generatedDate={mockServiceDate} />;
+
+            case 'full-dashboard':
+                return <FullDashboardPDF site={mockSite} generatedDate={mockServiceDate} />;
+
+            case 'asset-specs':
+                return <AssetSpecsPDF assets={mockAssetsWithSpecs} generatedDate={mockServiceDate} />;
+
+            case 'service-report':
+                return <ServiceReportFixed data={mockServiceReportData} debug={debugMode} />;
+
+            default:
+                return <JobSheetPDF quote={mockQuote} debug={debugMode} />;
+        }
+    };
 
     return (
         <div style={{ width: '100vw', height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#1a1a1a' }}>
@@ -117,12 +236,7 @@ const DevPDFViewer = () => {
             {/* Viewer */}
             <div style={{ flex: 1, overflow: 'hidden' }}>
                 <PDFViewer width="100%" height="100%" showToolbar={true}>
-                    {(() => {
-                        // FORCE USE OF WORKING COMPONENT FOR ALL OPTIONS TO PREVENT CRASH
-                        // This allows you to at least click the menus without RSOD
-                        // We will fix the other templates later.
-                        return <JobSheetPDF quote={mockQuote} debug={debugMode} />;
-                    })()}
+                    {renderSelectedPDF()}
                 </PDFViewer>
             </div>
         </div>

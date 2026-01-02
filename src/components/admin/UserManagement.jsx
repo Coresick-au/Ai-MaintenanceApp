@@ -13,6 +13,7 @@ export default function UserManagement({ onBack }) {
     const [newUserPass, setNewUserPass] = useState('');
     const [newUserRole, setNewUserRole] = useState('tech');
     const [newUserName, setNewUserName] = useState('');
+    const [timesheetsEnabled, setTimesheetsEnabled] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
 
     // Fetch Users
@@ -47,6 +48,9 @@ export default function UserManagement({ onBack }) {
                 email: newUserEmail,
                 name: newUserName,
                 role: newUserRole,
+                features: {
+                    timesheetsEnabled: timesheetsEnabled
+                },
                 createdAt: new Date().toISOString()
             });
 
@@ -76,6 +80,7 @@ export default function UserManagement({ onBack }) {
         setNewUserName(user.name);
         setNewUserEmail(user.email);
         setNewUserRole(user.role);
+        setTimesheetsEnabled(user.features?.timesheetsEnabled || false);
         setNewUserPass(''); // Password reset not supported in this view
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
@@ -85,6 +90,7 @@ export default function UserManagement({ onBack }) {
         setNewUserName('');
         setNewUserEmail('');
         setNewUserRole('tech');
+        setTimesheetsEnabled(false);
         setNewUserPass('');
     };
 
@@ -98,6 +104,9 @@ export default function UserManagement({ onBack }) {
             await setDoc(userRef, {
                 name: newUserName,
                 role: newUserRole,
+                features: {
+                    timesheetsEnabled: timesheetsEnabled
+                }
                 // Email/Pass not updated here
             }, { merge: true });
 
@@ -183,6 +192,19 @@ export default function UserManagement({ onBack }) {
                             <option value="admin">Admin (Full Access)</option>
                         </select>
 
+                        <div className="flex items-center gap-3 bg-slate-800 border border-slate-700 p-2 rounded">
+                            <input
+                                type="checkbox"
+                                id="timesheetAccess"
+                                className="w-4 h-4 accent-cyan-500"
+                                checked={timesheetsEnabled}
+                                onChange={e => setTimesheetsEnabled(e.target.checked)}
+                            />
+                            <label htmlFor="timesheetAccess" className="text-sm font-medium text-slate-300 cursor-pointer">
+                                Enable Timesheet Access
+                            </label>
+                        </div>
+
                         <div className="md:col-span-2 flex gap-3">
                             <button
                                 type="submit"
@@ -212,10 +234,11 @@ export default function UserManagement({ onBack }) {
                     <table className="w-full text-left">
                         <thead className="bg-slate-800 text-slate-400 text-xs uppercase">
                             <tr>
-                                <th className="p-4">Name</th>
-                                <th className="p-4">Email</th>
-                                <th className="p-4">Role</th>
-                                <th className="p-4 text-right">Actions</th>
+                                <th className="p-4 text-xs font-bold uppercase text-slate-400">Name</th>
+                                <th className="p-4 text-xs font-bold uppercase text-slate-400">Email</th>
+                                <th className="p-4 text-xs font-bold uppercase text-slate-400">Role</th>
+                                <th className="p-4 text-xs font-bold uppercase text-slate-400">Timesheets</th>
+                                <th className="p-4 text-right text-xs font-bold uppercase text-slate-400">Actions</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-800">
@@ -230,6 +253,16 @@ export default function UserManagement({ onBack }) {
                                             }`}>
                                             {user.role}
                                         </span>
+                                    </td>
+                                    <td className="p-4">
+                                        {user.features?.timesheetsEnabled ? (
+                                            <span className="text-cyan-400 text-xs font-bold flex items-center gap-1">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                                                ENABLED
+                                            </span>
+                                        ) : (
+                                            <span className="text-slate-500 text-xs font-bold">DISABLED</span>
+                                        )}
                                     </td>
                                     <td className="p-4 text-right">
                                         <button

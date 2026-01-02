@@ -74,30 +74,34 @@ const statusTone = (s) => {
     return "grey";
 };
 
-// Row background tints (improved contrast per UX spec - WCAG AA compliant)
+// Row styling - left border only (no background tint) for cleaner look
+// Status is indicated by the left border color only, hover adds subtle highlight
 const statusRowColor = (status) => {
-    switch (status) {
-        case "Ready for Invoicing":
-            return "bg-orange-500/15 hover:bg-orange-500/25 border-l-2 border-l-orange-400";
-        case "Parts Ordered":
-        case "Parts Required":
-            return "bg-yellow-500/15 hover:bg-yellow-500/25 border-l-2 border-l-yellow-400";
-        case "Paid":
-        case "Job Completed":
-            return "bg-green-500/15 hover:bg-green-500/25 border-l-2 border-l-green-400";
-        case "Shipped":
-        case "Invoiced":
-        case "Job In Progress":
-        case "PO Received":
-        case "Quoted":
-            return "bg-blue-500/15 hover:bg-blue-500/25 border-l-2 border-l-blue-400";
-        case "Overdue":
-        case "Late":
-        case "Cancelled":
-            return "bg-red-500/15 hover:bg-red-500/25 border-l-2 border-l-red-400";
-        default:
-            return "hover:bg-[var(--bg-active)]";
-    }
+    const borderColor = (() => {
+        switch (status) {
+            case "Ready for Invoicing":
+                return "border-l-orange-500";
+            case "Parts Ordered":
+            case "Parts Required":
+                return "border-l-yellow-500";
+            case "Paid":
+            case "Job Completed":
+                return "border-l-emerald-500";
+            case "Shipped":
+            case "Invoiced":
+            case "Job In Progress":
+            case "PO Received":
+            case "Quoted":
+                return "border-l-blue-500";
+            case "Overdue":
+            case "Late":
+            case "Cancelled":
+                return "border-l-red-500";
+            default:
+                return "border-l-slate-600";
+        }
+    })();
+    return `${borderColor} border-l-4 hover:bg-white/[0.03]`;
 };
 
 const INITIAL_JOB = {
@@ -230,7 +234,15 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     const isTech = userRole === "tech";
     const { customers } = useGlobalData();
 
-    const [rows, setRows] = useState([]);
+    // Lazy initialization to prevent race condition with save useEffect
+    const [rows, setRows] = useState(() => {
+        const loaded = loadJobSheet();
+        if (loaded !== null && loaded !== undefined) {
+            return Array.isArray(loaded) ? loaded.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)) : jobSheetSeed;
+        } else {
+            return jobSheetSeed;
+        }
+    });
     const [q, setQ] = useState("");
 
     // Multi-select filters
@@ -265,16 +277,6 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
 
     // Drill down state for dashboard
     const [drillDownFilter, setDrillDownFilter] = useState(null);
-
-    useEffect(() => {
-        const loaded = loadJobSheet();
-        // If loaded is null/undefined (no saved data), use seed. Otherwise use loaded data (even if empty array)
-        if (loaded !== null && loaded !== undefined) {
-            setRows(Array.isArray(loaded) ? loaded.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)) : jobSheetSeed);
-        } else {
-            setRows(jobSheetSeed);
-        }
-    }, []);
 
     useEffect(() => {
         saveJobSheet(rows);
@@ -670,6 +672,15 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     }
     // === END TEMPORARY CSV IMPORT ===
 
+    // DEV: Clear all data for testing
+    function clearAllData() {
+        if (confirm("DANGER: Are you sure you want to DELETE ALL JOB DATA?")) {
+            clearJobSheet();
+            setRows([]);
+            setSelectedId(null);
+        }
+    }
+
 
     const right = (
         <>
@@ -714,22 +725,33 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
             <NeonButton variant="secondary" onClick={print}>
                 <Printer size={16} /> Print / Save PDF
             </NeonButton>
+            {/* DEV: Reset/Clear buttons */}
+            {!isTech && (
+                <>
+                    <button
+                        onClick={resetToSeed}
+                        className="p-2 rounded-lg border border-cyan-700/50 text-cyan-500 hover:bg-cyan-900/20 transition-colors"
+                        title="Restore Sample Data"
+                    >
+                        <RotateCcw size={16} />
+                    </button>
+                    <button
+                        onClick={clearAllData}
+                        className="p-2 rounded-lg border border-red-900/50 text-red-500 hover:bg-red-900/20 transition-colors"
+                        title="Clear All Data"
+                    >
+                        <Trash2 size={16} />
+                    </button>
+                </>
+            )}
         </>
     );
 
     return (
         <PageShell
-            title={
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={onBack}
-                        className="group flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--accent)]/50 hover:bg-[var(--bg-active)] transition-all"
-                    >
-                        <ArrowLeft size={20} className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors" />
-                    </button>
-                    <span>Job Sheet</span>
-                </div>
-            }
+            onBack={onBack}
+            title="Job Sheet"
+            subtitle="Accurate Industries job sheet"
             right={right}
         >
             {/* Filters Card - needs relative positioning for dropdowns */}
@@ -880,26 +902,26 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 <Card className="overflow-hidden print:border print:bg-white flex-1">
                     <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
                         <table className="w-full text-sm border-collapse">
-                            <thead className="bg-[var(--bg-surface)] border-b border-[var(--border-default)] print:bg-white print:border-gray-300 sticky top-0 z-20">
+                            <thead className="bg-slate-950 border-b border-slate-800 sticky top-0 z-20">
                                 <tr>
                                     {columns.map((c) => (
                                         <th
                                             key={c.key}
-                                            className={`p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] cursor-pointer hover:bg-[var(--bg-active)] select-none ${c.w ?? ""}`}
+                                            className={`py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-cyan-400 select-none ${c.w ?? ""}`}
                                             onClick={() => handleSort(c.key)}
                                         >
                                             <div className="flex items-center gap-1">
                                                 {c.label}
                                                 {sortColumn === c.key && (
                                                     sortDirection === "asc"
-                                                        ? <ChevronUp size={14} className="text-[var(--accent)]" />
-                                                        : <ChevronDown size={14} className="text-[var(--accent)]" />
+                                                        ? <ChevronUp size={12} className="text-cyan-500" />
+                                                        : <ChevronDown size={12} className="text-cyan-500" />
                                                 )}
                                             </div>
                                         </th>
                                     ))}
-                                    <th className="p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] w-[120px]">Last Updated</th>
-                                    <th className="sticky right-0 z-10 bg-[var(--bg-surface)] p-3 text-left text-xs font-semibold uppercase tracking-wide text-[var(--text-muted)] border-l border-[var(--border-default)] w-[100px] print:bg-white">Actions</th>
+                                    <th className="py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[110px]">Updated</th>
+                                    <th className="sticky right-0 z-10 bg-slate-950 py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 border-l border-slate-800 w-[60px]"></th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -928,46 +950,72 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                                                 }
 
                                                 if (key === "status") {
+                                                    // Inline compact badge matching row text size
+                                                    const tone = statusTone(value);
+                                                    const toneClasses = {
+                                                        success: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10',
+                                                        danger: 'border-red-500/40 text-red-400 bg-red-500/10',
+                                                        orange: 'border-orange-500/40 text-orange-400 bg-orange-500/10',
+                                                        warning: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10',
+                                                        info: 'border-blue-500/40 text-blue-400 bg-blue-500/10',
+                                                        grey: 'border-slate-500/40 text-slate-400 bg-slate-500/10'
+                                                    };
                                                     return (
-                                                        <td key={key} className="p-3">
-                                                            <StatusBadge tone={statusTone(value)}>{String(value || "N/A")}</StatusBadge>
+                                                        <td key={key} className="py-2 px-3 text-center">
+                                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide border ${toneClasses[tone] || toneClasses.grey}`}>
+                                                                {String(value || "N/A")}
+                                                            </span>
                                                         </td>
                                                     );
                                                 }
 
-                                                const displayValue = (key.toLowerCase().includes("value") && value && !isNaN(value))
+                                                // Typography hierarchy: monospace for IDs/numbers, regular for text
+                                                const isMonospace = ["jobNumber", "quote", "invNo", "po"].includes(key);
+                                                const isMoney = key.toLowerCase().includes("value");
+                                                const isPrimary = ["customer", "jobDescription"].includes(key);
+                                                const isDate = key.toLowerCase().includes("date");
+
+                                                const displayValue = (isMoney && value && !isNaN(value))
                                                     ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                    : value || <span className="text-[var(--text-muted)] italic">...</span>;
+                                                    : value || <span className="text-slate-600">—</span>;
+
+                                                // Build dynamic classes
+                                                const cellClasses = [
+                                                    "py-2 px-3 truncate text-xs",
+                                                    isMonospace ? "font-mono font-bold text-slate-200" : "",
+                                                    isMoney ? "font-mono text-slate-300" : "",
+                                                    isPrimary ? "font-medium text-white" : "",
+                                                    isDate ? "font-mono text-slate-400 text-[11px]" : "",
+                                                    !isMonospace && !isMoney && !isPrimary && !isDate ? "text-slate-400" : ""
+                                                ].filter(Boolean).join(" ");
 
                                                 return (
-                                                    <td key={key} className="p-3 text-[var(--text-primary)] truncate font-medium">
+                                                    <td key={key} className={cellClasses}>
                                                         {displayValue}
                                                     </td>
                                                 );
                                             })}
 
-                                            <td className="p-3 text-[10px] text-[var(--text-muted)] font-mono">
-                                                {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : ""}
+                                            <td className="py-2 px-3 text-[10px] text-slate-500 font-mono">
+                                                {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : "—"}
                                             </td>
 
-                                            {/* Actions column */}
-                                            <td className="sticky right-0 z-10 bg-[var(--bg-surface)] print:bg-white p-2 border-l border-[var(--border-default)] print:border-gray-300">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <NeonButton
-                                                        variant="primary"
-                                                        className="px-3 py-1.5 text-[10px] uppercase font-bold print:hidden relative"
+                                            {/* Actions column - Ghost icon button */}
+                                            <td className="sticky right-0 z-10 bg-slate-900 py-2 px-3 border-l border-slate-800">
+                                                <div className="flex items-center justify-end gap-1">
+                                                    <button
+                                                        className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors print:hidden"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
                                                             openEditModal(r);
                                                         }}
+                                                        title={isTech ? "View Details" : "Edit Job"}
                                                     >
-                                                        {isTech ? <Eye size={12} /> : <Edit2 size={12} />} {isTech ? "View" : "Edit"}
-                                                        {r.notes && (
-                                                            <span className="absolute -top-1 -right-1 w-4 h-4 bg-amber-500 rounded-full flex items-center justify-center" title="Has notes">
-                                                                <MessageSquare size={10} className="text-slate-900" />
-                                                            </span>
-                                                        )}
-                                                    </NeonButton>
+                                                        {isTech ? <Eye size={14} /> : <Edit2 size={14} />}
+                                                    </button>
+                                                    {r.notes && (
+                                                        <MessageSquare size={12} className="text-amber-500" title="Has notes" />
+                                                    )}
                                                 </div>
                                             </td>
                                         </tr>

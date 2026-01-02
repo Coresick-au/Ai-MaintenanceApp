@@ -1,18 +1,31 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { X } from "lucide-react";
+import { X, ChevronLeft } from "lucide-react";
 
-export function PageShell({ title, right, children }) {
+export function PageShell({ title, subtitle, right, children, onBack }) {
     return (
         <div className="min-h-screen bg-[var(--bg-app)] text-[var(--text-primary)]">
             <div className="px-6 py-6">
-                <div className="flex items-start justify-between gap-3 mb-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-[var(--text-primary)]">{title}</h1>
-                        <p className="text-sm text-[var(--text-muted)]">
-                            Accurate Industries job sheet
-                        </p>
+                <div className="flex items-start justify-between gap-3 mb-6">
+                    <div className="flex items-center gap-3">
+                        {onBack && (
+                            <button
+                                onClick={onBack}
+                                className="group flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--bg-surface)] border border-[var(--border-default)] hover:border-[var(--accent)]/50 hover:bg-[var(--bg-active)] transition-all"
+                                title="Go back"
+                            >
+                                <ChevronLeft size={20} className="text-[var(--text-muted)] group-hover:text-[var(--accent)] transition-colors" />
+                            </button>
+                        )}
+                        <div>
+                            <h1 className="text-2xl font-bold text-[var(--text-primary)] leading-tight">{title}</h1>
+                            {subtitle && (
+                                <p className="text-sm text-[var(--text-muted)]">
+                                    {subtitle}
+                                </p>
+                            )}
+                        </div>
                     </div>
-                    <div className="flex gap-2 flex-wrap justify-end">{right}</div>
+                    <div className="flex gap-2 flex-wrap justify-end items-center">{right}</div>
                 </div>
 
                 {children}

@@ -8,10 +8,11 @@ import { InventoryApp } from './apps/InventoryApp';
 import { QuotingWrapper } from './apps/quoting/QuotingWrapper';
 import { CustomerApp } from './apps/CustomerPortal/CustomerApp';
 import { EmployeeApp } from './apps/employees/EmployeeApp';
+import { TimesheetApp } from './apps/TimesheetApp/TimesheetApp';
 import JobSheetPage from './pages/JobSheetPage';
 
 const Portal = () => {
-    const { currentUser, userRole, logout } = useAuth();
+    const { currentUser, userRole, userData, logout } = useAuth();
     const [activeApp, setActiveApp] = useState(null);
 
     // 1. GUARD: If not logged in, show Login
@@ -84,6 +85,17 @@ const Portal = () => {
             component: <JobSheetPage onBack={() => setActiveApp(null)} currentUser={currentUser} userRole={userRole} />,
             // PERMISSION: Admin, Manager, or Tech
             restricted: !['admin', 'manager', 'tech'].includes(userRole)
+        },
+        {
+            id: 'timesheets',
+            name: 'My Timesheets',
+            fullName: 'Personal Hourly Tracking',
+            description: 'Log your daily hours, track task history, and submit sheets.',
+            icon: '🕒',
+            color: 'amber',
+            component: <TimesheetApp onBack={() => setActiveApp(null)} />,
+            // PERMISSION: User must have the feature enabled in their profile
+            restricted: !userData?.features?.timesheetsEnabled
         }
     ];
 

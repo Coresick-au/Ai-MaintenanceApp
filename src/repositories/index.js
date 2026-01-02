@@ -8,6 +8,7 @@ import { ProductCostHistoryRepository } from './ProductCostHistoryRepository';
 import { ProductRepository } from './ProductRepository';
 import { QuoteRepository } from './QuoteRepository';
 import { BuildGuideRepository } from './BuildGuideRepository';
+import { TimesheetRepository } from './TimesheetRepository';
 
 // Singleton instances - use these throughout the app
 export const productCompositionRepository = new ProductCompositionRepository();
@@ -19,6 +20,7 @@ export const productCostHistoryRepository = new ProductCostHistoryRepository();
 export const productRepository = new ProductRepository();
 export const quoteRepository = new QuoteRepository();
 export const buildGuideRepository = new BuildGuideRepository();
+export const timesheetRepository = new TimesheetRepository();
 
 // Export classes for testing or custom instances
 export {
@@ -31,5 +33,6 @@ export {
     ProductCostHistoryRepository,
     ProductRepository,
     QuoteRepository,
-    BuildGuideRepository
+    BuildGuideRepository,
+    TimesheetRepository
 };

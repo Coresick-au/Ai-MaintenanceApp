@@ -10,6 +10,7 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }) => {
     const [currentUser, setCurrentUser] = useState(null);
     const [userRole, setUserRole] = useState(null); // 'admin', 'manager', 'tech'
+    const [userData, setUserData] = useState(null); // Full Firestore user document
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -19,13 +20,17 @@ export const AuthProvider = ({ children }) => {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', user.uid));
                     if (userDoc.exists()) {
-                        setUserRole(userDoc.data().role);
+                        const data = userDoc.data();
+                        setUserRole(data.role);
+                        setUserData({ id: userDoc.id, ...data });
                     } else {
                         setUserRole('guest'); // No role assigned yet
+                        setUserData({ role: 'guest' });
                     }
                 } catch (e) {
                     console.error("Error fetching role:", e);
                     setUserRole('guest');
+                    setUserData({ role: 'guest' });
                 }
                 setCurrentUser(user);
             } else {
@@ -41,7 +46,7 @@ export const AuthProvider = ({ children }) => {
     const login = (email, password) => signInWithEmailAndPassword(auth, email, password);
     const logout = () => signOut(auth);
 
-    const value = { currentUser, userRole, login, logout, loading };
+    const value = { currentUser, userRole, userData, login, logout, loading };
 
     return (
         <AuthContext.Provider value={value}>

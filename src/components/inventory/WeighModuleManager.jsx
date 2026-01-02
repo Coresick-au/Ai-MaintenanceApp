@@ -190,7 +190,6 @@ export const WeighModuleManager = () => {
                 suppliers: formData.suppliers || [],
                 supplierName: (formData.suppliers && formData.suppliers.length > 0) ? formData.suppliers[0] : null,
                 costPrice: costPriceCents,
-                costPrice: costPriceCents,
                 effectiveDate: formData.effectiveDate,
                 notes: formData.notes.trim(),
                 excludeFromCount: formData.excludeFromCount
