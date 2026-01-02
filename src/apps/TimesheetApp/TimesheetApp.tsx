@@ -72,8 +72,16 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     const [jobs, setJobs] = useState<JobOption[]>([]);
     const [showYearlySummary, setShowYearlySummary] = useState(false);
 
-    // Collapse state for days
-    const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
+    // Collapse state for days (persisted to localStorage)
+    const COLLAPSED_STORAGE_KEY = 'timesheet:collapsedDays';
+    const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>(() => {
+        try {
+            const stored = localStorage.getItem(COLLAPSED_STORAGE_KEY);
+            return stored ? JSON.parse(stored) : {};
+        } catch {
+            return {};
+        }
+    });
 
     // Load jobs from Job Sheet storage
     useEffect(() => {
@@ -126,10 +134,19 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     // Actions
     const handleToggleDay = (day: string) => {
         const key = `${weekKey}_${day}`;
-        setCollapsedDays(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+        setCollapsedDays(prev => {
+            const newState = {
+                ...prev,
+                [key]: !prev[key]
+            };
+            // Persist to localStorage
+            try {
+                localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(newState));
+            } catch (e) {
+                console.warn('Failed to save collapsed state:', e);
+            }
+            return newState;
+        });
     };
 
     const handleCollapseAll = () => {
@@ -138,6 +155,12 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
             DAYS_OF_WEEK.forEach(day => {
                 newState[`${weekKey}_${day}`] = true;
             });
+            // Persist to localStorage
+            try {
+                localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(newState));
+            } catch (e) {
+                console.warn('Failed to save collapsed state:', e);
+            }
             return newState;
         });
     };
@@ -148,6 +171,12 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
             DAYS_OF_WEEK.forEach(day => {
                 newState[`${weekKey}_${day}`] = false;
             });
+            // Persist to localStorage
+            try {
+                localStorage.setItem(COLLAPSED_STORAGE_KEY, JSON.stringify(newState));
+            } catch (e) {
+                console.warn('Failed to save collapsed state:', e);
+            }
             return newState;
         });
     };

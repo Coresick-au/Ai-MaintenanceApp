@@ -279,3 +279,59 @@ function MyPage() {
   return <MyInput label="Test" />;
 }
 ```
+
+---
+
+## 12. Yearly Summary Monthly Chart Empty (UNRESOLVED)
+
+### Symptoms
+- Monthly Hours chart shows empty bars (0% height) for all months
+- Table below the chart shows data correctly (e.g., December: 139 hours)
+- Both chart and table use the same `monthlyData` array but render differently
+
+### Status
+🔴 **UNRESOLVED** as of 2026-01-02
+
+### How to Reproduce
+1. Navigate to Timesheet App
+2. Open "Yearly Summary" modal
+3. Select year 2025
+4. Chart bars are invisible even though table shows December with 139 hours
+
+### Where to Look
+- `src/apps/TimesheetApp/components/YearlySummary.tsx`:
+  - Data loading filter (lines 47-67)
+  - Monthly data calculation `useMemo` (lines 149-220)
+  - Chart bar rendering (lines 345-360)
+
+### Root Cause Analysis (Partial)
+
+**ISO Week Year Boundary Issue:** ISO week numbers don't align with calendar years.
+
+Example: Week 1 of 2026 (`2026-W01`) starts on **December 29, 2025**.
+
+| Day | Date | weekKey | Calendar Year |
+|-----|------|---------|---------------|
+| Mon | Dec 29, 2025 | 2026-W01 | 2025 |
+| Tue | Dec 30, 2025 | 2026-W01 | 2025 |
+| Wed | Dec 31, 2025 | 2026-W01 | 2025 |
+| Thu | Jan 1, 2026 | 2026-W01 | 2026 |
+
+**Fixes attempted:**
+1. ✅ Changed data loading to filter by actual date year (not weekKey year)
+2. ✅ Changed monthly calculation to parse year from weekKey
+3. ❌ Chart still renders empty despite table showing correct data
+
+### Next Debugging Steps
+1. Add console.log after data loading to verify entries are included:
+   ```typescript
+   console.log('[YearlySummary] Loaded entries:', yearEntries.length, yearEntries);
+   ```
+2. Check if `calculateWeeklySummary` returns correct totals
+3. Verify the `h-48` container has actual height in DevTools
+4. Check if the percentage calculations are being applied to DOM
+
+### Related Files
+- `src/apps/TimesheetApp/utils/calculator.ts` (calculateWeeklySummary function)
+- `src/apps/TimesheetApp/types/index.ts` (TimesheetEntry interface)
+

@@ -44,11 +44,25 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                 // Load all entries for the user
                 const allEntries = await timesheetRepository.getByUserId(currentUser.uid);
 
-                // Filter to selected year based on weekKey (format: YYYY-WXX)
+                // Filter to entries that MIGHT contain days in the selected year
+                // Include entries from selectedYear AND adjacent years (to handle ISO week boundaries)
+                // e.g., 2026-W01 starts on Dec 29, 2025, so we need entries from both 2025 and 2026 weekKeys
                 const yearEntries = allEntries.filter((entry: TimesheetEntry) => {
-                    if (!entry.weekKey) return false;
-                    const yearFromKey = parseInt(entry.weekKey.split('-')[0] || '0');
-                    return yearFromKey === selectedYear;
+                    if (!entry.weekKey || !entry.day) return false;
+
+                    // Parse year and week from weekKey
+                    const [yearStr, weekStr] = entry.weekKey.split('-W');
+                    const weekYear = parseInt(yearStr);
+                    const weekNum = parseInt(weekStr || '0');
+
+                    // Calculate the actual date of this entry
+                    const weekStart = getFirstDayOfISOWeek(weekYear, weekNum);
+                    const dayOffset = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(entry.day);
+                    const entryDate = new Date(weekStart);
+                    entryDate.setDate(weekStart.getDate() + dayOffset);
+
+                    // Include entry if its actual date falls in the selected year
+                    return entryDate.getFullYear() === selectedYear;
                 });
 
                 setEntries(yearEntries);
