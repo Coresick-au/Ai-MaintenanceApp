@@ -30,6 +30,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
         subcategoryId: null,
         suppliers: [],
         description: '',
+        material: '', // Optional material field
         costPrice: '',
         costPriceSource: 'MANUAL',
         listPrice: '',
@@ -97,6 +98,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 // Migration: convert old supplier string to array
                 suppliers: editingFastener.suppliers || (editingFastener.supplier ? [editingFastener.supplier] : []),
                 description: editingFastener.description || '',
+                material: editingFastener.material || '',
                 costPrice: (editingFastener.costPrice / 100).toFixed(2),
                 costPriceSource: editingFastener.costPriceSource || 'MANUAL',
                 listPrice: (editingFastener.listPrice / 100).toFixed(2),
@@ -117,6 +119,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 subcategoryId: null,
                 suppliers: [],
                 description: '',
+                material: '',
                 costPrice: '',
                 costPriceSource: 'MANUAL',
                 listPrice: '',
@@ -265,6 +268,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
                 description: formData.description.trim(),
+                material: formData.material || '',
                 locationId: formData.locationId,
                 listPriceSource: formData.isSaleable ? listPriceSource : 'MANUAL',
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
@@ -511,6 +515,27 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                     placeholder="Optional details..."
                                 />
+                            </div>
+
+                            {/* Material */}
+                            <div>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                    Material
+                                </label>
+                                <select
+                                    value={formData.material}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, material: e.target.value }))}
+                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                >
+                                    <option value="">-- None --</option>
+                                    <option value="Stainless 304">Stainless 304</option>
+                                    <option value="Stainless 316">Stainless 316</option>
+                                    <option value="Galvanised">Galvanised</option>
+                                    <option value="Zinc">Zinc</option>
+                                    <option value="Plastic">Plastic</option>
+                                    <option value="Nylon">Nylon</option>
+                                </select>
+                                <p className="text-xs text-slate-400 mt-1">Optional material specification</p>
                             </div>
 
                             {/* Location */}

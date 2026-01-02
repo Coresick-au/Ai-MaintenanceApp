@@ -22,6 +22,67 @@ import {
     estimateSpeedSensorCost,
     estimateTMDFrameCost
 } from '../../services/costEstimationService';
+import { useResizableColumns } from '../../hooks/useResizableColumns';
+
+
+// Matching Entries Table Component to handle its own resize state
+const MatchingEntriesTable = ({ entries }) => {
+    const tableRef = React.useRef(null);
+    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([120, 100, 120, 300]);
+
+    return (
+        <div className="bg-slate-800/50 rounded border border-slate-700 overflow-hidden">
+            <div className="overflow-x-auto">
+                <table ref={tableRef} className="text-left text-xs" style={{ tableLayout: 'auto' }}>
+                    <thead className="bg-slate-800 border-b border-slate-700 font-medium text-slate-400">
+                        <tr>
+                            <th className="px-3 py-2 relative" style={{ width: `${columnWidths[0]}px` }}>
+                                <div className="column-content">Cost/Unit</div>
+                                <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(0, e)} onDoubleClick={() => autoFitColumn(0, tableRef)} onClick={(e) => e.stopPropagation()} />
+                            </th>
+                            <th className="px-3 py-2 relative" style={{ width: `${columnWidths[1]}px` }}>
+                                <div className="column-content">Date</div>
+                                <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(1, e)} onDoubleClick={() => autoFitColumn(1, tableRef)} onClick={(e) => e.stopPropagation()} />
+                            </th>
+                            <th className="px-3 py-2 relative" style={{ width: `${columnWidths[2]}px` }}>
+                                <div className="column-content">Total</div>
+                                <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(2, e)} onDoubleClick={() => autoFitColumn(2, tableRef)} onClick={(e) => e.stopPropagation()} />
+                            </th>
+                            <th className="px-3 py-2 relative" style={{ width: `${columnWidths[3]}px` }}>
+                                <div className="column-content">Details</div>
+                                <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(3, e)} onDoubleClick={() => autoFitColumn(3, tableRef)} onClick={(e) => e.stopPropagation()} />
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-700">
+                        {entries.map((entry, idx) => (
+                            <tr key={idx} className="hover:bg-slate-700/30">
+                                <td className="px-3 py-2 font-mono text-emerald-400">
+                                    {formatCurrency(entry.costPrice)}
+                                </td>
+                                <td className="px-3 py-2 text-slate-500">
+                                    {entry.effectiveDate}
+                                </td>
+                                <td className="px-3 py-2 font-mono text-cyan-400">
+                                    {entry.quantity && entry.quantity > 1 ? formatCurrency(entry.costPrice * entry.quantity) : '-'}
+                                </td>
+                                <td className="px-3 py-2 text-slate-400 text-[10px]">
+                                    {entry.beltWidth && `${entry.beltWidth}mm • `}
+                                    {entry.capacity && `${entry.capacity} kg/m • `}
+                                    {entry.weightKg && `${entry.weightKg}kg • `}
+                                    {entry.diameter && `⌀${entry.diameter}mm • `}
+                                    {entry.faceLength && `L${entry.faceLength}mm • `}
+                                    {entry.rhsCutLength && `RHS L${entry.rhsCutLength}mm • `}
+                                    {entry.quantity && `Qty: ${entry.quantity}`}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    );
+};
 
 export const CostEstimator = () => {
     const [componentType, setComponentType] = useState('weigh-module');
@@ -204,7 +265,7 @@ export const CostEstimator = () => {
                                     : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
                                     }`}
                             >
-                                <Icons.Frame size={20} className="mx-auto mb-1" />
+                                <Icons.Triangle size={20} className="mx-auto mb-1" />
                                 <div className="text-xs">Idler Frame</div>
                             </button>
                             <button
@@ -234,7 +295,7 @@ export const CostEstimator = () => {
                                     : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
                                     }`}
                             >
-                                <Icons.Activity size={20} className="mx-auto mb-1" />
+                                <Icons.Gauge size={20} className="mx-auto mb-1" />
                                 <div className="text-xs">Speed Sensor</div>
                             </button>
                             <button
@@ -244,7 +305,7 @@ export const CostEstimator = () => {
                                     : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600'
                                     }`}
                             >
-                                <Icons.AlertOctagon size={20} className="mx-auto mb-1" />
+                                <Icons.Magnet size={20} className="mx-auto mb-1" />
                                 <div className="text-xs">TMD Frame</div>
                             </button>
                         </div>
@@ -726,40 +787,7 @@ export const CostEstimator = () => {
                                         {/* Matching Entries for this supplier */}
                                         <div>
                                             <div className="text-xs text-slate-400 mb-2">Historical Entries ({estimate.supplierName})</div>
-                                            <div className="bg-slate-800/50 rounded border border-slate-700 divide-y divide-slate-700 max-h-48 overflow-y-auto">
-                                                {estimate.matchingEntries.map((entry, entryIdx) => (
-                                                    <div key={entryIdx} className="p-3 text-xs">
-                                                        <div className="flex justify-between items-start mb-1">
-                                                            <div className="flex gap-3">
-                                                                <div>
-                                                                    <div className="text-slate-500 text-[10px] mb-0.5">Cost/Unit</div>
-                                                                    <span className="text-emerald-400 font-mono">
-                                                                        {formatCurrency(entry.costPrice)}
-                                                                    </span>
-                                                                </div>
-                                                                {entry.quantity && entry.quantity > 1 && (
-                                                                    <div>
-                                                                        <div className="text-slate-500 text-[10px] mb-0.5">Total</div>
-                                                                        <span className="text-cyan-400 font-mono">
-                                                                            {formatCurrency(entry.costPrice * entry.quantity)}
-                                                                        </span>
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                            <span className="text-slate-500">{entry.effectiveDate}</span>
-                                                        </div>
-                                                        <div className="text-slate-400">
-                                                            {entry.beltWidth && `${entry.beltWidth}mm • `}
-                                                            {entry.capacity && `${entry.capacity} kg/m • `}
-                                                            {entry.weightKg && `${entry.weightKg}kg • `}
-                                                            {entry.diameter && `⌀${entry.diameter}mm • `}
-                                                            {entry.faceLength && `L${entry.faceLength}mm • `}
-                                                            {entry.rhsCutLength && `RHS L${entry.rhsCutLength}mm • `}
-                                                            {entry.quantity && `Qty: ${entry.quantity}`}
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                            <MatchingEntriesTable entries={estimate.matchingEntries} />
                                         </div>
 
                                         {/* Info Note */}
@@ -786,6 +814,6 @@ export const CostEstimator = () => {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 };

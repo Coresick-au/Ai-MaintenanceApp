@@ -4,6 +4,7 @@ import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { addSupplier, updateSupplier, deleteSupplier } from '../../services/inventoryService';
 import { useCategories } from '../../context/CategoryContext';
+import { useResizableColumns } from '../../hooks/useResizableColumns';
 
 export const SupplierManager = () => {
     const [suppliers, setSuppliers] = useState([]);
@@ -13,6 +14,9 @@ export const SupplierManager = () => {
     const [loading, setLoading] = useState(true);
     const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
     const { categories } = useCategories();
+    // 7 columns: Name, Contact, Email, Phone, Categories, Lead Time, Actions
+    const tableRef = React.useRef(null);
+    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([200, 150, 200, 150, 250, 100, 100]);
 
     useEffect(() => {
         const unsubscribe = onSnapshot(
@@ -103,190 +107,200 @@ export const SupplierManager = () => {
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4">
-                <div>
-                    <h2 className="text-xl font-bold text-white">Suppliers</h2>
-                    <p className="text-sm text-slate-400 mt-1">{suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''}</p>
+        <div className="flex flex-col h-full items-center">
+            <div className="w-full max-w-fit space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Suppliers</h2>
+                        <p className="text-sm text-slate-400 mt-1">{suppliers.length} supplier{suppliers.length !== 1 ? 's' : ''}</p>
+                    </div>
+                    <button
+                        onClick={handleAdd}
+                        className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
+                    >
+                        <Icons.Plus size={18} />
+                        Add Supplier
+                    </button>
                 </div>
-                <button
-                    onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
-                >
-                    <Icons.Plus size={18} />
-                    Add Supplier
-                </button>
-            </div>
 
-            <div className="flex-1 overflow-auto bg-slate-800/60 rounded-xl border border-slate-700">
-                <table className="w-full text-left text-sm">
-                    <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10">
-                        <tr>
-                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('name')}>
-                                <div className="flex items-center gap-2">
-                                    Supplier Name {getSortIcon('name')}
-                                </div>
-                            </th>
-                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('contactName')}>
-                                <div className="flex items-center gap-2">
-                                    Contact {getSortIcon('contactName')}
-                                </div>
-                            </th>
-                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('email')}>
-                                <div className="flex items-center gap-2">
-                                    Email {getSortIcon('email')}
-                                </div>
-                            </th>
-                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('phone')}>
-                                <div className="flex items-center gap-2">
-                                    Phone {getSortIcon('phone')}
-                                </div>
-                            </th>
-                            <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('categoryCount')}>
-                                <div className="flex items-center gap-2">
-                                    Categories {getSortIcon('categoryCount')}
-                                </div>
-                            </th>
-                            <th className="px-4 py-3 text-center cursor-pointer hover:bg-slate-800 transition-colors" onClick={() => handleSort('defaultLeadTimeDays')}>
-                                <div className="flex items-center justify-center gap-2">
-                                    Lead Time {getSortIcon('defaultLeadTimeDays')}
-                                </div>
-                            </th>
-                            <th className="px-4 py-3 text-center">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700">
-                        {sortedSuppliers.length === 0 ? (
+                <div className="flex-1 overflow-auto bg-slate-800/60 rounded-xl border border-slate-700">
+                    <table ref={tableRef} className="text-left text-sm" style={{ tableLayout: 'auto' }}>
+                        <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10">
                             <tr>
-                                <td colSpan="7" className="px-4 py-8 text-center text-slate-400">
-                                    No suppliers yet. Add your first supplier to get started.
-                                </td>
+                                <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('name')} style={{ width: `${columnWidths[0]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">
+                                        Supplier Name {getSortIcon('name')}
+                                    </div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(0, e)} onDoubleClick={() => autoFitColumn(0, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                </th>
+                                <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('contactName')} style={{ width: `${columnWidths[1]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">
+                                        Contact {getSortIcon('contactName')}
+                                    </div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(1, e)} onDoubleClick={() => autoFitColumn(1, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                </th>
+                                <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('email')} style={{ width: `${columnWidths[2]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">
+                                        Email {getSortIcon('email')}
+                                    </div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(2, e)} onDoubleClick={() => autoFitColumn(2, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                </th>
+                                <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('phone')} style={{ width: `${columnWidths[3]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">
+                                        Phone {getSortIcon('phone')}
+                                    </div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(3, e)} onDoubleClick={() => autoFitColumn(3, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                </th>
+                                <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('categoryCount')} style={{ width: `${columnWidths[4]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">
+                                        Categories {getSortIcon('categoryCount')}
+                                    </div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(4, e)} onDoubleClick={() => autoFitColumn(4, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                </th>
+                                <th className="px-4 py-3 text-center cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('defaultLeadTimeDays')} style={{ width: `${columnWidths[5]}px` }}>
+                                    <div className="flex items-center justify-center gap-2 column-content">
+                                        Lead Time {getSortIcon('defaultLeadTimeDays')}
+                                    </div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(5, e)} onDoubleClick={() => autoFitColumn(5, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                </th>
+                                <th className="px-4 py-3 text-center relative" style={{ width: `${columnWidths[6]}px` }}>
+                                    <div className="column-content">Actions</div>
+                                </th>
                             </tr>
-                        ) : (
-                            sortedSuppliers.map(supplier => (
-                                <tr
-                                    key={supplier.id}
-                                    className="hover:bg-slate-700/50 transition-colors"
-                                >
-                                    <td className="px-4 py-3 text-white font-medium">{supplier.name}</td>
-                                    <td className="px-4 py-3 text-slate-300">{supplier.contactName || '-'}</td>
-                                    <td className="px-4 py-3 text-slate-300">{supplier.email || '-'}</td>
-                                    <td className="px-4 py-3 text-slate-300">{supplier.phone || '-'}</td>
-                                    <td className="px-4 py-3">
-                                        <div className="flex flex-wrap gap-1">
-                                            {/* Main Categories */}
-                                            {supplier.categoryIds && supplier.categoryIds.length > 0 ? (
-                                                supplier.categoryIds.slice(0, 2).map(catId => {
-                                                    const category = categories.find(c => c.id === catId);
-                                                    return category ? (
-                                                        <span
-                                                            key={catId}
-                                                            className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded text-xs"
-                                                        >
-                                                            {category.name}
-                                                        </span>
-                                                    ) : null;
-                                                })
-                                            ) : null}
-                                            {/* Subcategories */}
-                                            {supplier.subcategoryIds && supplier.subcategoryIds.length > 0 ? (
-                                                supplier.subcategoryIds.slice(0, 2).map(subId => {
-                                                    const subcategory = categories.find(c => c.id === subId);
-                                                    return subcategory ? (
-                                                        <span
-                                                            key={subId}
-                                                            className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded text-xs"
-                                                        >
-                                                            {subcategory.name}
-                                                        </span>
-                                                    ) : null;
-                                                })
-                                            ) : null}
-                                            {/* Show count if more categories/subcategories */}
-                                            {((supplier.categoryIds?.length || 0) + (supplier.subcategoryIds?.length || 0) > 4) && (
-                                                <span className="px-2 py-0.5 bg-slate-700 text-slate-400 rounded text-xs">
-                                                    +{(supplier.categoryIds?.length || 0) + (supplier.subcategoryIds?.length || 0) - 4}
-                                                </span>
-                                            )}
-                                            {/* Show message if no categories */}
-                                            {(!supplier.categoryIds || supplier.categoryIds.length === 0) && (!supplier.subcategoryIds || supplier.subcategoryIds.length === 0) && (
-                                                <span className="text-slate-500 text-xs italic">No categories</span>
-                                            )}
-                                        </div>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <span className="px-2 py-1 bg-slate-700 rounded text-xs">
-                                            {supplier.defaultLeadTimeDays} days
-                                        </span>
-                                    </td>
-                                    <td className="px-4 py-3 text-center">
-                                        <div className="flex items-center justify-center gap-2">
-                                            <button
-                                                onClick={() => handleEdit(supplier)}
-                                                className="p-1.5 rounded hover:bg-slate-600 text-blue-400 transition-colors"
-                                                title="Edit Supplier"
-                                            >
-                                                <Icons.Edit size={16} />
-                                            </button>
-                                            <button
-                                                onClick={() => setDeletingSupplier(supplier)}
-                                                className="p-1.5 rounded hover:bg-slate-600 text-red-400 transition-colors"
-                                                title="Delete Supplier"
-                                            >
-                                                <Icons.Trash size={16} />
-                                            </button>
-                                        </div>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700">
+                            {sortedSuppliers.length === 0 ? (
+                                <tr>
+                                    <td colSpan="7" className="px-4 py-8 text-center text-slate-400">
+                                        No suppliers yet. Add your first supplier to get started.
                                     </td>
                                 </tr>
-                            ))
-                        )}
-                    </tbody>
-                </table>
-            </div>
+                            ) : (
+                                sortedSuppliers.map(supplier => (
+                                    <tr
+                                        key={supplier.id}
+                                        className="hover:bg-slate-700/50 transition-colors"
+                                    >
+                                        <td className="px-4 py-3 text-white font-medium">{supplier.name}</td>
+                                        <td className="px-4 py-3 text-slate-300">{supplier.contactName || '-'}</td>
+                                        <td className="px-4 py-3 text-slate-300">{supplier.email || '-'}</td>
+                                        <td className="px-4 py-3 text-slate-300">{supplier.phone || '-'}</td>
+                                        <td className="px-4 py-3">
+                                            <div className="flex flex-wrap gap-1">
+                                                {/* Main Categories */}
+                                                {supplier.categoryIds && supplier.categoryIds.length > 0 ? (
+                                                    supplier.categoryIds.slice(0, 2).map(catId => {
+                                                        const category = categories.find(c => c.id === catId);
+                                                        return category ? (
+                                                            <span
+                                                                key={catId}
+                                                                className="px-2 py-0.5 bg-cyan-500/20 text-cyan-400 border border-cyan-500/30 rounded text-xs"
+                                                            >
+                                                                {category.name}
+                                                            </span>
+                                                        ) : null;
+                                                    })
+                                                ) : null}
+                                                {/* Subcategories */}
+                                                {supplier.subcategoryIds && supplier.subcategoryIds.length > 0 ? (
+                                                    supplier.subcategoryIds.slice(0, 2).map(subId => {
+                                                        const subcategory = categories.find(c => c.id === subId);
+                                                        return subcategory ? (
+                                                            <span
+                                                                key={subId}
+                                                                className="px-2 py-0.5 bg-purple-500/20 text-purple-400 border border-purple-500/30 rounded text-xs"
+                                                            >
+                                                                {subcategory.name}
+                                                            </span>
+                                                        ) : null;
+                                                    })
+                                                ) : null}
+                                                {/* Show count if more categories/subcategories */}
+                                                {((supplier.categoryIds?.length || 0) + (supplier.subcategoryIds?.length || 0) > 4) && (
+                                                    <span className="px-2 py-0.5 bg-slate-700 text-slate-400 rounded text-xs">
+                                                        +{(supplier.categoryIds?.length || 0) + (supplier.subcategoryIds?.length || 0) - 4}
+                                                    </span>
+                                                )}
+                                                {/* Show message if no categories */}
+                                                {(!supplier.categoryIds || supplier.categoryIds.length === 0) && (!supplier.subcategoryIds || supplier.subcategoryIds.length === 0) && (
+                                                    <span className="text-slate-500 text-xs italic">No categories</span>
+                                                )}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <span className="px-2 py-1 bg-slate-700 rounded text-xs">
+                                                {supplier.defaultLeadTimeDays} days
+                                            </span>
+                                        </td>
+                                        <td className="px-4 py-3 text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <button
+                                                    onClick={() => handleEdit(supplier)}
+                                                    className="p-1.5 rounded hover:bg-slate-600 text-blue-400 transition-colors"
+                                                    title="Edit Supplier"
+                                                >
+                                                    <Icons.Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setDeletingSupplier(supplier)}
+                                                    className="p-1.5 rounded hover:bg-slate-600 text-red-400 transition-colors"
+                                                    title="Delete Supplier"
+                                                >
+                                                    <Icons.Trash size={16} />
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))
+                            )}
+                        </tbody>
+                    </table>
+                </div>
 
-            {isModalOpen && (
-                <SupplierModal
-                    supplier={editingSupplier}
-                    categories={categories}
-                    onClose={() => setIsModalOpen(false)}
-                />
-            )}
+                {isModalOpen && (
+                    <SupplierModal
+                        supplier={editingSupplier}
+                        categories={categories}
+                        onClose={() => setIsModalOpen(false)}
+                    />
+                )}
 
-            {/* Delete Confirmation Dialog */}
-            {deletingSupplier && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-                    <div className="bg-slate-900 w-full max-w-md rounded-xl border border-red-500/30 shadow-2xl">
-                        <div className="p-6">
-                            <div className="flex items-start gap-4">
-                                <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
-                                    <Icons.AlertTriangle className="w-6 h-6 text-red-400" />
+                {/* Delete Confirmation Dialog */}
+                {deletingSupplier && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                        <div className="bg-slate-900 w-full max-w-md rounded-xl border border-red-500/30 shadow-2xl">
+                            <div className="p-6">
+                                <div className="flex items-start gap-4">
+                                    <div className="flex-shrink-0 w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center">
+                                        <Icons.AlertTriangle className="w-6 h-6 text-red-400" />
+                                    </div>
+                                    <div className="flex-1">
+                                        <h3 className="text-lg font-bold text-white mb-2">Delete Supplier?</h3>
+                                        <p className="text-slate-300 text-sm mb-1">
+                                            Are you sure you want to delete <strong>{deletingSupplier.name}</strong>?
+                                        </p>
+                                        <p className="text-red-400 text-sm mt-3">This action cannot be undone.</p>
+                                    </div>
                                 </div>
-                                <div className="flex-1">
-                                    <h3 className="text-lg font-bold text-white mb-2">Delete Supplier?</h3>
-                                    <p className="text-slate-300 text-sm mb-1">
-                                        Are you sure you want to delete <strong>{deletingSupplier.name}</strong>?
-                                    </p>
-                                    <p className="text-red-400 text-sm mt-3">This action cannot be undone.</p>
+                                <div className="flex justify-end gap-3 mt-6">
+                                    <button
+                                        onClick={() => setDeletingSupplier(null)}
+                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleDelete}
+                                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
+                                    >
+                                        Delete Supplier
+                                    </button>
                                 </div>
-                            </div>
-                            <div className="flex justify-end gap-3 mt-6">
-                                <button
-                                    onClick={() => setDeletingSupplier(null)}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={handleDelete}
-                                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
-                                >
-                                    Delete Supplier
-                                </button>
                             </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )}
+            </div>
         </div>
     );
 };

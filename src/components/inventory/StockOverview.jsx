@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { adjustStockQuantity } from '../../services/inventoryService';
+import { useResizableColumns } from '../../hooks/useResizableColumns';
 
 export const StockOverview = ({ onAdjustStock }) => {
     const [subView, setSubView] = useState('overview'); // 'overview' or 'stocktake'
@@ -28,6 +29,23 @@ export const StockOverview = ({ onAdjustStock }) => {
     const [saving, setSaving] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeStocktakeTab, setActiveStocktakeTab] = useState('parts');
+
+    const overviewTableRef = useRef(null);
+    const stocktakeTableRef = useRef(null);
+
+    // Resizable columns for Overview Table
+    const {
+        columnWidths: overviewColWidths,
+        handleResizeStart: handleOverviewResizeStart,
+        autoFitColumn: autoFitOverviewColumn
+    } = useResizableColumns([40, 120, 250, 100, 120, 120, 100, 100]);
+
+    // Resizable columns for Stock Take Table
+    const {
+        columnWidths: stocktakeColWidths,
+        handleResizeStart: handleStocktakeResizeStart,
+        autoFitColumn: autoFitStocktakeColumn
+    } = useResizableColumns([120, 250, 120, 120, 100]);
 
     // Real-time listeners
     useEffect(() => {
@@ -355,515 +373,500 @@ export const StockOverview = ({ onAdjustStock }) => {
     }
 
     return (
-        <div className="flex flex-col h-full">
-            {/* Header with Sub-View Toggle */}
-            <div className="mb-4">
-                <div className="flex justify-between items-center mb-4">
-                    <div>
-                        <h2 className="text-xl font-bold text-white">Stock Levels</h2>
-                        <p className="text-sm text-slate-400 mt-1">
-                            {subView === 'overview'
-                                ? `${stockOverview.filter(s => s.isLowStock).length} part${stockOverview.filter(s => s.isLowStock).length !== 1 ? 's' : ''} below reorder level`
-                                : 'Physical inventory count'
-                            }
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => setSubView('overview')}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${subView === 'overview'
-                                ? 'bg-cyan-600 text-white'
-                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icons.Database size={18} />
-                                Overview
-                            </div>
-                        </button>
-                        <button
-                            onClick={() => setSubView('stocktake')}
-                            className={`px-4 py-2 rounded-lg font-medium transition-colors ${subView === 'stocktake'
-                                ? 'bg-emerald-600 text-white'
-                                : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
-                                }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <Icons.ClipboardList size={18} />
-                                Stock Take
-                            </div>
-                        </button>
+        <div className="flex flex-col h-full items-center">
+            <div className="w-full max-w-fit flex flex-col h-full">
+                {/* Header with Sub-View Toggle */}
+                <div className="mb-4">
+                    <div className="flex justify-between items-center mb-4">
+                        <div>
+                            <h2 className="text-xl font-bold text-white">Stock Levels</h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                {subView === 'overview'
+                                    ? `${stockOverview.filter(s => s.isLowStock).length} part${stockOverview.filter(s => s.isLowStock).length !== 1 ? 's' : ''} below reorder level`
+                                    : 'Physical inventory count'
+                                }
+                            </p>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setSubView('overview')}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${subView === 'overview'
+                                    ? 'bg-cyan-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icons.Database size={18} />
+                                    Overview
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setSubView('stocktake')}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${subView === 'stocktake'
+                                    ? 'bg-emerald-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icons.ClipboardList size={18} />
+                                    Stock Take
+                                </div>
+                            </button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            {/* Content based on sub-view */}
-            {subView === 'overview' ? (
-                <div className="flex flex-col flex-1">
-                    {/* Filter Controls */}
-                    <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-slate-700 space-y-4">
-                        <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-6">
-                                {/* Type Filters */}
-                                <div>
-                                    <span className="text-xs font-medium text-slate-400 uppercase mb-2 block">Type</span>
-                                    <div className="flex items-center gap-3">
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={typeFilters.part}
-                                                onChange={(e) => setTypeFilters(prev => ({ ...prev, part: e.target.checked }))}
-                                                className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
-                                            />
-                                            <span className="text-sm text-slate-300">Parts</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={typeFilters.fastener}
-                                                onChange={(e) => setTypeFilters(prev => ({ ...prev, fastener: e.target.checked }))}
-                                                className="w-4 h-4 rounded border-slate-600 text-amber-600 focus:ring-amber-500 focus:ring-offset-slate-900"
-                                            />
-                                            <span className="text-sm text-slate-300">Fasteners</span>
-                                        </label>
-                                        <label className="flex items-center gap-2 cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                checked={typeFilters.product}
-                                                onChange={(e) => setTypeFilters(prev => ({ ...prev, product: e.target.checked }))}
-                                                className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
-                                            />
-                                            <span className="text-sm text-slate-300">Products</span>
-                                        </label>
+                {/* Content based on sub-view */}
+                {subView === 'overview' ? (
+                    <div className="flex flex-col flex-1 w-full">
+                        {/* Filter Controls */}
+                        <div className="mb-4 p-4 bg-slate-800/60 rounded-xl border border-slate-700 space-y-4">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-6">
+                                    {/* Type Filters */}
+                                    <div>
+                                        <span className="text-xs font-medium text-slate-400 uppercase mb-2 block">Type</span>
+                                        <div className="flex items-center gap-3">
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={typeFilters.part}
+                                                    onChange={(e) => setTypeFilters(prev => ({ ...prev, part: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                                />
+                                                <span className="text-sm text-slate-300">Parts</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={typeFilters.fastener}
+                                                    onChange={(e) => setTypeFilters(prev => ({ ...prev, fastener: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-600 text-amber-600 focus:ring-amber-500 focus:ring-offset-slate-900"
+                                                />
+                                                <span className="text-sm text-slate-300">Fasteners</span>
+                                            </label>
+                                            <label className="flex items-center gap-2 cursor-pointer">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={typeFilters.product}
+                                                    onChange={(e) => setTypeFilters(prev => ({ ...prev, product: e.target.checked }))}
+                                                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                                />
+                                                <span className="text-sm text-slate-300">Products</span>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Status Filter */}
+                                    <div>
+                                        <span className="text-xs font-medium text-slate-400 uppercase mb-2 block">Status</span>
+                                        <select
+                                            value={statusFilter}
+                                            onChange={(e) => setStatusFilter(e.target.value)}
+                                            className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        >
+                                            <option value="all">All</option>
+                                            <option value="out">Out of Stock</option>
+                                            <option value="reorder">Reorder</option>
+                                            <option value="low">Low Stock</option>
+                                            <option value="good">Good</option>
+                                        </select>
                                     </div>
                                 </div>
+                            </div>
 
-                                {/* Status Filter */}
-                                <div>
-                                    <span className="text-xs font-medium text-slate-400 uppercase mb-2 block">Status</span>
-                                    <select
-                                        value={statusFilter}
-                                        onChange={(e) => setStatusFilter(e.target.value)}
-                                        className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            {/* Active Filters Summary */}
+                            <div className="flex items-center justify-between text-xs text-slate-400">
+                                <span>
+                                    Showing {filteredAndSortedOverview.length} of {stockOverview.length} items
+                                </span>
+                                {(statusFilter !== 'all' || !typeFilters.part || !typeFilters.fastener || !typeFilters.product) && (
+                                    <button
+                                        onClick={() => {
+                                            setStatusFilter('all');
+                                            setTypeFilters({ part: true, fastener: true, product: true });
+                                        }}
+                                        className="text-cyan-400 hover:text-cyan-300 transition-colors"
                                     >
-                                        <option value="all">All</option>
-                                        <option value="out">Out of Stock</option>
-                                        <option value="reorder">Reorder</option>
-                                        <option value="low">Low Stock</option>
-                                        <option value="good">Good</option>
-                                    </select>
-                                </div>
+                                        Clear Filters
+                                    </button>
+                                )}
                             </div>
                         </div>
 
-                        {/* Active Filters Summary */}
-                        <div className="flex items-center justify-between text-xs text-slate-400">
-                            <span>
-                                Showing {filteredAndSortedOverview.length} of {stockOverview.length} items
-                            </span>
-                            {(statusFilter !== 'all' || !typeFilters.part || !typeFilters.fastener || !typeFilters.product) && (
-                                <button
-                                    onClick={() => {
-                                        setStatusFilter('all');
-                                        setTypeFilters({ part: true, fastener: true, product: true });
-                                    }}
-                                    className="text-cyan-400 hover:text-cyan-300 transition-colors"
-                                >
-                                    Clear Filters
-                                </button>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-auto bg-slate-800/60 rounded-xl border border-slate-700">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-4 py-3 w-8"></th>
-                                    <th
-                                        className="px-4 py-3 cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleSort('sku')}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            SKU
-                                            {sortConfig.key === 'sku' && (
-                                                sortConfig.direction === 'asc' ?
-                                                    <Icons.ChevronUp size={14} /> :
-                                                    <Icons.ChevronDown size={14} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleSort('name')}
-                                    >
-                                        <div className="flex items-center gap-2">
-                                            Name
-                                            {sortConfig.key === 'name' && (
-                                                sortConfig.direction === 'asc' ?
-                                                    <Icons.ChevronUp size={14} /> :
-                                                    <Icons.ChevronDown size={14} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-center cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleSort('type')}
-                                    >
-                                        <div className="flex items-center justify-center gap-2">
-                                            Type
-                                            {sortConfig.key === 'type' && (
-                                                sortConfig.direction === 'asc' ?
-                                                    <Icons.ChevronUp size={14} /> :
-                                                    <Icons.ChevronDown size={14} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-right cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleSort('quantity')}
-                                    >
-                                        <div className="flex items-center justify-end gap-2">
-                                            Total On Hand
-                                            {sortConfig.key === 'quantity' && (
-                                                sortConfig.direction === 'asc' ?
-                                                    <Icons.ChevronUp size={14} /> :
-                                                    <Icons.ChevronDown size={14} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-right cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleSort('reorder')}
-                                    >
-                                        <div className="flex items-center justify-end gap-2">
-                                            Reorder Level
-                                            {sortConfig.key === 'reorder' && (
-                                                sortConfig.direction === 'asc' ?
-                                                    <Icons.ChevronUp size={14} /> :
-                                                    <Icons.ChevronDown size={14} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th
-                                        className="px-4 py-3 text-center cursor-pointer hover:text-cyan-400 transition-colors"
-                                        onClick={() => handleSort('status')}
-                                    >
-                                        <div className="flex items-center justify-center gap-2">
-                                            Status
-                                            {sortConfig.key === 'status' && (
-                                                sortConfig.direction === 'asc' ?
-                                                    <Icons.ChevronUp size={14} /> :
-                                                    <Icons.ChevronDown size={14} />
-                                            )}
-                                        </div>
-                                    </th>
-                                    <th className="px-4 py-3 text-center">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700">
-                                {filteredAndSortedOverview.length === 0 ? (
+                        <div className="flex-1 overflow-auto bg-slate-800/60 rounded-xl border border-slate-700">
+                            <table ref={overviewTableRef} className="text-left text-sm" style={{ tableLayout: 'auto' }}>
+                                <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10">
                                     <tr>
-                                        <td colSpan="8" className="px-4 py-8 text-center text-slate-400">
-                                            {stockOverview.length === 0
-                                                ? 'No items in catalog. Add items to start tracking stock.'
-                                                : 'No items match the current filters.'
-                                            }
-                                        </td>
+                                        <th className="px-4 py-3 relative" style={{ width: `${overviewColWidths[0]}px` }}>
+                                            <div className="column-content"></div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(0, e)} onDoubleClick={() => autoFitOverviewColumn(0, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 cursor-pointer hover:text-cyan-400 transition-colors relative" onClick={() => handleSort('sku')} style={{ width: `${overviewColWidths[1]}px` }}>
+                                            <div className="flex items-center gap-2 column-content">
+                                                SKU
+                                                {sortConfig.key === 'sku' && (sortConfig.direction === 'asc' ? <Icons.ChevronUp size={14} /> : <Icons.ChevronDown size={14} />)}
+                                            </div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(1, e)} onDoubleClick={() => autoFitOverviewColumn(1, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 cursor-pointer hover:text-cyan-400 transition-colors relative" onClick={() => handleSort('name')} style={{ width: `${overviewColWidths[2]}px` }}>
+                                            <div className="flex items-center gap-2 column-content">
+                                                Name
+                                                {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? <Icons.ChevronUp size={14} /> : <Icons.ChevronDown size={14} />)}
+                                            </div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(2, e)} onDoubleClick={() => autoFitOverviewColumn(2, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-center cursor-pointer hover:text-cyan-400 transition-colors relative" onClick={() => handleSort('type')} style={{ width: `${overviewColWidths[3]}px` }}>
+                                            <div className="flex items-center justify-center gap-2 column-content">
+                                                Type
+                                                {sortConfig.key === 'type' && (sortConfig.direction === 'asc' ? <Icons.ChevronUp size={14} /> : <Icons.ChevronDown size={14} />)}
+                                            </div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(3, e)} onDoubleClick={() => autoFitOverviewColumn(3, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-right cursor-pointer hover:text-cyan-400 transition-colors relative" onClick={() => handleSort('quantity')} style={{ width: `${overviewColWidths[4]}px` }}>
+                                            <div className="flex items-center justify-end gap-2 column-content">
+                                                Total On Hand
+                                                {sortConfig.key === 'quantity' && (sortConfig.direction === 'asc' ? <Icons.ChevronUp size={14} /> : <Icons.ChevronDown size={14} />)}
+                                            </div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(4, e)} onDoubleClick={() => autoFitOverviewColumn(4, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-right cursor-pointer hover:text-cyan-400 transition-colors relative" onClick={() => handleSort('reorder')} style={{ width: `${overviewColWidths[5]}px` }}>
+                                            <div className="flex items-center justify-end gap-2 column-content">
+                                                Reorder Level
+                                                {sortConfig.key === 'reorder' && (sortConfig.direction === 'asc' ? <Icons.ChevronUp size={14} /> : <Icons.ChevronDown size={14} />)}
+                                            </div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(5, e)} onDoubleClick={() => autoFitOverviewColumn(5, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-center cursor-pointer hover:text-cyan-400 transition-colors relative" onClick={() => handleSort('status')} style={{ width: `${overviewColWidths[6]}px` }}>
+                                            <div className="flex items-center justify-center gap-2 column-content">
+                                                Status
+                                                {sortConfig.key === 'status' && (sortConfig.direction === 'asc' ? <Icons.ChevronUp size={14} /> : <Icons.ChevronDown size={14} />)}
+                                            </div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleOverviewResizeStart(6, e)} onDoubleClick={() => autoFitOverviewColumn(6, overviewTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-center relative" style={{ width: `${overviewColWidths[7]}px` }}>
+                                            <div className="column-content">Actions</div>
+                                        </th>
                                     </tr>
-                                ) : (
-                                    filteredAndSortedOverview.map(stockItem => (
-                                        <React.Fragment key={stockItem.item.id}>
-                                            <tr className="hover:bg-slate-700/50 transition-colors">
-                                                <td className="px-4 py-3">
-                                                    {stockItem.item.isSerialized && stockItem.serializedAssets.length > 0 && (
-                                                        <button
-                                                            onClick={() => setExpandedPartId(expandedPartId === stockItem.item.id ? null : stockItem.item.id)}
-                                                            className="p-1 hover:bg-slate-600 rounded transition-colors"
-                                                        >
-                                                            {expandedPartId === stockItem.item.id ? (
-                                                                <Icons.ChevronDown size={16} className="text-cyan-400" />
-                                                            ) : (
-                                                                <Icons.ChevronRight size={16} className="text-slate-400" />
+                                </thead>
+                                <tbody className="divide-y divide-slate-700">
+                                    {filteredAndSortedOverview.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="8" className="px-4 py-8 text-center text-slate-400">
+                                                {stockOverview.length === 0
+                                                    ? 'No items in catalog. Add items to start tracking stock.'
+                                                    : 'No items match the current filters.'
+                                                }
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredAndSortedOverview.map(stockItem => (
+                                            <React.Fragment key={stockItem.item.id}>
+                                                <tr className="hover:bg-slate-700/50 transition-colors">
+                                                    <td className="px-4 py-3">
+                                                        {stockItem.item.isSerialized && stockItem.serializedAssets.length > 0 && (
+                                                            <button
+                                                                onClick={() => setExpandedPartId(expandedPartId === stockItem.item.id ? null : stockItem.item.id)}
+                                                                className="p-1 hover:bg-slate-600 rounded transition-colors"
+                                                            >
+                                                                {expandedPartId === stockItem.item.id ? (
+                                                                    <Icons.ChevronDown size={16} className="text-cyan-400" />
+                                                                ) : (
+                                                                    <Icons.ChevronRight size={16} className="text-slate-400" />
+                                                                )}
+                                                            </button>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 font-mono text-xs text-cyan-400">{stockItem.item.sku}</td>
+                                                    <td className="px-4 py-3">
+                                                        <div className="flex items-center gap-2">
+                                                            {stockItem.item.isSerialized && (
+                                                                <Icons.Barcode size={16} className="text-purple-400" />
                                                             )}
-                                                        </button>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 font-mono text-xs text-cyan-400">{stockItem.item.sku}</td>
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        {stockItem.item.isSerialized && (
-                                                            <Icons.Barcode size={16} className="text-purple-400" />
-                                                        )}
-                                                        {stockItem.itemType === 'fastener' && (
-                                                            <Icons.Wrench size={16} className="text-amber-400" />
-                                                        )}
-                                                        {stockItem.itemType === 'product' && (
-                                                            <Icons.Box size={16} className="text-purple-400" />
-                                                        )}
-                                                        <span className="text-white font-medium">{stockItem.item.name}</span>
-                                                    </div>
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <span className={`px-2 py-1 rounded text-xs font-medium ${stockItem.item.isSerialized
-                                                        ? 'bg-purple-500/20 text-purple-400'
-                                                        : stockItem.itemType === 'fastener'
-                                                            ? 'bg-amber-500/20 text-amber-400'
-                                                            : stockItem.itemType === 'product'
-                                                                ? 'bg-purple-500/20 text-purple-400'
-                                                                : 'bg-slate-700 text-slate-300'
-                                                        }`}>
-                                                        {stockItem.item.isSerialized
-                                                            ? 'Serialized'
-                                                            : stockItem.itemType === 'fastener'
-                                                                ? 'Fastener'
-                                                                : stockItem.itemType === 'product'
-                                                                    ? 'Product'
-                                                                    : 'Part'}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right">
-                                                    <span className={`font-bold ${stockItem.isLowStock ? 'text-red-400' : 'text-white'}`}>
-                                                        {stockItem.totalQuantity === 0 ? 'No Stock' : stockItem.totalQuantity}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-right text-slate-300">{stockItem.item.reorderLevel}</td>
-                                                <td className="px-4 py-3 text-center">
-                                                    {stockItem.totalQuantity === 0 ? (
-                                                        <span className="flex items-center justify-center gap-1 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-xs text-slate-300 font-medium">
-                                                            <Icons.XCircle size={12} />
-                                                            No Stock
-                                                        </span>
-                                                    ) : stockItem.isAtReorderLevel ? (
-                                                        <span className="flex items-center justify-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded text-xs text-amber-400 font-medium">
-                                                            <Icons.AlertTriangle size={12} />
-                                                            Reorder
-                                                        </span>
-                                                    ) : stockItem.isLowStock ? (
-                                                        <span className="flex items-center justify-center gap-1 px-2 py-1 bg-red-500/20 border border-red-500/30 rounded text-xs text-red-400 font-medium">
-                                                            <Icons.AlertTriangle size={12} />
-                                                            Low Stock
-                                                        </span>
-                                                    ) : (
-                                                        <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-medium">
-                                                            Good
-                                                        </span>
-                                                    )}
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <button
-                                                        onClick={() => onAdjustStock(stockItem.item)}
-                                                        className="p-1.5 rounded hover:bg-slate-600 text-blue-400 transition-colors"
-                                                        title="Adjust Stock"
-                                                    >
-                                                        <Icons.Edit size={16} />
-                                                    </button>
-                                                </td>
-                                            </tr>
-
-                                            {/* Expanded Row for Serialized Assets */}
-                                            {expandedPartId === stockItem.item.id && stockItem.item.isSerialized && (
-                                                <tr>
-                                                    <td colSpan="8" className="px-4 py-3 bg-slate-900/50">
-                                                        <div className="space-y-2">
-                                                            <div className="text-xs font-bold text-slate-400 uppercase mb-2">Serial Numbers:</div>
-                                                            <div className="grid grid-cols-2 gap-2">
-                                                                {stockItem.serializedAssets.map(asset => {
-                                                                    const location = locations.find(l => l.id === asset.currentLocationId);
-                                                                    return (
-                                                                        <div
-                                                                            key={asset.id}
-                                                                            className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700"
-                                                                        >
-                                                                            <div className="flex items-center gap-2">
-                                                                                <Icons.Barcode size={14} className="text-purple-400" />
-                                                                                <span className="font-mono text-xs text-white">{asset.serialNumber}</span>
-                                                                            </div>
-                                                                            <div className="flex items-center gap-1 text-xs text-slate-400">
-                                                                                <Icons.MapPin size={12} />
-                                                                                {location?.name || 'Unknown'}
-                                                                            </div>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
+                                                            {stockItem.itemType === 'fastener' && (
+                                                                <Icons.Wrench size={16} className="text-amber-400" />
+                                                            )}
+                                                            {stockItem.itemType === 'product' && (
+                                                                <Icons.Box size={16} className="text-purple-400" />
+                                                            )}
+                                                            <span className="text-white font-medium">{stockItem.item.name}</span>
                                                         </div>
                                                     </td>
-                                                </tr>
-                                            )}
-                                        </React.Fragment>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            ) : (
-                /* Stock Take View */
-                <div className="flex flex-col flex-1">
-                    <div className="mb-4">
-                        <div className="flex justify-between items-center mb-4">
-                            <button
-                                onClick={handleSubmitStockTake}
-                                disabled={saving || Object.keys(counts).length === 0}
-                                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                            >
-                                <Icons.Save size={18} />
-                                {saving ? 'Saving...' : 'Save Stock Take'}
-                            </button>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Location</label>
-                                <select
-                                    value={selectedLocation}
-                                    onChange={(e) => {
-                                        setSelectedLocation(e.target.value);
-                                        setCounts({});
-                                    }}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                >
-                                    {locations.map(loc => (
-                                        <option key={loc.id} value={loc.id}>{loc.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">Search</label>
-                                <div className="relative">
-                                    <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                                    <input
-                                        type="text"
-                                        placeholder="Search by name or SKU..."
-                                        value={searchTerm}
-                                        onChange={(e) => setSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Stocktake Tabs */}
-                        <div className="flex gap-2 border-b border-slate-700">
-                            <button
-                                onClick={() => setActiveStocktakeTab('parts')}
-                                className={`px-4 py-2 font-medium transition-colors ${activeStocktakeTab === 'parts'
-                                    ? 'text-cyan-400 border-b-2 border-cyan-400'
-                                    : 'text-slate-400 hover:text-slate-300'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Icons.Package size={16} />
-                                    Parts ({parts.filter(p => !p.isSerialized && p.trackStock).length})
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => setActiveStocktakeTab('fasteners')}
-                                className={`px-4 py-2 font-medium transition-colors ${activeStocktakeTab === 'fasteners'
-                                    ? 'text-amber-400 border-b-2 border-amber-400'
-                                    : 'text-slate-400 hover:text-slate-300'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Icons.Wrench size={16} />
-                                    Fasteners ({fasteners.filter(f => f.trackStock).length})
-                                </div>
-                            </button>
-                            <button
-                                onClick={() => setActiveStocktakeTab('products')}
-                                className={`px-4 py-2 font-medium transition-colors ${activeStocktakeTab === 'products'
-                                    ? 'text-purple-400 border-b-2 border-purple-400'
-                                    : 'text-slate-400 hover:text-slate-300'
-                                    }`}
-                            >
-                                <div className="flex items-center gap-2">
-                                    <Icons.Box size={16} />
-                                    Products ({products.filter(p => p.trackStock).length})
-                                </div>
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 overflow-auto bg-slate-800/60 rounded-xl border border-slate-700">
-                        <table className="w-full text-left text-sm">
-                            <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10">
-                                <tr>
-                                    <th className="px-4 py-3">SKU</th>
-                                    <th className="px-4 py-3">Name</th>
-                                    <th className="px-4 py-3 text-center">System Count</th>
-                                    <th className="px-4 py-3 text-center">Physical Count</th>
-                                    <th className="px-4 py-3 text-center">Variance</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700">
-                                {filteredStocktakeItems.length === 0 ? (
-                                    <tr>
-                                        <td colSpan="5" className="px-4 py-8 text-center text-slate-400">
-                                            {searchTerm ? `No ${activeStocktakeTab} match your search` : `No ${activeStocktakeTab} with stock tracking enabled`}
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    filteredStocktakeItems.map(item => {
-                                        const systemCount = getCurrentStock(item.id);
-                                        const countedValue = getCountedStock(item.id);
-                                        const variance = getVariance(item.id);
-
-                                        return (
-                                            <tr key={item.id} className="hover:bg-slate-700/50 transition-colors">
-                                                <td className="px-4 py-3 font-mono text-xs text-cyan-400">{item.sku}</td>
-                                                <td className="px-4 py-3 text-white font-medium">{item.name}</td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <span className="px-3 py-1 bg-slate-700 rounded text-white font-mono">
-                                                        {systemCount}
-                                                    </span>
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    <input
-                                                        type="number"
-                                                        min="0"
-                                                        value={countedValue}
-                                                        onChange={(e) => handleCountChange(item.id, e.target.value)}
-                                                        className="w-24 px-3 py-1 bg-slate-700 border border-slate-600 rounded text-white text-center font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                                        placeholder="0"
-                                                    />
-                                                </td>
-                                                <td className="px-4 py-3 text-center">
-                                                    {variance !== null && (
-                                                        <span className={`px-3 py-1 rounded font-mono font-bold ${variance > 0 ? 'bg-emerald-500/20 text-emerald-400' :
-                                                            variance < 0 ? 'bg-red-500/20 text-red-400' :
-                                                                'bg-slate-700 text-slate-400'
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className={`px-2 py-1 rounded text-xs font-medium ${stockItem.item.isSerialized
+                                                            ? 'bg-purple-500/20 text-purple-400'
+                                                            : stockItem.itemType === 'fastener'
+                                                                ? 'bg-amber-500/20 text-amber-400'
+                                                                : stockItem.itemType === 'product'
+                                                                    ? 'bg-purple-500/20 text-purple-400'
+                                                                    : 'bg-slate-700 text-slate-300'
                                                             }`}>
-                                                            {variance > 0 ? '+' : ''}{variance}
+                                                            {stockItem.item.isSerialized
+                                                                ? 'Serialized'
+                                                                : stockItem.itemType === 'fastener'
+                                                                    ? 'Fastener'
+                                                                    : stockItem.itemType === 'product'
+                                                                        ? 'Product'
+                                                                        : 'Part'}
                                                         </span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right">
+                                                        <span className={`font-bold ${stockItem.isLowStock ? 'text-red-400' : 'text-white'}`}>
+                                                            {stockItem.totalQuantity === 0 ? 'No Stock' : stockItem.totalQuantity}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right text-slate-300">{stockItem.item.reorderLevel}</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        {stockItem.totalQuantity === 0 ? (
+                                                            <span className="flex items-center justify-center gap-1 px-2 py-1 bg-slate-700/50 border border-slate-600 rounded text-xs text-slate-300 font-medium">
+                                                                <Icons.XCircle size={12} />
+                                                                No Stock
+                                                            </span>
+                                                        ) : stockItem.isAtReorderLevel ? (
+                                                            <span className="flex items-center justify-center gap-1 px-2 py-1 bg-amber-500/20 border border-amber-500/30 rounded text-xs text-amber-400 font-medium">
+                                                                <Icons.AlertTriangle size={12} />
+                                                                Reorder
+                                                            </span>
+                                                        ) : stockItem.isLowStock ? (
+                                                            <span className="flex items-center justify-center gap-1 px-2 py-1 bg-red-500/20 border border-red-500/30 rounded text-xs text-red-400 font-medium">
+                                                                <Icons.AlertTriangle size={12} />
+                                                                Low Stock
+                                                            </span>
+                                                        ) : (
+                                                            <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded text-xs font-medium">
+                                                                Good
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <button
+                                                            onClick={() => onAdjustStock(stockItem.item)}
+                                                            className="p-1.5 rounded hover:bg-slate-600 text-blue-400 transition-colors"
+                                                            title="Adjust Stock"
+                                                        >
+                                                            <Icons.Edit size={16} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
 
-                    {Object.keys(counts).length > 0 && (
-                        <div className="mt-4 p-4 bg-slate-800/60 rounded-xl border border-slate-700">
-                            <div className="flex items-center justify-between">
-                                <div className="text-sm text-slate-300">
-                                    <span className="font-bold">{Object.keys(counts).filter(k => counts[k] !== '').length}</span> items counted
-                                </div>
+                                                {/* Expanded Row for Serialized Assets */}
+                                                {expandedPartId === stockItem.item.id && stockItem.item.isSerialized && (
+                                                    <tr>
+                                                        <td colSpan="8" className="px-4 py-3 bg-slate-900/50">
+                                                            <div className="space-y-2">
+                                                                <div className="text-xs font-bold text-slate-400 uppercase mb-2">Serial Numbers:</div>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {stockItem.serializedAssets.map(asset => {
+                                                                        const location = locations.find(l => l.id === asset.currentLocationId);
+                                                                        return (
+                                                                            <div
+                                                                                key={asset.id}
+                                                                                className="flex items-center justify-between p-2 bg-slate-800 rounded border border-slate-700"
+                                                                            >
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Icons.Barcode size={14} className="text-purple-400" />
+                                                                                    <span className="font-mono text-xs text-white">{asset.serialNumber}</span>
+                                                                                </div>
+                                                                                <div className="flex items-center gap-1 text-xs text-slate-400">
+                                                                                    <Icons.MapPin size={12} />
+                                                                                    {location?.name || 'Unknown'}
+                                                                                </div>
+                                                                            </div>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                ) : (
+                    /* Stock Take View */
+                    <div className="flex flex-col flex-1 w-full">
+                        <div className="mb-4">
+                            <div className="flex justify-between items-center mb-4">
                                 <button
-                                    onClick={() => setCounts({})}
-                                    className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                                    onClick={handleSubmitStockTake}
+                                    disabled={saving || Object.keys(counts).length === 0}
+                                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
                                 >
-                                    Clear All Counts
+                                    <Icons.Save size={18} />
+                                    {saving ? 'Saving...' : 'Save Stock Take'}
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">Location</label>
+                                    <select
+                                        value={selectedLocation}
+                                        onChange={(e) => {
+                                            setSelectedLocation(e.target.value);
+                                            setCounts({});
+                                        }}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    >
+                                        {locations.map(loc => (
+                                            <option key={loc.id} value={loc.id}>{loc.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">Search</label>
+                                    <div className="relative">
+                                        <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                        <input
+                                            type="text"
+                                            placeholder="Search by name or SKU..."
+                                            value={searchTerm}
+                                            onChange={(e) => setSearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Stocktake Tabs */}
+                            <div className="flex gap-2 border-b border-slate-700">
+                                <button
+                                    onClick={() => setActiveStocktakeTab('parts')}
+                                    className={`px-4 py-2 font-medium transition-colors ${activeStocktakeTab === 'parts'
+                                        ? 'text-cyan-400 border-b-2 border-cyan-400'
+                                        : 'text-slate-400 hover:text-slate-300'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Icons.Package size={16} />
+                                        Parts ({parts.filter(p => !p.isSerialized && p.trackStock).length})
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setActiveStocktakeTab('fasteners')}
+                                    className={`px-4 py-2 font-medium transition-colors ${activeStocktakeTab === 'fasteners'
+                                        ? 'text-amber-400 border-b-2 border-amber-400'
+                                        : 'text-slate-400 hover:text-slate-300'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Icons.Wrench size={16} />
+                                        Fasteners ({fasteners.filter(f => f.trackStock).length})
+                                    </div>
+                                </button>
+                                <button
+                                    onClick={() => setActiveStocktakeTab('products')}
+                                    className={`px-4 py-2 font-medium transition-colors ${activeStocktakeTab === 'products'
+                                        ? 'text-purple-400 border-b-2 border-purple-400'
+                                        : 'text-slate-400 hover:text-slate-300'
+                                        }`}
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <Icons.Box size={16} />
+                                        Products ({products.filter(p => p.trackStock).length})
+                                    </div>
                                 </button>
                             </div>
                         </div>
-                    )}
-                </div>
-            )}
+
+                        <div className="flex-1 overflow-auto bg-slate-800/60 rounded-xl border border-slate-700">
+                            <table ref={stocktakeTableRef} className="text-left text-sm" style={{ tableLayout: 'auto' }}>
+                                <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10">
+                                    <tr>
+                                        <th className="px-4 py-3 relative" style={{ width: `${stocktakeColWidths[0]}px` }}>
+                                            <div className="column-content">SKU</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleStocktakeResizeStart(0, e)} onDoubleClick={() => autoFitStocktakeColumn(0, stocktakeTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 relative" style={{ width: `${stocktakeColWidths[1]}px` }}>
+                                            <div className="column-content">Name</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleStocktakeResizeStart(1, e)} onDoubleClick={() => autoFitStocktakeColumn(1, stocktakeTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-center relative" style={{ width: `${stocktakeColWidths[2]}px` }}>
+                                            <div className="column-content">System Count</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleStocktakeResizeStart(2, e)} onDoubleClick={() => autoFitStocktakeColumn(2, stocktakeTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-center relative" style={{ width: `${stocktakeColWidths[3]}px` }}>
+                                            <div className="column-content">Physical Count</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleStocktakeResizeStart(3, e)} onDoubleClick={() => autoFitStocktakeColumn(3, stocktakeTableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                        </th>
+                                        <th className="px-4 py-3 text-center relative" style={{ width: `${stocktakeColWidths[4]}px` }}>
+                                            <div className="column-content">Variance</div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700">
+                                    {filteredStocktakeItems.length === 0 ? (
+                                        <tr>
+                                            <td colSpan="5" className="px-4 py-8 text-center text-slate-400">
+                                                {searchTerm ? `No ${activeStocktakeTab} match your search` : `No ${activeStocktakeTab} with stock tracking enabled`}
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        filteredStocktakeItems.map(item => {
+                                            const systemCount = getCurrentStock(item.id);
+                                            const countedValue = getCountedStock(item.id);
+                                            const variance = getVariance(item.id);
+
+                                            return (
+                                                <tr key={item.id} className="hover:bg-slate-700/50 transition-colors">
+                                                    <td className="px-4 py-3 font-mono text-xs text-cyan-400">{item.sku}</td>
+                                                    <td className="px-4 py-3 text-white font-medium">{item.name}</td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <span className="px-3 py-1 bg-slate-700 rounded text-white font-mono">
+                                                            {systemCount}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={countedValue}
+                                                            onChange={(e) => handleCountChange(item.id, e.target.value)}
+                                                            className="w-24 px-3 py-1 bg-slate-700 border border-slate-600 rounded text-white text-center font-mono focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                            placeholder="0"
+                                                        />
+                                                    </td>
+                                                    <td className="px-4 py-3 text-center">
+                                                        {variance !== null && (
+                                                            <span className={`px-3 py-1 rounded font-mono font-bold ${variance > 0 ? 'bg-emerald-500/20 text-emerald-400' :
+                                                                variance < 0 ? 'bg-red-500/20 text-red-400' :
+                                                                    'bg-slate-700 text-slate-400'
+                                                                }`}>
+                                                                {variance > 0 ? '+' : ''}{variance}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {Object.keys(counts).length > 0 && (
+                            <div className="mt-4 p-4 bg-slate-800/60 rounded-xl border border-slate-700">
+                                <div className="flex items-center justify-between">
+                                    <div className="text-sm text-slate-300">
+                                        <span className="font-bold">{Object.keys(counts).filter(k => counts[k] !== '').length}</span> items counted
+                                    </div>
+                                    <button
+                                        onClick={() => setCounts({})}
+                                        className="text-sm text-red-400 hover:text-red-300 transition-colors"
+                                    >
+                                        Clear All Counts
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+            </div>
         </div>
     );
 };

@@ -5,6 +5,7 @@ import { Icons } from '../../constants/icons';
 import { getBuildGuideWithBOM, deleteBuildGuide } from '../../services/buildGuideService';
 import { BuildGuideModal } from './BuildGuideModal';
 import { exportBuildGuideToPDF } from '../../utils/pdfExport';
+import { useResizableColumns } from '../../hooks/useResizableColumns';
 
 /**
  * Build Guide Manager Component
@@ -208,54 +209,20 @@ export function BuildGuideManager() {
                     </div>
 
                     {/* BOM Section */}
-                    <div className="bg-slate-800 border border-slate-700 rounded-lg p-4">
-                        <h3 className="text-lg font-semibold text-white mb-3 flex items-center gap-2">
-                            <Icons.Package size={20} />
-                            Bill of Materials
-                        </h3>
-
-                        {/* Parts */}
-                        {buildGuideData.bom.parts.length > 0 && (
-                            <div className="mb-4">
-                                <h4 className="text-sm font-medium text-slate-300 mb-2">Parts</h4>
-                                <div className="space-y-2">
-                                    {buildGuideData.bom.parts.map(part => (
-                                        <div key={part.id} className="flex items-center justify-between bg-slate-700/50 px-3 py-2 rounded">
-                                            <div>
-                                                <span className="text-white font-medium">{part.partNumber}</span>
-                                                <span className="text-slate-400 ml-2 text-sm">{part.description}</span>
-                                            </div>
-                                            <span className="text-cyan-400 font-medium">
-                                                Qty: {part.quantityUsed} {part.unit}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Fasteners */}
-                        {buildGuideData.bom.fasteners.length > 0 && (
-                            <div>
-                                <h4 className="text-sm font-medium text-slate-300 mb-2">Fasteners</h4>
-                                <div className="space-y-2">
-                                    {buildGuideData.bom.fasteners.map(fastener => (
-                                        <div key={fastener.id} className="flex items-center justify-between bg-slate-700/50 px-3 py-2 rounded">
-                                            <div>
-                                                <span className="text-white font-medium">{fastener.partNumber}</span>
-                                                <span className="text-slate-400 ml-2 text-sm">{fastener.description}</span>
-                                            </div>
-                                            <span className="text-cyan-400 font-medium">
-                                                Qty: {fastener.quantityUsed}
-                                            </span>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {buildGuideData.bom.parts.length === 0 && buildGuideData.bom.fasteners.length === 0 && (
-                            <p className="text-slate-400 text-sm">No BOM items for this product</p>
+                    <div className="bg-slate-800 border border-slate-700 rounded-lg overflow-hidden">
+                        <div className="p-4 border-b border-slate-700 bg-slate-900/50">
+                            <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                                <Icons.Package size={20} />
+                                Bill of Materials
+                            </h3>
+                        </div>
+                        {buildGuideData.bom.parts.length === 0 && buildGuideData.bom.fasteners.length === 0 ? (
+                            <div className="p-6 text-center text-slate-400 italic">No BOM items for this product</div>
+                        ) : (
+                            <BOMTable
+                                parts={buildGuideData.bom.parts}
+                                fasteners={buildGuideData.bom.fasteners}
+                            />
                         )}
                     </div>
 
@@ -347,3 +314,62 @@ export function BuildGuideManager() {
         </div>
     );
 }
+
+const BOMTable = ({ parts, fasteners }) => {
+    const tableRef = React.useRef(null);
+    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([120, 150, 250, 100, 100]);
+
+    const bomItems = [
+        ...parts.map(p => ({ ...p, type: 'Part' })),
+        ...fasteners.map(f => ({ ...f, unit: 'pcs', type: 'Fastener' }))
+    ];
+
+    return (
+        <div className="overflow-x-auto">
+            <table ref={tableRef} className="text-left text-sm" style={{ tableLayout: 'auto' }}>
+                <thead className="bg-slate-800 border-b border-slate-700">
+                    <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[0]}px` }}>
+                            <div className="column-content">Type</div>
+                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(0, e)} onDoubleClick={() => autoFitColumn(0, tableRef)} onClick={(e) => e.stopPropagation()} />
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[1]}px` }}>
+                            <div className="column-content">Part Number</div>
+                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(1, e)} onDoubleClick={() => autoFitColumn(1, tableRef)} onClick={(e) => e.stopPropagation()} />
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[2]}px` }}>
+                            <div className="column-content">Description</div>
+                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(2, e)} onDoubleClick={() => autoFitColumn(2, tableRef)} onClick={(e) => e.stopPropagation()} />
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[3]}px` }}>
+                            <div className="column-content">Quantity</div>
+                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(3, e)} onDoubleClick={() => autoFitColumn(3, tableRef)} onClick={(e) => e.stopPropagation()} />
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[4]}px` }}>
+                            <div className="column-content">Unit</div>
+                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(4, e)} onDoubleClick={() => autoFitColumn(4, tableRef)} onClick={(e) => e.stopPropagation()} />
+                        </th>
+                    </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-700">
+                    {bomItems.map((item, idx) => (
+                        <tr key={idx} className="hover:bg-slate-700/50">
+                            <td className="px-4 py-3">
+                                <span className={`text-xs px-2 py-1 rounded border ${item.type === 'Part'
+                                        ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                                        : 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                                    }`}>
+                                    {item.type}
+                                </span>
+                            </td>
+                            <td className="px-4 py-3 text-white font-medium font-mono text-sm">{item.partNumber}</td>
+                            <td className="px-4 py-3 text-slate-300 text-sm">{item.description}</td>
+                            <td className="px-4 py-3 text-right text-emerald-400 font-mono">{item.quantityUsed}</td>
+                            <td className="px-4 py-3 text-slate-400 text-sm">{item.unit}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+};

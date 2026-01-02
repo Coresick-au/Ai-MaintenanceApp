@@ -188,7 +188,7 @@ export function InventoryApp({ onBack }) {
 
                 {/* Main Content */}
                 <main className="flex-1 p-6">
-                    <div className="max-w-7xl mx-auto h-full">
+                    <div className="w-full h-full">
                         {activeTab === 'catalog' && (
                             <PartCatalogTable
                                 onAddPart={handleAddPart}

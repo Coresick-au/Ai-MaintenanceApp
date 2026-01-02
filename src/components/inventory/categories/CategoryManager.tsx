@@ -53,12 +53,16 @@ export function CategoryManager() {
             return;
         }
 
-        // Check for duplicate names (simple validation)
+        // Check for duplicate names within the same parent (allow same names under different parents)
         const isDuplicate = categories.some(
-            cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase()
+            cat => cat.name.toLowerCase() === newCategoryName.trim().toLowerCase() &&
+                cat.parentId === addingSubcategoryTo
         );
         if (isDuplicate) {
-            setValidationError('A category with this name already exists');
+            const parentName = addingSubcategoryTo
+                ? categories.find(c => c.id === addingSubcategoryTo)?.name
+                : 'root level';
+            setValidationError(`A category with this name already exists under "${parentName}"`);
             return;
         }
 
@@ -106,13 +110,20 @@ export function CategoryManager() {
             return;
         }
 
-        // Check for duplicate names (excluding current category)
+        // Find the category being edited to get its parentId
+        const editingCategory = categories.find(cat => cat.id === editState.categoryId);
+
+        // Check for duplicate names within the same parent (excluding current category)
         const isDuplicate = categories.some(
             cat => cat.id !== editState.categoryId &&
-                cat.name.toLowerCase() === editState.name.trim().toLowerCase()
+                cat.name.toLowerCase() === editState.name.trim().toLowerCase() &&
+                cat.parentId === editingCategory?.parentId
         );
         if (isDuplicate) {
-            setValidationError('A category with this name already exists');
+            const parentName = editingCategory?.parentId
+                ? categories.find(c => c.id === editingCategory.parentId)?.name
+                : 'root level';
+            setValidationError(`A category with this name already exists under "${parentName}"`);
             return;
         }
 

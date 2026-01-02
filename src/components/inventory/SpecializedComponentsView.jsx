@@ -14,11 +14,11 @@ export const SpecializedComponentsView = () => {
 
     const tabs = [
         { id: 'weigh-modules', label: 'Weigh Modules', icon: Icons.Scale },
-        { id: 'idler-frames', label: 'Idler Frames', icon: Icons.Frame },
+        { id: 'idler-frames', label: 'Idler Frames', icon: Icons.Triangle },
         { id: 'billet-weights', label: 'Billet Weights', icon: Icons.Weight },
         { id: 'rollers', label: 'Rollers', icon: Icons.Circle },
-        { id: 'speed-sensors', label: 'Spiral Cage Speed Sensors', icon: Icons.Activity },
-        { id: 'tmd-frames', label: 'TMD Frames', icon: Icons.AlertOctagon },
+        { id: 'speed-sensors', label: 'Spiral Cage Speed Sensors', icon: Icons.Gauge },
+        { id: 'tmd-frames', label: 'TMD Frames', icon: Icons.Magnet },
         { id: 'estimator', label: 'Cost Estimator', icon: Icons.Calculator },
         { id: 'configuration', label: 'Configuration', icon: Icons.Settings }
     ];
@@ -57,7 +57,7 @@ export const SpecializedComponentsView = () => {
 
             {/* Tab Content */}
             <div className="flex-1 overflow-auto bg-slate-800 p-6">
-                <div className="max-w-7xl mx-auto">
+                <div className="w-full">
                     {activeTab === 'weigh-modules' && <WeighModuleManager />}
                     {activeTab === 'idler-frames' && <IdlerFrameManager />}
                     {activeTab === 'billet-weights' && <BilletWeightManager />}

@@ -90,8 +90,35 @@ import {
     TrendingUp,
     List,
     BookOpen,
-    Image
+    Image,
+    Gauge,
+    Magnet,
+    Triangle,
+    Pyramid
 } from 'lucide-react';
+
+// Custom Idler Frame Icon (triangle with circle on top)
+const IdlerFrame = ({ size = 24, className = '', ...props }) => (
+    <svg
+        width={size}
+        height={size}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={className}
+        {...props}
+    >
+        {/* Circle on top (roller) */}
+        <circle cx="12" cy="3.5" r="6" />
+        {/* Triangle frame */}
+        <path d="M 6 20 L 12 9 L 18 20 Z" />
+        {/* Base line */}
+        <line x1="4" y1="20" x2="20" y2="20" />
+    </svg>
+);
 
 export const Icons = {
     Activity,
@@ -185,5 +212,11 @@ export const Icons = {
     TrendingUp,
     List,
     BookOpen,
-    Image
+    Image,
+    Gauge,
+    Magnet,
+    Triangle,
+    Pyramid,
+    IdlerFrame
 };
+

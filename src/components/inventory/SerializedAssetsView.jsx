@@ -3,6 +3,7 @@ import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { addSerializedAsset, updateSerializedAsset, moveSerializedAsset, deleteSerializedAsset } from '../../services/inventoryService';
+import { useResizableColumns } from '../../hooks/useResizableColumns';
 
 const STATUS_COLORS = {
     IN_STOCK: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30',
@@ -19,7 +20,10 @@ export const SerializedAssetsView = () => {
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+
     const [loading, setLoading] = useState(true);
+    const tableRef = React.useRef(null);
+    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([150, 200, 120, 150, 120]);
 
     useEffect(() => {
         const unsubAssets = onSnapshot(collection(db, 'serialized_assets'), (snap) => {
@@ -45,6 +49,23 @@ export const SerializedAssetsView = () => {
         };
     }, []);
 
+    // Auto-fit Part column (index 1) on initial load
+    const [hasAutoFitted, setHasAutoFitted] = useState(false);
+    useEffect(() => {
+        if (!loading && assets.length > 0 && parts.length > 0 && !hasAutoFitted && tableRef.current) {
+            // Check if rows are actually rendered
+            const rows = tableRef.current.querySelectorAll('tbody tr');
+            if (rows.length > 0) {
+                // DOM update needs a moment to settle styles/fonts
+                setTimeout(() => {
+                    console.log('Auto-fitting Part column...');
+                    autoFitColumn(1, tableRef);
+                    setHasAutoFitted(true);
+                }, 500);
+            }
+        }
+    }, [loading, assets, parts, hasAutoFitted, autoFitColumn, searchTerm, statusFilter]);
+
     const filteredAssets = assets.filter(asset => {
         const matchesSearch = asset.serialNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
             parts.find(p => p.id === asset.partId)?.name.toLowerCase().includes(searchTerm.toLowerCase());
@@ -57,110 +78,139 @@ export const SerializedAssetsView = () => {
     }
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-4 flex-1">
-                    <div className="relative flex-1 max-w-md">
-                        <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
-                        <input
-                            type="text"
-                            placeholder="Search by serial number or part name..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                        />
+        <div className="flex flex-col h-full items-center">
+            <div className="w-full max-w-fit flex flex-col h-full">
+                <div className="flex justify-between items-center mb-4">
+                    <div className="flex items-center gap-4 flex-1">
+                        <div className="relative flex-1 max-w-md">
+                            <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                            <input
+                                type="text"
+                                placeholder="Search by serial number or part name..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            />
+                        </div>
+                        <select
+                            value={statusFilter}
+                            onChange={(e) => setStatusFilter(e.target.value)}
+                            className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                        >
+                            <option value="all">All Status</option>
+                            <option value="IN_STOCK">In Stock</option>
+                            <option value="ALLOCATED">Allocated</option>
+                            <option value="RMA">RMA</option>
+                            <option value="MISSING">Missing</option>
+                        </select>
+                        <div className="text-sm text-slate-400">
+                            {filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}
+                        </div>
                     </div>
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                    <button
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
                     >
-                        <option value="all">All Status</option>
-                        <option value="IN_STOCK">In Stock</option>
-                        <option value="ALLOCATED">Allocated</option>
-                        <option value="RMA">RMA</option>
-                        <option value="MISSING">Missing</option>
-                    </select>
-                    <div className="text-sm text-slate-400">
-                        {filteredAssets.length} asset{filteredAssets.length !== 1 ? 's' : ''}
+                        <Icons.Plus size={18} />
+                        Register Asset
+                    </button>
+                </div>
+
+                <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden flex-1">
+                    <div className="overflow-x-auto h-full">
+                        <table ref={tableRef} className="text-left text-sm w-full" style={{ tableLayout: 'auto' }}>
+                            <thead className="bg-slate-900 border-b border-slate-700 sticky top-0 z-10">
+                                <tr>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[0]}px` }}>
+                                        <div className="column-content">Serial Number</div>
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(0, e)} onDoubleClick={() => autoFitColumn(0, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[1]}px` }}>
+                                        <div className="column-content">Part</div>
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(1, e)} onDoubleClick={() => autoFitColumn(1, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[2]}px` }}>
+                                        <div className="column-content">Status</div>
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(2, e)} onDoubleClick={() => autoFitColumn(2, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[3]}px` }}>
+                                        <div className="column-content">Location</div>
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(3, e)} onDoubleClick={() => autoFitColumn(3, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[4]}px` }}>
+                                        <div className="column-content">Purchase Date</div>
+                                        <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(4, e)} onDoubleClick={() => autoFitColumn(4, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700 overflow-y-auto">
+                                {filteredAssets.length === 0 ? (
+                                    <tr>
+                                        <td colSpan="5" className="px-4 py-8 text-center text-slate-400">
+                                            {searchTerm || statusFilter !== 'all'
+                                                ? 'No assets match your filters'
+                                                : 'No serialized assets yet. Register your first asset to get started.'}
+                                        </td>
+                                    </tr>
+                                ) : (
+                                    filteredAssets.map(asset => {
+                                        const part = parts.find(p => p.id === asset.partId);
+                                        const location = locations.find(l => l.id === asset.currentLocationId);
+                                        return (
+                                            <tr
+                                                key={asset.id}
+                                                onClick={() => setSelectedAsset(asset)}
+                                                className="hover:bg-slate-700/50 transition-colors cursor-pointer"
+                                            >
+                                                <td className="px-4 py-3 font-mono text-sm font-bold text-white">
+                                                    <div className="flex items-center gap-2">
+                                                        <Icons.Barcode size={16} className="text-purple-400" />
+                                                        {asset.serialNumber}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-300">
+                                                    {part?.name || 'Unknown Part'}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <span className={`inline-block px-2 py-0.5 rounded border text-xs font-medium ${STATUS_COLORS[asset.status]}`}>
+                                                        {asset.status.replace('_', ' ')}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-300">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Icons.MapPin size={12} className="text-slate-500" />
+                                                        {location?.name || 'Unknown'}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-300">
+                                                    {asset.purchaseDate ? new Date(asset.purchaseDate).toLocaleDateString() : '-'}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
-                <button
-                    onClick={() => setIsAddModalOpen(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
-                >
-                    <Icons.Plus size={18} />
-                    Register Asset
-                </button>
-            </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 overflow-auto">
-                {filteredAssets.length === 0 ? (
-                    <div className="col-span-full text-center py-12 text-slate-400">
-                        {searchTerm || statusFilter !== 'all'
-                            ? 'No assets match your filters'
-                            : 'No serialized assets yet. Register your first asset to get started.'}
-                    </div>
-                ) : (
-                    filteredAssets.map(asset => {
-                        const part = parts.find(p => p.id === asset.partId);
-                        const location = locations.find(l => l.id === asset.currentLocationId);
+                {isAddModalOpen && (
+                    <AddAssetModal
+                        parts={parts}
+                        locations={locations}
+                        onClose={() => setIsAddModalOpen(false)}
+                    />
+                )}
 
-                        return (
-                            <div
-                                key={asset.id}
-                                onClick={() => setSelectedAsset(asset)}
-                                className="bg-slate-800/60 border border-slate-700 rounded-xl p-4 hover:border-cyan-500/50 transition-colors cursor-pointer"
-                            >
-                                <div className="flex items-start justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        <Icons.Barcode size={20} className="text-purple-400" />
-                                        <div>
-                                            <div className="font-mono text-sm text-white font-bold">{asset.serialNumber}</div>
-                                            <div className="text-xs text-slate-400">{part?.name || 'Unknown Part'}</div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <div className={`px-2 py-1 rounded border text-xs font-medium ${STATUS_COLORS[asset.status]}`}>
-                                        {asset.status.replace('_', ' ')}
-                                    </div>
-
-                                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                                        <Icons.MapPin size={12} />
-                                        {location?.name || 'Unknown Location'}
-                                    </div>
-
-                                    {asset.purchaseDate && (
-                                        <div className="flex items-center gap-2 text-xs text-slate-400">
-                                            <Icons.Calendar size={12} />
-                                            {new Date(asset.purchaseDate).toLocaleDateString()}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        );
-                    })
+                {selectedAsset && (
+                    <AssetDetailModal
+                        asset={selectedAsset}
+                        part={parts.find(p => p.id === selectedAsset.partId)}
+                        locations={locations}
+                        onClose={() => setSelectedAsset(null)}
+                    />
                 )}
             </div>
-
-            {isAddModalOpen && (
-                <AddAssetModal
-                    parts={parts}
-                    locations={locations}
-                    onClose={() => setIsAddModalOpen(false)}
-                />
-            )}
-
-            {selectedAsset && (
-                <AssetDetailModal
-                    asset={selectedAsset}
-                    part={parts.find(p => p.id === selectedAsset.partId)}
-                    locations={locations}
-                    onClose={() => setSelectedAsset(null)}
-                />
-            )}
         </div>
     );
 };

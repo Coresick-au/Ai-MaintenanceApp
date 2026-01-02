@@ -22,7 +22,8 @@ import {
 export const PART_MATERIALS = {
     STAINLESS_304: 'Stainless 304',
     STAINLESS_316: 'Stainless 316',
-    GALVANISED: 'Galvanised'
+    GALVANISED: 'Galvanised',
+    ZINC: 'Zinc'
 };
 
 // ==========================================

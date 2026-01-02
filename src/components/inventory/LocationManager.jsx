@@ -141,42 +141,44 @@ export const LocationManager = () => {
     const locationTree = buildLocationTree();
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4">
-                <div>
-                    <h2 className="text-xl font-bold text-white">Warehouse Locations</h2>
-                    <p className="text-sm text-slate-400 mt-1">
-                        {locations.length} location{locations.length !== 1 ? 's' : ''} in hierarchical structure
-                    </p>
-                </div>
-                <button
-                    onClick={handleAdd}
-                    className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
-                >
-                    <Icons.Plus size={18} />
-                    Add Location
-                </button>
-            </div>
-
-            <div className="space-y-2">
-                {locationTree.map(node => renderLocationNode(node))}
-
-                {locations.length === 0 && (
-                    <div className="text-center py-12 text-slate-400 bg-slate-800/30 rounded-lg border border-slate-700">
-                        <Icons.MapPin size={48} className="mx-auto mb-3 opacity-50" />
-                        <p className="font-medium">No locations yet</p>
-                        <p className="text-sm mt-1">Start by adding a warehouse location</p>
+        <div className="flex flex-col h-full items-center">
+            <div className="w-full max-w-fit flex flex-col h-full space-y-4">
+                <div className="flex justify-between items-center mb-4">
+                    <div>
+                        <h2 className="text-xl font-bold text-white">Warehouse Locations</h2>
+                        <p className="text-sm text-slate-400 mt-1">
+                            {locations.length} location{locations.length !== 1 ? 's' : ''} in hierarchical structure
+                        </p>
                     </div>
+                    <button
+                        onClick={handleAdd}
+                        className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
+                    >
+                        <Icons.Plus size={18} />
+                        Add Location
+                    </button>
+                </div>
+
+                <div className="space-y-2">
+                    {locationTree.map(node => renderLocationNode(node))}
+
+                    {locations.length === 0 && (
+                        <div className="text-center py-12 text-slate-400 bg-slate-800/30 rounded-lg border border-slate-700">
+                            <Icons.MapPin size={48} className="mx-auto mb-3 opacity-50" />
+                            <p className="font-medium">No locations yet</p>
+                            <p className="text-sm mt-1">Start by adding a warehouse location</p>
+                        </div>
+                    )}
+                </div>
+
+                {isModalOpen && (
+                    <LocationModal
+                        location={editingLocation}
+                        onClose={() => setIsModalOpen(false)}
+                        allLocations={locations}
+                    />
                 )}
             </div>
-
-            {isModalOpen && (
-                <LocationModal
-                    location={editingLocation}
-                    onClose={() => setIsModalOpen(false)}
-                    allLocations={locations}
-                />
-            )}
         </div>
     );
 };

@@ -508,6 +508,9 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                     <option value="Stainless 304">Stainless 304</option>
                                     <option value="Stainless 316">Stainless 316</option>
                                     <option value="Galvanised">Galvanised</option>
+                                    <option value="Zinc">Zinc</option>
+                                    <option value="Plastic">Plastic</option>
+                                    <option value="Nylon">Nylon</option>
                                 </select>
                                 <p className="text-xs text-slate-400 mt-1">Optional material specification</p>
                             </div>

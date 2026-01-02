@@ -16,6 +16,7 @@ import { exportToCSV, importFromCSV } from '../../utils/csvExportImport';
 import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
+import { useResizableColumns } from '../../hooks/useResizableColumns';
 
 export const BilletWeightManager = () => {
     const [billetWeights, setBilletWeights] = useState([]);
@@ -45,6 +46,9 @@ export const BilletWeightManager = () => {
         effectiveDate: new Date().toISOString().split('T')[0],
         notes: ''
     });
+
+    const tableRef = useRef(null);
+    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([120, 100, 150, 150, 150, 120, 120, 120, 100]);
 
     // Load billet weights from Firestore
     useEffect(() => {
@@ -287,12 +291,13 @@ export const BilletWeightManager = () => {
         return sorted;
     };
 
-    const SortableHeader = ({ field, children }) => (
+    const SortableHeader = ({ field, children, index }) => (
         <th
-            className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase cursor-pointer hover:bg-slate-700/50 transition-colors"
+            className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase cursor-pointer hover:bg-slate-700/50 transition-colors relative"
             onClick={() => handleSort(field)}
+            style={{ width: `${columnWidths[index]}px` }}
         >
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 column-content">
                 {children}
                 {sortField === field && (
                     sortDirection === 'asc' ?
@@ -300,454 +305,476 @@ export const BilletWeightManager = () => {
                         <Icons.ChevronDown size={14} />
                 )}
             </div>
+            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors"
+                onMouseDown={(e) => handleResizeStart(index, e)}
+                onDoubleClick={() => autoFitColumn(index, tableRef)}
+                onClick={(e) => e.stopPropagation()}
+                title="Drag to resize, double-click to auto-fit"
+            />
         </th>
     );
 
     return (
         <CategoryProvider>
-            <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h2 className="text-2xl font-bold text-white">Billet Weights</h2>
-                        <p className="text-sm text-slate-400 mt-1">
-                            Track historical cost data for billet weights (&lt;250kg and ≥250kg)
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <button
-                            onClick={handleExport}
-                            disabled={billetWeights.length === 0}
-                            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <Icons.Download size={20} />
-                            Export CSV
-                        </button>
-                        <button
-                            onClick={handleImportClick}
-                            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                        >
-                            <Icons.Upload size={20} />
-                            Import CSV
-                        </button>
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".csv"
-                            onChange={handleFileSelect}
-                            className="hidden"
-                        />
-                        <button
-                            onClick={() => handleOpenForm()}
-                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                        >
-                            <Icons.Plus size={20} />
-                            Add Billet Weight
-                        </button>
-                    </div>
-                </div>
-
-                {/* Error Display */}
-                {error && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
-                        {error}
-                    </div>
-                )}
-
-                {/* Success Message */}
-                {successMessage && (
-                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm">
-                        {successMessage}
-                    </div>
-                )}
-
-                {/* Table */}
-                <div className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
-                    <div className="overflow-x-auto">
-                        <table className="w-full">
-                            <thead className="bg-slate-800 border-b border-slate-700">
-                                <tr>
-                                    <SortableHeader field="weightKg">Weight (kg)</SortableHeader>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Size</th>
-                                    <SortableHeader field="materialType">Material</SortableHeader>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Item Category</th>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Suppliers</th>
-                                    <SortableHeader field="costPrice">Cost Price</SortableHeader>
-                                    <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase">Setup Cost</th>
-                                    <SortableHeader field="effectiveDate">Effective Date</SortableHeader>
-                                    <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700">
-                                {getSortedWeights().length === 0 ? (
-                                    <tr>
-                                        <td colSpan="9" className="px-4 py-8 text-center text-slate-400">
-                                            No billet weights added yet. Click "Add Billet Weight" to get started.
-                                        </td>
-                                    </tr>
-                                ) : (
-                                    getSortedWeights().map(weight => (
-                                        <tr key={weight.id} className="hover:bg-slate-800/50 transition-colors">
-                                            <td className="px-4 py-3 text-sm text-white font-medium">{weight.weightKg}kg</td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <span className={`px-2 py-0.5 rounded text-xs ${getBilletWeightCategory(weight.weightKg) === 'Small (<250kg)'
-                                                    ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
-                                                    : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
-                                                    }`}>
-                                                    {getBilletWeightCategory(weight.weightKg)}
-                                                </span>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">
-                                                <div className="flex items-center gap-2">
-                                                    <span>{MATERIAL_TYPES[weight.materialType]}</span>
-                                                    {weight.isCBW && (
-                                                        <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded text-xs font-medium">
-                                                            CBW
-                                                        </span>
-                                                    )}
-                                                    {weight.isPlateWeight && (
-                                                        <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs font-medium">
-                                                            Plate Weight {weight.plateWeightQuantity ? `(Qty: ${weight.plateWeightQuantity})` : ''}
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {getCategoryName(weight.categoryId) || getCategoryName(weight.subcategoryId) ? (
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {getCategoryName(weight.categoryId) && (
-                                                            <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded text-xs">
-                                                                {getCategoryName(weight.categoryId)}
-                                                            </span>
-                                                        )}
-                                                        {getCategoryName(weight.subcategoryId) && (
-                                                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs">
-                                                                {getCategoryName(weight.subcategoryId)}
-                                                            </span>
-                                                        )}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-500 text-xs">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {weight.suppliers && weight.suppliers.length > 0 ? (
-                                                    <div className="flex flex-wrap gap-1">
-                                                        {weight.suppliers.map((supplier, idx) => (
-                                                            <span key={idx} className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-xs">
-                                                                {supplier}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                ) : (
-                                                    <span className="text-slate-500 text-xs">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-emerald-400">
-                                                {weight.isPlateWeight && weight.plateWeightQuantity ? (
-                                                    <div>
-                                                        <div className="text-emerald-400">
-                                                            {formatCurrency(weight.costPrice)} × {weight.plateWeightQuantity}
-                                                        </div>
-                                                        <div className="text-xs text-slate-400 mt-0.5">
-                                                            Total: {formatCurrency(weight.costPrice * weight.plateWeightQuantity)}
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    formatCurrency(weight.costPrice)
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-slate-300">
-                                                {weight.setupCost ? formatCurrency(weight.setupCost) : '-'}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-slate-300">{weight.effectiveDate}</td>
-                                            <td className="px-4 py-3 text-right">
-                                                <div className="flex items-center justify-end gap-2">
-                                                    <button
-                                                        onClick={() => handleOpenForm(weight)}
-                                                        className="p-1.5 hover:bg-slate-700 rounded text-cyan-400 transition-colors"
-                                                        title="Edit"
-                                                    >
-                                                        <Icons.Edit size={16} />
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDelete(weight.id)}
-                                                        className="p-1.5 hover:bg-slate-700 rounded text-red-400 transition-colors"
-                                                        title="Delete"
-                                                    >
-                                                        <Icons.Trash size={16} />
-                                                    </button>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    ))
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                {/* Form Modal */}
-                {isFormOpen && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-                        <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
-                            <div className="border-b border-slate-700 p-6">
-                                <div className="flex items-center justify-between">
-                                    <h3 className="text-xl font-bold text-white">
-                                        {editingWeight ? 'Edit Billet Weight' : 'Add Billet Weight'}
-                                    </h3>
-                                    <button
-                                        onClick={handleCloseForm}
-                                        className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
-                                    >
-                                        <Icons.X size={20} className="text-slate-400" />
-                                    </button>
-                                </div>
-                            </div>
-
-                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Weight */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Weight (kg) <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="0"
-                                            step="0.1"
-                                            value={formData.weightKg}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, weightKg: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="250"
-                                        />
-                                        {formData.weightKg > 0 && (
-                                            <p className="text-xs text-slate-400 mt-1">
-                                                Category: {getBilletWeightCategory(parseFloat(formData.weightKg))}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Material Type */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Material Type <span className="text-red-400">*</span>
-                                        </label>
-                                        <select
-                                            required
-                                            value={formData.materialType}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, materialType: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            <option value="STAINLESS_STEEL">{MATERIAL_TYPES.STAINLESS_STEEL}</option>
-                                            <option value="GALVANISED">{MATERIAL_TYPES.GALVANISED}</option>
-                                        </select>
-                                    </div>
-
-                                    {/* CBW Checkbox */}
-                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                        <input
-                                            type="checkbox"
-                                            id="isCBW"
-                                            checked={formData.isCBW}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, isCBW: e.target.checked }))}
-                                            className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
-                                        />
-                                        <label htmlFor="isCBW" className="text-sm text-slate-300 cursor-pointer">
-                                            CBW (Compact Belt Weigher)
-                                        </label>
-                                    </div>
-
-                                    {/* Plate Weight Checkbox */}
-                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                        <input
-                                            type="checkbox"
-                                            id="isPlateWeight"
-                                            checked={formData.isPlateWeight}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, isPlateWeight: e.target.checked }))}
-                                            className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
-                                        />
-                                        <label htmlFor="isPlateWeight" className="text-sm text-slate-300 cursor-pointer">
-                                            Plate Weight
-                                        </label>
-                                    </div>
-                                </div>
-
-                                {/* Plate Weight Quantity - Conditional */}
-                                {formData.isPlateWeight && (
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Plate Weight Quantity <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            required={formData.isPlateWeight}
-                                            min="1"
-                                            step="1"
-                                            value={formData.plateWeightQuantity}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, plateWeightQuantity: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
-                                            placeholder="e.g., 2, 4, 6..."
-                                        />
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            Number of weights for cost calculation
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Category Selection */}
-                                <CategorySelect
-                                    value={{ categoryId: formData.categoryId, subcategoryId: formData.subcategoryId }}
-                                    onChange={(selection) => setFormData(prev => ({
-                                        ...prev,
-                                        categoryId: selection.categoryId,
-                                        subcategoryId: selection.subcategoryId
-                                    }))}
-                                    required={false}
-                                />
-
-                                {/* Suppliers */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                                        Suppliers
-                                    </label>
-                                    <div className="space-y-3">
-                                        <div className="flex gap-2">
-                                            <select
-                                                value={selectedSupplier}
-                                                onChange={(e) => setSelectedSupplier(e.target.value)}
-                                                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            >
-                                                <option value="">-- Select Supplier --</option>
-                                                {filteredSuppliers.map(supplier => (
-                                                    <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
-                                                ))}
-                                            </select>
-                                            <button
-                                                type="button"
-                                                onClick={handleAddSupplier}
-                                                disabled={!selectedSupplier}
-                                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                                            >
-                                                <Icons.Plus size={16} />
-                                                Add
-                                            </button>
-                                        </div>
-
-                                        {formData.suppliers?.length > 0 && (
-                                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                                <p className="text-xs text-slate-400 mb-2">Added Suppliers:</p>
-                                                <div className="space-y-1">
-                                                    {formData.suppliers.map((supplier, index) => (
-                                                        <div key={index} className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                                                            <span className="text-sm text-white">{supplier}</span>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => handleRemoveSupplier(supplier)}
-                                                                className="p-1 hover:bg-red-500/20 rounded text-red-400 transition-colors"
-                                                                title="Remove supplier"
-                                                            >
-                                                                <Icons.X size={16} />
-                                                            </button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    {/* Cost Price */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Cost Price ($) {formData.isPlateWeight && '(per unit)'} <span className="text-red-400">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            required
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.costPrice}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="0.00"
-                                        />
-                                        {formData.isPlateWeight && formData.plateWeightQuantity && formData.costPrice && (
-                                            <p className="text-xs text-purple-400 mt-1">
-                                                Total: ${(parseFloat(formData.costPrice) * parseInt(formData.plateWeightQuantity)).toFixed(2)}
-                                            </p>
-                                        )}
-                                    </div>
-
-                                    {/* Setup Cost */}
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Setup Cost ($)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.setupCost}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, setupCost: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Effective Date */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                                        Effective Date <span className="text-red-400">*</span>
-                                    </label>
-                                    <input
-                                        type="date"
-                                        required
-                                        value={formData.effectiveDate}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, effectiveDate: e.target.value }))}
-                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    />
-                                </div>
-
-                                {/* Notes */}
-                                <div>
-                                    <label className="block text-sm font-medium text-slate-300 mb-1">
-                                        Notes
-                                    </label>
-                                    <textarea
-                                        value={formData.notes}
-                                        onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-                                        rows="3"
-                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="Optional notes..."
-                                        maxLength={500}
-                                    />
-                                </div>
-
-                                {/* Actions */}
-                                <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
-                                    <button
-                                        type="button"
-                                        onClick={handleCloseForm}
-                                        className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                                    >
-                                        Cancel
-                                    </button>
-                                    <button
-                                        type="submit"
-                                        disabled={saving}
-                                        className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                    >
-                                        {saving ? 'Saving...' : (editingWeight ? 'Update' : 'Add')}
-                                    </button>
-                                </div>
-                            </form>
+            <div className="flex flex-col h-full items-center">
+                <div className="w-full max-w-fit space-y-4">
+                    {/* Header */}
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <h2 className="text-2xl font-bold text-white">Billet Weights</h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                Track historical cost data for billet weights (&lt;250kg and ≥250kg)
+                            </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={handleExport}
+                                disabled={billetWeights.length === 0}
+                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <Icons.Download size={20} />
+                                Export CSV
+                            </button>
+                            <button
+                                onClick={handleImportClick}
+                                className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                                <Icons.Upload size={20} />
+                                Import CSV
+                            </button>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept=".csv"
+                                onChange={handleFileSelect}
+                                className="hidden"
+                            />
+                            <button
+                                onClick={() => handleOpenForm()}
+                                className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                            >
+                                <Icons.Plus size={20} />
+                                Add Billet Weight
+                            </button>
                         </div>
                     </div>
-                )}
+
+                    {/* Error Display */}
+                    {error && (
+                        <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
+                            {error}
+                        </div>
+                    )}
+
+                    {/* Success Message */}
+                    {successMessage && (
+                        <div className="p-3 bg-emerald-500/10 border border-emerald-500/30 rounded-lg text-emerald-400 text-sm">
+                            {successMessage}
+                        </div>
+                    )}
+
+                    {/* Table */}
+                    <div className="bg-slate-900 rounded-lg border border-slate-700 overflow-hidden">
+                        <div className="overflow-x-auto">
+                            <table ref={tableRef} className="text-left text-sm" style={{ tableLayout: 'auto' }}>
+                                <thead className="bg-slate-800 border-b border-slate-700">
+                                    <tr>
+                                        <SortableHeader field="weightKg" index={0}>Weight (kg)</SortableHeader>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[1]}px` }}>
+                                            <div className="column-content">Size</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(1, e)} onDoubleClick={() => autoFitColumn(1, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                        </th>
+                                        <SortableHeader field="materialType" index={2}>Material</SortableHeader>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[3]}px` }}>
+                                            <div className="column-content">Item Category</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(3, e)} onDoubleClick={() => autoFitColumn(3, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                        </th>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[4]}px` }}>
+                                            <div className="column-content">Suppliers</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(4, e)} onDoubleClick={() => autoFitColumn(4, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                        </th>
+                                        <SortableHeader field="costPrice" index={5}>Cost Price</SortableHeader>
+                                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[6]}px` }}>
+                                            <div className="column-content">Setup Cost</div>
+                                            <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(6, e)} onDoubleClick={() => autoFitColumn(6, tableRef)} onClick={(e) => e.stopPropagation()} />
+                                        </th>
+                                        <SortableHeader field="effectiveDate" index={7}>Effective Date</SortableHeader>
+                                        <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase relative" style={{ width: `${columnWidths[8]}px` }}>
+                                            <div className="column-content">Actions</div>
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700">
+                                    {getSortedWeights().length === 0 ? (
+                                        <tr>
+                                            <td colSpan="9" className="px-4 py-8 text-center text-slate-400">
+                                                No billet weights added yet. Click "Add Billet Weight" to get started.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        getSortedWeights().map(weight => (
+                                            <tr key={weight.id} className="hover:bg-slate-800/50 transition-colors">
+                                                <td className="px-4 py-3 text-sm text-white font-medium">{weight.weightKg}kg</td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <span className={`px-2 py-0.5 rounded text-xs ${getBilletWeightCategory(weight.weightKg) === 'Small (<250kg)'
+                                                        ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                                        : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                                        }`}>
+                                                        {getBilletWeightCategory(weight.weightKg)}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-300">
+                                                    <div className="flex items-center gap-2">
+                                                        <span>{MATERIAL_TYPES[weight.materialType]}</span>
+                                                        {weight.isCBW && (
+                                                            <span className="px-2 py-0.5 bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 rounded text-xs font-medium">
+                                                                CBW
+                                                            </span>
+                                                        )}
+                                                        {weight.isPlateWeight && (
+                                                            <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs font-medium">
+                                                                Plate Weight {weight.plateWeightQuantity ? `(Qty: ${weight.plateWeightQuantity})` : ''}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    {getCategoryName(weight.categoryId) || getCategoryName(weight.subcategoryId) ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {getCategoryName(weight.categoryId) && (
+                                                                <span className="px-2 py-0.5 bg-blue-500/20 text-blue-300 border border-blue-500/30 rounded text-xs">
+                                                                    {getCategoryName(weight.categoryId)}
+                                                                </span>
+                                                            )}
+                                                            {getCategoryName(weight.subcategoryId) && (
+                                                                <span className="px-2 py-0.5 bg-purple-500/20 text-purple-300 border border-purple-500/30 rounded text-xs">
+                                                                    {getCategoryName(weight.subcategoryId)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-500 text-xs">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    {weight.suppliers && weight.suppliers.length > 0 ? (
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {weight.suppliers.map((supplier, idx) => (
+                                                                <span key={idx} className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 rounded text-xs">
+                                                                    {supplier}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <span className="text-slate-500 text-xs">-</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm font-mono text-emerald-400">
+                                                    {weight.isPlateWeight && weight.plateWeightQuantity ? (
+                                                        <div>
+                                                            <div className="text-emerald-400">
+                                                                {formatCurrency(weight.costPrice)} × {weight.plateWeightQuantity}
+                                                            </div>
+                                                            <div className="text-xs text-slate-400 mt-0.5">
+                                                                Total: {formatCurrency(weight.costPrice * weight.plateWeightQuantity)}
+                                                            </div>
+                                                        </div>
+                                                    ) : (
+                                                        formatCurrency(weight.costPrice)
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm font-mono text-slate-300">
+                                                    {weight.setupCost ? formatCurrency(weight.setupCost) : '-'}
+                                                </td>
+                                                <td className="px-4 py-3 text-sm text-slate-300">{weight.effectiveDate}</td>
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex items-center justify-end gap-2">
+                                                        <button
+                                                            onClick={() => handleOpenForm(weight)}
+                                                            className="p-1.5 hover:bg-slate-700 rounded text-cyan-400 transition-colors"
+                                                            title="Edit"
+                                                        >
+                                                            <Icons.Edit size={16} />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDelete(weight.id)}
+                                                            className="p-1.5 hover:bg-slate-700 rounded text-red-400 transition-colors"
+                                                            title="Delete"
+                                                        >
+                                                            <Icons.Trash size={16} />
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Form Modal */}
+                    {isFormOpen && (
+                        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+                            <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
+                                <div className="border-b border-slate-700 p-6">
+                                    <div className="flex items-center justify-between">
+                                        <h3 className="text-xl font-bold text-white">
+                                            {editingWeight ? 'Edit Billet Weight' : 'Add Billet Weight'}
+                                        </h3>
+                                        <button
+                                            onClick={handleCloseForm}
+                                            className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
+                                        >
+                                            <Icons.X size={20} className="text-slate-400" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {/* Weight */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                Weight (kg) <span className="text-red-400">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                required
+                                                min="0"
+                                                step="0.1"
+                                                value={formData.weightKg}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, weightKg: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                placeholder="250"
+                                            />
+                                            {formData.weightKg > 0 && (
+                                                <p className="text-xs text-slate-400 mt-1">
+                                                    Category: {getBilletWeightCategory(parseFloat(formData.weightKg))}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Material Type */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                Material Type <span className="text-red-400">*</span>
+                                            </label>
+                                            <select
+                                                required
+                                                value={formData.materialType}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, materialType: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            >
+                                                <option value="STAINLESS_STEEL">{MATERIAL_TYPES.STAINLESS_STEEL}</option>
+                                                <option value="GALVANISED">{MATERIAL_TYPES.GALVANISED}</option>
+                                            </select>
+                                        </div>
+
+                                        {/* CBW Checkbox */}
+                                        <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                id="isCBW"
+                                                checked={formData.isCBW}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, isCBW: e.target.checked }))}
+                                                className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                            />
+                                            <label htmlFor="isCBW" className="text-sm text-slate-300 cursor-pointer">
+                                                CBW (Compact Belt Weigher)
+                                            </label>
+                                        </div>
+
+                                        {/* Plate Weight Checkbox */}
+                                        <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                            <input
+                                                type="checkbox"
+                                                id="isPlateWeight"
+                                                checked={formData.isPlateWeight}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, isPlateWeight: e.target.checked }))}
+                                                className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                            />
+                                            <label htmlFor="isPlateWeight" className="text-sm text-slate-300 cursor-pointer">
+                                                Plate Weight
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    {/* Plate Weight Quantity - Conditional */}
+                                    {formData.isPlateWeight && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                Plate Weight Quantity <span className="text-red-400">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                required={formData.isPlateWeight}
+                                                min="1"
+                                                step="1"
+                                                value={formData.plateWeightQuantity}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, plateWeightQuantity: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                placeholder="e.g., 2, 4, 6..."
+                                            />
+                                            <p className="text-xs text-slate-400 mt-1">
+                                                Number of weights for cost calculation
+                                            </p>
+                                        </div>
+                                    )}
+
+                                    {/* Category Selection */}
+                                    <CategorySelect
+                                        value={{ categoryId: formData.categoryId, subcategoryId: formData.subcategoryId }}
+                                        onChange={(selection) => setFormData(prev => ({
+                                            ...prev,
+                                            categoryId: selection.categoryId,
+                                            subcategoryId: selection.subcategoryId
+                                        }))}
+                                        required={false}
+                                    />
+
+                                    {/* Suppliers */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-2">
+                                            Suppliers
+                                        </label>
+                                        <div className="space-y-3">
+                                            <div className="flex gap-2">
+                                                <select
+                                                    value={selectedSupplier}
+                                                    onChange={(e) => setSelectedSupplier(e.target.value)}
+                                                    className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                >
+                                                    <option value="">-- Select Supplier --</option>
+                                                    {filteredSuppliers.map(supplier => (
+                                                        <option key={supplier.id} value={supplier.name}>{supplier.name}</option>
+                                                    ))}
+                                                </select>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleAddSupplier}
+                                                    disabled={!selectedSupplier}
+                                                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                                                >
+                                                    <Icons.Plus size={16} />
+                                                    Add
+                                                </button>
+                                            </div>
+
+                                            {formData.suppliers?.length > 0 && (
+                                                <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                    <p className="text-xs text-slate-400 mb-2">Added Suppliers:</p>
+                                                    <div className="space-y-1">
+                                                        {formData.suppliers.map((supplier, index) => (
+                                                            <div key={index} className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
+                                                                <span className="text-sm text-white">{supplier}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRemoveSupplier(supplier)}
+                                                                    className="p-1 hover:bg-red-500/20 rounded text-red-400 transition-colors"
+                                                                    title="Remove supplier"
+                                                                >
+                                                                    <Icons.X size={16} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        {/* Cost Price */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                Cost Price ($) {formData.isPlateWeight && '(per unit)'} <span className="text-red-400">*</span>
+                                            </label>
+                                            <input
+                                                type="number"
+                                                required
+                                                min="0"
+                                                step="0.01"
+                                                value={formData.costPrice}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, costPrice: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                placeholder="0.00"
+                                            />
+                                            {formData.isPlateWeight && formData.plateWeightQuantity && formData.costPrice && (
+                                                <p className="text-xs text-purple-400 mt-1">
+                                                    Total: ${(parseFloat(formData.costPrice) * parseInt(formData.plateWeightQuantity)).toFixed(2)}
+                                                </p>
+                                            )}
+                                        </div>
+
+                                        {/* Setup Cost */}
+                                        <div>
+                                            <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                Setup Cost ($)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="0"
+                                                step="0.01"
+                                                value={formData.setupCost}
+                                                onChange={(e) => setFormData(prev => ({ ...prev, setupCost: e.target.value }))}
+                                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Effective Date */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Effective Date <span className="text-red-400">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            required
+                                            value={formData.effectiveDate}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, effectiveDate: e.target.value }))}
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                        />
+                                    </div>
+
+                                    {/* Notes */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-300 mb-1">
+                                            Notes
+                                        </label>
+                                        <textarea
+                                            value={formData.notes}
+                                            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                                            rows="3"
+                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                            placeholder="Optional notes..."
+                                            maxLength={500}
+                                        />
+                                    </div>
+
+                                    {/* Actions */}
+                                    <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
+                                        <button
+                                            type="button"
+                                            onClick={handleCloseForm}
+                                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                        <button
+                                            type="submit"
+                                            disabled={saving}
+                                            className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            {saving ? 'Saving...' : (editingWeight ? 'Update' : 'Add')}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
         </CategoryProvider>
     );
