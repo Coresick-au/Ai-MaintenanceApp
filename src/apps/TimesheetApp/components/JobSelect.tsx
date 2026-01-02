@@ -25,6 +25,7 @@ export function JobSelect({
     const [searchTerm, setSearchTerm] = useState("");
     const [openUpwards, setOpenUpwards] = useState(false);
     const [coords, setCoords] = useState({ top: 0, left: 0, width: 0 });
+    const [customMode, setCustomMode] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const triggerRef = useRef<HTMLDivElement>(null);
 
@@ -74,50 +75,96 @@ export function JobSelect({
 
     return (
         <div className={`relative ${className}`} ref={dropdownRef}>
-            {/* Display Button (Div-based to allow nested clear button) */}
-            <div
-                ref={triggerRef}
-                role="button"
-                tabIndex={disabled ? -1 : 0}
-                onClick={() => !disabled && setIsOpen(!isOpen)}
-                onKeyDown={(e) => {
-                    if (disabled) return;
-                    if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setIsOpen(!isOpen);
-                    }
-                }}
-                className={`
-                    w-full flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg border transition-all outline-none
-                    ${disabled ? 'bg-slate-800/50 border-slate-700/50 cursor-not-allowed opacity-50' : 'bg-[var(--bg-surface)] cursor-pointer hover:border-[var(--accent)]/50'}
-                    ${isOpen ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30' : 'border-[var(--border-default)]'}
-                    ${error ? 'border-red-500 bg-red-500/5' : ''}
-                    text-[var(--text-primary)]
-                `}
-            >
-                <span className={`truncate ${!selectedJob ? 'text-[var(--text-muted)]' : 'font-medium'}`}>
-                    {selectedJob
-                        ? `${selectedJob.jobNumber} - ${selectedJob.customer}`
-                        : placeholder
-                    }
-                </span>
-                <div className="flex items-center gap-1">
-                    {value && !disabled && (
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                onChange("");
-                            }}
-                            className="p-1 rounded-md hover:bg-white/10 text-[var(--text-muted)] hover:text-red-400 transition-colors"
-                            title="Clear selection"
-                        >
-                            <X size={14} />
-                        </button>
-                    )}
-                    <ChevronDown size={14} className={`text-[var(--text-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+            {/* Display Button or Custom Input */}
+            {customMode ? (
+                // Custom Job Number Input
+                <div className="flex gap-2">
+                    <input
+                        type="text"
+                        value={value}
+                        onChange={(e) => onChange(e.target.value.toUpperCase())}
+                        placeholder="Enter custom job #..."
+                        disabled={disabled}
+                        className={`
+                            flex-1 px-3 py-2 text-sm rounded-lg border transition-all outline-none font-medium
+                            ${disabled ? 'bg-slate-800/50 border-slate-700/50 cursor-not-allowed opacity-50' : 'bg-[var(--bg-surface)]'}
+                            ${error ? 'border-red-500 bg-red-500/5' : 'border-[var(--border-default)] focus:border-[var(--accent)] focus:ring-1 focus:ring-[var(--accent)]/30'}
+                            text-[var(--text-primary)]
+                        `}
+                    />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCustomMode(false);
+                            onChange("");
+                        }}
+                        disabled={disabled}
+                        className="px-3 py-2 text-xs rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-active)] text-[var(--text-muted)] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        title="Switch to job dropdown"
+                    >
+                        Use Dropdown
+                    </button>
                 </div>
-            </div>
+            ) : (
+                // Dropdown Selector
+                <div className="flex gap-2">
+                    <div
+                        ref={triggerRef}
+                        role="button"
+                        tabIndex={disabled ? -1 : 0}
+                        onClick={() => !disabled && setIsOpen(!isOpen)}
+                        onKeyDown={(e) => {
+                            if (disabled) return;
+                            if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setIsOpen(!isOpen);
+                            }
+                        }}
+                        className={`
+                            flex-1 flex items-center justify-between gap-2 px-3 py-2 text-sm rounded-lg border transition-all outline-none
+                            ${disabled ? 'bg-slate-800/50 border-slate-700/50 cursor-not-allowed opacity-50' : 'bg-[var(--bg-surface)] cursor-pointer hover:border-[var(--accent)]/50'}
+                            ${isOpen ? 'border-[var(--accent)] ring-1 ring-[var(--accent)]/30' : 'border-[var(--border-default)]'}
+                            ${error ? 'border-red-500 bg-red-500/5' : ''}
+                            text-[var(--text-primary)]
+                        `}
+                    >
+                        <span className={`truncate ${!selectedJob ? 'text-[var(--text-muted)]' : 'font-medium'}`}>
+                            {selectedJob
+                                ? `${selectedJob.jobNumber} - ${selectedJob.customer}`
+                                : placeholder
+                            }
+                        </span>
+                        <div className="flex items-center gap-1">
+                            {value && !disabled && (
+                                <button
+                                    type="button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        onChange("");
+                                    }}
+                                    className="p-1 rounded-md hover:bg-white/10 text-[var(--text-muted)] hover:text-red-400 transition-colors"
+                                    title="Clear selection"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                            <ChevronDown size={14} className={`text-[var(--text-muted)] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setCustomMode(true);
+                            onChange("");
+                        }}
+                        disabled={disabled}
+                        className="px-3 py-2 text-xs rounded-lg border border-[var(--border-default)] bg-[var(--bg-surface)] hover:bg-[var(--bg-active)] text-[var(--text-muted)] hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                        title="Enter custom job number"
+                    >
+                        Custom #
+                    </button>
+                </div>
+            )}
 
             {/* Dropdown Menu */}
             {isOpen && (

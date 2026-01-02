@@ -430,6 +430,8 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
     let totalOT20x = 0;
     let totalPerDiem = 0;
     let totalChargeableHours = 0;
+    let totalDailyUtilization = 0;
+    let daysWorked = 0;
 
     // Group entries by day
     const entriesByDay: Record<string, TimesheetEntry[]> = {};
@@ -470,6 +472,14 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
             isNightshift
         );
 
+        // Calculate daily utilization: (chargeable hours / 7.5) * 100, capped at 100%
+        // Only count weekdays (Mon-Fri) for utilization
+        if (day !== 'Saturday' && day !== 'Sunday') {
+            const dailyUtilization = Math.min(100, (dayChargeableHours / BASE_HOURS_THRESHOLD) * 100);
+            totalDailyUtilization += dailyUtilization;
+            daysWorked++;
+        }
+
         // Accumulate daily totals into weekly totals
         totalNetHours += dayNetHours;
         totalBaseHours += baseHours;
@@ -479,9 +489,9 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
         totalChargeableHours += dayChargeableHours;
     }
 
-    // Calculate utilization: (chargeable hours / 37.5) * 100, capped at 100%
-    const utilizationPercent = STANDARD_WEEKLY_HOURS > 0
-        ? Math.min(100, (totalChargeableHours / STANDARD_WEEKLY_HOURS) * 100)
+    // Calculate average utilization across days worked
+    const utilizationPercent = daysWorked > 0
+        ? totalDailyUtilization / daysWorked
         : 0;
 
     return {

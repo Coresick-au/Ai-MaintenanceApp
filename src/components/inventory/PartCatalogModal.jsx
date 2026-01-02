@@ -26,7 +26,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         name: '',
         category: '', // Legacy field
         categoryId: null,
-        subcategoryId: null,
+        subcategoryIds: [], // Changed from subcategoryId to support multiple
         suppliers: [],
         description: '',
         material: '', // Optional material field
@@ -80,20 +80,26 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     useEffect(() => {
         const categoryIds = [];
         if (formData.categoryId) categoryIds.push(formData.categoryId);
-        if (formData.subcategoryId) categoryIds.push(formData.subcategoryId);
+        if (formData.subcategoryIds?.length > 0) categoryIds.push(...formData.subcategoryIds);
 
         const filtered = filterSuppliersByCategories(suppliers, categoryIds);
         setFilteredSuppliers(filtered);
-    }, [suppliers, formData.categoryId, formData.subcategoryId]);
+    }, [suppliers, formData.categoryId, formData.subcategoryIds]);
 
     useEffect(() => {
         if (editingPart) {
+            // Migrate old subcategoryId to subcategoryIds array
+            let subcategoryIds = editingPart.subcategoryIds || [];
+            if (!subcategoryIds.length && editingPart.subcategoryId) {
+                subcategoryIds = [editingPart.subcategoryId];
+            }
+
             setFormData({
                 sku: editingPart.sku,
                 name: editingPart.name,
                 category: editingPart.category, // Legacy field
                 categoryId: editingPart.categoryId || null,
-                subcategoryId: editingPart.subcategoryId || null,
+                subcategoryIds,
                 suppliers: editingPart.suppliers || [],
                 description: editingPart.description || '',
                 material: editingPart.material || '',
@@ -114,7 +120,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 name: '',
                 category: categories.length > 0 ? categories[0].name : '', // Legacy field
                 categoryId: null,
-                subcategoryId: null,
+                subcategoryIds: [],
                 suppliers: [],
                 description: '',
                 material: '',
@@ -189,7 +195,9 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
 
         setGeneratingSKU(true);
         try {
-            const newSKU = await generateNextPartSKU(formData.categoryId, formData.subcategoryId);
+            // Use first subcategory for SKU generation
+            const subcategoryId = formData.subcategoryIds?.[0] || null;
+            const newSKU = await generateNextPartSKU(formData.categoryId, subcategoryId);
             setFormData(prev => ({ ...prev, sku: newSKU }));
         } catch (err) {
             setError(err.message || 'Failed to generate SKU');
@@ -233,7 +241,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 name: formData.name.trim(),
                 category: formData.category.trim(), // Legacy field
                 categoryId: formData.categoryId,
-                subcategoryId: formData.subcategoryId,
+                subcategoryIds: formData.subcategoryIds || [],
                 suppliers: formData.suppliers || [],
                 description: formData.description.trim(),
                 material: formData.material || '',
@@ -409,13 +417,14 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
 
                             {/* Category Selection */}
                             <CategorySelect
-                                value={{ categoryId: formData.categoryId, subcategoryId: formData.subcategoryId }}
+                                value={{ categoryId: formData.categoryId, subcategoryIds: formData.subcategoryIds }}
                                 onChange={(selection) => setFormData(prev => ({
                                     ...prev,
                                     categoryId: selection.categoryId,
-                                    subcategoryId: selection.subcategoryId
+                                    subcategoryIds: selection.subcategoryIds || []
                                 }))}
                                 required={true}
+                                multiSelect={true}
                             />
 
                             {/* Suppliers */}

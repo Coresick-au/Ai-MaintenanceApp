@@ -36,8 +36,14 @@ export function DaySummary({
 
     // Calculate total available hours
     const calculateAvailableHours = (start: string, finish: string, breakHours: number): number => {
+        // Return 0 if start or finish are empty (e.g., weekends not yet configured)
+        if (!start || !finish) return 0;
+
         const [startH, startM] = start.split(':').map(Number);
         const [finishH, finishM] = finish.split(':').map(Number);
+
+        // Check for NaN values
+        if (isNaN(startH) || isNaN(startM) || isNaN(finishH) || isNaN(finishM)) return 0;
 
         let hours = (finishH + finishM / 60) - (startH + startM / 60);
         if (hours < 0) hours += 24; // Handle overnight

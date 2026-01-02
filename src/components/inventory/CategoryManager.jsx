@@ -60,13 +60,19 @@ export const CategoryManager = () => {
             return;
         }
 
-        // Check if name already exists (excluding current category)
+        // Check if name already exists within the same parent (excluding current category)
+        // Allow same names under different parents
         const nameExists = categories.some(
-            cat => cat.name.toLowerCase() === editName.trim().toLowerCase() && cat.id !== editingCategory.id
+            cat => cat.name.toLowerCase() === editName.trim().toLowerCase()
+                && cat.id !== editingCategory.id
+                && cat.parentId === editingCategory.parentId // Only check within same parent
         );
 
         if (nameExists) {
-            setError('A category with this name already exists');
+            const parentName = editingCategory.parentId
+                ? categories.find(c => c.id === editingCategory.parentId)?.name
+                : 'root level';
+            setError(`A category with this name already exists under "${parentName}"`);
             return;
         }
 
@@ -166,8 +172,8 @@ export const CategoryManager = () => {
                                     </td>
                                     <td className="px-4 py-3 text-center">
                                         <span className={`px-2 py-1 rounded text-xs font-medium ${(categoryUsage[category.name] || 0) > 0
-                                                ? 'bg-blue-500/20 text-blue-400'
-                                                : 'bg-slate-700 text-slate-400'
+                                            ? 'bg-blue-500/20 text-blue-400'
+                                            : 'bg-slate-700 text-slate-400'
                                             }`}>
                                             {categoryUsage[category.name] || 0} part{(categoryUsage[category.name] || 0) !== 1 ? 's' : ''}
                                         </span>

@@ -69,10 +69,12 @@ export type CategoryUpdate = Partial<Pick<Category, 'name' | 'parentId'>>;
 
 /**
  * Category with subcategory selection for forms.
+ * Supports both single-select (subcategoryId) and multi-select (subcategoryIds) modes.
  */
 export interface CategorySelection {
     categoryId: string | null;
-    subcategoryId: string | null;
+    subcategoryId?: string | null; // Single-select mode
+    subcategoryIds?: string[]; // Multi-select mode
 }
 
 /**

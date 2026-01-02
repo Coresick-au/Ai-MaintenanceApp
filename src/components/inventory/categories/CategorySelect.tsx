@@ -20,12 +20,16 @@ interface CategorySelectProps {
 
     /** Whether category selection is required */
     required?: boolean;
+
+    /** Enable multi-select mode for subcategories */
+    multiSelect?: boolean;
 }
 
 /**
  * Cascading Category Dropdown Component
  * Provides two-level category selection (Category → Subcategory).
  * Automatically filters subcategories based on selected parent category.
+ * Supports both single-select and multi-select modes for subcategories.
  */
 export function CategorySelect({
     value,
@@ -33,7 +37,8 @@ export function CategorySelect({
     categoryLabel = 'Category',
     subcategoryLabel = 'Subcategory',
     disabled = false,
-    required = false
+    required = false,
+    multiSelect = false
 }: CategorySelectProps) {
     const { categories, loading } = useCategories();
 
@@ -51,7 +56,8 @@ export function CategorySelect({
     const handleCategoryChange = (categoryId: string) => {
         onChange({
             categoryId: categoryId || null,
-            subcategoryId: null // Reset subcategory when category changes
+            subcategoryId: multiSelect ? undefined : null,
+            subcategoryIds: multiSelect ? [] : undefined
         });
     };
 
@@ -59,6 +65,18 @@ export function CategorySelect({
         onChange({
             ...value,
             subcategoryId: subcategoryId || null
+        });
+    };
+
+    const handleSubcategoryToggle = (subcategoryId: string, checked: boolean) => {
+        const currentIds = value.subcategoryIds || [];
+        const newIds = checked
+            ? [...currentIds, subcategoryId]
+            : currentIds.filter(id => id !== subcategoryId);
+
+        onChange({
+            ...value,
+            subcategoryIds: newIds
         });
     };
 
@@ -89,33 +107,68 @@ export function CategorySelect({
                 </select>
             </div>
 
-            {/* Subcategory Dropdown */}
+            {/* Subcategory Selection - Single or Multi */}
             <div>
                 <label className="block text-sm font-medium text-slate-300 mb-2">
                     {subcategoryLabel}
+                    {multiSelect && <span className="text-xs text-slate-400 ml-2">(select multiple)</span>}
                 </label>
-                <select
-                    value={value.subcategoryId || ''}
-                    onChange={(e) => handleSubcategoryChange(e.target.value)}
-                    disabled={disabled || loading || !value.categoryId || subcategories.length === 0}
-                    className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
-                     focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent
-                     disabled:opacity-50 disabled:cursor-not-allowed
-                     hover:border-slate-500 transition-colors"
-                >
-                    <option value="">
-                        {!value.categoryId
-                            ? 'Select category first...'
-                            : subcategories.length === 0
-                                ? 'No subcategories available'
-                                : 'Select subcategory (optional)...'}
-                    </option>
-                    {subcategories.map(subcategory => (
-                        <option key={subcategory.id} value={subcategory.id}>
-                            {subcategory.name}
+
+                {multiSelect ? (
+                    /* Multi-select with checkboxes */
+                    <div className={`bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 max-h-32 overflow-y-auto ${disabled || loading || !value.categoryId || subcategories.length === 0
+                        ? 'opacity-50 cursor-not-allowed'
+                        : ''
+                        }`}>
+                        {!value.categoryId ? (
+                            <div className="text-sm text-slate-400 py-1">Select category first...</div>
+                        ) : subcategories.length === 0 ? (
+                            <div className="text-sm text-slate-400 py-1">No subcategories available</div>
+                        ) : (
+                            <div className="space-y-1">
+                                {subcategories.map(subcategory => (
+                                    <label
+                                        key={subcategory.id}
+                                        className="flex items-center gap-2 py-1 hover:bg-slate-800 rounded px-2 cursor-pointer"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={(value.subcategoryIds || []).includes(subcategory.id)}
+                                            onChange={(e) => handleSubcategoryToggle(subcategory.id, e.target.checked)}
+                                            disabled={disabled || loading}
+                                            className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                        />
+                                        <span className="text-sm text-white">{subcategory.name}</span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                ) : (
+                    /* Single-select dropdown */
+                    <select
+                        value={value.subcategoryId || ''}
+                        onChange={(e) => handleSubcategoryChange(e.target.value)}
+                        disabled={disabled || loading || !value.categoryId || subcategories.length === 0}
+                        className="w-full bg-slate-900 border border-slate-600 rounded-lg px-3 py-2 text-white text-sm
+                         focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent
+                         disabled:opacity-50 disabled:cursor-not-allowed
+                         hover:border-slate-500 transition-colors"
+                    >
+                        <option value="">
+                            {!value.categoryId
+                                ? 'Select category first...'
+                                : subcategories.length === 0
+                                    ? 'No subcategories available'
+                                    : 'Select subcategory (optional)...'}
                         </option>
-                    ))}
-                </select>
+                        {subcategories.map(subcategory => (
+                            <option key={subcategory.id} value={subcategory.id}>
+                                {subcategory.name}
+                            </option>
+                        ))}
+                    </select>
+                )}
             </div>
         </div>
     );
