@@ -133,14 +133,25 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
         ];
 
         return months.map((month, idx) => {
-            // Filter entries for this month
-            // weekKey format: YYYY-WXX - we need to map week numbers to months
+            // Filter entries for this month by calculating the actual date of each entry
             const monthEntries = entries.filter(entry => {
-                if (!entry.weekKey) return false;
-                const weekNum = parseInt(entry.weekKey.split('-W')[1] || '0');
-                // Check first day of week to determine month
-                const weekStart = getFirstDayOfISOWeek(selectedYear, weekNum);
-                return weekStart.getMonth() === idx;
+                if (!entry.weekKey || !entry.day) return false;
+
+                // Parse BOTH year and week number from weekKey (format: YYYY-WXX)
+                const [yearStr, weekStr] = entry.weekKey.split('-W');
+                const weekYear = parseInt(yearStr);
+                const weekNum = parseInt(weekStr || '0');
+
+                // Get the Monday of this ISO week using the YEAR FROM THE WEEKKEY
+                const weekStart = getFirstDayOfISOWeek(weekYear, weekNum);
+
+                // Calculate the actual date of this entry based on the day
+                const dayOffset = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].indexOf(entry.day);
+                const entryDate = new Date(weekStart);
+                entryDate.setDate(weekStart.getDate() + dayOffset);
+
+                // Check if this entry's actual date falls in this month AND year
+                return entryDate.getMonth() === idx && entryDate.getFullYear() === selectedYear;
             });
 
             if (monthEntries.length === 0) {
