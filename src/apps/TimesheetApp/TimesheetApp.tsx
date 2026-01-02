@@ -11,7 +11,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
 import { timesheetRepository } from '../../repositories';
 import { PageShell, NeonButton } from '../../components/ui/NeonUI';
-import { FileDown, BarChart3, Send, RefreshCw, CheckCircle, Lock, AlertCircle } from 'lucide-react';
+import { FileDown, BarChart3, Send, RefreshCw, CheckCircle, Lock, Unlock, AlertCircle, Minimize2, Maximize2 } from 'lucide-react';
 
 // Components
 import { WeekPicker } from './components/WeekPicker';
@@ -72,6 +72,9 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     const [jobs, setJobs] = useState<JobOption[]>([]);
     const [showYearlySummary, setShowYearlySummary] = useState(false);
 
+    // Collapse state for days
+    const [collapsedDays, setCollapsedDays] = useState<Record<string, boolean>>({});
+
     // Load jobs from Job Sheet storage
     useEffect(() => {
         try {
@@ -98,7 +101,60 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     // Derived values
     const userId = currentUser?.uid || '';
     const weekKey = getWeekKey(currentWeekStart);
+
+    // Initialize collapse state when entries loaded
+    useEffect(() => {
+        if (!isLoading) {
+            setCollapsedDays(prev => {
+                // Determine new state based on current entries
+                // Preserve existing state for other weeks/days
+                const newState = { ...prev };
+                DAYS_OF_WEEK.forEach(day => {
+                    const key = `${weekKey}_${day}`;
+                    // Only initialize if not already set (preserve user interactions)
+                    if (newState[key] === undefined) {
+                        const hasEntries = entries.some(e => e.day === day);
+                        // Default: Collapsed if no entries, Expanded if entries exist
+                        newState[key] = !hasEntries;
+                    }
+                });
+                return newState;
+            });
+        }
+    }, [isLoading, weekKey]); // Re-run when loading finishes or week changes.
+
+    // Actions
+    const handleToggleDay = (day: string) => {
+        const key = `${weekKey}_${day}`;
+        setCollapsedDays(prev => ({
+            ...prev,
+            [key]: !prev[key]
+        }));
+    };
+
+    const handleCollapseAll = () => {
+        setCollapsedDays(prev => {
+            const newState = { ...prev };
+            DAYS_OF_WEEK.forEach(day => {
+                newState[`${weekKey}_${day}`] = true;
+            });
+            return newState;
+        });
+    };
+
+    const handleExpandAll = () => {
+        setCollapsedDays(prev => {
+            const newState = { ...prev };
+            DAYS_OF_WEEK.forEach(day => {
+                newState[`${weekKey}_${day}`] = false;
+            });
+            return newState;
+        });
+    };
+
     const summary: WeeklySummary = useMemo(() => calculateWeeklySummary(entries), [entries]);
+
+    // ... (rest of logic)
 
     // Check for validation errors or time conflicts
     const hasErrors = useMemo(() => {
@@ -176,6 +232,13 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     // Add a new entry
     const handleAddEntry = useCallback(async (day: DayOfWeek, initialStartTime?: string) => {
         if (!userId) return;
+
+        // Auto-expand the day when adding an entry
+        const key = `${weekKey}_${day}`;
+        setCollapsedDays(prev => ({
+            ...prev,
+            [key]: false
+        }));
 
         // Find existing entries for this day to determine start time
         const dayEntries = entries.filter(e => e.day === day);
@@ -267,11 +330,11 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     // Submit week
     const handleSubmitWeek = useCallback(async () => {
         if (entries.length === 0) {
-            setError('No entries to submit');
+            setError('No entries to lock');
             return;
         }
 
-        if (!window.confirm('Are you sure you want to submit this week? This will lock your entries.')) {
+        if (!window.confirm('Are you sure you want to lock this week? This will lock your entries.')) {
             return;
         }
 
@@ -289,11 +352,11 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
             await Promise.all(updatedEntries.map(entry => timesheetRepository.save(entry)));
 
             setEntries(updatedEntries);
-            setSuccessMessage('Week submitted and locked successfully!');
+            setSuccessMessage('Week locked successfully!');
             setTimeout(() => setSuccessMessage(null), 3000);
         } catch (err) {
-            console.error('Error submitting week:', err);
-            setError('Failed to submit week');
+            console.error('Error locking week:', err);
+            setError('Failed to lock week');
         } finally {
             setIsSaving(false);
         }
@@ -391,8 +454,8 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
             <div className="flex items-center gap-3">
                 {isLocked && (
                     <div className="flex items-center gap-2 px-3 py-1.5 bg-green-500/10 text-green-400 rounded-xl border border-green-500/20 text-xs font-bold uppercase tracking-wider">
-                        <CheckCircle className="w-4 h-4" />
-                        WEEK SUBMITTED
+                        <Lock className="w-4 h-4" />
+                        WEEK LOCKED
                     </div>
                 )}
                 {isLocked ? (
@@ -401,7 +464,7 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
                         disabled={isSaving}
                         className="!bg-slate-800 !text-slate-300 hover:!bg-slate-700"
                     >
-                        <Lock className="w-4 h-4 mr-2" />
+                        <Unlock className="w-4 h-4 mr-2" />
                         Unlock for Changes
                     </NeonButton>
                 ) : (
@@ -409,10 +472,10 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
                         onClick={handleSubmitWeek}
                         disabled={isSaving || entries.length === 0 || hasErrors}
                         className="!bg-cyan-600 !text-white hover:!bg-cyan-500"
-                        title={hasErrors ? 'Cannot submit: Please fix validation errors or time conflicts' : ''}
+                        title={hasErrors ? 'Cannot lock: Please fix validation errors or time conflicts' : ''}
                     >
-                        <Send className="w-4 h-4 mr-2" />
-                        {isSaving ? 'Submitting...' : 'Submit Week'}
+                        <Lock className="w-4 h-4 mr-2" />
+                        {isSaving ? 'Locking...' : 'Lock Week'}
                     </NeonButton>
                 )}
             </div>
@@ -438,6 +501,25 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
                         >
                             <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
                             Refresh
+                        </NeonButton>
+
+                        <div className="h-6 w-px bg-slate-700 mx-1"></div>
+
+                        <NeonButton
+                            onClick={handleCollapseAll}
+                            className="flex items-center gap-2 !bg-slate-800 hover:!bg-slate-700 text-slate-400"
+                            title="Collapse all days"
+                        >
+                            <Minimize2 className="w-4 h-4" />
+                            Collapse All
+                        </NeonButton>
+                        <NeonButton
+                            onClick={handleExpandAll}
+                            className="flex items-center gap-2 !bg-slate-800 hover:!bg-slate-700 text-slate-400"
+                            title="Expand all days"
+                        >
+                            <Maximize2 className="w-4 h-4" />
+                            Expand All
                         </NeonButton>
                     </div>
 
@@ -496,6 +578,8 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
                                 onDeleteEntry={handleDeleteEntry}
                                 jobs={jobs}
                                 isLocked={isLocked}
+                                isCollapsed={!!collapsedDays[`${weekKey}_${day}`]}
+                                onToggleCollapse={() => handleToggleDay(day)}
                             />
                         ))}
                     </div>

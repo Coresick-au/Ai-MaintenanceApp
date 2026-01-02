@@ -49,9 +49,9 @@ export function WeekPicker({ currentWeekStart, onWeekChange, disabled = false }:
     };
 
     return (
-        <div className="flex items-center justify-between bg-slate-800 rounded-lg border border-slate-700 p-4">
-            {/* Navigation */}
-            <div className="flex items-center gap-2">
+        <div className="grid grid-cols-[1fr_auto_1fr] items-center bg-slate-800 rounded-lg border border-slate-700 p-4">
+            {/* Navigation (Left) */}
+            <div className="flex items-center gap-2 justify-start">
                 <button
                     type="button"
                     onClick={handlePrev}
@@ -84,8 +84,8 @@ export function WeekPicker({ currentWeekStart, onWeekChange, disabled = false }:
                 )}
             </div>
 
-            {/* Week Display */}
-            <div className="flex items-center gap-4">
+            {/* Week Display (Center) */}
+            <div className="flex items-center gap-4 justify-center">
                 <div className="flex items-center gap-2">
                     <Calendar className="w-5 h-5 text-cyan-400" />
                     <span className="text-lg font-semibold text-white">
@@ -97,12 +97,14 @@ export function WeekPicker({ currentWeekStart, onWeekChange, disabled = false }:
                 </span>
             </div>
 
-            {/* Current Week Indicator */}
-            {isCurrentWeek() && (
-                <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
-                    Current Week
-                </span>
-            )}
+            {/* Current Week Indicator (Right) */}
+            <div className="flex items-center justify-end">
+                {isCurrentWeek() && (
+                    <span className="px-3 py-1 text-sm font-medium rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                        Current Week
+                    </span>
+                )}
+            </div>
         </div>
     );
 }

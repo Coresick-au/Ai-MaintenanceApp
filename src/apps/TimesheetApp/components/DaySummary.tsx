@@ -5,7 +5,7 @@
  * Shows available hours and remaining hours as user adds entries.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface DaySummaryProps {
     dayStart?: string;
@@ -34,6 +34,19 @@ export function DaySummary({
     const [localFinish, setLocalFinish] = useState(dayFinish || defaultFinish);
     const [localBreak, setLocalBreak] = useState(dayBreak);
 
+    // Sync local state with props when they change (e.g. week change or external update)
+    useEffect(() => {
+        if (dayStart !== undefined) setLocalStart(dayStart);
+    }, [dayStart]);
+
+    useEffect(() => {
+        if (dayFinish !== undefined) setLocalFinish(dayFinish);
+    }, [dayFinish]);
+
+    useEffect(() => {
+        if (dayBreak !== undefined) setLocalBreak(dayBreak);
+    }, [dayBreak]);
+
     // Calculate total available hours
     const calculateAvailableHours = (start: string, finish: string, breakHours: number): number => {
         // Return 0 if start or finish are empty (e.g., weekends not yet configured)
@@ -53,6 +66,7 @@ export function DaySummary({
 
     const availableHours = calculateAvailableHours(localStart, localFinish, localBreak);
     const remainingHours = Math.max(0, availableHours - totalHoursUsed);
+    const hasOverflow = totalHoursUsed > availableHours && availableHours > 0;
 
     const handleUpdate = (field: 'dayStart' | 'dayFinish' | 'dayBreak', value: string | number) => {
         const updates = {
@@ -72,6 +86,12 @@ export function DaySummary({
         px-2 py-1 rounded border bg-slate-800 text-slate-100 text-sm
         focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500
         border-slate-600
+    `;
+
+    const finishInputClass = `
+        px-2 py-1 rounded border bg-slate-800 text-slate-100 text-sm
+        focus:ring-1 focus:ring-cyan-500 focus:border-cyan-500
+        ${hasOverflow ? 'border-red-500 bg-red-500/10' : 'border-slate-600'}
     `;
 
     return (
@@ -97,7 +117,7 @@ export function DaySummary({
                         value={localFinish}
                         onChange={(e) => handleUpdate('dayFinish', e.target.value)}
                         disabled={isLocked}
-                        className={`${inputClass} w-full ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`${finishInputClass} w-full ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                 </div>
 

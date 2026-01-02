@@ -67,6 +67,14 @@ export function JobSelect({
         job.description.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
+    // Auto-detect custom mode: if value exists but not in jobs list, enable custom mode
+    useEffect(() => {
+        if (value && !selectedJob) {
+            // Value exists but not found in jobs list = custom job number
+            setCustomMode(true);
+        }
+    }, [value, selectedJob]);
+
     const handleSelect = (jobNumber: string) => {
         onChange(jobNumber);
         setIsOpen(false);

@@ -75,6 +75,26 @@ export function EntryRow({
         return formatMinutesToTime(finishMinutes);
     }, [entry.startTime, entry.hoursOnly]);
 
+    // Detect if this entry causes overflow
+    const causesOverflow = useMemo(() => {
+        if (!daySummary || !daySummary.dayStart || !daySummary.dayFinish) return false;
+
+        // Calculate available hours
+        const [startH, startM] = daySummary.dayStart.split(':').map(Number);
+        const [finishH, finishM] = daySummary.dayFinish.split(':').map(Number);
+        if (isNaN(startH) || isNaN(startM) || isNaN(finishH) || isNaN(finishM)) return false;
+
+        let availableHours = (finishH + finishM / 60) - (startH + startM / 60);
+        if (availableHours < 0) availableHours += 24;
+        availableHours -= daySummary.dayBreak || 0;
+
+        // Calculate total hours used by all entries
+        const totalHours = allDayEntries.reduce((sum, e) => sum + (e.hoursOnly || 0), 0);
+
+        // Check if total exceeds available
+        return totalHours > availableHours && availableHours > 0;
+    }, [daySummary, allDayEntries]);
+
     // Sync auto-calculated times to entry
     useEffect(() => {
         if (autoCalculatedTimes) {
@@ -207,7 +227,7 @@ export function EntryRow({
                         min="0"
                         max="24"
                         step="0.5"
-                        className={`${inputBaseClass} ${errorClass} w-20 text-cyan-400 font-bold ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        className={`${inputBaseClass} ${errorClass} ${causesOverflow ? 'border-red-500 bg-red-500/10' : ''} w-20 text-cyan-400 font-bold ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         aria-label="Hours"
                         placeholder="0"
                     />
