@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Edit2, Eye, Plus, Download, Printer, RotateCcw, DollarSign, ChevronDown, ChevronUp, AlertTriangle, Trash2, MessageSquare, LayoutDashboard, Table, X } from "lucide-react";
 import { jobSheetSeed } from "../data/jobSheetSeed";
-import { clearJobSheet, loadJobSheet, saveJobSheet } from "../lib/storage";
+import { clearJobSheet, loadJobSheet, saveJobSheet, loadJobSheetSettings, saveJobSheetSettings } from "../lib/storage";
 import {
     Card,
     HoldToConfirmButton,
@@ -243,17 +243,21 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
             return jobSheetSeed;
         }
     });
-    const [q, setQ] = useState("");
+
+    // Load initial settings
+    const initialSettings = useMemo(() => loadJobSheetSettings() || {}, []);
+
+    const [q, setQ] = useState(initialSettings.q || "");
 
     // Multi-select filters
-    const [statusFilters, setStatusFilters] = useState([]);
-    const [customerFilters, setCustomerFilters] = useState([]);
-    const [siteFilters, setSiteFilters] = useState([]);
-    const [yearFilters, setYearFilters] = useState([]); // Multi-select year filter
+    const [statusFilters, setStatusFilters] = useState(initialSettings.statusFilters || []);
+    const [customerFilters, setCustomerFilters] = useState(initialSettings.customerFilters || []);
+    const [siteFilters, setSiteFilters] = useState(initialSettings.siteFilters || []);
+    const [yearFilters, setYearFilters] = useState(initialSettings.yearFilters || []); // Multi-select year filter
 
     // Sorting
-    const [sortColumn, setSortColumn] = useState("jobNumber");
-    const [sortDirection, setSortDirection] = useState("desc");
+    const [sortColumn, setSortColumn] = useState(initialSettings.sortColumn || "jobNumber");
+    const [sortDirection, setSortDirection] = useState(initialSettings.sortDirection || "desc");
 
     const [selectedId, setSelectedId] = useState(null);
 
@@ -270,10 +274,10 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     const [showDangerZone, setShowDangerZone] = useState(false);
 
     // View mode: "table" or "dashboard"
-    const [viewMode, setViewMode] = useState("table");
+    const [viewMode, setViewMode] = useState(initialSettings.viewMode || "table");
 
     // Year type for dashboard: "calendar" or "financial"
-    const [yearType, setYearType] = useState("calendar");
+    const [yearType, setYearType] = useState(initialSettings.yearType || "calendar");
 
     // Drill down state for dashboard
     const [drillDownFilter, setDrillDownFilter] = useState(null);
@@ -281,6 +285,21 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     useEffect(() => {
         saveJobSheet(rows);
     }, [rows]);
+
+    // Save settings whenever they change
+    useEffect(() => {
+        saveJobSheetSettings({
+            q,
+            statusFilters,
+            customerFilters,
+            siteFilters,
+            yearFilters,
+            sortColumn,
+            sortDirection,
+            viewMode,
+            yearType
+        });
+    }, [q, statusFilters, customerFilters, siteFilters, yearFilters, sortColumn, sortDirection, viewMode, yearType]);
 
     // Get unique customers, sites, and years from data for filters
     const filterOptions = useMemo(() => {

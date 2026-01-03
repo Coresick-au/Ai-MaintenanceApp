@@ -83,6 +83,8 @@ export interface TimesheetEntry {
     weekKey?: string;
     /** Day of the week */
     day: DayOfWeek;
+    /** Date string in YYYY-MM-DD format */
+    date: string;
     /** Start time in HH:MM format (24-hour) */
     startTime: string;
     /** Finish time in HH:MM format (24-hour) */

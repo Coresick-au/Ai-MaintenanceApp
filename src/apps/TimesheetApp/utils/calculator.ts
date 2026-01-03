@@ -433,17 +433,24 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
     let totalDailyUtilization = 0;
     let daysWorked = 0;
 
-    // Group entries by day
+    // Group entries by day using a unique key (date or weekKey + day)
     const entriesByDay: Record<string, TimesheetEntry[]> = {};
     for (const entry of entries) {
-        if (!entriesByDay[entry.day]) {
-            entriesByDay[entry.day] = [];
+        // Use date if available, otherwise fallback to weekKey + day
+        const dateKey = entry.date || `${entry.weekKey || 'no-week'}-${entry.day}`;
+        if (!entriesByDay[dateKey]) {
+            entriesByDay[dateKey] = [];
         }
-        entriesByDay[entry.day].push(entry);
+        entriesByDay[dateKey].push(entry);
     }
 
-    // Process each day
-    for (const [day, dayEntries] of Object.entries(entriesByDay)) {
+    // Process each unique day
+    for (const [dateKey, dayEntries] of Object.entries(entriesByDay)) {
+        const firstEntry = dayEntries[0];
+        if (!firstEntry) continue;
+
+        const dayName = firstEntry.day;
+
         // Calculate total net hours for the day
         let dayNetHours = 0;
         let dayPerDiem = 0;
@@ -468,13 +475,13 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
         // Apply overtime logic to the DAY's total hours
         const { baseHours, overtimeHours15x, overtimeHours20x } = splitOvertimeHours(
             dayNetHours,
-            day,
+            dayName,
             isNightshift
         );
 
         // Calculate daily utilization: (chargeable hours / 7.5) * 100, capped at 100%
         // Only count weekdays (Mon-Fri) for utilization
-        if (day !== 'Saturday' && day !== 'Sunday') {
+        if (dayName !== 'Saturday' && dayName !== 'Sunday') {
             const dailyUtilization = Math.min(100, (dayChargeableHours / BASE_HOURS_THRESHOLD) * 100);
             totalDailyUtilization += dailyUtilization;
             daysWorked++;

@@ -8,8 +8,11 @@
  */
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
+// @ts-ignore
 import { useAuth } from '../../context/AuthContext';
+// @ts-ignore
 import { timesheetRepository } from '../../repositories';
+// @ts-ignore
 import { PageShell, NeonButton } from '../../components/ui/NeonUI';
 import { FileDown, BarChart3, Send, RefreshCw, CheckCircle, Lock, Unlock, AlertCircle, Minimize2, Maximize2 } from 'lucide-react';
 

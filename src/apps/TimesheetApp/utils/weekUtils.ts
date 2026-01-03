@@ -129,3 +129,25 @@ export function toISODateString(date: Date): string {
 export function fromISODateString(dateStr: string): Date {
     return new Date(dateStr + 'T00:00:00');
 }
+
+/**
+ * Gets the Monday of a specific ISO week.
+ * 
+ * @param year - The ISO week year
+ * @param week - The ISO week number (1-53)
+ * @returns Date object set to Monday of that week
+ */
+export function getFirstDayOfISOWeek(year: number, week: number): Date {
+    // January 4th is always in week 1 of the year
+    const jan4 = new Date(year, 0, 4);
+    // Get the day of week for Jan 4 (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const jan4Day = jan4.getDay() || 7; // Convert 0 (Sunday) to 7
+    // Calculate the Monday of week 1
+    const week1Monday = new Date(jan4);
+    week1Monday.setDate(jan4.getDate() - (jan4Day - 1));
+    // Add the weeks offset
+    const targetMonday = new Date(week1Monday);
+    targetMonday.setDate(week1Monday.getDate() + (week - 1) * 7);
+    targetMonday.setHours(0, 0, 0, 0);
+    return targetMonday;
+}

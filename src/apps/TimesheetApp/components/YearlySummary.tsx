@@ -7,10 +7,23 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { X, ChevronLeft, ChevronRight, TrendingUp, Clock, DollarSign, BarChart3 } from 'lucide-react';
+// @ts-ignore
 import { useAuth } from '../../../context/AuthContext';
+// @ts-ignore
 import { timesheetRepository } from '../../../repositories';
 import type { TimesheetEntry, YearlySummary as YearlySummaryType } from '../types';
-import { calculateWeeklySummary } from '../utils/calculator';
+import { calculateWeeklySummary, formatMinutesToTime } from '../utils/calculator';
+import {
+    Bar,
+    Line,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    Legend,
+    ResponsiveContainer,
+    ComposedChart
+} from 'recharts';
 
 interface YearlySummaryProps {
     isOpen: boolean;
@@ -26,21 +39,199 @@ interface MonthlyData {
     ot20Hours: number;
     perDiem: number;
     weeksWorked: number;
+    averageUtilization: number;
 }
+
+// ============================================================================
+// AUSTRALIAN FINANCIAL YEAR HELPERS
+// ============================================================================
+
+/**
+ * Gets the current Australian Financial Year end year.
+ * FY runs from July 1 to June 30.
+ * If today is July 1 2025 or later, we're in FY2025-26 (end year = 2026).
+ * If today is before July 1 2025, we're in FY2024-25 (end year = 2025).
+ */
+function getCurrentFinancialYear(): number {
+    const today = new Date();
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth(); // 0-indexed (0 = Jan, 6 = July)
+
+    // If we're in July (6) or later, FY end year is next calendar year
+    return currentMonth >= 6 ? currentYear + 1 : currentYear;
+}
+
+/**
+ * Formats a FY end year to display format.
+ * @param fyEndYear - e.g., 2026 becomes "FY 2025-26"
+ */
+function formatFYDisplay(fyEndYear: number): string {
+    const startYear = fyEndYear - 1;
+    const endYearShort = fyEndYear.toString().slice(-2);
+    return `FY ${startYear}-${endYearShort}`;
+}
+
+/**
+ * Gets the ISO week number for a given date.
+ */
+function getISOWeekNumber(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+}
+
+/**
+ * Gets the ISO week year for a given date.
+ * The ISO week year may differ from the calendar year for dates near Jan 1.
+ */
+function getISOWeekYear(date: Date): number {
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    const dayNum = d.getUTCDay() || 7;
+    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+    return d.getUTCFullYear();
+}
+
+// FY-ordered months (July → June)
+const FY_MONTHS = [
+    'July', 'August', 'September', 'October', 'November', 'December',
+    'January', 'February', 'March', 'April', 'May', 'June'
+];
+
+// Calendar year months (January → December)
+const CALENDAR_MONTHS = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+];
 
 export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
     const { currentUser } = useAuth();
-    const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+    const [yearType, setYearType] = useState<'financial' | 'calendar'>(() => {
+        const saved = localStorage.getItem('timesheet_year_type');
+        return (saved === 'calendar' || saved === 'financial') ? saved : 'financial';
+    });
+    const [selectedYear, setSelectedYear] = useState(() => {
+        const saved = localStorage.getItem('timesheet_year_type');
+        return (saved === 'calendar') ? new Date().getFullYear() : getCurrentFinancialYear();
+    });
     const [entries, setEntries] = useState<TimesheetEntry[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [useMockData, setUseMockData] = useState(() => {
+        const saved = localStorage.getItem('timesheet_use_mock_data');
+        return saved === 'true';
+    });
+
+    // Save preferences
+    useEffect(() => {
+        localStorage.setItem('timesheet_year_type', yearType);
+    }, [yearType]);
+
+    // Save mock data preference
+    useEffect(() => {
+        localStorage.setItem('timesheet_use_mock_data', useMockData.toString());
+    }, [useMockData]);
+
+    // Mock data generator for Financial Year
+    // fyEndYear: e.g., 2026 generates data for July 2025 - June 2026
+    const generateMockData = (fyEndYear: number): TimesheetEntry[] => {
+        const mockEntries: TimesheetEntry[] = [];
+        const techId = currentUser?.uid || 'mock-user';
+        const workDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+        // FY spans from July 1 of (fyEndYear - 1) to June 30 of (fyEndYear)
+        const fyStartYear = fyEndYear - 1;
+
+        // Generate entries for each FY month (July -> June)
+        FY_MONTHS.forEach((_monthName, fyMonthIdx) => {
+            // Calculate the actual calendar month and year
+            const calendarMonthIndex = fyMonthIdx < 6 ? fyMonthIdx + 6 : fyMonthIdx - 6;
+            const calendarYear = fyMonthIdx < 6 ? fyStartYear : fyEndYear;
+
+            // Get the number of days in this month
+            const daysInMonth = new Date(calendarYear, calendarMonthIndex + 1, 0).getDate();
+
+            // Generate entries for each weekday in the month
+            for (let day = 1; day <= daysInMonth; day++) {
+                const entryDate = new Date(calendarYear, calendarMonthIndex, day);
+                const dayOfWeek = entryDate.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+
+                // Only generate for weekdays (Mon-Fri)
+                if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+                const dayName = workDays[dayOfWeek - 1];
+                const dateStr = entryDate.toISOString().split('T')[0];
+
+                // Calculate ISO week key
+                const weekNum = getISOWeekNumber(entryDate);
+                const weekYear = getISOWeekYear(entryDate);
+                const weekKey = `${weekYear}-W${weekNum.toString().padStart(2, '0')}`;
+
+                // 30% chance for holiday
+                const isHoliday = Math.random() < 0.3;
+
+                if (isHoliday) {
+                    mockEntries.push({
+                        id: `mock-${dateStr}-holiday`,
+                        userId: techId,
+                        weekKey,
+                        day: dayName,
+                        date: dateStr,
+                        startTime: '08:00',
+                        finishTime: '16:00',
+                        breakDuration: 0.5,
+                        activity: Math.random() > 0.5 ? 'Public Holiday' : 'Holiday',
+                        jobNo: 'ADMIN',
+                        isChargeable: false,
+                        isOvernight: false
+                    } as any);
+                } else {
+                    const baseHours = 7.5;
+                    let ot15 = 0;
+                    let ot20 = 0;
+                    if (Math.random() < 0.4) {
+                        if (Math.random() < 0.7) {
+                            ot20 = 2 + Math.random() * 4;
+                        } else {
+                            ot15 = 1 + Math.random() * 2;
+                        }
+                    }
+                    const totalHours = baseHours + ot15 + ot20;
+                    const isSiteWork = Math.random() < 0.7;
+
+                    mockEntries.push({
+                        id: `mock-${dateStr}-work`,
+                        userId: techId,
+                        weekKey,
+                        day: dayName,
+                        date: dateStr,
+                        startTime: '08:00',
+                        finishTime: formatMinutesToTime(480 + (totalHours + 0.5) * 60),
+                        breakDuration: 0.5,
+                        activity: isSiteWork ? 'Site' : (Math.random() > 0.5 ? 'Office' : 'Travel'),
+                        jobNo: isSiteWork ? `JOB-${Math.floor(Math.random() * 1000)}` : 'ADMIN',
+                        isChargeable: isSiteWork,
+                        isOvernight: Math.random() > 0.9
+                    } as any);
+                }
+            }
+        });
+        return mockEntries;
+    };
 
     // Load all entries for the selected year
     useEffect(() => {
-        if (!isOpen || !currentUser?.uid) return;
+        if (!isOpen || (!currentUser?.uid && !useMockData)) return;
 
         const loadYearData = async () => {
             setIsLoading(true);
             try {
+                if (useMockData) {
+                    setEntries(generateMockData(selectedYear));
+                    setIsLoading(false);
+                    return;
+                }
+
                 // Load all entries for the user
                 const allEntries = await timesheetRepository.getByUserId(currentUser.uid);
 
@@ -65,6 +256,17 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                     return entryDate.getFullYear() === selectedYear;
                 });
 
+                // DEBUG: Log loaded entries for diagnosis
+                console.log(`[YearlySummary] Loaded ${yearEntries.length} entries for ${selectedYear} from ${allEntries.length} total entries`);
+                if (yearEntries.length > 0) {
+                    const sampleEntry = yearEntries[0];
+                    console.log('[YearlySummary] Sample entry:', {
+                        weekKey: sampleEntry.weekKey,
+                        day: sampleEntry.day,
+                        date: sampleEntry.date
+                    });
+                }
+
                 setEntries(yearEntries);
             } catch (error) {
                 console.error('Error loading year data:', error);
@@ -74,7 +276,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
         };
 
         loadYearData();
-    }, [isOpen, currentUser?.uid, selectedYear]);
+    }, [isOpen, currentUser?.uid, selectedYear, useMockData]);
 
     // Calculate yearly summary
     const yearlySummary = useMemo((): YearlySummaryType => {
@@ -139,14 +341,26 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
         };
     }, [entries, selectedYear]);
 
-    // Calculate monthly breakdown
+    // Calculate monthly breakdown for Financial Year or Calendar Year
     const monthlyData = useMemo((): MonthlyData[] => {
-        const months = [
-            'January', 'February', 'March', 'April', 'May', 'June',
-            'July', 'August', 'September', 'October', 'November', 'December'
-        ];
+        const months = yearType === 'financial' ? FY_MONTHS : CALENDAR_MONTHS;
 
-        return months.map((month, idx) => {
+        return months.map((month, monthIdx) => {
+            // Calculate the actual calendar month index and year for this month
+            let calendarMonthIndex: number;
+            let calendarYear: number;
+
+            if (yearType === 'financial') {
+                // FY months: Jul(0), Aug(1), ..., Dec(5), Jan(6), ..., Jun(11)
+                // Calendar months: Jul=6, Aug=7, ..., Dec=11, Jan=0, ..., Jun=5
+                calendarMonthIndex = monthIdx < 6 ? monthIdx + 6 : monthIdx - 6;
+                calendarYear = monthIdx < 6 ? selectedYear - 1 : selectedYear;
+            } else {
+                // Calendar year: Jan(0), Feb(1), ..., Dec(11)
+                calendarMonthIndex = monthIdx;
+                calendarYear = selectedYear;
+            }
+
             // Filter entries for this month by calculating the actual date of each entry
             const monthEntries = entries.filter(entry => {
                 if (!entry.weekKey || !entry.day) return false;
@@ -165,19 +379,20 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                 entryDate.setDate(weekStart.getDate() + dayOffset);
 
                 // Check if this entry's actual date falls in this month AND year
-                return entryDate.getMonth() === idx && entryDate.getFullYear() === selectedYear;
+                return entryDate.getMonth() === calendarMonthIndex && entryDate.getFullYear() === calendarYear;
             });
 
             if (monthEntries.length === 0) {
                 return {
                     month,
-                    monthIndex: idx,
+                    monthIndex: monthIdx,
                     totalHours: 0,
                     baseHours: 0,
                     ot15Hours: 0,
                     ot20Hours: 0,
                     perDiem: 0,
-                    weeksWorked: 0
+                    weeksWorked: 0,
+                    averageUtilization: 0
                 };
             }
 
@@ -187,24 +402,34 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
 
             return {
                 month,
-                monthIndex: idx,
+                monthIndex: monthIdx,
                 totalHours: summary.totalNetHours,
                 baseHours: summary.totalBaseHours,
                 ot15Hours: summary.totalOT15x,
                 ot20Hours: summary.totalOT20x,
                 perDiem: summary.totalPerDiem,
-                weeksWorked: weekGroups.size
+                weeksWorked: weekGroups.size,
+                averageUtilization: summary.utilizationPercent
             };
         });
-    }, [entries, selectedYear]);
+    }, [entries, selectedYear, yearType]);
+
+    // DEBUG: Log monthly breakdown
+    useEffect(() => {
+        if (monthlyData.length > 0) {
+            const monthsWithData = monthlyData.filter(m => m.totalHours > 0);
+            console.log(`[YearlySummary] Monthly breakdown: ${monthsWithData.length}/12 months have data`);
+            monthsWithData.forEach(m => {
+                console.log(`  ${m.month}: ${m.totalHours.toFixed(1)}h`);
+            });
+        }
+    }, [monthlyData]);
 
     // Calculate equivalent normal hours (for display)
     const equivalentHours = yearlySummary.totalBaseHours +
         (yearlySummary.totalOT15x * 1.5) +
         (yearlySummary.totalOT20x * 2);
 
-    // Get max hours for chart scaling
-    const maxMonthlyHours = Math.max(...monthlyData.map(m => m.totalHours), 1);
 
     if (!isOpen) return null;
 
@@ -218,6 +443,34 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                         <h2 className="text-xl font-bold text-white">Yearly Summary</h2>
                     </div>
 
+                    {/* Year Type Toggle */}
+                    <div className="flex items-center bg-slate-800 rounded-lg p-1 border border-slate-600">
+                        <button
+                            onClick={() => {
+                                setYearType('financial');
+                                setSelectedYear(getCurrentFinancialYear());
+                            }}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${yearType === 'financial'
+                                ? 'bg-cyan-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            Financial
+                        </button>
+                        <button
+                            onClick={() => {
+                                setYearType('calendar');
+                                setSelectedYear(new Date().getFullYear());
+                            }}
+                            className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${yearType === 'calendar'
+                                ? 'bg-cyan-600 text-white'
+                                : 'text-slate-400 hover:text-white'
+                                }`}
+                        >
+                            Calendar
+                        </button>
+                    </div>
+
                     {/* Year Navigation */}
                     <div className="flex items-center gap-3">
                         <button
@@ -226,24 +479,38 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                         >
                             <ChevronLeft className="w-5 h-5" />
                         </button>
-                        <span className="text-lg font-semibold text-white min-w-[80px] text-center">
-                            {selectedYear}
+                        <span className="text-lg font-semibold text-white min-w-[120px] text-center">
+                            {yearType === 'financial' ? formatFYDisplay(selectedYear) : selectedYear}
                         </span>
                         <button
                             onClick={() => setSelectedYear(y => y + 1)}
-                            disabled={selectedYear >= new Date().getFullYear()}
+                            disabled={yearType === 'financial'
+                                ? selectedYear >= getCurrentFinancialYear()
+                                : selectedYear >= new Date().getFullYear()}
                             className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             <ChevronRight className="w-5 h-5" />
                         </button>
                     </div>
 
-                    <button
-                        onClick={onClose}
-                        className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
-                    >
-                        <X className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-2">
+                        <button
+                            onClick={() => setUseMockData(!useMockData)}
+                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${useMockData
+                                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                                : 'bg-slate-700 text-slate-400 border border-slate-600'
+                                }`}
+                        >
+                            {useMockData ? 'Mock Data ON' : 'Mock Data OFF'}
+                        </button>
+
+                        <button
+                            onClick={onClose}
+                            className="p-2 rounded-lg hover:bg-slate-700 text-slate-400 hover:text-white transition-colors"
+                        >
+                            <X className="w-5 h-5" />
+                        </button>
+                    </div>
                 </div>
 
                 {/* Content */}
@@ -254,7 +521,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                         </div>
                     ) : entries.length === 0 ? (
                         <div className="text-center py-20 text-slate-400">
-                            No timesheet data for {selectedYear}
+                            No timesheet data for {formatFYDisplay(selectedYear)}
                         </div>
                     ) : (
                         <>
@@ -333,54 +600,67 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                 </div>
                             </div>
 
-                            {/* Monthly Chart */}
-                            <div className="bg-slate-800 rounded-xl p-5 border border-slate-700">
-                                <h3 className="text-lg font-semibold text-white mb-4">Monthly Hours</h3>
-                                <div className="flex items-end gap-2 h-48">
-                                    {monthlyData.map((month) => (
-                                        <div key={month.month} className="flex-1 flex flex-col items-center">
-                                            <div className="w-full flex flex-col items-center flex-1 justify-end">
-                                                {/* Stacked bar */}
-                                                <div
-                                                    className="w-full max-w-[40px] flex flex-col-reverse rounded-t overflow-hidden"
-                                                    style={{ height: `${(month.totalHours / maxMonthlyHours) * 100}%`, minHeight: month.totalHours > 0 ? '4px' : '0' }}
-                                                >
-                                                    <div
-                                                        className="bg-slate-400"
-                                                        style={{ height: `${(month.baseHours / (month.totalHours || 1)) * 100}%` }}
-                                                    />
-                                                    <div
-                                                        className="bg-amber-500"
-                                                        style={{ height: `${(month.ot15Hours / (month.totalHours || 1)) * 100}%` }}
-                                                    />
-                                                    <div
-                                                        className="bg-red-500"
-                                                        style={{ height: `${(month.ot20Hours / (month.totalHours || 1)) * 100}%` }}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="text-xs text-slate-500 mt-2">
-                                                {month.month.slice(0, 3)}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                                {/* Legend */}
-                                <div className="flex items-center justify-center gap-6 mt-4 text-xs">
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded bg-slate-400" />
-                                        <span className="text-slate-400">Base</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded bg-amber-500" />
-                                        <span className="text-slate-400">OT 1.5x</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-3 h-3 rounded bg-red-500" />
-                                        <span className="text-slate-400">OT 2x</span>
-                                    </div>
+                            {/* Monthly Hours & Utilisation Trend Chart */}
+                            <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
+                                <h3 className="text-lg font-semibold text-white mb-6">Monthly Hours & Utilisation Trend</h3>
+                                <div className="h-[350px] w-full">
+                                    <ResponsiveContainer width="100%" height="100%">
+                                        <ComposedChart data={monthlyData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
+                                            <XAxis
+                                                dataKey="month"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                                tickFormatter={(val) => val.slice(0, 3)}
+                                            />
+                                            <YAxis
+                                                yAxisId="left"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#94a3b8', fontSize: 12 }}
+                                            />
+                                            <YAxis
+                                                yAxisId="right"
+                                                orientation="right"
+                                                axisLine={false}
+                                                tickLine={false}
+                                                tick={{ fill: '#06b6d4', fontSize: 12 }}
+                                                domain={[0, 120]}
+                                                tickFormatter={(val) => `${val}%`}
+                                            />
+                                            <Tooltip
+                                                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                                                contentStyle={{
+                                                    backgroundColor: '#0f172a',
+                                                    border: '1px solid #334155',
+                                                    borderRadius: '8px',
+                                                    color: '#f8fafc'
+                                                }}
+                                            />
+                                            <Legend verticalAlign="top" align="right" iconType="circle" wrapperStyle={{ paddingBottom: '20px' }} />
+
+                                            {/* Stacked Bars for Hours */}
+                                            <Bar yAxisId="left" dataKey="baseHours" name="Base" stackId="a" fill="#94a3b8" barSize={32} />
+                                            <Bar yAxisId="left" dataKey="ot15Hours" name="OT 1.5x" stackId="a" fill="#f59e0b" barSize={32} />
+                                            <Bar yAxisId="left" dataKey="ot20Hours" name="OT 2x" stackId="a" fill="#ef4444" radius={[4, 4, 0, 0]} barSize={32} />
+
+                                            {/* Line for Utilisation */}
+                                            <Line
+                                                yAxisId="right"
+                                                type="monotone"
+                                                dataKey="averageUtilization"
+                                                name="Utilisation %"
+                                                stroke="#06b6d4"
+                                                strokeWidth={3}
+                                                dot={{ r: 4, fill: '#06b6d4', strokeWidth: 2, stroke: '#0f172a' }}
+                                                activeDot={{ r: 6, strokeWidth: 0 }}
+                                            />
+                                        </ComposedChart>
+                                    </ResponsiveContainer>
                                 </div>
                             </div>
+
 
                             {/* Monthly Table */}
                             <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
@@ -433,13 +713,26 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
     );
 }
 
-// Helper: Get first day of ISO week
+// Helper: Get first day (Monday) of ISO week
+// ISO week 1 is the week containing Jan 4th (or the first Thursday of the year)
 function getFirstDayOfISOWeek(year: number, week: number): Date {
-    const jan4 = new Date(year, 0, 4);
-    const dayOfWeek = jan4.getDay() || 7;
-    const monday = new Date(jan4);
-    monday.setDate(jan4.getDate() - dayOfWeek + 1 + (week - 1) * 7);
-    return monday;
+    // Start with Jan 4th of the given year (always in ISO week 1)
+    const jan4 = new Date(Date.UTC(year, 0, 4));
+
+    // Get the day of week for Jan 4 (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    // Convert to ISO day (1 = Monday, 7 = Sunday)
+    const jan4Day = jan4.getUTCDay() || 7;
+
+    // Calculate the Monday of week 1
+    const week1Monday = new Date(jan4);
+    week1Monday.setUTCDate(jan4.getUTCDate() - jan4Day + 1);
+
+    // Calculate the Monday of the requested week
+    const targetMonday = new Date(week1Monday);
+    targetMonday.setUTCDate(week1Monday.getUTCDate() + (week - 1) * 7);
+
+    // Return as local date
+    return new Date(targetMonday.getUTCFullYear(), targetMonday.getUTCMonth(), targetMonday.getUTCDate());
 }
 
 // Summary card component

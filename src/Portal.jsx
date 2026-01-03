@@ -9,6 +9,7 @@ import { QuotingWrapper } from './apps/quoting/QuotingWrapper';
 import { CustomerApp } from './apps/CustomerPortal/CustomerApp';
 import { EmployeeApp } from './apps/employees/EmployeeApp';
 import { TimesheetApp } from './apps/TimesheetApp/TimesheetApp';
+import { AdminDashboard } from './apps/TimesheetApp/AdminDashboard';
 import JobSheetPage from './pages/JobSheetPage';
 
 const Portal = () => {
@@ -96,6 +97,17 @@ const Portal = () => {
             component: <TimesheetApp onBack={() => setActiveApp(null)} />,
             // PERMISSION: User must have the feature enabled in their profile
             restricted: !userData?.features?.timesheetsEnabled
+        },
+        {
+            id: 'timesheet_admin',
+            name: 'Timesheet Admin',
+            fullName: 'All Staff Timesheet Overview',
+            description: 'View and manage timesheets for all staff members with analytics and export.',
+            icon: '📊',
+            color: 'indigo',
+            component: <AdminDashboard onBack={() => setActiveApp(null)} />,
+            // PERMISSION: Admin or Manager only
+            restricted: !['admin', 'manager'].includes(userRole)
         }
     ];
 
