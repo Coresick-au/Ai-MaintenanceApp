@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
-import { getPartCostAtDate } from '../../services/costingService';
+import { getPartCostAtDate, getSubAssemblyCostAtDate } from '../../services/costingService';
 
 /**
  * BOM Editor component for managing product composition
@@ -12,22 +12,30 @@ import { getPartCostAtDate } from '../../services/costingService';
 export const BOMEditor = ({
     bomEntries = [],
     bomFastenerEntries = [],
+    bomSubAssemblyEntries = [],
     onAddPart,
     onRemovePart,
     onUpdateQuantity,
     onAddFastener,
     onRemoveFastener,
     onUpdateFastenerQuantity,
+    onAddSubAssembly,
+    onRemoveSubAssembly,
+    onUpdateSubAssemblyQuantity,
     disabled = false
 }) => {
     const [parts, setParts] = useState([]);
     const [fasteners, setFasteners] = useState([]);
+    const [subAssemblies, setSubAssemblies] = useState([]);
     const [selectedPartId, setSelectedPartId] = useState('');
     const [selectedFastenerId, setSelectedFastenerId] = useState('');
+    const [selectedSubAssemblyId, setSelectedSubAssemblyId] = useState('');
     const [partQuantity, setPartQuantity] = useState('1');
     const [fastenerQuantity, setFastenerQuantity] = useState('1');
+    const [subAssemblyQuantity, setSubAssemblyQuantity] = useState('1');
     const [partCosts, setPartCosts] = useState({});
     const [fastenerCosts, setFastenerCosts] = useState({});
+    const [subAssemblyCosts, setSubAssemblyCosts] = useState({});
 
     // Load parts from catalog
     useEffect(() => {
@@ -46,6 +54,17 @@ export const BOMEditor = ({
             const fastenersList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             fastenersList.sort((a, b) => a.name.localeCompare(b.name));
             setFasteners(fastenersList);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // Load sub assemblies from catalog
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, 'sub_assemblies'), (snap) => {
+            const subAssembliesList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            subAssembliesList.sort((a, b) => a.name.localeCompare(b.name));
+            setSubAssemblies(subAssembliesList);
         });
 
         return () => unsubscribe();
@@ -93,6 +112,27 @@ export const BOMEditor = ({
         }
     }, [bomFastenerEntries]);
 
+    // Load current costs for BOM sub assemblies
+    useEffect(() => {
+        const loadSubAssemblyCosts = async () => {
+            const costs = {};
+            for (const entry of bomSubAssemblyEntries) {
+                try {
+                    const cost = await getSubAssemblyCostAtDate(entry.subAssemblyId, new Date());
+                    costs[entry.subAssemblyId] = cost;
+                } catch (error) {
+                    console.error('Error loading sub assembly cost:', error);
+                    costs[entry.subAssemblyId] = 0;
+                }
+            }
+            setSubAssemblyCosts(costs);
+        };
+
+        if (bomSubAssemblyEntries.length > 0) {
+            loadSubAssemblyCosts();
+        }
+    }, [bomSubAssemblyEntries]);
+
     const handleAddPart = () => {
         if (!selectedPartId || !partQuantity || parseFloat(partQuantity) <= 0) {
             return;
@@ -113,6 +153,16 @@ export const BOMEditor = ({
         setFastenerQuantity('1');
     };
 
+    const handleAddSubAssembly = () => {
+        if (!selectedSubAssemblyId || !subAssemblyQuantity || parseFloat(subAssemblyQuantity) <= 0) {
+            return;
+        }
+
+        onAddSubAssembly(selectedSubAssemblyId, parseFloat(subAssemblyQuantity));
+        setSelectedSubAssemblyId('');
+        setSubAssemblyQuantity('1');
+    };
+
     const handlePartQuantityChange = (partId, newQuantity) => {
         if (parseFloat(newQuantity) > 0) {
             onUpdateQuantity(partId, parseFloat(newQuantity));
@@ -122,6 +172,12 @@ export const BOMEditor = ({
     const handleFastenerQuantityChange = (fastenerId, newQuantity) => {
         if (parseFloat(newQuantity) > 0) {
             onUpdateFastenerQuantity(fastenerId, parseFloat(newQuantity));
+        }
+    };
+
+    const handleSubAssemblyQuantityChange = (subAssemblyId, newQuantity) => {
+        if (parseFloat(newQuantity) > 0) {
+            onUpdateSubAssemblyQuantity(subAssemblyId, parseFloat(newQuantity));
         }
     };
 
@@ -137,14 +193,23 @@ export const BOMEditor = ({
         return sum + (fastenerCost * entry.quantityUsed);
     }, 0);
 
+    // Calculate sub assemblies subtotal
+    const subAssembliesSubtotal = bomSubAssemblyEntries.reduce((sum, entry) => {
+        const subAssemblyCost = subAssemblyCosts[entry.subAssemblyId] || 0;
+        return sum + (subAssemblyCost * entry.quantityUsed);
+    }, 0);
+
     // Total cost
-    const totalCost = partsSubtotal + fastenersSubtotal;
+    const totalCost = partsSubtotal + fastenersSubtotal + subAssembliesSubtotal;
 
     // Filter out parts already in BOM
     const availableParts = parts.filter(p => !bomEntries.some(e => e.partId === p.id));
 
     // Filter out fasteners already in BOM
     const availableFasteners = fasteners.filter(f => !bomFastenerEntries.some(e => e.fastenerId === f.id));
+
+    // Filter out sub assemblies already in BOM
+    const availableSubAssemblies = subAssemblies.filter(sa => !bomSubAssemblyEntries.some(e => e.subAssemblyId === sa.id));
 
     return (
         <div className="space-y-6">
@@ -153,7 +218,7 @@ export const BOMEditor = ({
                     Bill of Materials
                 </label>
                 <span className="text-xs text-slate-400">
-                    {bomEntries.length + bomFastenerEntries.length} item{(bomEntries.length + bomFastenerEntries.length) !== 1 ? 's' : ''}
+                    {bomEntries.length + bomFastenerEntries.length + bomSubAssemblyEntries.length} item{(bomEntries.length + bomFastenerEntries.length + bomSubAssemblyEntries.length) !== 1 ? 's' : ''}
                 </span>
             </div>
 
@@ -363,8 +428,111 @@ export const BOMEditor = ({
                 )}
             </div>
 
+            {/* SUB ASSEMBLIES SECTION */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                    <Icons.Layers size={16} className="text-purple-400" />
+                    <h3 className="text-sm font-semibold text-white">Sub Assemblies</h3>
+                    <span className="text-xs text-slate-500">({bomSubAssemblyEntries.length})</span>
+                </div>
+
+                {/* Add Sub Assembly Form */}
+                {!disabled && (
+                    <div className="flex gap-2">
+                        <select
+                            value={selectedSubAssemblyId}
+                            onChange={(e) => setSelectedSubAssemblyId(e.target.value)}
+                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        >
+                            <option value="">Select a sub assembly...</option>
+                            {availableSubAssemblies.map(subAssembly => (
+                                <option key={subAssembly.id} value={subAssembly.id}>
+                                    {subAssembly.sku} - {subAssembly.name}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={subAssemblyQuantity}
+                            onChange={(e) => setSubAssemblyQuantity(e.target.value)}
+                            placeholder="Qty"
+                            className="w-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleAddSubAssembly}
+                            disabled={!selectedSubAssemblyId || !subAssemblyQuantity}
+                            className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Icons.Plus size={18} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Sub Assemblies List */}
+                {bomSubAssemblyEntries.length > 0 ? (
+                    <div className="space-y-2">
+                        {bomSubAssemblyEntries.map(entry => {
+                            const subAssembly = subAssemblies.find(sa => sa.id === entry.subAssemblyId);
+                            const subAssemblyCost = subAssemblyCosts[entry.subAssemblyId] || 0;
+                            const subtotal = subAssemblyCost * entry.quantityUsed;
+
+                            return (
+                                <div
+                                    key={entry.subAssemblyId}
+                                    className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700"
+                                >
+                                    <div className="flex-1">
+                                        <div className="font-medium text-white">
+                                            {subAssembly?.sku || 'Unknown'} - {subAssembly?.name || 'Unknown Sub Assembly'}
+                                        </div>
+                                        <div className="text-xs text-slate-400 mt-1">
+                                            ${(subAssemblyCost / 100).toFixed(2)} × {entry.quantityUsed} = ${(subtotal / 100).toFixed(2)}
+                                        </div>
+                                    </div>
+                                    {!disabled && (
+                                        <>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                value={entry.quantityUsed}
+                                                onChange={(e) => handleSubAssemblyQuantityChange(entry.subAssemblyId, e.target.value)}
+                                                className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => onRemoveSubAssembly(entry.subAssemblyId)}
+                                                className="p-2 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                                                title="Remove sub assembly"
+                                            >
+                                                <Icons.Trash size={16} />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        {/* Sub Assemblies Subtotal */}
+                        <div className="flex items-center justify-between p-2 px-3 bg-slate-800/30 rounded border border-slate-700/50">
+                            <span className="text-sm text-slate-400">Sub Assemblies Subtotal:</span>
+                            <span className="text-sm font-semibold text-white">
+                                ${(subAssembliesSubtotal / 100).toFixed(2)}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-4 text-center text-slate-500 bg-slate-800/20 rounded-lg border border-dashed border-slate-700">
+                        <p className="text-xs">No sub assemblies added</p>
+                    </div>
+                )}
+            </div>
+
             {/* Total Cost Display */}
-            {(bomEntries.length > 0 || bomFastenerEntries.length > 0) && (
+            {(bomEntries.length > 0 || bomFastenerEntries.length > 0 || bomSubAssemblyEntries.length > 0) && (
                 <div className="flex items-center justify-between p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
                     <span className="font-medium text-white">Total BOM Cost:</span>
                     <span className="text-lg font-bold text-cyan-400">
@@ -373,7 +541,7 @@ export const BOMEditor = ({
                 </div>
             )}
 
-            {(bomEntries.length === 0 && bomFastenerEntries.length === 0) && (
+            {(bomEntries.length === 0 && bomFastenerEntries.length === 0 && bomSubAssemblyEntries.length === 0) && (
                 <div className="p-6 text-center text-slate-400 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
                     <Icons.Package size={32} className="mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No items added yet</p>

@@ -275,3 +275,52 @@ export async function updateFastenerQuantity(productId, fastenerId, quantityUsed
         throw error;
     }
 }
+
+// ==========================================
+// SUB ASSEMBLY BOM OPERATIONS
+// ==========================================
+
+/**
+ * Add a sub assembly to a product's Bill of Materials
+ */
+export async function addSubAssemblyToBOM(productId, subAssemblyId, quantityUsed) {
+    try {
+        // Validate sub assembly exists
+        const subAssemblyRef = await getDocs(
+            query(collection(db, 'sub_assemblies'), where('id', '==', subAssemblyId))
+        );
+
+        if (subAssemblyRef.empty) {
+            throw new Error(`Sub assembly ${subAssemblyId} not found in catalog`);
+        }
+
+        return await productCompositionRepository.addSubAssemblyToBOM(productId, subAssemblyId, quantityUsed);
+    } catch (error) {
+        console.error('[ProductService] Error adding sub assembly to BOM:', error);
+        throw error;
+    }
+}
+
+/**
+ * Remove a sub assembly from a product's Bill of Materials
+ */
+export async function removeSubAssemblyFromBOM(productId, subAssemblyId) {
+    try {
+        return await productCompositionRepository.removeSubAssemblyFromBOM(productId, subAssemblyId);
+    } catch (error) {
+        console.error('[ProductService] Error removing sub assembly from BOM:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update the quantity of a sub assembly in a product's BOM
+ */
+export async function updateSubAssemblyQuantity(productId, subAssemblyId, quantityUsed) {
+    try {
+        return await productCompositionRepository.updateSubAssemblyQuantity(productId, subAssemblyId, quantityUsed);
+    } catch (error) {
+        console.error('[ProductService] Error updating sub assembly quantity:', error);
+        throw error;
+    }
+}

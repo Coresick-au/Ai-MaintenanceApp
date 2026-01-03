@@ -9,6 +9,8 @@ import { ProductRepository } from './ProductRepository';
 import { QuoteRepository } from './QuoteRepository';
 import { BuildGuideRepository } from './BuildGuideRepository';
 import { TimesheetRepository } from './TimesheetRepository';
+import { SubAssemblyRepository } from './SubAssemblyRepository';
+import { SubAssemblyCompositionRepository } from './SubAssemblyCompositionRepository';
 
 // Singleton instances - use these throughout the app
 export const productCompositionRepository = new ProductCompositionRepository();
@@ -21,6 +23,8 @@ export const productRepository = new ProductRepository();
 export const quoteRepository = new QuoteRepository();
 export const buildGuideRepository = new BuildGuideRepository();
 export const timesheetRepository = new TimesheetRepository();
+export const subAssemblyRepository = new SubAssemblyRepository();
+export const subAssemblyCompositionRepository = new SubAssemblyCompositionRepository();
 
 // Export classes for testing or custom instances
 export {
@@ -34,5 +38,7 @@ export {
     ProductRepository,
     QuoteRepository,
     BuildGuideRepository,
-    TimesheetRepository
+    TimesheetRepository,
+    SubAssemblyRepository,
+    SubAssemblyCompositionRepository
 };

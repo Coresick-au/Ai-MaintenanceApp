@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { collection, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
-import { deleteProduct } from '../../services/productService';
-import { calculateProductCost } from '../../services/costingService';
+import { deleteSubAssembly } from '../../services/subAssemblyService';
+import { getSubAssemblyCostAtDate } from '../../services/costingService';
 import { formatCurrency } from '../../utils/helpers';
 import { useCategories } from '../../context/CategoryContext';
 import { FilterPanel } from './categories/FilterPanel';
@@ -16,23 +16,22 @@ import { useResizableColumns } from '../../hooks/useResizableColumns';
  */
 
 /**
- * Product Catalog Table component
- * @description Displays all products in a searchable, filterable table with
+ * Sub Assembly Catalog Table component
+ * @description Displays all sub assemblies in a searchable, filterable table with
  * actions for editing, deleting, and viewing BOM details.
  * @param {Object} props - Component props
- * @param {Function} props.onAddProduct - Callback to open add product modal
- * @param {Function} props.onEditProduct - Callback to edit a product
- * @returns {JSX.Element} Rendered product catalog table
+ * @param {Function} props.onAddSubAssembly - Callback to open add sub assembly modal
+ * @param {Function} props.onEditSubAssembly - Callback to edit a sub assembly
+ * @returns {JSX.Element} Rendered sub assembly catalog table
  */
-export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigger = 0 }) => {
-    const [products, setProducts] = useState([]);
+export const SubAssemblyCatalogTable = ({ onAddSubAssembly, onEditSubAssembly, refreshTrigger = 0 }) => {
+    const [subAssemblies, setSubAssemblies] = useState([]);
     const [inventory, setInventory] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [loading, setLoading] = useState(true);
     const [manufacturingCosts, setManufacturingCosts] = useState({});
     const [partCatalogVersion, setPartCatalogVersion] = useState(0);
     const [fastenerCatalogVersion, setFastenerCatalogVersion] = useState(0);
-    const [productCatalogVersion, setProductCatalogVersion] = useState(0);
     const [subAssemblyCatalogVersion, setSubAssemblyCatalogVersion] = useState(0);
     const [labourRateVersion, setLabourRateVersion] = useState(0);
     const [isFilterOpen, setIsFilterOpen] = useState(false);
@@ -43,14 +42,14 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
     // Resizable columns
     const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([120, 250, 150, 150, 120, 120, 100, 80, 100]);
 
-    // Load products from Firestore
+    // Load sub assemblies from Firestore
     useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, 'products'), (snap) => {
-            const productsList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            productsList.sort((a, b) => a.name.localeCompare(b.name));
-            setProducts(productsList);
+        const unsubscribe = onSnapshot(collection(db, 'sub_assemblies'), (snap) => {
+            const subAssembliesList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            subAssembliesList.sort((a, b) => a.name.localeCompare(b.name));
+            setSubAssemblies(subAssembliesList);
             setLoading(false);
-            setProductCatalogVersion(prev => prev + 1);
+            setSubAssemblyCatalogVersion(prev => prev + 1);
         });
 
         return () => unsubscribe();
@@ -69,15 +68,6 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'fastener_catalog'), () => {
             setFastenerCatalogVersion(prev => prev + 1);
-        });
-
-        return () => unsubscribe();
-    }, []);
-
-    // Listen to sub assembly catalog changes to trigger cost recalculation
-    useEffect(() => {
-        const unsubscribe = onSnapshot(collection(db, 'sub_assemblies'), () => {
-            setSubAssemblyCatalogVersion(prev => prev + 1);
         });
 
         return () => unsubscribe();
@@ -109,38 +99,36 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
         return () => unsubscribe();
     }, []);
 
-    // Load manufacturing costs for all products
+    // Load manufacturing costs for all sub assemblies
     useEffect(() => {
         const loadCosts = async () => {
             const costs = {};
-            for (const product of products) {
+            for (const subAssembly of subAssemblies) {
                 try {
-                    const result = await calculateProductCost(product.id);
-                    costs[product.id] = result.totalCost;
-                    console.log(`[ProductCatalog] Cost for ${product.name} (${product.id}):`, result.totalCost);
+                    const cost = await getSubAssemblyCostAtDate(subAssembly.id, new Date());
+                    costs[subAssembly.id] = cost;
                 } catch (error) {
-                    console.error(`Error calculating cost for ${product.id}:`, error);
-                    costs[product.id] = 0;
+                    console.error(`Error calculating cost for ${subAssembly.id}:`, error);
+                    costs[subAssembly.id] = 0;
                 }
             }
-            console.log('[ProductCatalog] All costs calculated:', costs);
             setManufacturingCosts(costs);
         };
 
-        if (products.length > 0) {
+        if (subAssemblies.length > 0) {
             loadCosts();
         }
-    }, [products, refreshTrigger, partCatalogVersion, fastenerCatalogVersion, productCatalogVersion, subAssemblyCatalogVersion, labourRateVersion]);
+    }, [subAssemblies, refreshTrigger, partCatalogVersion, fastenerCatalogVersion, subAssemblyCatalogVersion, labourRateVersion]);
 
-    const handleDelete = async (product) => {
-        if (!confirm(`Delete product "${product.name}"? This cannot be undone.`)) {
+    const handleDelete = async (subAssembly) => {
+        if (!confirm(`Delete sub assembly "${subAssembly.name}"? This cannot be undone.`)) {
             return;
         }
 
         try {
-            await deleteProduct(product.id);
+            await deleteSubAssembly(subAssembly.id);
         } catch (error) {
-            alert(`Failed to delete product: ${error.message}`);
+            alert(`Failed to delete sub assembly: ${error.message}`);
         }
     };
 
@@ -150,28 +138,28 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
         return category ? category.name : '';
     };
 
-    // Enhance products with actual stock counts
-    const productsWithStock = products.map(product => {
+    // Enhance sub assemblies with actual stock counts
+    const subAssembliesWithStock = subAssemblies.map(subAssembly => {
         // Calculate actual stock count from inventory_state
         const actualStockCount = inventory
-            .filter(inv => inv.partId === product.id)
+            .filter(inv => inv.partId === subAssembly.id)
             .reduce((total, inv) => total + (inv.quantity || 0), 0);
 
         return {
-            ...product,
+            ...subAssembly,
             actualStockCount
         };
     });
 
-    // Filter products based on search term and category filters
-    let filteredProducts = productsWithStock.filter(product => {
+    // Filter sub assemblies based on search term and category filters
+    let filteredSubAssemblies = subAssembliesWithStock.filter(subAssembly => {
         const searchLower = searchTerm.toLowerCase();
-        const categoryName = getCategoryName(product.categoryId)?.toLowerCase() || '';
-        const subcategoryName = getCategoryName(product.subcategoryId)?.toLowerCase() || '';
-        const legacyCategory = product.category?.toLowerCase() || '';
+        const categoryName = getCategoryName(subAssembly.categoryId)?.toLowerCase() || '';
+        const subcategoryName = getCategoryName(subAssembly.subcategoryId)?.toLowerCase() || '';
+        const legacyCategory = subAssembly.category?.toLowerCase() || '';
 
-        return product.name.toLowerCase().includes(searchLower) ||
-            product.sku.toLowerCase().includes(searchLower) ||
+        return subAssembly.name.toLowerCase().includes(searchLower) ||
+            subAssembly.sku.toLowerCase().includes(searchLower) ||
             categoryName.includes(searchLower) ||
             subcategoryName.includes(searchLower) ||
             legacyCategory.includes(searchLower);
@@ -179,10 +167,10 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
 
     // Apply category filters
     if (categoryFilters.length > 0) {
-        filteredProducts = filteredProducts.filter(product => {
-            if (!product.categoryId && !product.subcategoryId) return false;
+        filteredSubAssemblies = filteredSubAssemblies.filter(subAssembly => {
+            if (!subAssembly.categoryId && !subAssembly.subcategoryId) return false;
             return categoryFilters.some(filterId =>
-                filterId === product.categoryId || filterId === product.subcategoryId
+                filterId === subAssembly.categoryId || filterId === subAssembly.subcategoryId
             );
         });
     }
@@ -201,11 +189,11 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                 {/* Header */}
                 <div className="flex items-center justify-between">
                     <div>
-                        <h2 className="text-xl font-bold text-white">Product Catalog</h2>
+                        <h2 className="text-xl font-bold text-white">Sub Assembly Catalog</h2>
                         <p className="text-sm text-slate-400 mt-1">
                             {categoryFilters.length > 0
-                                ? `Showing ${filteredProducts.length} of ${products.length} products (filtered)`
-                                : `${filteredProducts.length} product${filteredProducts.length !== 1 ? 's' : ''}`
+                                ? `Showing ${filteredSubAssemblies.length} of ${subAssemblies.length} sub assemblies (filtered)`
+                                : `${filteredSubAssemblies.length} sub assembl${filteredSubAssemblies.length !== 1 ? 'ies' : 'y'}`
                             }
                         </p>
                     </div>
@@ -226,11 +214,11 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                             )}
                         </button>
                         <button
-                            onClick={onAddProduct}
+                            onClick={onAddSubAssembly}
                             className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
                         >
                             <Icons.Plus size={18} />
-                            Add Product
+                            Add Sub Assembly
                         </button>
                     </div>
                 </div>
@@ -252,7 +240,7 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                     <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
                     <input
                         type="text"
-                        placeholder="Search products by name, SKU, or category..."
+                        placeholder="Search sub assemblies by name, SKU, or category..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500"
@@ -260,7 +248,7 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                 </div>
 
                 {/* Table */}
-                {filteredProducts.length > 0 ? (
+                {filteredSubAssemblies.length > 0 ? (
                     <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
                         <div className="overflow-x-auto">
                             <table ref={tableRef} className="text-left text-sm" style={{ tableLayout: 'auto' }}>
@@ -304,30 +292,30 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-700">
-                                    {filteredProducts.map(product => (
-                                        <tr key={product.id} className="hover:bg-slate-700/50 transition-colors">
+                                    {filteredSubAssemblies.map(subAssembly => (
+                                        <tr key={subAssembly.id} className="hover:bg-slate-700/50 transition-colors">
                                             <td className="px-4 py-3 text-sm font-mono text-cyan-400">
-                                                {product.sku}
+                                                {subAssembly.sku}
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="text-sm font-medium text-white">
-                                                    {product.name}
+                                                    {subAssembly.name}
                                                 </div>
-                                                {product.description && (
+                                                {subAssembly.description && (
                                                     <div className="text-xs text-slate-400 mt-0.5">
-                                                        {product.description}
+                                                        {subAssembly.description}
                                                     </div>
                                                 )}
                                             </td>
                                             <td className="px-4 py-3 text-sm text-slate-300">
                                                 <span className="text-xs px-2 py-1 bg-cyan-500/10 text-cyan-300 rounded border border-cyan-500/30">
-                                                    {getCategoryName(product.categoryId) || product.category || '-'}
+                                                    {getCategoryName(subAssembly.categoryId) || subAssembly.category || '-'}
                                                 </span>
                                             </td>
                                             <td className="px-4 py-3 text-sm text-slate-300">
-                                                {product.subcategoryId ? (
+                                                {subAssembly.subcategoryId ? (
                                                     <span className="text-xs px-2 py-1 bg-purple-500/10 text-purple-300 rounded border border-purple-500/30">
-                                                        {getCategoryName(product.subcategoryId)}
+                                                        {getCategoryName(subAssembly.subcategoryId)}
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-500">-</span>
@@ -337,13 +325,13 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                                 <div className="flex items-center justify-end gap-2">
                                                     <span className="font-medium text-slate-200">
                                                         {(() => {
-                                                            const mfgCost = product.costType === 'MANUAL'
-                                                                ? (product.manualCost || 0)
-                                                                : (manufacturingCosts[product.id] || 0);
+                                                            const mfgCost = subAssembly.costType === 'MANUAL'
+                                                                ? (subAssembly.manualCost || 0)
+                                                                : (manufacturingCosts[subAssembly.id] || 0);
                                                             return mfgCost > 0 ? formatCurrency(mfgCost) : <span className="text-slate-500">--</span>;
                                                         })()}
                                                     </span>
-                                                    {product.costType === 'MANUAL' && (
+                                                    {subAssembly.costType === 'MANUAL' && (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-purple-500/20 text-purple-300 text-xs font-medium rounded border border-purple-500/30" title="Manual cost entry">
                                                             <Icons.Edit size={12} />
                                                             Manual
@@ -357,23 +345,23 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                                         {(() => {
                                                             // Calculate list price based on source
                                                             let listPrice;
-                                                            if (product.listPriceSource === 'CALCULATED') {
-                                                                const mfgCost = product.costType === 'MANUAL'
-                                                                    ? (product.manualCost || 0)
-                                                                    : (manufacturingCosts[product.id] || 0);
-                                                                const marginPercent = (product.targetMarginPercent || 0) / 100;
+                                                            if (subAssembly.listPriceSource === 'CALCULATED') {
+                                                                const mfgCost = subAssembly.costType === 'MANUAL'
+                                                                    ? (subAssembly.manualCost || 0)
+                                                                    : (manufacturingCosts[subAssembly.id] || 0);
+                                                                const marginPercent = (subAssembly.targetMarginPercent || 0) / 100;
                                                                 if (marginPercent >= 1 || mfgCost === 0) {
                                                                     listPrice = 0;
                                                                 } else {
                                                                     listPrice = Math.round(mfgCost / (1 - marginPercent));
                                                                 }
                                                             } else {
-                                                                listPrice = product.listPrice || 0;
+                                                                listPrice = subAssembly.listPrice || 0;
                                                             }
                                                             return listPrice > 0 ? formatCurrency(listPrice) : <span className="text-slate-500">--</span>;
                                                         })()}
                                                     </span>
-                                                    {product.listPriceSource === 'CALCULATED' && (
+                                                    {subAssembly.listPriceSource === 'CALCULATED' && (
                                                         <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-cyan-500/20 text-cyan-300 text-xs font-medium rounded border border-cyan-500/30" title="Auto-calculated from BOM cost + margin">
                                                             <Icons.Calculator size={12} />
                                                             Auto
@@ -385,31 +373,31 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                                 {(() => {
                                                     // Calculate list price based on source
                                                     let listPrice;
-                                                    if (product.listPriceSource === 'CALCULATED') {
-                                                        const mfgCost = product.costType === 'MANUAL'
-                                                            ? (product.manualCost || 0)
-                                                            : (manufacturingCosts[product.id] || 0);
-                                                        const marginPercent = (product.targetMarginPercent || 0) / 100;
+                                                    if (subAssembly.listPriceSource === 'CALCULATED') {
+                                                        const mfgCost = subAssembly.costType === 'MANUAL'
+                                                            ? (subAssembly.manualCost || 0)
+                                                            : (manufacturingCosts[subAssembly.id] || 0);
+                                                        const marginPercent = (subAssembly.targetMarginPercent || 0) / 100;
                                                         if (marginPercent >= 1 || mfgCost === 0) {
                                                             listPrice = 0;
                                                         } else {
                                                             listPrice = Math.round(mfgCost / (1 - marginPercent));
                                                         }
                                                     } else {
-                                                        listPrice = product.listPrice || 0;
+                                                        listPrice = subAssembly.listPrice || 0;
                                                     }
 
                                                     // Use manual cost if costType is MANUAL, otherwise use calculated cost
-                                                    const mfgCost = product.costType === 'MANUAL'
-                                                        ? (product.manualCost || 0)
-                                                        : (manufacturingCosts[product.id] || 0);
+                                                    const mfgCost = subAssembly.costType === 'MANUAL'
+                                                        ? (subAssembly.manualCost || 0)
+                                                        : (manufacturingCosts[subAssembly.id] || 0);
 
                                                     if (listPrice === 0) {
                                                         return <span className="text-slate-500">--</span>;
                                                     }
 
                                                     const actualMargin = ((listPrice - mfgCost) / listPrice) * 100;
-                                                    const targetMargin = product.targetMarginPercent || 0;
+                                                    const targetMargin = subAssembly.targetMarginPercent || 0;
 
                                                     let colorClass = 'text-slate-400';
                                                     if (actualMargin < 0) {
@@ -433,14 +421,14 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                                 })()}
                                             </td>
                                             <td className="px-4 py-3 text-center">
-                                                {product.trackStock ? (
-                                                    <span className={`font-medium ${product.actualStockCount <= product.reorderLevel
+                                                {subAssembly.trackStock ? (
+                                                    <span className={`font-medium ${subAssembly.actualStockCount <= subAssembly.reorderLevel
                                                         ? 'text-red-400'
-                                                        : product.actualStockCount <= product.reorderLevel * 1.5
+                                                        : subAssembly.actualStockCount <= subAssembly.reorderLevel * 1.5
                                                             ? 'text-amber-400'
                                                             : 'text-emerald-400'
                                                         }`}>
-                                                        {product.actualStockCount || 0}
+                                                        {subAssembly.actualStockCount || 0}
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-600 text-xs">-</span>
@@ -449,16 +437,16 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                                             <td className="px-4 py-3 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button
-                                                        onClick={() => onEditProduct(product)}
+                                                        onClick={() => onEditSubAssembly(subAssembly)}
                                                         className="p-2 hover:bg-slate-600 text-blue-400 rounded transition-colors"
-                                                        title="Edit product"
+                                                        title="Edit sub assembly"
                                                     >
                                                         <Icons.Edit size={16} />
                                                     </button>
                                                     <button
-                                                        onClick={() => handleDelete(product)}
+                                                        onClick={() => handleDelete(subAssembly)}
                                                         className="p-2 hover:bg-red-500/20 text-red-400 rounded transition-colors"
-                                                        title="Delete product"
+                                                        title="Delete sub assembly"
                                                     >
                                                         <Icons.Trash size={16} />
                                                     </button>
@@ -473,9 +461,9 @@ export const ProductCatalogTable = ({ onAddProduct, onEditProduct, refreshTrigge
                 ) : (
                     <div className="p-12 text-center text-slate-400 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
                         <Icons.Package size={48} className="mx-auto mb-4 opacity-50" />
-                        <p className="text-lg font-medium mb-2">No products found</p>
+                        <p className="text-lg font-medium mb-2">No sub assemblies found</p>
                         <p className="text-sm">
-                            {searchTerm ? 'Try a different search term' : 'Click "Add Product" to create your first product'}
+                            {searchTerm ? 'Try a different search term' : 'Click "Add Sub Assembly" to create your first sub assembly'}
                         </p>
                     </div>
                 )}

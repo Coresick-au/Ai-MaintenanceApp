@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../constants/icons';
-import { addProduct, updateProduct, addPartToBOM, removePartFromBOM, updatePartQuantity, addFastenerToBOM, removeFastenerFromBOM, updateFastenerQuantity, addSubAssemblyToBOM, removeSubAssemblyFromBOM, updateSubAssemblyQuantity } from '../../services/productService';
-import { generateNextProductSKU } from '../../utils/skuGenerator';
+import { addSubAssembly, updateSubAssembly, addPartToBOM, removePartFromBOM, updatePartQuantity, addFastenerToBOM, removeFastenerFromBOM, updateFastenerQuantity } from '../../services/subAssemblyService';
+import { generateNextSubAssemblySKU } from '../../utils/skuGenerator';
 import { CategorySelect } from './categories/CategorySelect';
 import { LocationSelect } from './LocationSelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { BOMEditor } from './BOMEditor';
 import { ProductCostToggle } from './ProductCostToggle';
 import { ListPriceToggle } from './ListPriceToggle';
-import { productCompositionRepository } from '../../repositories';
-import { calculateProductCost, getSubAssemblyCostAtDate, getPartCostAtDate } from '../../services/costingService';
+import { subAssemblyCompositionRepository } from '../../repositories';
+import { getSubAssemblyCostAtDate, getPartCostAtDate } from '../../services/costingService';
 import { getLabourRate } from '../../services/settingsService';
 
 /**
- * Product Catalog Modal for creating/editing products
- * @description Modal component for product CRUD operations with BOM management
+ * Sub Assembly Catalog Modal for creating/editing sub assemblies
+ * @description Modal component for sub assembly CRUD operations with BOM management
  * and cost type selection.
  * @param {Object} props - Component props
  * @param {boolean} props.isOpen - Whether the modal is open
  * @param {Function} props.onClose - Callback to close the modal
- * @param {Object} [props.editingProduct] - Product being edited (null for new product)
+ * @param {Object} [props.editingSubAssembly] - Sub assembly being edited (null for new sub assembly)
  * @returns {JSX.Element} Rendered modal
  */
-export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct = null }) => {
+export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSubAssembly = null }) => {
     const [formData, setFormData] = useState({
         sku: '',
         name: '',
@@ -42,7 +42,6 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
     });
     const [bomEntries, setBomEntries] = useState([]);
     const [bomFastenerEntries, setBomFastenerEntries] = useState([]);
-    const [bomSubAssemblyEntries, setBomSubAssemblyEntries] = useState([]);
     const [costType, setCostType] = useState('CALCULATED');
     const [listPriceSource, setListPriceSource] = useState('MANUAL');
     const [bomCost, setBomCost] = useState(0);
@@ -51,38 +50,36 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
     const [generatingSKU, setGeneratingSKU] = useState(false);
     const [error, setError] = useState('');
 
-    // Load product data when editing
+    // Load sub assembly data when editing
     useEffect(() => {
-        const loadProductData = async () => {
-            if (editingProduct) {
+        const loadSubAssemblyData = async () => {
+            if (editingSubAssembly) {
                 setFormData({
-                    sku: editingProduct.sku,
-                    name: editingProduct.name,
-                    category: editingProduct.category || '', // Legacy field
-                    categoryId: editingProduct.categoryId || null,
-                    subcategoryId: editingProduct.subcategoryId || null,
-                    description: editingProduct.description || '',
-                    targetMarginPercent: editingProduct.targetMarginPercent || 30,
-                    listPrice: editingProduct.listPrice ? (editingProduct.listPrice / 100).toFixed(2) : '',
-                    manualCost: editingProduct.manualCost ? (editingProduct.manualCost / 100).toFixed(2) : '',
-                    trackStock: editingProduct.trackStock !== undefined ? editingProduct.trackStock : false,
-                    reorderLevel: editingProduct.reorderLevel || 10,
-                    labourHours: editingProduct.labourHours || 0,
-                    labourMinutes: editingProduct.labourMinutes || 0,
-                    locationId: editingProduct.locationId || null
+                    sku: editingSubAssembly.sku,
+                    name: editingSubAssembly.name,
+                    category: editingSubAssembly.category || '', // Legacy field
+                    categoryId: editingSubAssembly.categoryId || null,
+                    subcategoryId: editingSubAssembly.subcategoryId || null,
+                    description: editingSubAssembly.description || '',
+                    targetMarginPercent: editingSubAssembly.targetMarginPercent || 30,
+                    listPrice: editingSubAssembly.listPrice ? (editingSubAssembly.listPrice / 100).toFixed(2) : '',
+                    manualCost: editingSubAssembly.manualCost ? (editingSubAssembly.manualCost / 100).toFixed(2) : '',
+                    trackStock: editingSubAssembly.trackStock !== undefined ? editingSubAssembly.trackStock : false,
+                    reorderLevel: editingSubAssembly.reorderLevel || 10,
+                    labourHours: editingSubAssembly.labourHours || 0,
+                    labourMinutes: editingSubAssembly.labourMinutes || 0,
+                    locationId: editingSubAssembly.locationId || null
                 });
-                setCostType(editingProduct.costType || 'CALCULATED');
-                setListPriceSource(editingProduct.listPriceSource || 'MANUAL');
+                setCostType(editingSubAssembly.costType || 'CALCULATED');
+                setListPriceSource(editingSubAssembly.listPriceSource || 'MANUAL');
 
                 // Load BOM
                 try {
-                    const bom = await productCompositionRepository.getBOMForProduct(editingProduct.id);
+                    const bom = await subAssemblyCompositionRepository.getBOMForSubAssembly(editingSubAssembly.id);
                     const bomParts = bom.parts || (Array.isArray(bom) ? bom : []);
                     const bomFasteners = bom.fasteners || [];
-                    const bomSubAssemblies = bom.subAssemblies || [];
                     setBomEntries(bomParts);
                     setBomFastenerEntries(bomFasteners);
-                    setBomSubAssemblyEntries(bomSubAssemblies);
                 } catch (error) {
                     console.error('Error loading BOM:', error);
                 }
@@ -107,15 +104,14 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                 });
                 setBomEntries([]);
                 setBomFastenerEntries([]);
-                setBomSubAssemblyEntries([]);
             }
             setError('');
         };
 
         if (isOpen) {
-            loadProductData();
+            loadSubAssemblyData();
         }
-    }, [editingProduct, isOpen]);
+    }, [editingSubAssembly, isOpen]);
 
     // Calculate BOM cost in real-time from current BOM entries
     useEffect(() => {
@@ -143,16 +139,6 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                     }
                 }
 
-                // Calculate cost for each sub assembly in BOM
-                for (const entry of bomSubAssemblyEntries) {
-                    try {
-                        const subAssemblyCost = await getSubAssemblyCostAtDate(entry.subAssemblyId, new Date());
-                        totalCost += subAssemblyCost * entry.quantityUsed;
-                    } catch (err) {
-                        console.error(`Error loading cost for sub assembly ${entry.subAssemblyId}:`, err);
-                    }
-                }
-
                 // Add labour cost
                 if (formData.labourHours > 0 || formData.labourMinutes > 0) {
                     const labourRate = await getLabourRate();
@@ -169,7 +155,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
         };
 
         calcBomCost();
-    }, [bomEntries, bomFastenerEntries, bomSubAssemblyEntries, formData.labourHours, formData.labourMinutes]);
+    }, [bomEntries, bomFastenerEntries, formData.labourHours, formData.labourMinutes]);
 
     // Calculate list price when in CALCULATED mode
     const calculatedListPrice = React.useMemo(() => {
@@ -213,20 +199,6 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
         ));
     };
 
-    const handleAddSubAssembly = (subAssemblyId, quantity) => {
-        setBomSubAssemblyEntries(prev => [...prev, { subAssemblyId, quantityUsed: quantity }]);
-    };
-
-    const handleRemoveSubAssembly = (subAssemblyId) => {
-        setBomSubAssemblyEntries(prev => prev.filter(e => e.subAssemblyId !== subAssemblyId));
-    };
-
-    const handleUpdateSubAssemblyQuantity = (subAssemblyId, quantity) => {
-        setBomSubAssemblyEntries(prev => prev.map(e =>
-            e.subAssemblyId === subAssemblyId ? { ...e, quantityUsed: quantity } : e
-        ));
-    };
-
     const handleGenerateSKU = async () => {
         if (!formData.categoryId) {
             setError('Please select a category first');
@@ -235,7 +207,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
 
         setGeneratingSKU(true);
         try {
-            const newSKU = await generateNextProductSKU(formData.categoryId, formData.subcategoryId);
+            const newSKU = await generateNextSubAssemblySKU(formData.categoryId, formData.subcategoryId);
             setFormData(prev => ({ ...prev, sku: newSKU }));
         } catch (err) {
             setError(err.message || 'Failed to generate SKU');
@@ -262,7 +234,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
             const manualCostValue = parseFloat(formData.manualCost || '0');
             const manualCostCents = Math.round(manualCostValue * 100);
 
-            const productData = {
+            const subAssemblyData = {
                 sku: formData.sku.trim(),
                 name: formData.name.trim(),
                 category: formData.category.trim(), // Legacy field
@@ -281,22 +253,22 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                 labourMinutes: parseInt(formData.labourMinutes) || 0
             };
 
-            let productId;
+            let subAssemblyId;
 
-            if (editingProduct) {
-                // Update existing product
-                await updateProduct(editingProduct.id, productData);
-                productId = editingProduct.id;
+            if (editingSubAssembly) {
+                // Update existing sub assembly
+                await updateSubAssembly(editingSubAssembly.id, subAssemblyData);
+                subAssemblyId = editingSubAssembly.id;
 
                 // Update BOM - remove old entries and add new ones
-                const existingBOM = await productCompositionRepository.getBOMForProduct(productId);
+                const existingBOM = await subAssemblyCompositionRepository.getBOMForSubAssembly(subAssemblyId);
                 const existingParts = existingBOM.parts || existingBOM; // Handle legacy structure
                 const existingFasteners = existingBOM.fasteners || [];
 
                 // Remove parts no longer in BOM
                 for (const existing of existingParts) {
                     if (!bomEntries.some(e => e.partId === existing.partId)) {
-                        await removePartFromBOM(productId, existing.partId);
+                        await removePartFromBOM(subAssemblyId, existing.partId);
                     }
                 }
 
@@ -304,16 +276,16 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                 for (const entry of bomEntries) {
                     const exists = existingParts.some(e => e.partId === entry.partId);
                     if (exists) {
-                        await updatePartQuantity(productId, entry.partId, entry.quantityUsed);
+                        await updatePartQuantity(subAssemblyId, entry.partId, entry.quantityUsed);
                     } else {
-                        await addPartToBOM(productId, entry.partId, entry.quantityUsed);
+                        await addPartToBOM(subAssemblyId, entry.partId, entry.quantityUsed);
                     }
                 }
 
                 // Remove fasteners no longer in BOM
                 for (const existing of existingFasteners) {
                     if (!bomFastenerEntries.some(e => e.fastenerId === existing.fastenerId)) {
-                        await removeFastenerFromBOM(productId, existing.fastenerId);
+                        await removeFastenerFromBOM(subAssemblyId, existing.fastenerId);
                     }
                 }
 
@@ -321,56 +293,31 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                 for (const entry of bomFastenerEntries) {
                     const exists = existingFasteners.some(e => e.fastenerId === entry.fastenerId);
                     if (exists) {
-                        await updateFastenerQuantity(productId, entry.fastenerId, entry.quantityUsed);
+                        await updateFastenerQuantity(subAssemblyId, entry.fastenerId, entry.quantityUsed);
                     } else {
-                        await addFastenerToBOM(productId, entry.fastenerId, entry.quantityUsed);
-                    }
-                }
-
-                // Get existing sub assemblies from BOM
-                const existingSubAssemblies = existingBOM.subAssemblies || [];
-
-                // Remove sub assemblies no longer in BOM
-                for (const existing of existingSubAssemblies) {
-                    if (!bomSubAssemblyEntries.some(e => e.subAssemblyId === existing.subAssemblyId)) {
-                        await removeSubAssemblyFromBOM(productId, existing.subAssemblyId);
-                    }
-                }
-
-                // Add or update sub assemblies
-                for (const entry of bomSubAssemblyEntries) {
-                    const exists = existingSubAssemblies.some(e => e.subAssemblyId === entry.subAssemblyId);
-                    if (exists) {
-                        await updateSubAssemblyQuantity(productId, entry.subAssemblyId, entry.quantityUsed);
-                    } else {
-                        await addSubAssemblyToBOM(productId, entry.subAssemblyId, entry.quantityUsed);
+                        await addFastenerToBOM(subAssemblyId, entry.fastenerId, entry.quantityUsed);
                     }
                 }
             } else {
-                // Create new product
-                const result = await addProduct(productData);
-                productId = result.id;
+                // Create new sub assembly
+                const result = await addSubAssembly(subAssemblyData);
+                subAssemblyId = result.id;
 
                 // Add part BOM entries
                 for (const entry of bomEntries) {
-                    await addPartToBOM(productId, entry.partId, entry.quantityUsed);
+                    await addPartToBOM(subAssemblyId, entry.partId, entry.quantityUsed);
                 }
 
                 // Add fastener BOM entries
                 for (const entry of bomFastenerEntries) {
-                    await addFastenerToBOM(productId, entry.fastenerId, entry.quantityUsed);
-                }
-
-                // Add sub assembly BOM entries
-                for (const entry of bomSubAssemblyEntries) {
-                    await addSubAssemblyToBOM(productId, entry.subAssemblyId, entry.quantityUsed);
+                    await addFastenerToBOM(subAssemblyId, entry.fastenerId, entry.quantityUsed);
                 }
             }
 
             if (onSuccess) onSuccess();
             onClose();
         } catch (err) {
-            setError(err.message || 'Failed to save product');
+            setError(err.message || 'Failed to save sub assembly');
         } finally {
             setSaving(false);
         }
@@ -385,7 +332,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                     {/* Header */}
                     <div className="flex items-center justify-between p-6 border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
                         <h2 className="text-xl font-bold text-white">
-                            {editingProduct ? 'Edit Product' : 'Add New Product'}
+                            {editingSubAssembly ? 'Edit Sub Assembly' : 'Add New Sub Assembly'}
                         </h2>
                         <button
                             onClick={onClose}
@@ -442,8 +389,8 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                                 required
                                                 value={formData.sku}
                                                 onChange={(e) => {
-                                                    if (editingProduct) {
-                                                        if (confirm('WARNING: Changing the SKU of an existing product can cause data inconsistencies. Are you sure?')) {
+                                                    if (editingSubAssembly) {
+                                                        if (confirm('WARNING: Changing the SKU of an existing sub assembly can cause data inconsistencies. Are you sure?')) {
                                                             setFormData(prev => ({ ...prev, sku: e.target.value }));
                                                         }
                                                     } else {
@@ -451,7 +398,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                                     }
                                                 }}
                                                 className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                                placeholder="PROD-001"
+                                                placeholder="SA-001"
                                             />
                                             <button
                                                 type="button"
@@ -468,7 +415,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                             </button>
                                         </div>
                                         <p className="text-xs text-slate-400 mt-1">
-                                            {editingProduct
+                                            {editingSubAssembly
                                                 ? '⚠️ SKU is locked after creation - changing it may cause issues'
                                                 : 'Auto-generates based on category/subcategory'
                                             }
@@ -497,7 +444,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                         value={formData.name}
                                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="Conveyor Assembly XL"
+                                        placeholder="Motor Mount Assembly"
                                     />
                                 </div>
 
@@ -575,7 +522,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                 <ListPriceToggle
                                     listPriceSource={listPriceSource}
                                     onChange={setListPriceSource}
-                                    itemType="product"
+                                    itemType="sub assembly"
                                 />
 
                                 {/* Calculated List Price Display */}
@@ -613,7 +560,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                             const checked = e.target.checked;
                                             // Confirm when unchecking
                                             if (!checked) {
-                                                if (confirm('Are you sure you want to stop tracking stock for this product? This will remove it from stock take and stock overview.')) {
+                                                if (confirm('Are you sure you want to stop tracking stock for this sub assembly? This will remove it from stock take and stock overview.')) {
                                                     setFormData(prev => ({ ...prev, trackStock: false }));
                                                 }
                                             } else {
@@ -651,16 +598,12 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                 <BOMEditor
                                     bomEntries={bomEntries}
                                     bomFastenerEntries={bomFastenerEntries}
-                                    bomSubAssemblyEntries={bomSubAssemblyEntries}
                                     onAddPart={handleAddPart}
                                     onRemovePart={handleRemovePart}
                                     onUpdateQuantity={handleUpdateQuantity}
                                     onAddFastener={handleAddFastener}
                                     onRemoveFastener={handleRemoveFastener}
                                     onUpdateFastenerQuantity={handleUpdateFastenerQuantity}
-                                    onAddSubAssembly={handleAddSubAssembly}
-                                    onRemoveSubAssembly={handleRemoveSubAssembly}
-                                    onUpdateSubAssemblyQuantity={handleUpdateSubAssemblyQuantity}
                                 />
 
                                 {/* Cost Type Toggle */}
@@ -760,7 +703,7 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                                 disabled={saving}
                                 className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {saving ? 'Saving...' : (editingProduct ? 'Update Product' : 'Add Product')}
+                                {saving ? 'Saving...' : (editingSubAssembly ? 'Update Sub Assembly' : 'Add Sub Assembly')}
                             </button>
                         </div>
                     </form>

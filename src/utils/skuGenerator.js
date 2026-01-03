@@ -109,6 +109,13 @@ export const generateNextProductSKU = async (categoryId, subcategoryId = null) =
 };
 
 /**
+ * Generate SKU for sub assemblies
+ */
+export const generateNextSubAssemblySKU = async (categoryId, subcategoryId = null) => {
+    return generateNextSKU(categoryId, subcategoryId, 'sub_assemblies');
+};
+
+/**
  * Check if SKU already exists in a collection
  */
 export const checkSKUExists = async (sku, collectionName = 'part_catalog', excludeId = null) => {

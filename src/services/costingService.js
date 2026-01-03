@@ -128,6 +128,74 @@ export async function getPartCostAtDate(partId, date) {
 }
 
 /**
+ * Get the cost of a sub assembly at a specific date
+ * @description Calculates sub assembly cost from its BOM (parts + fasteners + labour).
+ * Respects costType: uses manual cost if MANUAL, otherwise calculates from BOM if CALCULATED.
+ * @param {string} subAssemblyId - The sub assembly ID to query
+ * @param {Date|string} date - The date to find the effective cost for
+ * @returns {Promise<number>} Cost in cents
+ * @example
+ * const cost = await getSubAssemblyCostAtDate('subassy-123', new Date('2025-12-13'));
+ * // returns 3500 (cents)
+ */
+export async function getSubAssemblyCostAtDate(subAssemblyId, date) {
+    try {
+        // Get sub assembly document
+        const subAssemblyRef = doc(db, 'sub_assemblies', subAssemblyId);
+        const subAssemblySnap = await getDoc(subAssemblyRef);
+
+        if (!subAssemblySnap.exists()) {
+            console.warn(`[CostingService] Sub assembly ${subAssemblyId} not found`);
+            return 0;
+        }
+
+        const subAssemblyData = subAssemblySnap.data();
+
+        // If manual cost type, use the manual cost
+        if (subAssemblyData.costType === 'MANUAL') {
+            return subAssemblyData.manualCost || 0;
+        }
+
+        // Otherwise, calculate from BOM
+        const { subAssemblyCompositionRepository } = await import('../repositories');
+        const bom = await subAssemblyCompositionRepository.getBOMForSubAssembly(subAssemblyId);
+
+        const parts = bom.parts || [];
+        const fasteners = bom.fasteners || [];
+
+        let totalCost = 0;
+
+        // Calculate cost for parts
+        for (const bomEntry of parts) {
+            const partCost = await getPartCostAtDate(bomEntry.partId, date);
+            totalCost += Math.round(partCost * bomEntry.quantityUsed);
+        }
+
+        // Calculate cost for fasteners
+        for (const bomEntry of fasteners) {
+            const fastenerCost = await getPartCostAtDate(bomEntry.fastenerId, date);
+            totalCost += Math.round(fastenerCost * bomEntry.quantityUsed);
+        }
+
+        // Add labour cost
+        const labourHours = subAssemblyData.labourHours || 0;
+        const labourMinutes = subAssemblyData.labourMinutes || 0;
+
+        if (labourHours > 0 || labourMinutes > 0) {
+            const labourRate = await getLabourRate();
+            const totalMinutes = (labourHours * 60) + labourMinutes;
+            const labourCost = Math.round((totalMinutes / 60) * labourRate);
+            totalCost += labourCost;
+        }
+
+        return Math.round(totalCost);
+    } catch (error) {
+        console.error('[CostingService] Error getting sub assembly cost at date:', error);
+        throw error;
+    }
+}
+
+/**
  * Calculate the total cost of a product from its Bill of Materials
  * @description Sums the cost of all parts in a product's BOM, using historical
  * costs if a date is provided. Returns total cost and detailed breakdown.
@@ -143,11 +211,12 @@ export async function calculateProductCost(productId, date = new Date()) {
         // Get the product's BOM
         const bom = await productCompositionRepository.getBOMForProduct(productId);
 
-        // Handle both new structure {parts, fasteners} and legacy array structure
+        // Handle both new structure {parts, fasteners, subAssemblies} and legacy array structure
         const parts = bom.parts || (Array.isArray(bom) ? bom : []);
         const fasteners = bom.fasteners || [];
+        const subAssemblies = bom.subAssemblies || [];
 
-        if (parts.length === 0 && fasteners.length === 0) {
+        if (parts.length === 0 && fasteners.length === 0 && subAssemblies.length === 0) {
             console.warn(`[CostingService] Product ${productId} has no BOM`);
             return { totalCost: 0, breakdown: [] };
         }
@@ -181,6 +250,22 @@ export async function calculateProductCost(productId, date = new Date()) {
                 partId: bomEntry.fastenerId,
                 type: 'fastener',
                 partCost: fastenerCost,
+                quantity: bomEntry.quantityUsed,
+                subtotal
+            });
+
+            totalCost += subtotal;
+        }
+
+        // Process sub assemblies
+        for (const bomEntry of subAssemblies) {
+            const subAssemblyCost = await getSubAssemblyCostAtDate(bomEntry.subAssemblyId, date);
+            const subtotal = Math.round(subAssemblyCost * bomEntry.quantityUsed);
+
+            breakdown.push({
+                partId: bomEntry.subAssemblyId,
+                type: 'subassembly',
+                partCost: subAssemblyCost,
                 quantity: bomEntry.quantityUsed,
                 subtotal
             });

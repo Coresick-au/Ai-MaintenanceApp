@@ -3,6 +3,8 @@ import { PartCatalogTable } from '../components/inventory/PartCatalogTable';
 import { PartCatalogModal } from '../components/inventory/PartCatalogModal';
 import { ProductCatalogTable } from '../components/inventory/ProductCatalogTable';
 import { ProductCatalogModal } from '../components/inventory/ProductCatalogModal';
+import { SubAssemblyCatalogTable } from '../components/inventory/SubAssemblyCatalogTable';
+import { SubAssemblyCatalogModal } from '../components/inventory/SubAssemblyCatalogModal';
 import { LocationManager } from '../components/inventory/LocationManager';
 import { SupplierManager } from '../components/inventory/SupplierManager';
 import { StockOverview } from '../components/inventory/StockOverview';
@@ -34,6 +36,11 @@ export function InventoryApp({ onBack }) {
     // Fastener catalog state
     const [showFastenerModal, setShowFastenerModal] = useState(false);
     const [editingFastener, setEditingFastener] = useState(null);
+
+    // Sub Assembly catalog state
+    const [isSubAssemblyModalOpen, setIsSubAssemblyModalOpen] = useState(false);
+    const [editingSubAssembly, setEditingSubAssembly] = useState(null);
+
     const [showLabourRateModal, setShowLabourRateModal] = useState(false);
     const [showManufacturedCalculator, setShowManufacturedCalculator] = useState(false);
 
@@ -82,6 +89,21 @@ export function InventoryApp({ onBack }) {
         setEditingFastener(null);
     };
 
+    const handleAddSubAssembly = () => {
+        setEditingSubAssembly(null);
+        setIsSubAssemblyModalOpen(true);
+    };
+
+    const handleEditSubAssembly = (subAssembly) => {
+        setEditingSubAssembly(subAssembly);
+        setIsSubAssemblyModalOpen(true);
+    };
+
+    const handleCloseSubAssemblyModal = () => {
+        setIsSubAssemblyModalOpen(false);
+        setEditingSubAssembly(null);
+    };
+
     const handleAdjustStock = (part) => {
         setAdjustingPart(part);
         setIsStockAdjustmentOpen(true);
@@ -116,6 +138,7 @@ export function InventoryApp({ onBack }) {
         { id: 'catalog', label: 'Part Catalog', icon: Icons.Package },
         { id: 'fasteners', label: 'Fastener Catalog', icon: Icons.Wrench },
         { id: 'products', label: 'Product Catalog', icon: Icons.Box },
+        { id: 'subassemblies', label: 'Sub Assemblies', icon: Icons.Layers },
         { id: 'buildguides', label: 'Build Guides', icon: Icons.BookOpen },
         { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
         { id: 'serialized', label: 'Serialized Assets', icon: Icons.Barcode },
@@ -124,7 +147,6 @@ export function InventoryApp({ onBack }) {
         { id: 'categories', label: 'Categories', icon: Icons.FolderTree },
         { id: 'locations', label: 'Locations', icon: Icons.MapPin },
         { id: 'suppliers', label: 'Suppliers', icon: Icons.Truck },
-        { id: 'templates', label: 'Mfg Templates', icon: Icons.Settings },
         { id: 'history', label: 'Movement History', icon: Icons.History }
     ];
 
@@ -211,6 +233,13 @@ export function InventoryApp({ onBack }) {
                             />
                         )}
 
+                        {activeTab === 'subassemblies' && (
+                            <SubAssemblyCatalogTable
+                                onAddSubAssembly={handleAddSubAssembly}
+                                onEditSubAssembly={handleEditSubAssembly}
+                            />
+                        )}
+
                         {activeTab === 'buildguides' && <BuildGuideManager />}
 
                         {activeTab === 'stock' && (
@@ -228,8 +257,6 @@ export function InventoryApp({ onBack }) {
                         {activeTab === 'locations' && <LocationManager />}
 
                         {activeTab === 'suppliers' && <SupplierManager />}
-
-                        {activeTab === 'templates' && <TemplateManager />}
 
                         {activeTab === 'history' && <StockMovementHistory />}
                     </div>
@@ -253,10 +280,14 @@ export function InventoryApp({ onBack }) {
                     editingFastener={editingFastener}
                 />
 
-                {/* Labour Rate Settings Modal */}
                 <LabourRateModal
                     isOpen={showLabourRateModal}
                     onClose={() => setShowLabourRateModal(false)}
+                />
+                <SubAssemblyCatalogModal
+                    isOpen={isSubAssemblyModalOpen}
+                    onClose={handleCloseSubAssemblyModal}
+                    editingSubAssembly={editingSubAssembly}
                 />
                 <StockAdjustmentModal
                     isOpen={isStockAdjustmentOpen}

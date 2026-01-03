@@ -45,10 +45,19 @@ export class ProductCompositionRepository extends BaseRepository {
             const fastenersSnapshot = await getDocs(fastenersQuery);
             const fasteners = fastenersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // Return structured object with both
+            // Get sub assemblies BOM
+            const subAssembliesQuery = query(
+                collection(db, 'product_sub_assembly_composition'),
+                where('productId', '==', productId)
+            );
+            const subAssembliesSnapshot = await getDocs(subAssembliesQuery);
+            const subAssemblies = subAssembliesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Return structured object with all three
             return {
                 parts,
-                fasteners
+                fasteners,
+                subAssemblies
             };
         } catch (error) {
             console.error('[ProductComposition] Error getting BOM:', error);
@@ -208,4 +217,66 @@ export class ProductCompositionRepository extends BaseRepository {
         const docRef = doc(db, collectionName, id);
         await updateDoc(docRef, updates);
     }
+
+    // ==========================================
+    // SUB ASSEMBLY BOM OPERATIONS
+    // ==========================================
+
+    /**
+     * Add a sub assembly to a product's BOM
+     */
+    async addSubAssemblyToBOM(productId, subAssemblyId, quantityUsed) {
+        try {
+            if (quantityUsed <= 0) {
+                throw new Error('Quantity must be greater than zero');
+            }
+
+            const bomEntry = {
+                id: `${productId}_${subAssemblyId}`,
+                productId,
+                subAssemblyId,
+                quantityUsed,
+                createdAt: new Date().toISOString()
+            };
+
+            await this.createInCollection('product_sub_assembly_composition', bomEntry.id, bomEntry);
+            return bomEntry;
+        } catch (error) {
+            console.error('[ProductComposition] Error adding sub assembly to BOM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove a sub assembly from a product's BOM
+     */
+    async removeSubAssemblyFromBOM(productId, subAssemblyId) {
+        try {
+            const bomId = `${productId}_${subAssemblyId}`;
+            await deleteDoc(doc(db, 'product_sub_assembly_composition', bomId));
+            return true;
+        } catch (error) {
+            console.error('[ProductComposition] Error removing sub assembly from BOM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update the quantity of a sub assembly in a product's BOM
+     */
+    async updateSubAssemblyQuantity(productId, subAssemblyId, quantityUsed) {
+        try {
+            if (quantityUsed <= 0) {
+                throw new Error('Quantity must be greater than zero');
+            }
+
+            const bomId = `${productId}_${subAssemblyId}`;
+            await this.updateInCollection('product_sub_assembly_composition', bomId, { quantityUsed });
+            return { id: bomId, productId, subAssemblyId, quantityUsed };
+        } catch (error) {
+            console.error('[ProductComposition] Error updating sub assembly quantity:', error);
+            throw error;
+        }
+    }
 }
+
