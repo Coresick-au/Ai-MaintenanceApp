@@ -9,14 +9,29 @@
 const { initializeApp } = require('firebase/app');
 const { getFirestore, collection, getDocs, query, where } = require('firebase/firestore');
 
-// Your Firebase config (from firebase.js)
+// Firebase config - requires environment variables (no hardcoded secrets!)
+// Set these in your .env file or export them before running this script
+const requiredEnvVars = [
+    'VITE_FIREBASE_API_KEY',
+    'VITE_FIREBASE_AUTH_DOMAIN',
+    'VITE_FIREBASE_PROJECT_ID'
+];
+
+const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+if (missingVars.length > 0) {
+    console.error('❌ Missing required environment variables:');
+    missingVars.forEach(v => console.error(`   - ${v}`));
+    console.error('\nSet these in your .env file or export them before running.');
+    process.exit(1);
+}
+
 const firebaseConfig = {
-    apiKey: process.env.VITE_FIREBASE_API_KEY || "AIzaSyDCEqL3VYPqQvhN8jxJ9Z8KxQvN8jxJ9Z8",
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN || "accurate-industries-database.firebaseapp.com",
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID || "accurate-industries-database",
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || "accurate-industries-database.appspot.com",
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
-    appId: process.env.VITE_FIREBASE_APP_ID || "1:123456789012:web:abcdef1234567890abcdef"
+    apiKey: process.env.VITE_FIREBASE_API_KEY,
+    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.VITE_FIREBASE_APP_ID
 };
 
 const app = initializeApp(firebaseConfig);

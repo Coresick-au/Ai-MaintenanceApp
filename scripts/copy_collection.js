@@ -2,31 +2,48 @@ import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, doc, setDoc, writeBatch } from "firebase/firestore";
 
 // ==========================================
-// 1. CONFIGURATION
+// 1. CONFIGURATION - Set these environment variables before running!
+// ==========================================
+// Required env vars:
+//   DEST_FIREBASE_API_KEY, DEST_FIREBASE_PROJECT_ID
+//   SOURCE_FIREBASE_API_KEY, SOURCE_FIREBASE_PROJECT_ID
 // ==========================================
 
 // COLLECTION to copy
 const COLLECTION_NAME = "rollers_cost_history";
 
-// DESTINATION Config (Current Project: accurate-industries-database)
+// Validate required environment variables
+const requiredVars = [
+    'DEST_FIREBASE_API_KEY', 'DEST_FIREBASE_PROJECT_ID',
+    'SOURCE_FIREBASE_API_KEY', 'SOURCE_FIREBASE_PROJECT_ID'
+];
+const missingVars = requiredVars.filter(v => !process.env[v]);
+if (missingVars.length > 0) {
+    console.error('❌ Missing required environment variables:');
+    missingVars.forEach(v => console.error(`   - ${v}`));
+    console.error('\nSet these before running this script.');
+    process.exit(1);
+}
+
+// DESTINATION Config
 const destConfig = {
-    apiKey: "AIzaSyAcXwlK_851kGBtp_khuFh3w3fSuFkGZxA",
-    authDomain: "accurate-industries-database.firebaseapp.com",
-    projectId: "accurate-industries-database",
-    storageBucket: "accurate-industries-database.firebasestorage.app",
-    messagingSenderId: "838257999536",
-    appId: "1:838257999536:web:7f93b7417ddaada1ee0575",
-    measurementId: "G-4JENK2898F"
+    apiKey: process.env.DEST_FIREBASE_API_KEY,
+    authDomain: process.env.DEST_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.DEST_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.DEST_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.DEST_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.DEST_FIREBASE_APP_ID,
+    measurementId: process.env.DEST_FIREBASE_MEASUREMENT_ID
 };
 
-// SOURCE Config (Provided by User: ai-quoting-program)
+// SOURCE Config
 const sourceConfig = {
-    apiKey: "AIzaSyAohuXZNai-udqJj6i_cxRLdkEYGHMo2MU",
-    authDomain: "ai-quoting-program.firebaseapp.com",
-    projectId: "ai-quoting-program",
-    storageBucket: "ai-quoting-program.firebasestorage.app",
-    messagingSenderId: "374837707492",
-    appId: "1:374837707492:web:387ba1afa752d0c4cee2f1"
+    apiKey: process.env.SOURCE_FIREBASE_API_KEY,
+    authDomain: process.env.SOURCE_FIREBASE_AUTH_DOMAIN,
+    projectId: process.env.SOURCE_FIREBASE_PROJECT_ID,
+    storageBucket: process.env.SOURCE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: process.env.SOURCE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: process.env.SOURCE_FIREBASE_APP_ID
 };
 
 // ==========================================

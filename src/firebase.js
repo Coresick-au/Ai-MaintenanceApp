@@ -4,26 +4,30 @@ import { getStorage } from "firebase/storage";
 import { getAuth } from "firebase/auth";
 import { getAnalytics } from "firebase/analytics";
 
-// Your web app's Firebase configuration
-// Keys are loaded from environment variables (.env file)
+// Firebase configuration - REQUIRES environment variables
+// Create a .env file with your Firebase credentials
 const env = import.meta.env;
 
-// NOTE: Hardcoded values below are DEMO/FALLBACK credentials only.
-// For production, always use environment variables via .env file.
-// These fallbacks allow the app to run for testing without .env setup.
-export const firebaseConfig = {
-    apiKey: env.VITE_FIREBASE_API_KEY || "AIzaSyAcXwlK_851kGBtp_khuFh3w3fSuFkGZxA",
-    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || "accurate-industries-database.firebaseapp.com",
-    projectId: env.VITE_FIREBASE_PROJECT_ID || "accurate-industries-database",
-    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || "accurate-industries-database.firebasestorage.app",
-    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || "838257999536",
-    appId: env.VITE_FIREBASE_APP_ID || "1:838257999536:web:7f93b7417ddaada1ee0575",
-    measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || "G-4JENK2898F"
-};
+// Validate required environment variables
+const requiredVars = ['VITE_FIREBASE_API_KEY', 'VITE_FIREBASE_PROJECT_ID'];
+const missingVars = requiredVars.filter(v => !env[v]);
 
-if (!env.VITE_FIREBASE_PROJECT_ID) {
-    console.warn("⚠️ Firebase environment variables are missing. Using demo config.");
+if (missingVars.length > 0) {
+    console.error("❌ CRITICAL: Missing required Firebase environment variables:");
+    missingVars.forEach(v => console.error(`   - ${v}`));
+    console.error("\nCreate a .env file with your Firebase credentials.");
+    throw new Error("Firebase configuration missing. See console for details.");
 }
+
+export const firebaseConfig = {
+    apiKey: env.VITE_FIREBASE_API_KEY,
+    authDomain: env.VITE_FIREBASE_AUTH_DOMAIN,
+    projectId: env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: env.VITE_FIREBASE_APP_ID,
+    measurementId: env.VITE_FIREBASE_MEASUREMENT_ID
+};
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
