@@ -22,6 +22,7 @@ import { SpecializedComponentsView } from '../components/inventory/SpecializedCo
 import { ShippingCalculator } from '../components/inventory/ShippingCalculator';
 import { BuildGuideManager } from '../components/inventory/BuildGuideManager';
 import { Icons } from '../constants/icons';
+import BackButton from '../components/ui/BackButton';
 
 export function InventoryApp({ onBack }) {
     const [activeTab, setActiveTab] = useState('catalog');
@@ -125,15 +126,6 @@ export function InventoryApp({ onBack }) {
         };
     }, []);
 
-    const handleReturn = () => {
-        if (onBack) {
-            onBack();
-        } else {
-            window.location.href = '/';
-        }
-    };
-
-
     const tabs = [
         { id: 'catalog', label: 'Part Catalog', icon: Icons.Package },
         { id: 'fasteners', label: 'Fastener Catalog', icon: Icons.Wrench },
@@ -156,30 +148,25 @@ export function InventoryApp({ onBack }) {
                 {/* Header */}
                 <header className="bg-slate-800 border-b border-slate-700 px-6 py-4">
                     <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-2xl font-bold text-white">Inventory Management</h1>
-                            <p className="text-sm text-slate-400 mt-1">Track parts, stock levels, and serialized assets</p>
+                        <div className="flex items-center gap-4">
+                            {/* Unified Back Button */}
+                            <BackButton label="Back to Portal" onClick={onBack} />
+                            <div className="border-l border-slate-600 pl-4">
+                                <h1 className="text-2xl font-bold text-white">Inventory Management</h1>
+                                <p className="text-sm text-slate-400 mt-1">Track parts, stock levels, and serialized assets</p>
+                            </div>
                         </div>
 
                         {/* Action Buttons */}
-                        <div className="flex gap-2">
-                            <div className="flex gap-3">
-                                <button
-                                    onClick={() => setShowLabourRateModal(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors"
-                                    title="Labour Rate Settings"
-                                >
-                                    <Icons.Settings size={18} />
-                                    Settings
-                                </button>
-                                <button
-                                    onClick={handleReturn}
-                                    className="flex items-center gap-2 px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
-                                >
-                                    <Icons.ArrowLeft size={18} />
-                                    Return to Portal
-                                </button>
-                            </div>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setShowLabourRateModal(true)}
+                                className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors"
+                                title="Labour Rate Settings"
+                            >
+                                <Icons.Settings size={18} />
+                                Settings
+                            </button>
                         </div>
                     </div>
                 </header>

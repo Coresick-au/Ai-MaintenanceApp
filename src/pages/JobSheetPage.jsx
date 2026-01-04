@@ -33,23 +33,23 @@ const STATUSES = [
 const columns = [
     { key: "jobNumber", label: "Job Number", w: "w-[120px]", sortable: true },
     { key: "customer", label: "Customer", w: "w-[180px]", sortable: true },
-    { key: "managedSite", label: "Managed Site", w: "w-[160px]", sortable: true },
+    { key: "managedSite", label: "Managed Site", w: "w-[160px]", sortable: true, printHide: true },
     { key: "jobDescription", label: "Job Description", w: "w-[360px]", sortable: false },
-    { key: "quote", label: "Quote", w: "w-[120px]", sortable: true },
+    { key: "quote", label: "Quote", w: "w-[120px]", sortable: true, printHide: true },
     { key: "po", label: "PO", w: "w-[120px]", sortable: true },
     { key: "type", label: "Type", w: "w-[140px]", sortable: true },
     { key: "poValueExGst", label: "PO Value Ex GST", w: "w-[160px]", sortable: true },
     { key: "poDate", label: "PO Date", w: "w-[140px]", sortable: true },
     { key: "status", label: "Status", w: "w-[160px]", sortable: true },
-    { key: "estJobDate", label: "Est Job Date", w: "w-[140px]", sortable: true },
-    { key: "partsOrderedFrom", label: "Parts Ordered From", w: "w-[190px]", sortable: false },
-    { key: "partsOrderedDate", label: "Parts Ordered Date", w: "w-[160px]", sortable: true },
-    { key: "estDelivery", label: "Est Delivery", w: "w-[140px]", sortable: true },
+    { key: "estJobDate", label: "Est Job Date", w: "w-[140px]", sortable: true, printHide: true },
+    { key: "partsOrderedFrom", label: "Parts Ordered From", w: "w-[190px]", sortable: false, printHide: true },
+    { key: "partsOrderedDate", label: "Parts Ordered Date", w: "w-[160px]", sortable: true, printHide: true },
+    { key: "estDelivery", label: "Est Delivery", w: "w-[140px]", sortable: true, printHide: true },
     { key: "invNo", label: "Inv No", w: "w-[120px]", sortable: true },
-    { key: "invDate", label: "Inv Date", w: "w-[140px]", sortable: true },
-    { key: "invValueExGst", label: "Inv Value Ex GST", w: "w-[170px]", sortable: true },
-    { key: "invValueIncGst", label: "Inv Value Inc GST", w: "w-[170px]", sortable: true },
-    { key: "invDueDate", label: "Inv Due Date", w: "w-[140px]", sortable: true },
+    { key: "invDate", label: "Inv Date", w: "w-[140px]", sortable: true, printHide: true },
+    { key: "invValueExGst", label: "Inv Value Ex GST", w: "w-[170px]", sortable: true, printHide: true },
+    { key: "invValueIncGst", label: "Inv Value Inc GST", w: "w-[170px]", sortable: true, printHide: true },
+    { key: "invDueDate", label: "Inv Due Date", w: "w-[140px]", sortable: true, printHide: true },
 ];
 
 // Status tone mapping for badges
@@ -918,7 +918,14 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
 
             {/* Table View */}
             {viewMode === "table" && (
-                <Card className="overflow-hidden print:border print:bg-white flex-1">
+                <Card className="job-sheet-table overflow-hidden print:border print:bg-white flex-1">
+                    {/* Print Header - Only visible in print */}
+                    <div className="hidden print:flex job-sheet-header justify-between items-center px-4 py-2">
+                        <h1 className="text-xl font-bold">Accurate Industries Job Sheet</h1>
+                        <div className="print-date text-sm text-gray-600">
+                            Printed: {new Date().toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                        </div>
+                    </div>
                     <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
                         <table className="w-full text-sm border-collapse">
                             <thead className="bg-slate-950 border-b border-slate-800 sticky top-0 z-20">
@@ -926,7 +933,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                                     {columns.map((c) => (
                                         <th
                                             key={c.key}
-                                            className={`py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-cyan-400 select-none ${c.w ?? ""}`}
+                                            className={`py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-cyan-400 select-none ${c.w ?? ""} ${c.printHide ? "print-hide-col" : ""}`}
                                             onClick={() => handleSort(c.key)}
                                         >
                                             <div className="flex items-center gap-1">
@@ -939,105 +946,117 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                                             </div>
                                         </th>
                                     ))}
-                                    <th className="py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[110px]">Updated</th>
-                                    <th className="sticky right-0 z-10 bg-slate-950 py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 border-l border-slate-800 w-[60px]"></th>
+                                    <th className="py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[110px] print-hide-col">Updated</th>
+                                    <th className="sticky right-0 z-10 bg-slate-950 py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 border-l border-slate-800 w-[60px] print-hide-col"></th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filtered.map((r) => {
                                     const selected = r.id === selectedId;
                                     return (
-                                        <tr
-                                            key={r.id}
-                                            className={[
-                                                "print:border-gray-300 group border-b border-[var(--border-subtle)]",
-                                                selected ? "ring-1 ring-[var(--accent)]/30 bg-[var(--bg-active)]" : statusRowColor(r.status),
-                                                "transition-colors",
-                                            ].join(" ")}
-                                            onClick={() => setSelectedId(r.id)}
-                                        >
-                                            {columns.map((c) => {
-                                                let value = r[c.key] ?? "";
-                                                const key = c.key;
+                                        <React.Fragment key={r.id}>
+                                            <tr
+                                                className={[
+                                                    "print:border-gray-300 group border-b border-[var(--border-subtle)]",
+                                                    selected ? "ring-1 ring-[var(--accent)]/30 bg-[var(--bg-active)]" : statusRowColor(r.status),
+                                                    "transition-colors",
+                                                ].join(" ")}
+                                                onClick={() => setSelectedId(r.id)}
+                                            >
+                                                {columns.map((c) => {
+                                                    let value = r[c.key] ?? "";
+                                                    const key = c.key;
 
-                                                // Format quote and invoice with prefix for display
-                                                if (key === "quote" && value) {
-                                                    value = formatQuote(value);
-                                                }
-                                                if (key === "invNo" && value) {
-                                                    value = formatInvoice(value);
-                                                }
+                                                    // Format quote and invoice with prefix for display
+                                                    if (key === "quote" && value) {
+                                                        value = formatQuote(value);
+                                                    }
+                                                    if (key === "invNo" && value) {
+                                                        value = formatInvoice(value);
+                                                    }
 
-                                                if (key === "status") {
-                                                    // Inline compact badge matching row text size
-                                                    const tone = statusTone(value);
-                                                    const toneClasses = {
-                                                        success: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10',
-                                                        danger: 'border-red-500/40 text-red-400 bg-red-500/10',
-                                                        orange: 'border-orange-500/40 text-orange-400 bg-orange-500/10',
-                                                        warning: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10',
-                                                        info: 'border-blue-500/40 text-blue-400 bg-blue-500/10',
-                                                        grey: 'border-slate-500/40 text-slate-400 bg-slate-500/10'
-                                                    };
+                                                    if (key === "status") {
+                                                        // Inline compact badge matching row text size
+                                                        const tone = statusTone(value);
+                                                        const toneClasses = {
+                                                            success: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10',
+                                                            danger: 'border-red-500/40 text-red-400 bg-red-500/10',
+                                                            orange: 'border-orange-500/40 text-orange-400 bg-orange-500/10',
+                                                            warning: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10',
+                                                            info: 'border-blue-500/40 text-blue-400 bg-blue-500/10',
+                                                            grey: 'border-slate-500/40 text-slate-400 bg-slate-500/10'
+                                                        };
+                                                        return (
+                                                            <td key={key} className={`py-2 px-3 text-center ${c.printHide ? "print-hide-col" : ""}`}>
+                                                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide border ${toneClasses[tone] || toneClasses.grey}`}>
+                                                                    {String(value || "N/A")}
+                                                                </span>
+                                                            </td>
+                                                        );
+                                                    }
+
+                                                    // Typography hierarchy: monospace for IDs/numbers, regular for text
+                                                    const isMonospace = ["jobNumber", "quote", "invNo", "po"].includes(key);
+                                                    const isMoney = key.toLowerCase().includes("value");
+                                                    const isPrimary = ["customer", "jobDescription"].includes(key);
+                                                    const isDate = key.toLowerCase().includes("date");
+
+                                                    const displayValue = (isMoney && value && !isNaN(value))
+                                                        ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                        : value || <span className="text-slate-600">—</span>;
+
+                                                    // Build dynamic classes
+                                                    const cellClasses = [
+                                                        "py-2 px-3 truncate text-xs",
+                                                        isMonospace ? "font-mono font-bold text-slate-200" : "",
+                                                        isMoney ? "font-mono text-slate-300" : "",
+                                                        isPrimary ? "font-medium text-white" : "",
+                                                        isDate ? "font-mono text-slate-400 text-[11px]" : "",
+                                                        !isMonospace && !isMoney && !isPrimary && !isDate ? "text-slate-400" : "",
+                                                        c.printHide ? "print-hide-col" : ""
+                                                    ].filter(Boolean).join(" ");
+
                                                     return (
-                                                        <td key={key} className="py-2 px-3 text-center">
-                                                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide border ${toneClasses[tone] || toneClasses.grey}`}>
-                                                                {String(value || "N/A")}
-                                                            </span>
+                                                        <td key={key} className={cellClasses}>
+                                                            {displayValue}
                                                         </td>
                                                     );
-                                                }
+                                                })}
 
-                                                // Typography hierarchy: monospace for IDs/numbers, regular for text
-                                                const isMonospace = ["jobNumber", "quote", "invNo", "po"].includes(key);
-                                                const isMoney = key.toLowerCase().includes("value");
-                                                const isPrimary = ["customer", "jobDescription"].includes(key);
-                                                const isDate = key.toLowerCase().includes("date");
+                                                <td className="py-2 px-3 text-[10px] text-slate-500 font-mono print-hide-col">
+                                                    {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : "—"}
+                                                </td>
 
-                                                const displayValue = (isMoney && value && !isNaN(value))
-                                                    ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                    : value || <span className="text-slate-600">—</span>;
-
-                                                // Build dynamic classes
-                                                const cellClasses = [
-                                                    "py-2 px-3 truncate text-xs",
-                                                    isMonospace ? "font-mono font-bold text-slate-200" : "",
-                                                    isMoney ? "font-mono text-slate-300" : "",
-                                                    isPrimary ? "font-medium text-white" : "",
-                                                    isDate ? "font-mono text-slate-400 text-[11px]" : "",
-                                                    !isMonospace && !isMoney && !isPrimary && !isDate ? "text-slate-400" : ""
-                                                ].filter(Boolean).join(" ");
-
-                                                return (
-                                                    <td key={key} className={cellClasses}>
-                                                        {displayValue}
-                                                    </td>
-                                                );
-                                            })}
-
-                                            <td className="py-2 px-3 text-[10px] text-slate-500 font-mono">
-                                                {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : "—"}
-                                            </td>
-
-                                            {/* Actions column - Ghost icon button */}
-                                            <td className="sticky right-0 z-10 bg-slate-900 py-2 px-3 border-l border-slate-800">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <button
-                                                        className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors print:hidden"
-                                                        onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            openEditModal(r);
-                                                        }}
-                                                        title={isTech ? "View Details" : "Edit Job"}
-                                                    >
-                                                        {isTech ? <Eye size={14} /> : <Edit2 size={14} />}
-                                                    </button>
-                                                    {r.notes && (
-                                                        <MessageSquare size={12} className="text-amber-500" title="Has notes" />
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                {/* Actions column - Ghost icon button */}
+                                                <td className="sticky right-0 z-10 bg-slate-900 py-2 px-3 border-l border-slate-800 print-hide-col">
+                                                    <div className="flex items-center justify-end gap-1">
+                                                        <button
+                                                            className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors print:hidden"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openEditModal(r);
+                                                            }}
+                                                            title={isTech ? "View Details" : "Edit Job"}
+                                                        >
+                                                            {isTech ? <Eye size={14} /> : <Edit2 size={14} />}
+                                                        </button>
+                                                        {r.notes && (
+                                                            <MessageSquare size={12} className="text-amber-500" title="Has notes" />
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {/* Notes sub-row - only visible in print */}
+                                            {
+                                                r.notes && (
+                                                    <tr className="hidden print:table-row bg-slate-50 border-b border-gray-200">
+                                                        <td colSpan={columns.length + 2} className="py-1 px-3 text-xs text-gray-600 italic">
+                                                            <span className="font-semibold text-gray-700 not-italic">Notes:</span> {r.notes.substring(0, 200)}{r.notes.length > 200 ? '...' : ''}
+                                                        </td>
+                                                    </tr>
+                                                )
+                                            }
+                                        </React.Fragment>
                                     );
                                 })}
 
@@ -1058,7 +1077,8 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                         </table>
                     </div>
                 </Card>
-            )}
+            )
+            }
 
             {/* Edit / Add Modal */}
             <Modal
@@ -1284,6 +1304,6 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                     )}
                 </div>
             </Modal>
-        </PageShell>
+        </PageShell >
     );
 }

@@ -373,4 +373,118 @@ h3 {
     text-decoration: underline;
     color: black !important;
   }
+
+  /* =========================================
+     JOB SHEET SPECIFIC PRINT STYLES
+     ========================================= */
+  
+  /* Use landscape and full page width */
+  @page {
+    size: A4 landscape;
+    margin: 10mm;
+  }
+
+  /* Hide the PageShell header controls and navigation */
+  [data-print="hide"],
+  header button,
+  header label,
+  header input,
+  header nav,
+  header > div > div:last-child,
+  .custom-scrollbar::-webkit-scrollbar,
+  button[title="Return to Portal"],
+  button[title="Restore Sample Data"],
+  button[title="Clear All Data"],
+  button[class*="NeonButton"],
+  [class*="NeonButton"],
+  label[class*="cursor-pointer"] {
+    display: none !important;
+  }
+
+  /* Make the main container full width with no scroll constraints */
+  .overflow-auto,
+  .overflow-hidden,
+  .custom-scrollbar,
+  [class*="max-h-"] {
+    max-height: none !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Job Sheet table print optimization */
+  .job-sheet-table,
+  .job-sheet-table table {
+    width: 100% !important;
+    font-size: 8pt !important;
+  }
+
+  .job-sheet-table th,
+  .job-sheet-table td {
+    padding: 4px 6px !important;
+    font-size: 8pt !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  /* Hide less important columns on print - keep only essential ones */
+  .job-sheet-table .print-hide-col {
+    display: none !important;
+  }
+
+  /* Remove sticky positioning which can cause issues */
+  .sticky {
+    position: relative !important;
+  }
+
+  /* Hide action columns in print */
+  .job-sheet-table th:last-child,
+  .job-sheet-table td:last-child {
+    display: none !important;
+  }
+
+  /* Ensure table header repeats on each page */
+  .job-sheet-table thead {
+    display: table-header-group !important;
+  }
+
+  /* Avoid breaking rows across pages */
+  .job-sheet-table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Make status badges print-friendly */
+  .job-sheet-table [class*="border-"][class*="/40"] {
+    background: transparent !important;
+    color: black !important;
+    border-color: #999 !important;
+  }
+
+  /* Card backgrounds for print */
+  .job-sheet-table,
+  div[class*="Card"] {
+    background: white !important;
+    border: 1px solid #ccc !important;
+  }
+
+  /* Print header - make it compact */
+  .job-sheet-header {
+    display: flex !important;
+    justify-content: space-between !important;
+    align-items: center !important;
+    padding: 8px 0 !important;
+    margin-bottom: 8px !important;
+    border-bottom: 2px solid #333 !important;
+  }
+
+  .job-sheet-header h1 {
+    font-size: 16pt !important;
+    margin: 0 !important;
+  }
+
+  .job-sheet-header .print-date {
+    font-size: 10pt !important;
+    color: #666 !important;
+  }
 }

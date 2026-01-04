@@ -6,6 +6,7 @@ import Summary from './components/Summary';
 import CustomerDashboard from './components/CustomerDashboard';
 import BackupRestore from './components/BackupRestore';
 import { useQuote } from './hooks/useQuote';
+import BackButton from '../../components/ui/BackButton';
 
 // Lazy load the Dashboard for performance
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -17,6 +18,10 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
     if (!quote.activeQuoteId) {
         return (
             <div className="relative">
+                {/* Unified Back Button - Top Left */}
+                <div className="fixed top-4 left-4 z-[9999] print:hidden">
+                    <BackButton label="Back to Portal" onClick={onBack} />
+                </div>
                 <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-200">Loading Dashboard...</div>}>
                     <Dashboard
                         savedQuotes={quote.savedQuotes}
@@ -36,19 +41,6 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
                         importState={quote.importState}
                     />
                 </Suspense>
-                {/* Floating Home Button - Bottom Right */}
-                <button
-                    onClick={onBack}
-                    className="fixed bottom-4 right-4 z-[9999] p-3 bg-slate-800 border border-slate-600 rounded-full shadow-2xl text-cyan-400 hover:bg-slate-700 hover:text-white transition-all hover:scale-110 print:hidden"
-                    title="Return to App Portal"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                        <rect width="7" height="7" x="3" y="3" rx="1" />
-                        <rect width="7" height="7" x="14" y="3" rx="1" />
-                        <rect width="7" height="7" x="14" y="14" rx="1" />
-                        <rect width="7" height="7" x="3" y="14" rx="1" />
-                    </svg>
-                </button>
             </div>
         );
     }
@@ -57,6 +49,10 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
 
     return (
         <div className="relative">
+            {/* Unified Back Button - Top Left */}
+            <div className="fixed top-4 left-4 z-[9999] print:hidden">
+                <BackButton label="Back to Portal" onClick={onBack} />
+            </div>
             <Layout
                 activeTab={activeTab}
                 setActiveTab={setActiveTab}
@@ -85,19 +81,6 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
                     />
                 )}
             </Layout>
-            {/* Floating Home Button - Bottom Right */}
-            <button
-                onClick={onBack}
-                className="fixed bottom-4 right-4 z-[9999] p-3 bg-slate-800 border border-slate-600 rounded-full shadow-2xl text-cyan-400 hover:bg-slate-700 hover:text-white transition-all hover:scale-110 print:hidden"
-                title="Return to App Portal"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="7" height="7" x="3" y="3" rx="1" />
-                    <rect width="7" height="7" x="14" y="3" rx="1" />
-                    <rect width="7" height="7" x="14" y="14" rx="1" />
-                    <rect width="7" height="7" x="3" y="14" rx="1" />
-                </svg>
-            </button>
         </div>
     );
 };

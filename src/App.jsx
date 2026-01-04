@@ -929,7 +929,7 @@ export function App() {
         </button>
 
         {/* Sidebar Header - Logo */}
-        <div className="p-4 border-b border-slate-700 bg-slate-700 flex flex-col items-center">
+        <div className="p-4 pt-14 border-b border-slate-700 bg-slate-700 flex flex-col items-center">
           <div
             className={`flex items-center justify-center mb-3 transition-all duration-300 cursor-pointer hover:scale-105 active:scale-95 rounded-lg p-0.5 ${selectedSite && logoBackgrounds[selectedSite.id] === 'light'
               ? 'bg-white'

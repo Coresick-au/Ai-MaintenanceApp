@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { useAuth } from '../../context/AuthContext'; // Import useAuth
 import { Icons } from '../../constants/icons';
+import BackButton from '../../components/ui/BackButton';
 
 // Format date helper
 const formatDate = (dateString, includeTime = false) => {
@@ -108,7 +109,7 @@ export const CustomerApp = ({ onBack }) => {
             alert('Please select a customer first.');
             return;
         }
-        
+
         const demoSiteData = {
             name: 'Demo Site - ' + new Date().toLocaleDateString(),
             location: '123 Demo Street, Demo City, DC 12345',
@@ -118,7 +119,7 @@ export const CustomerApp = ({ onBack }) => {
             notes: [{ id: `note-${Date.now()}`, content: 'This is a demo site created for testing purposes.', author: 'System', timestamp: new Date().toISOString() }],
             hasAIMMProfile: true // Enable AIMM for demo sites
         };
-        
+
         try {
             const siteId = await addManagedSite(selectedCustId, demoSiteData);
             if (siteId) {
@@ -293,7 +294,7 @@ export const CustomerApp = ({ onBack }) => {
             alert('Site name is required');
             return;
         }
-        
+
         try {
             const siteId = await addManagedSite(selectedCustId, {
                 name: formData.name,
@@ -301,11 +302,11 @@ export const CustomerApp = ({ onBack }) => {
                 logo: formData.logo || selectedCustomer?.logo || null,
                 active: true
             });
-            
+
             if (siteId) {
                 setIsAddSiteOpen(false);
                 setFormData({});
-                
+
                 // Provide clear guidance about AIMM
                 alert(`✅ Managed site "${formData.name}" created successfully!\n\n📝 IMPORTANT: This site is managed by the customer and ready for quoting.\n\nMaintenance App (AIMM):\n• This site is NOT in the Maintenance App yet\n• Use the activity icon (📊) to add to Maintenance App when needed\n• Maintenance App provides enhanced monitoring and analytics\n\nThe site will appear in quotes regardless of Maintenance App status.`);
             }
@@ -398,13 +399,13 @@ export const CustomerApp = ({ onBack }) => {
     return (
         <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
             {/* Header */}
-            <header className="bg-slate-900 border-b border-slate-800 p-4 flex justify-between items-center">
+            {/* Header - AIMM Cyan Theme */}
+            <header className="bg-slate-900 border-b border-cyan-500/20 shadow-[0_1px_10px_rgba(6,182,212,0.1)] p-4 flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <button onClick={onBack} className="p-2 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition" title="Return to Portal">
-                        <Icons.ChevronLeft size={24} />
-                    </button>
-                    <div>
-                        <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-500">Customer Portal</h1>
+                    {/* Unified Back Button */}
+                    <BackButton label="Back to Portal" onClick={onBack} />
+                    <div className="border-l border-slate-600 pl-4">
+                        <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Customer Portal</h1>
                         <p className="text-xs text-slate-500 uppercase tracking-wider">Master Data Management</p>
                     </div>
                 </div>
@@ -420,7 +421,7 @@ export const CustomerApp = ({ onBack }) => {
                     )}
                     <button
                         onClick={() => { setFormData({}); setIsAddCustOpen(true); }}
-                        className="bg-purple-600 hover:bg-purple-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition"
+                        className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2 transition"
                     >
                         <Icons.Plus size={16} /> New Customer
                     </button>
@@ -447,7 +448,7 @@ export const CustomerApp = ({ onBack }) => {
                                 placeholder="Search customers..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
-                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-1 focus:ring-purple-500 outline-none"
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-1 focus:ring-cyan-500 outline-none"
                             />
                         </div>
                     </div>
@@ -461,7 +462,7 @@ export const CustomerApp = ({ onBack }) => {
                             <button
                                 key={cust.id}
                                 onClick={() => setSelectedCustId(cust.id)}
-                                className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${selectedCustId === cust.id ? 'bg-purple-900/40 border border-purple-500/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                                className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${selectedCustId === cust.id ? 'bg-cyan-900/40 border border-cyan-500/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                                 title={isSidebarCollapsed ? cust.name : ''}
                             >
                                 <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -548,7 +549,7 @@ export const CustomerApp = ({ onBack }) => {
                                 <div className="bg-slate-900 p-2 rounded border border-slate-800">
                                     <div
                                         onClick={(e) => toggleLogoBg(e, selectedCustomer.id)}
-                                        className={`w-20 h-20 rounded flex items-center justify-center text-slate-600 text-xs text-center overflow-hidden cursor-pointer transition-colors ${logoBackgrounds[selectedCustomer.id] === 'light'
+                                        className={`w-40 h-40 rounded flex items-center justify-center text-slate-600 text-xs text-center overflow-hidden cursor-pointer transition-colors ${logoBackgrounds[selectedCustomer.id] === 'light'
                                             ? 'bg-white border border-slate-200'
                                             : 'bg-slate-800'
                                             }`}
@@ -570,11 +571,11 @@ export const CustomerApp = ({ onBack }) => {
                                 <div className="bg-slate-900/50 border border-slate-800 rounded-xl p-5">
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="font-bold text-slate-200 flex items-center gap-2">
-                                            <Icons.Users className="text-purple-400" /> Contacts Directory
+                                            <Icons.Users className="text-cyan-400" /> Contacts Directory
                                         </h3>
                                         <button
                                             onClick={() => { setFormData({ sendReports: false }); setIsAddContactOpen(true); }}
-                                            className="text-xs bg-slate-800 hover:bg-slate-700 text-purple-400 border border-slate-700 px-3 py-1.5 rounded-lg transition"
+                                            className="text-xs bg-slate-800 hover:bg-slate-700 text-cyan-400 border border-slate-700 px-3 py-1.5 rounded-lg transition"
                                         >
                                             + Add Person
                                         </button>
@@ -702,29 +703,29 @@ export const CustomerApp = ({ onBack }) => {
                                                                     alert("Please ask a manager to change AIMM profile settings.");
                                                                     return;
                                                                 }
-                                                                
+
                                                                 const isCurrentlyEnabled = site.hasAIMMProfile || false;
                                                                 const action = isCurrentlyEnabled ? 'disable' : 'enable';
-                                                                const warning = isCurrentlyEnabled 
+                                                                const warning = isCurrentlyEnabled
                                                                     ? '\n\n⚠️ WARNING: Disabling AIMM tracking will:\n• Remove this site from Maintenance App monitoring\n• Stop automatic data collection and updates\n• Any existing Maintenance App data will remain but will no longer be updated\n\nThe site will still appear in quotes.'
                                                                     : '\n\nEnabling AIMM tracking will:\n• Add this site to the Maintenance App (AIMM)\n• Enable automatic data collection and updates\n• Provide enhanced maintenance analytics\n\nThe site is already visible in quotes.';
-                                                                
+
                                                                 if (window.confirm(`Are you sure you want to ${action} Maintenance App tracking for "${site.name}"?${warning}\n\nThis change will affect how this site is monitored in the Maintenance App.`)) {
                                                                     try {
                                                                         // Just update the hasAIMMProfile flag, don't move sites
                                                                         await updateManagedSite(selectedCustId, site.id, { hasAIMMProfile: !isCurrentlyEnabled });
-                                                                        
+
                                                                         // Provide immediate feedback
-                                                                        const statusMessage = !isCurrentlyEnabled 
+                                                                        const statusMessage = !isCurrentlyEnabled
                                                                             ? `✅ Maintenance App tracking enabled for "${site.name}". Enhanced monitoring and analytics are now active.`
                                                                             : `✅ Maintenance App tracking disabled for "${site.name}". Monitoring has been stopped, but the site remains visible in quotes.`;
-                                                                        
+
                                                                         // Show success message
                                                                         alert(statusMessage);
-                                                                        
+
                                                                         // Optional: Force a brief delay to ensure Firebase sync
                                                                         await new Promise(resolve => setTimeout(resolve, 500));
-                                                                        
+
                                                                     } catch (error) {
                                                                         console.error('Failed to update Maintenance App profile:', error);
                                                                         alert(`❌ Failed to ${action} Maintenance App tracking for "${site.name}". Please try again.\n\nError: ${error.message}`);
@@ -742,21 +743,21 @@ export const CustomerApp = ({ onBack }) => {
                                                                     alert("Please ask a manager to archive/restore this site.");
                                                                     return;
                                                                 }
-                                                                
+
                                                                 const isCurrentlyActive = site.active !== false;
                                                                 const action = isCurrentlyActive ? 'archive' : 'restore';
-                                                                const warning = isCurrentlyActive 
+                                                                const warning = isCurrentlyActive
                                                                     ? '\n\n⚠️ Archiving this site will:\n• Remove it from active site lists\n• Stop monitoring and data collection\n• The site will remain accessible in the Customer Portal'
                                                                     : '\n\n⚠️ Restoring this site will:\n• Add it back to active site lists\n• Resume monitoring and data collection\n• The site will be visible in the Maintenance App if AIMM is enabled';
-                                                                
+
                                                                 if (window.confirm(`Are you sure you want to ${action} "${site.name}"?${warning}\n\nThis action can be reversed later.`)) {
                                                                     try {
                                                                         await updateManagedSite(selectedCustId, site.id, { active: !isCurrentlyActive });
-                                                                        
-                                                                        const statusMessage = isCurrentlyActive 
+
+                                                                        const statusMessage = isCurrentlyActive
                                                                             ? `✅ Site "${site.name}" has been archived.`
                                                                             : `✅ Site "${site.name}" has been restored and is now active.`;
-                                                                        
+
                                                                         alert(statusMessage);
                                                                     } catch (error) {
                                                                         console.error('Failed to toggle site status:', error);
@@ -840,7 +841,7 @@ export const CustomerApp = ({ onBack }) => {
                         </div>
                         <button
                             onClick={handleCreateCustomer}
-                            className="w-full bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold transition"
+                            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded font-bold transition"
                         >
                             Create Customer
                         </button>
@@ -1057,11 +1058,11 @@ export const CustomerApp = ({ onBack }) => {
                 <Modal title={`Add Site for ${selectedCustomer?.name}`} onClose={() => setIsAddSiteOpen(false)}>
                     <div className="space-y-4">
                         <div className="bg-yellow-900/20 border border-yellow-700/50 p-3 rounded text-xs text-yellow-200">
-                            <strong>📝 Important Information:</strong><br/>
-                            • This creates a managed site for this customer<br/>
-                            • <strong>The site will NOT be added to the Maintenance App (AIMM)</strong><br/>
-                            • Use the activity icon (📊) to add site to Maintenance App when needed<br/>
-                            • Sites appear in quotes regardless of Maintenance App status<br/>
+                            <strong>📝 Important Information:</strong><br />
+                            • This creates a managed site for this customer<br />
+                            • <strong>The site will NOT be added to the Maintenance App (AIMM)</strong><br />
+                            • Use the activity icon (📊) to add site to Maintenance App when needed<br />
+                            • Sites appear in quotes regardless of Maintenance App status<br />
                             • Maintenance App provides enhanced monitoring and analytics
                         </div>
                         <input
@@ -1379,41 +1380,38 @@ export const CustomerApp = ({ onBack }) => {
                         <div className="bg-orange-900/20 border border-orange-700/50 p-3 rounded text-xs text-orange-200">
                             <strong>⚠️ Admin Only:</strong> Manage customer sites and clean up legacy data.
                         </div>
-                        
+
                         {/* Toggle between different views */}
                         <div className="flex gap-2">
                             <button
                                 onClick={() => { setShowAllMaintenanceSites(false); setShowLegacyCleanup(false); }}
-                                className={`px-3 py-1 rounded text-xs font-bold transition ${
-                                    !showAllMaintenanceSites && !showLegacyCleanup
-                                        ? 'bg-orange-600 text-white' 
-                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                }`}
+                                className={`px-3 py-1 rounded text-xs font-bold transition ${!showAllMaintenanceSites && !showLegacyCleanup
+                                    ? 'bg-orange-600 text-white'
+                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                    }`}
                             >
                                 Issues Only ({getOrphanedSites().length})
                             </button>
                             <button
                                 onClick={() => { setShowAllMaintenanceSites(true); setShowLegacyCleanup(false); }}
-                                className={`px-3 py-1 rounded text-xs font-bold transition ${
-                                    showAllMaintenanceSites && !showLegacyCleanup
-                                        ? 'bg-blue-600 text-white' 
-                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                }`}
+                                className={`px-3 py-1 rounded text-xs font-bold transition ${showAllMaintenanceSites && !showLegacyCleanup
+                                    ? 'bg-blue-600 text-white'
+                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                    }`}
                             >
                                 All Sites ({getAllMaintenanceAppSites().length})
                             </button>
                             <button
                                 onClick={() => { setShowAllMaintenanceSites(false); setShowLegacyCleanup(true); }}
-                                className={`px-3 py-1 rounded text-xs font-bold transition ${
-                                    showLegacyCleanup
-                                        ? 'bg-red-600 text-white' 
-                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                }`}
+                                className={`px-3 py-1 rounded text-xs font-bold transition ${showLegacyCleanup
+                                    ? 'bg-red-600 text-white'
+                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                    }`}
                             >
                                 Legacy Cleanup ({getLegacyGlobalSites().length})
                             </button>
                         </div>
-                        
+
                         <div className="space-y-2 max-h-64 overflow-y-auto">
                             {showLegacyCleanup ? (
                                 // Legacy global sites view
@@ -1434,8 +1432,8 @@ export const CustomerApp = ({ onBack }) => {
                                                     <div className="text-xs text-slate-400">Customer: {site.customerName || 'Unknown'}</div>
                                                     <div className="text-xs text-slate-400">Location: {site.location || 'Not specified'}</div>
                                                     <div className="text-xs text-slate-400 mt-1">
-                                                        AIMM: {site.hasAIMMProfile ? 
-                                                            <span className="text-blue-400">Enabled</span> : 
+                                                        AIMM: {site.hasAIMMProfile ?
+                                                            <span className="text-blue-400">Enabled</span> :
                                                             <span className="text-slate-500">Disabled</span>
                                                         }
                                                     </div>
@@ -1455,16 +1453,15 @@ export const CustomerApp = ({ onBack }) => {
                                 // Customer managed sites view
                                 (!showAllMaintenanceSites ? getOrphanedSites() : getAllMaintenanceAppSites()).length === 0 ? (
                                     <div className="text-center py-4 text-slate-500 text-sm">
-                                        {!showAllMaintenanceSites 
+                                        {!showAllMaintenanceSites
                                             ? "No site issues found. All customer sites are properly configured."
                                             : "No sites found."
                                         }
                                     </div>
                                 ) : (
                                     (!showAllMaintenanceSites ? getOrphanedSites() : getAllMaintenanceAppSites()).map(site => (
-                                        <div key={site.id} className={`bg-slate-800 p-3 rounded-lg border ${
-                                            site.isOrphaned ? 'border-orange-700/50' : 'border-slate-700'
-                                        }`}>
+                                        <div key={site.id} className={`bg-slate-800 p-3 rounded-lg border ${site.isOrphaned ? 'border-orange-700/50' : 'border-slate-700'
+                                            }`}>
                                             <div className="flex justify-between items-start">
                                                 <div className="flex-1">
                                                     <div className="flex items-center gap-2">
@@ -1481,8 +1478,8 @@ export const CustomerApp = ({ onBack }) => {
                                                     <div className="text-xs text-slate-400">Status: {site.customerStatus || 'Unknown'}</div>
                                                     <div className="text-xs text-slate-400">Location: {site.location || 'Not specified'}</div>
                                                     <div className="text-xs text-slate-400 mt-1">
-                                                        AIMM: {site.hasAIMMProfile ? 
-                                                            <span className="text-blue-400">Enabled</span> : 
+                                                        AIMM: {site.hasAIMMProfile ?
+                                                            <span className="text-blue-400">Enabled</span> :
                                                             <span className="text-slate-500">Disabled</span>
                                                         }
                                                     </div>
@@ -1505,7 +1502,7 @@ export const CustomerApp = ({ onBack }) => {
                                 )
                             )}
                         </div>
-                        
+
                         <div className="text-xs text-slate-400 border-t border-slate-700 pt-2">
                             {showLegacyCleanup ? (
                                 <><strong>Legacy Cleanup:</strong> These are sites in the old global collection. They should be deleted as sites are now managed within customer documents.</>
@@ -1516,21 +1513,6 @@ export const CustomerApp = ({ onBack }) => {
                     </div>
                 </Modal>
             )}
-
-            {/* Floating Return to Portal Button - Bottom Right */}
-            <button
-                onClick={onBack}
-                className="fixed bottom-4 right-4 z-[9999] p-3 bg-slate-800 border border-slate-600 rounded-full shadow-2xl text-cyan-400 hover:bg-slate-700 hover:text-white transition-all hover:scale-110"
-                title="Return to App Portal"
-            >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect width="7" height="7" x="3" y="3" rx="1"></rect>
-                    <rect width="7" height="7" x="14" y="3" rx="1"></rect>
-                    <rect width="7" height="7" x="14" y="14" rx="1"></rect>
-                    <rect width="7" height="7" x="3" y="14" rx="1"></rect>
-                </svg>
-            </button>
-
         </div>
     );
 };
