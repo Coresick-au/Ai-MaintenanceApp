@@ -6,7 +6,7 @@ import { GlobalDataProvider, useGlobalData } from '../../context/GlobalDataConte
  * Inner component that uses the context
  */
 const EmployeeAppInner = ({ onBack }) => {
-    const { employees, sites, addEmployee, updateEmployee } = useGlobalData();
+    const { employees, sites, customers, addEmployee, updateEmployee } = useGlobalData();
 
     return (
         <div className="relative min-h-screen bg-slate-950">
@@ -26,6 +26,7 @@ const EmployeeAppInner = ({ onBack }) => {
                 onClose={onBack}
                 employees={employees}
                 sites={sites}
+                customers={customers}
                 onAddEmployee={addEmployee}
                 onUpdateEmployee={updateEmployee}
             />

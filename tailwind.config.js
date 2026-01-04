@@ -14,6 +14,12 @@ export default {
         'bg-surface': 'var(--bg-surface)',
         'bg-active': 'var(--bg-active)',
 
+        // BACKWARD COMPAT: Old naming convention → New 3-layer system
+        // These aliases prevent "light mode" inputs when old class names are used
+        'bg-primary': 'var(--bg-app)',      // Alias for bg-app
+        'bg-secondary': 'var(--bg-surface)', // Alias for bg-surface  
+        'bg-tertiary': 'var(--bg-active)',   // Alias for bg-active (input backgrounds)
+
         // Text Hierarchy
         'text-primary': 'var(--text-primary)',
         'text-secondary': 'var(--text-secondary)',
@@ -22,6 +28,8 @@ export default {
         // Accent
         'accent': 'var(--accent)',
         'accent-hover': 'var(--accent-hover)',
+        // BACKWARD COMPAT: Old accent naming
+        'accent-primary': 'var(--accent)',
 
         // Status Colors
         'status-green': 'var(--status-green)',
@@ -30,6 +38,11 @@ export default {
         'status-orange': 'var(--status-orange)',
         'status-red': 'var(--status-red)',
         'status-grey': 'var(--status-grey)',
+
+        // Semantic aliases
+        'danger': 'var(--status-red)',
+        'warning': 'var(--status-orange)',
+        'success': 'var(--status-green)',
 
         // Keep primary alias for compatibility
         primary: colors.cyan,

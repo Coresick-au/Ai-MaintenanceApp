@@ -151,15 +151,27 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const deleteCustomer = async (id) => {
-        // Check for linked sites first to prevent orphans
+        // Check for linked legacy sites first
         const linkedSites = sites.filter(s => s.customerId === id);
         if (linkedSites.length > 0) {
-            alert(`Cannot delete customer. They have ${linkedSites.length} active sites.`);
+            alert(`Cannot delete customer. They have ${linkedSites.length} active sites in the legacy sites collection.`);
             return;
         }
 
+        // Check for managed sites
         const customer = customers.find(c => c.id === id);
-        const customerName = customer ? customer.name : 'this customer';
+        if (!customer) {
+            alert('Customer not found.');
+            return;
+        }
+
+        const managedSites = customer.managedSites || [];
+        if (managedSites.length > 0) {
+            alert(`Cannot delete "${customer.name}". They have ${managedSites.length} managed site(s).\n\nPlease delete all managed sites first before deleting the customer.`);
+            return;
+        }
+
+        const customerName = customer.name;
         if (!window.confirm(`Are you sure you want to delete "${customerName}"? This action cannot be undone.`)) return;
 
         try {
@@ -167,7 +179,7 @@ export const GlobalDataProvider = ({ children }) => {
             console.log('[GlobalDataContext] Customer deleted:', id);
         } catch (e) {
             console.error('Error deleting customer:', e);
-            alert('Failed to delete customer.');
+            alert(`Failed to delete customer: ${e.message || 'Unknown error'}`);
         }
     };
 
@@ -254,7 +266,7 @@ export const GlobalDataProvider = ({ children }) => {
         try {
             const customer = customers.find(c => c.id === customerId);
             const managedSite = customer?.managedSites?.find(s => s.id === siteId);
-            
+
             if (!managedSite) {
                 throw new Error('Managed site not found');
             }
@@ -272,10 +284,10 @@ export const GlobalDataProvider = ({ children }) => {
 
             // Create in global sites collection
             await siteRepository.create(siteId, globalSiteData);
-            
+
             // Remove from customer's managed sites
             await customerRepository.deleteManagedSite(customerId, siteId);
-            
+
             console.log('[GlobalDataContext] Site enabled for AIMM:', siteId);
         } catch (e) {
             console.error('Error enabling AIMM for site:', e);
@@ -406,7 +418,7 @@ export const GlobalDataProvider = ({ children }) => {
     // Get orphaned sites (sites with issues in customer managed sites)
     const getOrphanedSites = () => {
         const orphaned = [];
-        
+
         customers.forEach(customer => {
             const managedSites = customer.managedSites || [];
             managedSites.forEach(site => {
@@ -423,7 +435,7 @@ export const GlobalDataProvider = ({ children }) => {
                 }
             });
         });
-        
+
         console.log('[Debug] Found sites with issues:', orphaned.map(s => ({ name: s.name, id: s.id, issue: s.issue })));
         return orphaned;
     };
@@ -451,7 +463,7 @@ export const GlobalDataProvider = ({ children }) => {
         // Find the site and its customer
         let targetSite = null;
         let targetCustomerId = null;
-        
+
         customers.forEach(customer => {
             const site = (customer.managedSites || []).find(s => s.id === siteId);
             if (site) {
@@ -459,13 +471,13 @@ export const GlobalDataProvider = ({ children }) => {
                 targetCustomerId = customer.id;
             }
         });
-        
+
         if (!targetSite) {
             console.error('Site not found:', siteId);
             alert('Site not found.');
             return;
         }
-        
+
         const siteName = targetSite.name;
         if (!window.confirm(`⚠️ WARNING: This will permanently delete "${siteName}" from the customer's managed sites.\n\nThis action cannot be undone. Are you sure?`)) return;
 

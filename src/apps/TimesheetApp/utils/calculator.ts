@@ -430,8 +430,7 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
     let totalOT20x = 0;
     let totalPerDiem = 0;
     let totalChargeableHours = 0;
-    let totalDailyUtilization = 0;
-    let daysWorked = 0;
+    let totalChargeableBaseHours = 0; // Only base hours from chargeable entries
 
     // Group entries by day using a unique key (date or weekKey + day)
     const entriesByDay: Record<string, TimesheetEntry[]> = {};
@@ -445,7 +444,7 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
     }
 
     // Process each unique day
-    for (const [dateKey, dayEntries] of Object.entries(entriesByDay)) {
+    for (const [, dayEntries] of Object.entries(entriesByDay)) {
         const firstEntry = dayEntries[0];
         if (!firstEntry) continue;
 
@@ -479,12 +478,13 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
             isNightshift
         );
 
-        // Calculate daily utilization: (chargeable hours / 7.5) * 100, capped at 100%
-        // Only count weekdays (Mon-Fri) for utilization
+        // Calculate chargeable BASE hours for utilization
+        // Only the base portion (max 7.5h per weekday) of chargeable work counts toward utilization
+        // Overtime doesn't count toward utilization target
         if (dayName !== 'Saturday' && dayName !== 'Sunday') {
-            const dailyUtilization = Math.min(100, (dayChargeableHours / BASE_HOURS_THRESHOLD) * 100);
-            totalDailyUtilization += dailyUtilization;
-            daysWorked++;
+            // Cap chargeable hours at base hours for utilization purposes
+            const chargeableBaseForDay = Math.min(dayChargeableHours, baseHours);
+            totalChargeableBaseHours += chargeableBaseForDay;
         }
 
         // Accumulate daily totals into weekly totals
@@ -496,10 +496,10 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
         totalChargeableHours += dayChargeableHours;
     }
 
-    // Calculate average utilization across days worked
-    const utilizationPercent = daysWorked > 0
-        ? totalDailyUtilization / daysWorked
-        : 0;
+    // Calculate utilization as chargeable BASE hours vs standard weekly hours (37.5)
+    // 100% utilization = 37.5 hours of chargeable BASE work in the week
+    // Overtime doesn't count - only the first 7.5h per day that is chargeable
+    const utilizationPercent = (totalChargeableBaseHours / STANDARD_WEEKLY_HOURS) * 100;
 
     return {
         totalNetHours: roundToTwoDecimals(totalNetHours),

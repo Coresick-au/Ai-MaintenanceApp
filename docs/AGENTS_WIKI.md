@@ -33,15 +33,40 @@
 
 | Purpose | Color | Tailwind Class |
 |---------|-------|----------------|
-| Page background | `#0f172a` | `bg-slate-900` |
-| Card background | `#1e293b` | `bg-slate-800` |
+| Page background | `#0f172a` | `bg-slate-900` or `bg-bg-app` |
+| Card background | `#1e293b` | `bg-slate-800` or `bg-bg-surface` |
 | Border | `#334155` | `border-slate-700` |
 | Primary text | `#f1f5f9` | `text-slate-100` |
 | Secondary text | `#94a3b8` | `text-slate-400` |
-| Accent | `#06b6d4` | `text-cyan-500` |
-| Critical | `#ef4444` | `text-red-500` |
-| Warning | `#f59e0b` | `text-amber-500` |
-| Healthy | `#10b981` | `text-emerald-500` |
+| Accent | `#06b6d4` | `text-cyan-500` or `text-accent` |
+| Critical | `#ef4444` | `text-red-500` or `text-danger` |
+| Warning | `#f59e0b` | `text-amber-500` or `text-warning` |
+| Healthy | `#10b981` | `text-emerald-500` or `text-success` |
+
+### Form Input Styling (CRITICAL)
+
+**NEVER use default browser input styles!** All inputs, selects, and textareas MUST have:
+
+```jsx
+// ✅ CORRECT: Dark theme input styling
+<input 
+  className="bg-bg-tertiary text-slate-200 border border-slate-700 
+             focus:ring-2 focus:ring-accent rounded-lg p-2
+             hover:border-accent placeholder:text-slate-500"
+/>
+
+// ❌ WRONG: No background class = white/light mode inputs
+<input className="border p-2" />
+```
+
+**Required classes for form elements:**
+| Element | Required Classes |
+|---------|-----------------|
+| Input/Select | `bg-bg-tertiary text-slate-200 border-slate-700` |
+| Textarea | `bg-bg-tertiary text-slate-200 border-slate-700` |
+| Checkbox | `accent-accent` |
+| Disabled state | Add `opacity-50 text-slate-400` |
+| Focus state | `focus:ring-2 focus:ring-accent outline-none` |
 
 **PDFs:** Use these same colors in `@react-pdf/renderer` stylesheets. See `FullDashboardPDF.tsx` for reference.
 

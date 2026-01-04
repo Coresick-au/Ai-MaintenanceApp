@@ -82,7 +82,7 @@ export default function CustomerDashboard({
         customers,
         addCustomer,
         updateCustomer,
-        deleteCustomer,
+        // deleteCustomer removed - customers managed in Customer Portal app
         addManagedSite,
         deleteManagedSite
     } = useGlobalData();
@@ -103,6 +103,10 @@ export default function CustomerDashboard({
     const [newSiteName, setNewSiteName] = useState('');
     const [newSiteLocation, setNewSiteLocation] = useState('');
 
+    // Site Rates Editing State
+    const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
+    const [editingSiteRates, setEditingSiteRates] = useState<Rates | null>(null);
+
     const handleSelect = (customer: Customer) => {
         setSelectedId(customer.id);
         setEditName(customer.name);
@@ -114,13 +118,7 @@ export default function CustomerDashboard({
         setIsAddingSite(false);
     };
 
-    const handleDelete = async (id: string) => {
-        // deleteCustomer handles confirmation
-        await deleteCustomer(id);
-        if (selectedId === id) {
-            setSelectedId(null);
-        }
-    };
+    // Note: Customer deletion removed - manage customers in Customer Portal app
 
     const handleAddCustomer = async () => {
         const name = prompt("Enter new customer name:");
@@ -196,12 +194,7 @@ export default function CustomerDashboard({
                                 <CustomerLogo customer={c} isSelected={selectedId === c.id} />
                                 <span className="font-medium text-slate-200">{c.name}</span>
                             </div>
-                            <button
-                                onClick={(e) => { e.stopPropagation(); handleDelete(c.id); }}
-                                className="text-slate-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                                <Trash2 size={16} />
-                            </button>
+                            {/* Delete removed - manage customers in Customer Portal app */}
                         </div>
                     ))}
                 </div>
@@ -389,26 +382,94 @@ export default function CustomerDashboard({
                                             </div>
                                         ) : (
                                             (selectedCustomer?.managedSites || []).map((site: ManagedSite) => (
-                                                <div key={site.id} className="bg-gray-700/30 border border-gray-600 p-4 rounded flex justify-between items-start group hover:bg-gray-700/50 transition-colors">
-                                                    <div>
-                                                        <div className="flex items-center gap-2 mb-1">
-                                                            <h4 className="font-bold text-slate-200 text-lg">{site.name}</h4>
-                                                            {site.isLocked && <span className="text-xs bg-red-900/50 text-red-200 px-1.5 py-0.5 rounded">LOCKED</span>}
+                                                <div key={site.id} className="bg-gray-700/30 border border-gray-600 p-4 rounded group hover:bg-gray-700/50 transition-colors">
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div>
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <h4 className="font-bold text-slate-200 text-lg">{site.name}</h4>
+                                                                {site.isLocked && <span className="text-xs bg-red-900/50 text-red-200 px-1.5 py-0.5 rounded">LOCKED</span>}
+                                                            </div>
+                                                            <div className="flex items-center gap-4 text-sm text-slate-400">
+                                                                <span className="flex items-center gap-1"><MapPin size={14} /> {site.location || 'No location set'}</span>
+                                                                <span className="flex items-center gap-1"><Layout size={14} /> {site.rates ? 'Custom Rates' : 'Using Customer Rates'}</span>
+                                                            </div>
                                                         </div>
-                                                        <div className="flex items-center gap-4 text-sm text-slate-400">
-                                                            <span className="flex items-center gap-1"><MapPin size={14} /> {site.location || 'No location set'}</span>
-                                                            <span className="flex items-center gap-1"><Layout size={14} /> {site.rates ? 'Custom Rates' : 'Default/Customer Rates'}</span>
+                                                        <div className="flex items-center gap-2">
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (editingSiteId === site.id) {
+                                                                        setEditingSiteId(null);
+                                                                        setEditingSiteRates(null);
+                                                                    } else {
+                                                                        setEditingSiteId(site.id);
+                                                                        setEditingSiteRates(site.rates || editRates);
+                                                                    }
+                                                                }}
+                                                                className={`px-3 py-1.5 text-sm rounded transition-colors ${editingSiteId === site.id ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-cyan-400 hover:bg-gray-600'}`}
+                                                            >
+                                                                {editingSiteId === site.id ? 'Close' : 'Edit Rates'}
+                                                            </button>
+                                                            <button
+                                                                onClick={() => deleteManagedSite(selectedId!, site.id)}
+                                                                className="p-2 text-slate-500 hover:text-red-400 hover:bg-gray-600 rounded transition-colors"
+                                                                title="Delete Site"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
                                                         </div>
                                                     </div>
-                                                    <div className="flex items-center gap-2">
-                                                        <button
-                                                            onClick={() => deleteManagedSite(selectedId!, site.id)}
-                                                            className="p-2 text-slate-500 hover:text-red-400 hover:bg-gray-600 rounded transition-colors"
-                                                            title="Delete Site"
-                                                        >
-                                                            <Trash2 size={16} />
-                                                        </button>
-                                                    </div>
+
+                                                    {/* Site-Specific Rates Editor */}
+                                                    {editingSiteId === site.id && editingSiteRates && (
+                                                        <div className="border-t border-gray-600 pt-4 mt-4 animate-slide-down">
+                                                            <div className="flex justify-between items-center mb-3">
+                                                                <h5 className="text-sm font-bold text-cyan-400 uppercase">Site-Specific Rates</h5>
+                                                                <button
+                                                                    onClick={() => setEditingSiteRates(editRates)}
+                                                                    className="text-xs text-slate-400 hover:text-slate-200"
+                                                                >
+                                                                    Reset to Customer Rates
+                                                                </button>
+                                                            </div>
+                                                            <RatesConfig
+                                                                rates={editingSiteRates}
+                                                                setRates={setEditingSiteRates}
+                                                                saveAsDefaults={() => { }}
+                                                                resetToDefaults={() => setEditingSiteRates(editRates)}
+                                                                compact
+                                                            />
+                                                            <div className="mt-4 flex gap-2">
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        // Update the managed site with new rates
+                                                                        const updatedSites = (selectedCustomer?.managedSites || []).map((s: ManagedSite) =>
+                                                                            s.id === site.id ? { ...s, rates: editingSiteRates } : s
+                                                                        );
+                                                                        await updateCustomer(selectedId!, { managedSites: updatedSites });
+                                                                        setEditingSiteId(null);
+                                                                        setEditingSiteRates(null);
+                                                                    }}
+                                                                    className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded font-medium flex items-center gap-2"
+                                                                >
+                                                                    <Save size={16} /> Save Site Rates
+                                                                </button>
+                                                                <button
+                                                                    onClick={async () => {
+                                                                        // Remove site-specific rates (revert to customer rates)
+                                                                        const updatedSites = (selectedCustomer?.managedSites || []).map((s: ManagedSite) =>
+                                                                            s.id === site.id ? { ...s, rates: undefined } : s
+                                                                        );
+                                                                        await updateCustomer(selectedId!, { managedSites: updatedSites });
+                                                                        setEditingSiteId(null);
+                                                                        setEditingSiteRates(null);
+                                                                    }}
+                                                                    className="text-slate-400 hover:text-slate-200 px-4 py-2"
+                                                                >
+                                                                    Use Customer Rates
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             ))
                                         )}

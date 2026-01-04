@@ -99,7 +99,7 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
     );
 };
 
-export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmployee, onUpdateEmployee }) => {
+export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, onAddEmployee, onUpdateEmployee }) => {
     const [selectedEmp, setSelectedEmp] = useState(null);
     const [newEmpForm, setNewEmpForm] = useState({
         name: '',
@@ -124,16 +124,22 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
     const [isEditingEmployee, setIsEditingEmployee] = useState(false);
     const [editEmployeeForm, setEditEmployeeForm] = useState(null);
 
-    // Filter for active sites only - MUST BE BEFORE EARLY RETURN
-    const activeSites = useMemo(() => {
-        const allSites = sites || [];
-        // Try to filter for active sites
-        const filtered = allSites.filter(site => site.active !== false);
-        // If we have active sites, show them. usage of length > 0 ensures we don't show empty list if we have candidates.
-        // If filtered is empty but allSites is not (meaning all sites are archived?), show allSites to be safe.
-        // If allSites is empty, well, we return [] anyway.
-        return filtered.length > 0 ? filtered : allSites;
-    }, [sites]);
+    // Collect managed sites from customers for induction dropdown
+    const managedSites = useMemo(() => {
+        const allManagedSites = [];
+        (customers || []).forEach(customer => {
+            (customer.managedSites || []).forEach(site => {
+                allManagedSites.push({
+                    id: site.id,
+                    name: site.name,
+                    location: site.location || '',
+                    customer: customer.name,
+                    customerId: customer.id
+                });
+            });
+        });
+        return allManagedSites;
+    }, [customers]);
 
     if (!isOpen) return null;
 
@@ -360,7 +366,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                             {selectedEmp.status === 'archived' && <span className="text-red-500 font-bold">• ARCHIVED</span>}
                                         </div>
                                     </div>
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-1.5 flex-wrap justify-end">
                                         <button
                                             onClick={() => {
                                                 setIsEditingEmployee(true);
@@ -374,9 +380,10 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                     emergencyContactPhone: selectedEmp.emergencyContactPhone
                                                 });
                                             }}
-                                            className="px-4 py-2 text-sm rounded-lg transition-colors bg-blue-700 hover:bg-blue-600 text-white"
+                                            className="px-2.5 py-1.5 text-xs rounded transition-colors bg-blue-700 hover:bg-blue-600 text-white flex items-center gap-1"
+                                            title="Edit employee details"
                                         >
-                                            Edit Details
+                                            <Icons.Edit size={12} /> Edit
                                         </button>
                                         <button
                                             onClick={() => {
@@ -390,9 +397,10 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                     alert('Employee archived (delete functionality requires backend implementation)');
                                                 }
                                             }}
-                                            className="px-4 py-2 text-sm rounded-lg transition-colors bg-red-900 hover:bg-red-800 text-white"
+                                            className="px-2.5 py-1.5 text-xs rounded transition-colors bg-red-900 hover:bg-red-800 text-white flex items-center gap-1"
+                                            title="Delete employee permanently"
                                         >
-                                            Delete Employee
+                                            <Icons.Trash size={12} /> Delete
                                         </button>
                                         <button
                                             onClick={() => {
@@ -400,17 +408,18 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 onUpdateEmployee(selectedEmp.id, { status: newStatus });
                                                 setSelectedEmp({ ...selectedEmp, status: newStatus });
                                             }}
-                                            className={`px-4 py-2 text-sm rounded-lg transition-colors ${selectedEmp.status === 'active'
+                                            className={`px-2.5 py-1.5 text-xs rounded transition-colors flex items-center gap-1 ${selectedEmp.status === 'active'
                                                 ? 'bg-orange-700 hover:bg-orange-600 text-white'
                                                 : 'bg-green-700 hover:bg-green-600 text-white'}`}
+                                            title={selectedEmp.status === 'active' ? 'Archive employee' : 'Restore employee'}
                                         >
-                                            {selectedEmp.status === 'active' ? 'Archive Employee' : 'Restore Employee'}
+                                            <Icons.Archive size={12} /> {selectedEmp.status === 'active' ? 'Archive' : 'Restore'}
                                         </button>
                                         <button
                                             onClick={() => setSelectedEmp(null)}
-                                            className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
+                                            className="px-2.5 py-1.5 bg-slate-700 hover:bg-slate-600 text-white text-xs rounded transition-colors flex items-center gap-1"
                                         >
-                                            Close
+                                            <Icons.X size={12} /> Close
                                         </button>
                                     </div>
                                 </div>
@@ -743,9 +752,9 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 onChange={e => setNewInductionForm({ ...newInductionForm, siteId: e.target.value })}
                                             >
                                                 <option value="">Select Site...</option>
-                                                {activeSites.map(site => (
+                                                {managedSites.map(site => (
                                                     <option key={site.id} value={site.id}>
-                                                        {site.customer} - {site.location}
+                                                        {site.customer} - {site.name}{site.location ? ` (${site.location})` : ''}
                                                     </option>
                                                 ))}
                                             </select>
@@ -761,8 +770,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, onAddEmploy
                                                 onClick={() => {
                                                     if (!newInductionForm.siteId) return;
 
-                                                    const selectedSite = activeSites.find(s => s.id === newInductionForm.siteId);
-                                                    const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.location}` : 'Unknown Site';
+                                                    const selectedSite = managedSites.find(s => s.id === newInductionForm.siteId);
+                                                    const siteName = selectedSite ? `${selectedSite.customer} - ${selectedSite.name}` : 'Unknown Site';
 
                                                     const updatedInductions = [...(selectedEmp.inductions || []), {
                                                         id: `ind-${Date.now()}`,
