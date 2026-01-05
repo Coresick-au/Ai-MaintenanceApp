@@ -157,6 +157,7 @@ export const EditAssetModal = ({
                 onClick={() => {
                   setSpecs({
                     id: null,
+                    assetId: editingAsset.id, // Link spec to this specific asset
                     weigher: editingAsset.weigher || '',
                     altCode: editingAsset.code || '',
                     description: editingAsset.name || '',
@@ -386,7 +387,7 @@ export const EditAssetModal = ({
           <Button
             onClick={() => {
               onSave(editingAsset, activeTab); // Save asset details
-              if (specs) onSaveSpecs(specs); // Save specs if they exist
+              if (specs) onSaveSpecs(specs, editingAsset.id); // Save specs with asset ID
             }}
             className="flex-[3] justify-center"
           >

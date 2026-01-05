@@ -50,7 +50,7 @@ export const SiteProvider = ({ children }) => {
         if (!loading && customers.length > 0) {
             // Aggregate all managed sites from all customers where hasAIMMProfile === true
             const aggregatedSites = [];
-            
+
             customers.forEach(customer => {
                 const managedSites = customer.managedSites || [];
                 managedSites.forEach(site => {
@@ -86,7 +86,7 @@ export const SiteProvider = ({ children }) => {
     // --- TODOS SYNC (Keep Firebase for now) ---
     useEffect(() => {
         console.log('[SiteContext] Initializing todos listener...');
-        
+
         const unsubscribeTodos = onSnapshot(
             query(collection(db, "todos"), orderBy("timestamp", "desc")),
             (snapshot) => {
@@ -478,14 +478,46 @@ export const SiteProvider = ({ children }) => {
     };
 
     // --- SPEC ACTIONS ---
-    const handleSaveEditedSpecs = (editingSpecs) => {
+    const handleSaveEditedSpecs = (editingSpecs, assetId) => {
         if (!editingSpecs) return;
+
         const newHistory = { date: new Date().toISOString(), action: editingSpecs.id ? 'Specification Updated' : 'Specification Created', user: 'User' };
-        const specToSave = { ...editingSpecs, history: [...(editingSpecs.history || []), newHistory] };
-        if (editingSpecs.id) {
-            updateSiteData(selectedSiteId, { specData: currentSpecData.map(s => s.id === editingSpecs.id ? specToSave : s) }, 'Update Specs');
+        const specToSave = {
+            ...editingSpecs,
+            assetId: assetId, // Always ensure assetId is set to the current asset
+            history: [...(editingSpecs.history || []), newHistory]
+        };
+
+        // Check if this spec already has an assetId that matches the current asset
+        // OR if it's a new spec (no id)
+        const isNewSpec = !editingSpecs.id;
+        const specBelongsToThisAsset = editingSpecs.assetId === assetId;
+
+        if (isNewSpec) {
+            // Creating a brand new spec
+            updateSiteData(selectedSiteId, {
+                specData: [...currentSpecData, {
+                    ...specToSave,
+                    id: Math.random().toString(36).substr(2, 9),
+                    notes: editingSpecs.notes || []
+                }]
+            }, 'Add Specs');
+        } else if (specBelongsToThisAsset) {
+            // Updating a spec that already belongs to this asset
+            updateSiteData(selectedSiteId, {
+                specData: currentSpecData.map(s => s.id === editingSpecs.id ? specToSave : s)
+            }, 'Update Specs');
         } else {
-            updateSiteData(selectedSiteId, { specData: [...currentSpecData, { ...specToSave, id: Math.random().toString(36).substr(2, 9), notes: editingSpecs.notes || [] }] }, 'Add Specs');
+            // The spec was matched via legacy matching (shared spec) - create a NEW spec for this asset
+            // Keep the old spec intact for other assets, create a new one for this asset
+            console.log('[handleSaveEditedSpecs] Creating new spec for asset - was previously shared');
+            updateSiteData(selectedSiteId, {
+                specData: [...currentSpecData, {
+                    ...specToSave,
+                    id: Math.random().toString(36).substr(2, 9), // New ID
+                    notes: editingSpecs.notes || []
+                }]
+            }, 'Create Asset-Specific Specs');
         }
     };
 

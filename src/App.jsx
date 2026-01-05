@@ -347,11 +347,13 @@ export function App() {
   const selectedAsset = React.useMemo(() => (filteredData || []).find(i => i.id === selectedAssetId), [filteredData, selectedAssetId]);
   const selectedSpecs = React.useMemo(() => {
     if (!selectedAsset) return null;
-    return (currentSpecData || []).find(s =>
-      s.weigher === selectedAsset.weigher ||
-      s.altCode === selectedAsset.code ||
-      s.weigher === selectedAsset.code
-    );
+    // First try to match by assetId (new), then fall back to legacy matching
+    return (currentSpecData || []).find(s => s.assetId === selectedAsset.id)
+      || (currentSpecData || []).find(s =>
+        s.weigher === selectedAsset.weigher ||
+        s.altCode === selectedAsset.code ||
+        s.weigher === selectedAsset.code
+      );
   }, [selectedAsset, currentSpecData]);
 
   // --- EFFECTS ---
@@ -1937,7 +1939,9 @@ export function App() {
                                 <button onClick={(e) => {
                                   e.stopPropagation();
                                   setEditingAsset(item);
-                                  const specs = currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
+                                  // First try to match by assetId (new), then fall back to legacy matching
+                                  const specs = currentSpecData.find(s => s.assetId === item.id)
+                                    || currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
                                   setEditingSpecs(specs || null);
                                   setIsAssetEditModalOpen(true);
                                 }} className="p-1.5 rounded hover:bg-slate-600 text-blue-400" title="Edit Asset Details & Specs">
@@ -2002,7 +2006,9 @@ export function App() {
                               e.stopPropagation();
                               closeFullscreen();
                               setEditingAsset({ ...selectedAsset });
-                              const specs = currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
+                              // First try to match by assetId (new), then fall back to legacy matching
+                              const specs = currentSpecData.find(s => s.assetId === selectedAsset.id)
+                                || currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
                               setEditingSpecs(specs || null);
                               setIsAssetEditModalOpen(true);
                               setSelectedRowIds(new Set());
@@ -2379,10 +2385,9 @@ export function App() {
             setExpandedSection('timeline');
           } else if (wizardAction === 'specs') {
             setSelectedAssetId(asset.id);
-            // Find specs for this asset
-            const specs = (site.specData || []).find(s =>
-              s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code
-            );
+            // First try to match by assetId (new), then fall back to legacy matching
+            const specs = (site.specData || []).find(s => s.assetId === asset.id)
+              || (site.specData || []).find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
             setEditingAsset(asset);
             setEditingSpecs(specs || null);
             setIsAssetEditModalOpen(true);
