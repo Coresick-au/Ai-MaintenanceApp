@@ -35,16 +35,24 @@ export function DaySummary({
     const [localBreak, setLocalBreak] = useState(dayBreak);
 
     // Sync local state with props when they change (e.g. week change or external update)
+    // IMPORTANT: Only sync when we get an actual value, not when props become undefined
+    // This prevents state reset when entries are being edited (which can cause brief undefined props)
     useEffect(() => {
-        if (dayStart !== undefined) setLocalStart(dayStart);
+        if (dayStart !== undefined && dayStart !== '') {
+            setLocalStart(dayStart);
+        }
     }, [dayStart]);
 
     useEffect(() => {
-        if (dayFinish !== undefined) setLocalFinish(dayFinish);
+        if (dayFinish !== undefined && dayFinish !== '') {
+            setLocalFinish(dayFinish);
+        }
     }, [dayFinish]);
 
     useEffect(() => {
-        if (dayBreak !== undefined) setLocalBreak(dayBreak);
+        if (dayBreak !== undefined && dayBreak !== null) {
+            setLocalBreak(dayBreak);
+        }
     }, [dayBreak]);
 
     // Calculate total available hours

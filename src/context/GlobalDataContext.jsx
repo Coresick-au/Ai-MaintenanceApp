@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { customerRepository, siteRepository, employeeRepository } from '../repositories';
+import { customerRepository, siteRepository, employeeRepository, jobsheetRepository } from '../repositories';
 
 const GlobalDataContext = createContext();
 
@@ -7,6 +7,7 @@ export const GlobalDataProvider = ({ children }) => {
     const [customers, setCustomers] = useState([]);
     const [sites, setSites] = useState([]);
     const [employees, setEmployees] = useState([]);
+    const [jobsheets, setJobsheets] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [isRepairing, setIsRepairing] = useState(false);
@@ -51,12 +52,24 @@ export const GlobalDataProvider = ({ children }) => {
             }
         );
 
+        // 4. Sync Jobsheets
+        const unsubJobsheets = jobsheetRepository.subscribeToJobsheets(
+            (cloudJobsheets) => {
+                console.log('[GlobalDataContext] Synced jobsheets:', cloudJobsheets.length);
+                setJobsheets(cloudJobsheets);
+            },
+            (error) => {
+                console.error('Error fetching jobsheets from Firebase:', error);
+            }
+        );
+
         setLoading(false);
 
         return () => {
             unsubCustomers();
             unsubSites();
             unsubEmployees();
+            unsubJobsheets();
         };
     }, []);
 
@@ -565,11 +578,62 @@ export const GlobalDataProvider = ({ children }) => {
         }
     };
 
+    // --- JOBSHEET ACTIONS ---
+
+    const addJob = async (jobData) => {
+        try {
+            const savedJob = await jobsheetRepository.saveJob(jobData);
+            console.log('[GlobalDataContext] Job created:', savedJob.id);
+            return savedJob;
+        } catch (e) {
+            console.error('Error creating job:', e);
+            alert('Failed to create job.');
+            return null;
+        }
+    };
+
+    const updateJob = async (id, data) => {
+        try {
+            await jobsheetRepository.saveJob({ id, ...data });
+            console.log('[GlobalDataContext] Job updated:', id);
+        } catch (e) {
+            console.error('Error updating job:', e);
+            alert('Failed to update job.');
+        }
+    };
+
+    const deleteJob = async (id) => {
+        try {
+            await jobsheetRepository.deleteJob(id);
+            console.log('[GlobalDataContext] Job deleted:', id);
+        } catch (e) {
+            console.error('Error deleting job:', e);
+            alert('Failed to delete job.');
+        }
+    };
+
+    const importJobs = async (jobs) => {
+        try {
+            await jobsheetRepository.importJobs(jobs);
+            console.log('[GlobalDataContext] Imported jobs:', jobs.length);
+            return true;
+        } catch (e) {
+            console.error('Error importing jobs:', e);
+            alert('Failed to import jobs.');
+            return false;
+        }
+    };
+
+    const getNextJobNumber = () => {
+        return jobsheetRepository.getNextJobNumber(jobsheets);
+    };
+
     return (
         <GlobalDataContext.Provider value={{
             customers,
             sites,
             employees,
+            jobsheets,
             loading,
             addCustomer,
             updateCustomer,
@@ -602,7 +666,13 @@ export const GlobalDataProvider = ({ children }) => {
             getCustomerById,
             addEmployee,
             updateEmployee,
-            deleteEmployee
+            deleteEmployee,
+            // Jobsheet functions
+            addJob,
+            updateJob,
+            deleteJob,
+            importJobs,
+            getNextJobNumber
         }}>
             {children}
         </GlobalDataContext.Provider>

@@ -6,7 +6,7 @@
  */
 
 import { useState, useEffect, useMemo } from 'react';
-import { X, ChevronLeft, ChevronRight, TrendingUp, Clock, DollarSign, BarChart3 } from 'lucide-react';
+import { X, ChevronLeft, ChevronRight, TrendingUp, Clock, DollarSign, BarChart3, Calendar } from 'lucide-react';
 // @ts-ignore
 import { useAuth } from '../../../context/AuthContext';
 // @ts-ignore
@@ -40,6 +40,8 @@ interface MonthlyData {
     perDiem: number;
     weeksWorked: number;
     averageUtilization: number;
+    saturdaysWorked: number;
+    sundaysWorked: number;
 }
 
 // ============================================================================
@@ -392,13 +394,19 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                     ot20Hours: 0,
                     perDiem: 0,
                     weeksWorked: 0,
-                    averageUtilization: 0
+                    averageUtilization: 0,
+                    saturdaysWorked: 0,
+                    sundaysWorked: 0
                 };
             }
 
             // Group by week
             const weekGroups = new Set(monthEntries.map(e => e.weekKey));
             const summary = calculateWeeklySummary(monthEntries);
+
+            // Count weekend days worked (unique dates)
+            const saturdayDates = new Set(monthEntries.filter(e => e.day === 'Saturday').map(e => e.date || e.weekKey + e.day));
+            const sundayDates = new Set(monthEntries.filter(e => e.day === 'Sunday').map(e => e.date || e.weekKey + e.day));
 
             return {
                 month,
@@ -409,7 +417,9 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                 ot20Hours: summary.totalOT20x,
                 perDiem: summary.totalPerDiem,
                 weeksWorked: weekGroups.size,
-                averageUtilization: summary.utilizationPercent
+                averageUtilization: summary.utilizationPercent,
+                saturdaysWorked: saturdayDates.size,
+                sundaysWorked: sundayDates.size
             };
         });
     }, [entries, selectedYear, yearType]);
@@ -429,6 +439,10 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
     const equivalentHours = yearlySummary.totalBaseHours +
         (yearlySummary.totalOT15x * 1.5) +
         (yearlySummary.totalOT20x * 2);
+
+    // Calculate total weekend days worked
+    const totalSaturdaysWorked = monthlyData.reduce((sum, m) => sum + m.saturdaysWorked, 0);
+    const totalSundaysWorked = monthlyData.reduce((sum, m) => sum + m.sundaysWorked, 0);
 
 
     if (!isOpen) return null;
@@ -526,7 +540,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                     ) : (
                         <>
                             {/* Summary Cards */}
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                                 <SummaryCard
                                     icon={<Clock className="w-5 h-5" />}
                                     label="Total Hours Worked"
@@ -554,6 +568,20 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                     value={`${yearlySummary.averageUtilization.toFixed(0)}%`}
                                     subValue="Weekly average"
                                     accent="purple"
+                                />
+                                <SummaryCard
+                                    icon={<Calendar className="w-5 h-5" />}
+                                    label="Saturdays Worked"
+                                    value={String(totalSaturdaysWorked)}
+                                    subValue="Weekend days"
+                                    accent="orange"
+                                />
+                                <SummaryCard
+                                    icon={<Calendar className="w-5 h-5" />}
+                                    label="Sundays Worked"
+                                    value={String(totalSundaysWorked)}
+                                    subValue="Weekend days"
+                                    accent="red"
                                 />
                             </div>
 
@@ -673,6 +701,8 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                             <th className="px-4 py-3 text-right">Base</th>
                                             <th className="px-4 py-3 text-right">OT 1.5x</th>
                                             <th className="px-4 py-3 text-right">OT 2x</th>
+                                            <th className="px-4 py-3 text-right">Sat</th>
+                                            <th className="px-4 py-3 text-right">Sun</th>
                                             <th className="px-4 py-3 text-right">Per Diem</th>
                                         </tr>
                                     </thead>
@@ -688,6 +718,8 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                                 <td className="px-4 py-3 text-right text-slate-400 font-mono">{month.baseHours.toFixed(1)}</td>
                                                 <td className="px-4 py-3 text-right text-amber-400 font-mono">{month.ot15Hours.toFixed(1)}</td>
                                                 <td className="px-4 py-3 text-right text-red-400 font-mono">{month.ot20Hours.toFixed(1)}</td>
+                                                <td className="px-4 py-3 text-right text-orange-400 font-mono">{month.saturdaysWorked || 0}</td>
+                                                <td className="px-4 py-3 text-right text-rose-400 font-mono">{month.sundaysWorked || 0}</td>
                                                 <td className="px-4 py-3 text-right text-green-400 font-mono">${month.perDiem.toFixed(2)}</td>
                                             </tr>
                                         ))}
@@ -700,6 +732,8 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                             <td className="px-4 py-3 text-right text-slate-300 font-mono">{yearlySummary.totalBaseHours.toFixed(1)}</td>
                                             <td className="px-4 py-3 text-right text-amber-400 font-mono">{yearlySummary.totalOT15x.toFixed(1)}</td>
                                             <td className="px-4 py-3 text-right text-red-400 font-mono">{yearlySummary.totalOT20x.toFixed(1)}</td>
+                                            <td className="px-4 py-3 text-right text-orange-400 font-mono">{totalSaturdaysWorked}</td>
+                                            <td className="px-4 py-3 text-right text-rose-400 font-mono">{totalSundaysWorked}</td>
                                             <td className="px-4 py-3 text-right text-green-400 font-mono">${yearlySummary.totalPerDiem.toFixed(2)}</td>
                                         </tr>
                                     </tfoot>
@@ -747,13 +781,15 @@ function SummaryCard({
     label: string;
     value: string;
     subValue: string;
-    accent: 'cyan' | 'green' | 'amber' | 'purple'
+    accent: 'cyan' | 'green' | 'amber' | 'purple' | 'orange' | 'red'
 }) {
     const accentColors = {
         cyan: 'text-cyan-400 bg-cyan-900/30 border-cyan-800',
         green: 'text-green-400 bg-green-900/30 border-green-800',
         amber: 'text-amber-400 bg-amber-900/30 border-amber-800',
         purple: 'text-purple-400 bg-purple-900/30 border-purple-800',
+        orange: 'text-orange-400 bg-orange-900/30 border-orange-800',
+        red: 'text-rose-400 bg-rose-900/30 border-rose-800',
     };
 
     return (

@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, Edit2, Eye, Plus, Download, Printer, RotateCcw, DollarSign, ChevronDown, ChevronUp, AlertTriangle, Trash2, MessageSquare, LayoutDashboard, Table, X } from "lucide-react";
-import { jobSheetSeed } from "../data/jobSheetSeed";
-import { clearJobSheet, loadJobSheet, saveJobSheet, loadJobSheetSettings, saveJobSheetSettings } from "../lib/storage";
+import { loadJobSheetSettings, saveJobSheetSettings } from "../lib/storage";
 import {
     Card,
     HoldToConfirmButton,
@@ -232,17 +231,10 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
 
 export default function JobSheetPage({ onBack, currentUser, userRole }) {
     const isTech = userRole === "tech";
-    const { customers } = useGlobalData();
+    const { customers, jobsheets, addJob, updateJob, deleteJob, importJobs, getNextJobNumber } = useGlobalData();
 
-    // Lazy initialization to prevent race condition with save useEffect
-    const [rows, setRows] = useState(() => {
-        const loaded = loadJobSheet();
-        if (loaded !== null && loaded !== undefined) {
-            return Array.isArray(loaded) ? loaded.sort((a, b) => new Date(b.updatedAt || 0) - new Date(a.updatedAt || 0)) : jobSheetSeed;
-        } else {
-            return jobSheetSeed;
-        }
-    });
+    // Use jobsheets from context (Firebase) - already sorted by updatedAt desc
+    const rows = jobsheets;
 
     // Load initial settings
     const initialSettings = useMemo(() => loadJobSheetSettings() || {}, []);
@@ -282,11 +274,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     // Drill down state for dashboard
     const [drillDownFilter, setDrillDownFilter] = useState(null);
 
-    useEffect(() => {
-        saveJobSheet(rows);
-    }, [rows]);
-
-    // Save settings whenever they change
+    // Save settings whenever they change (UI settings only - data is in Firebase)
     useEffect(() => {
         saveJobSheetSettings({
             q,
@@ -393,15 +381,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     };
 
     function generateJobNumber() {
-        const now = new Date();
-        const yearPrefix = now.getFullYear().toString().slice(-2);
-
-        // Find existing jobs for this year to determine next sequence
-        const yearJobs = rows.filter(r => r.jobNumber && r.jobNumber.toString().startsWith(yearPrefix));
-
-        // Count jobs in current year to determine next number
-        const nextNum = yearJobs.length + 1;
-        return `${yearPrefix}${nextNum.toString().padStart(3, '0')}`;
+        return getNextJobNumber();
     }
 
     function openAddModal() {
@@ -423,7 +403,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
         setIsModalOpen(true);
     }
 
-    function handleSave() {
+    async function handleSave() {
         const now = new Date();
         const timestamp = now.toISOString();
         // Display format for note: 18/12/2025 16:55
@@ -445,18 +425,19 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
         const dataToSave = { ...formData, notes: finalNotes, updatedAt: timestamp };
 
         if (isEditing) {
-            setRows(prev => prev.map(r => r.id === dataToSave.id ? dataToSave : r));
+            // Update existing job in Firebase
+            await updateJob(dataToSave.id, dataToSave);
         } else {
-            // Use the current job number (may have been overridden)
+            // Create new job in Firebase
             const finalJobNum = isJobNumberEditable ? formData.jobNumber : generateJobNumber();
-            const newJob = { ...dataToSave, id: crypto.randomUUID(), jobNumber: finalJobNum };
-            setRows(prev => [newJob, ...prev]);
+            const newJob = { ...dataToSave, jobNumber: finalJobNum };
+            await addJob(newJob);
         }
         setIsModalOpen(false);
     }
 
-    function deleteRow(id) {
-        setRows((prev) => prev.filter((r) => r.id !== id));
+    async function deleteRow(id) {
+        await deleteJob(id);
         if (selectedId === id) setSelectedId(null);
         setIsModalOpen(false);
     }
@@ -471,9 +452,9 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     }
 
     function resetToSeed() {
-        clearJobSheet();
-        setRows(jobSheetSeed);
-        setSelectedId(null);
+        // No longer needed - data is in Firebase
+        // Keeping function signature for button compatibility but as no-op
+        alert('Data reset is not available when using cloud storage.');
     }
 
     function handleJobNumberOverride() {
@@ -543,7 +524,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
                 const text = e.target.result;
 
@@ -672,12 +653,10 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 }
 
                 if (confirm(`Found ${importedJobs.length} jobs. Add to database?`)) {
-                    setRows(prev => {
-                        const newRows = [...importedJobs, ...prev];
-                        saveJobSheet(newRows);
-                        return newRows;
-                    });
-                    alert(`Imported ${importedJobs.length} jobs successfully.`);
+                    const success = await importJobs(importedJobs);
+                    if (success) {
+                        alert(`Imported ${importedJobs.length} jobs successfully.`);
+                    }
                 }
 
             } catch (err) {
@@ -691,13 +670,9 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     }
     // === END TEMPORARY CSV IMPORT ===
 
-    // DEV: Clear all data for testing
+    // DEV: Clear all data - disabled for cloud storage
     function clearAllData() {
-        if (confirm("DANGER: Are you sure you want to DELETE ALL JOB DATA?")) {
-            clearJobSheet();
-            setRows([]);
-            setSelectedId(null);
-        }
+        alert('Bulk delete is not available when using cloud storage. Delete jobs individually.');
     }
 
 
