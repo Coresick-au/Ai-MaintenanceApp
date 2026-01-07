@@ -7,6 +7,8 @@ import {
     updateIdlerFrame,
     deleteIdlerFrame,
     importIdlerFrames,
+    getIdlerFrameConfig,
+    updateIdlerFrameConfig,
     MATERIAL_TYPES,
     STANDARD_BELT_WIDTHS,
     TRANSOM_TYPES,
@@ -20,10 +22,12 @@ import { CategorySelect } from './categories/CategorySelect';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { useCategories } from '../../context/CategoryContext';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
+import { IdlerFrameConfigModal } from './IdlerFrameConfigModal';
 
 export const IdlerFrameManager = () => {
     const [idlerFrames, setIdlerFrames] = useState([]);
     const [isFormOpen, setIsFormOpen] = useState(false);
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
     const [editingFrame, setEditingFrame] = useState(null);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -34,6 +38,7 @@ export const IdlerFrameManager = () => {
     const [suppliers, setSuppliers] = useState([]);
     const [filteredSuppliers, setFilteredSuppliers] = useState([]);
     const [selectedSupplier, setSelectedSupplier] = useState('');
+    const [config, setConfig] = useState(null);
     const fileInputRef = useRef(null);
     const [formData, setFormData] = useState({
         beltWidth: 1200,
@@ -94,6 +99,20 @@ export const IdlerFrameManager = () => {
         setFilteredSuppliers(filtered);
     }, [suppliers, formData.categoryId, formData.subcategoryId]);
 
+    // Load configuration
+    useEffect(() => {
+        const loadConfig = async () => {
+            try {
+                const configData = await getIdlerFrameConfig();
+                setConfig(configData);
+            } catch (error) {
+                console.error('Error loading config:', error);
+                setError('Failed to load configuration');
+            }
+        };
+        loadConfig();
+    }, []);
+
     const handleAddSupplier = () => {
         if (!selectedSupplier) return;
 
@@ -117,6 +136,18 @@ export const IdlerFrameManager = () => {
             ...prev,
             suppliers: (prev.suppliers || []).filter(s => s !== supplierToRemove)
         }));
+    };
+
+    const handleSaveConfig = async (configData) => {
+        try {
+            const updatedConfig = await updateIdlerFrameConfig(configData);
+            setConfig(updatedConfig);
+            setSuccessMessage('Configuration updated successfully');
+            setTimeout(() => setSuccessMessage(''), 3000);
+        } catch (err) {
+            setError(err.message || 'Failed to save configuration');
+            throw err;
+        }
     };
 
 
@@ -352,6 +383,14 @@ export const IdlerFrameManager = () => {
                         </div>
                         <div className="flex items-center gap-2">
                             <button
+                                onClick={() => setIsConfigOpen(true)}
+                                className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
+                                title="Configuration Settings"
+                            >
+                                <Icons.Settings size={20} />
+                                Settings
+                            </button>
+                            <button
                                 onClick={handleExport}
                                 disabled={idlerFrames.length === 0}
                                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -489,9 +528,31 @@ export const IdlerFrameManager = () => {
                                                         <span className="text-slate-500 text-xs">-</span>
                                                     )}
                                                 </td>
-                                                <td className="px-4 py-3 text-sm font-mono text-emerald-400">{formatCurrency(frame.costPrice)}</td>
-                                                <td className="px-4 py-3 text-sm font-mono text-cyan-400">
-                                                    {formatCurrency(frame.costPrice * frame.quantity)}
+                                                <td className="px-4 py-3 text-sm">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-mono text-emerald-400">
+                                                            {formatCurrency(frame.costPrice)}
+                                                        </span>
+                                                        {frame.hasCams && config?.camPricePerUnit > 0 && (
+                                                            <span className="text-xs text-slate-400">
+                                                                + {formatCurrency(config.camPricePerUnit)} cams
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                                <td className="px-4 py-3 text-sm">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <span className="font-mono text-cyan-400">
+                                                            {formatCurrency(
+                                                                (frame.costPrice + (frame.hasCams && config?.camPricePerUnit ? config.camPricePerUnit : 0)) * frame.quantity
+                                                            )}
+                                                        </span>
+                                                        {frame.hasCams && config?.camPricePerUnit > 0 && (
+                                                            <span className="text-xs text-slate-400">
+                                                                ({formatCurrency(frame.costPrice * frame.quantity)} + {formatCurrency(config.camPricePerUnit * frame.quantity)})
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
                                                 <td className="px-4 py-3 text-sm text-slate-300">{frame.effectiveDate}</td>
                                                 <td className="px-4 py-3 text-right">
@@ -811,6 +872,14 @@ export const IdlerFrameManager = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* Configuration Modal */}
+                    <IdlerFrameConfigModal
+                        isOpen={isConfigOpen}
+                        onClose={() => setIsConfigOpen(false)}
+                        currentConfig={config}
+                        onSave={handleSaveConfig}
+                    />
                 </div>
             </div>
         </CategoryProvider>

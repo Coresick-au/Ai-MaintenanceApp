@@ -747,6 +747,55 @@ export const importTMDFrames = async (dataArray) => {
 };
 
 // ==========================================
+// IDLER FRAME CONFIGURATION
+// ==========================================
+
+const CONFIG_DOC_ID = 'current';
+
+/**
+ * Get the current idler frame configuration (includes cam price)
+ */
+export const getIdlerFrameConfig = async () => {
+    try {
+        const snapshot = await getDocs(collection(db, 'idler_frame_config'));
+        if (!snapshot.empty) {
+            return snapshot.docs[0].data();
+        }
+
+        // Return default config if none exists
+        return {
+            id: CONFIG_DOC_ID,
+            camPricePerUnit: 0, // in cents
+            effectiveDate: new Date().toISOString().split('T')[0],
+            updatedAt: new Date().toISOString()
+        };
+    } catch (error) {
+        console.error('[SpecializedComponents] Error fetching idler frame config:', error);
+        throw new Error('Failed to fetch idler frame configuration');
+    }
+};
+
+/**
+ * Update the idler frame configuration
+ */
+export const updateIdlerFrameConfig = async (configData) => {
+    try {
+        const configWithMeta = {
+            id: CONFIG_DOC_ID,
+            ...configData,
+            updatedAt: new Date().toISOString()
+        };
+
+        await setDoc(doc(db, 'idler_frame_config', CONFIG_DOC_ID), configWithMeta);
+        console.log('[SpecializedComponents] Idler frame config updated');
+        return configWithMeta;
+    } catch (error) {
+        console.error('[SpecializedComponents] Error updating idler frame config:', error);
+        throw new Error('Failed to update idler frame configuration');
+    }
+};
+
+// ==========================================
 // UTILITY FUNCTIONS
 // ==========================================
 
