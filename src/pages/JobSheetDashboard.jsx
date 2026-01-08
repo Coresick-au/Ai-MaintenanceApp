@@ -15,7 +15,7 @@ import {
     Area,
     Label,
 } from "recharts";
-import { TrendingUp, DollarSign, Clock, CheckCircle, FileText, Users, X } from "lucide-react";
+import { TrendingUp, DollarSign, Clock, CheckCircle, FileText, Users, X, Shield, Filter } from "lucide-react";
 import { Card, NeonButton } from "../components/ui/NeonUI";
 
 // Status color mapping for charts
@@ -519,7 +519,7 @@ const MonthlyJobsChart = ({ data, onDrillDown }) => {
     );
 };
 
-export default function JobSheetDashboard({ filteredData, allData, onDrillDown, drillDownFilter, yearType, onYearTypeChange }) {
+export default function JobSheetDashboard({ filteredData, allData, onDrillDown, drillDownFilter, yearType, onYearTypeChange, hasActiveFilters }) {
     // Helper: Get month sort key based on year type
     const getMonthSortKey = (date, yearType) => {
         const month = date.getMonth(); // 0-11
@@ -646,7 +646,10 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
                 if (yearType === "financial") {
                     const month = date.getMonth();
                     const year = date.getFullYear();
-                    yearKey = month < 6 ? `FY${year}` : `FY${year + 1}`;
+                    // FY label: e.g., "FY24-25" for July 2024 onwards
+                    const fyEndYear = month < 6 ? year : year + 1;
+                    const fyStartYear = fyEndYear - 1;
+                    yearKey = `FY${String(fyStartYear).slice(-2)}-${String(fyEndYear).slice(-2)}`;
                 } else {
                     yearKey = String(date.getFullYear());
                 }
@@ -767,6 +770,28 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
             }));
     }, [filteredData, yearType]);
 
+    // Privacy Empty State
+    if (!hasActiveFilters) {
+        return (
+            <Card className="p-12 text-center bg-slate-900/50 border-slate-700">
+                <div className="flex flex-col items-center gap-4">
+                    <div className="w-20 h-20 rounded-full bg-slate-800 flex items-center justify-center">
+                        <Shield size={40} className="text-slate-500" />
+                    </div>
+                    <h2 className="text-2xl font-bold text-slate-300">Data Privacy Mode</h2>
+                    <p className="text-slate-400 max-w-md">
+                        To protect data privacy, the dashboard is empty by default.
+                        Apply at least one filter above to view job data.
+                    </p>
+                    <div className="flex items-center gap-2 mt-4 text-sm text-slate-500">
+                        <Filter size={16} />
+                        <span>Select a Customer, Site, Status, or Year filter to begin</span>
+                    </div>
+                </div>
+            </Card>
+        );
+    }
+
     return (
         <div className="space-y-6">
             {/* Drill Down Filter Badge */}
@@ -790,33 +815,11 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
                 </Card>
             )}
 
-            {/* Dashboard Heading with Year Type Toggle */}
+            {/* Dashboard Heading */}
             <Card className="p-4 bg-slate-900/50 border-slate-700">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-bold text-white">
-                        {yearType === "calendar" ? "Calendar Year Data" : "Financial Year Data (AU)"}
-                    </h2>
-                    <div className="flex rounded-lg border border-slate-700 overflow-hidden">
-                        <button
-                            onClick={() => onYearTypeChange && onYearTypeChange("calendar")}
-                            className={`px-4 py-2 text-sm transition ${yearType === "calendar"
-                                ? "bg-cyan-500/20 text-cyan-300 font-bold"
-                                : "bg-slate-900 text-slate-400 hover:bg-slate-800"
-                                }`}
-                        >
-                            Calendar Year
-                        </button>
-                        <button
-                            onClick={() => onYearTypeChange && onYearTypeChange("financial")}
-                            className={`px-4 py-2 text-sm transition ${yearType === "financial"
-                                ? "bg-cyan-500/20 text-cyan-300 font-bold"
-                                : "bg-slate-900 text-slate-400 hover:bg-slate-800"
-                                }`}
-                        >
-                            Financial Year (AU)
-                        </button>
-                    </div>
-                </div>
+                <h2 className="text-2xl font-bold text-white">
+                    {yearType === "calendar" ? "Calendar Year Data" : "Financial Year Data (AU)"}
+                </h2>
             </Card>
 
             {/* Stat Cards */}
@@ -868,7 +871,9 @@ export default function JobSheetDashboard({ filteredData, allData, onDrillDown, 
                 <TypeBarChart data={typeData} onDrillDown={onDrillDown} />
                 <MonthlyRevenueChart data={monthlyData} onDrillDown={onDrillDown} />
                 <CustomerJobsChart data={customerData} onDrillDown={onDrillDown} />
-                <YearlyPerformanceChart data={yearlyData} onDrillDown={onDrillDown} />
+                {yearlyData.length >= 2 && (
+                    <YearlyPerformanceChart data={yearlyData} onDrillDown={onDrillDown} />
+                )}
                 <MonthlyJobsChart data={monthlyJobsData} onDrillDown={onDrillDown} />
                 <LeadTimeChart data={leadTimeData} onDrillDown={onDrillDown} />
             </div>

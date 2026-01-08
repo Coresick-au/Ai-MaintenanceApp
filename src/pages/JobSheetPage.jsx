@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, Edit2, Eye, Plus, Download, Printer, RotateCcw, DollarSign, ChevronDown, ChevronUp, AlertTriangle, Trash2, MessageSquare, LayoutDashboard, Table, X } from "lucide-react";
 import { loadJobSheetSettings, saveJobSheetSettings } from "../lib/storage";
 import {
@@ -161,6 +161,23 @@ const FormRow = ({ label, children, isMoney, prefix }) => (
 function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
     const [isOpen, setIsOpen] = useState(false);
     const [searchQuery, setSearchQuery] = useState("");
+    const dropdownRef = useRef(null);
+
+    // Click outside to close
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, [isOpen]);
 
     const toggleOption = (opt) => {
         if (selected.includes(opt)) {
@@ -181,7 +198,7 @@ function MultiSelectDropdown({ options, selected, onChange, placeholder }) {
             : `${selected.length} selected`;
 
     return (
-        <div className="relative">
+        <div className="relative" ref={dropdownRef}>
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
@@ -289,18 +306,34 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
         });
     }, [q, statusFilters, customerFilters, siteFilters, yearFilters, sortColumn, sortDirection, viewMode, yearType]);
 
+    // Clear year filters when switching between Calendar/Financial Year (values are incompatible)
+    useEffect(() => {
+        setYearFilters([]);
+    }, [yearType]);
+
     // Get unique customers, sites, and years from data for filters
     const filterOptions = useMemo(() => {
         const customerSet = new Set(rows.map(r => r.customer).filter(Boolean));
         const siteSet = new Set(rows.map(r => r.managedSite).filter(Boolean));
 
-        // Extract years from PO Date
-        const yearSet = new Set();
+        // Extract calendar years and financial years from PO Date
+        const calendarYearSet = new Set();
+        const financialYearSet = new Set();
         rows.forEach(r => {
             if (r.poDate) {
-                const year = r.poDate.substring(0, 4); // YYYY-MM-DD format
-                if (year && year.length === 4 && !isNaN(year)) {
-                    yearSet.add(year);
+                const date = new Date(r.poDate);
+                if (!isNaN(date.getTime())) {
+                    // Calendar year
+                    const calYear = date.getFullYear().toString();
+                    calendarYearSet.add(calYear);
+
+                    // Financial year (July = start of new FY)
+                    const month = date.getMonth();
+                    const year = date.getFullYear();
+                    const fyEndYear = month >= 6 ? year + 1 : year;
+                    const fyStartYear = fyEndYear - 1;
+                    const fyLabel = `FY${String(fyStartYear).slice(-2)}-${String(fyEndYear).slice(-2)}`;
+                    financialYearSet.add(fyLabel);
                 }
             }
         });
@@ -308,11 +341,24 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
         return {
             customers: Array.from(customerSet).sort(),
             sites: Array.from(siteSet).sort(),
-            years: Array.from(yearSet).sort((a, b) => b - a) // Descending
+            calendarYears: Array.from(calendarYearSet).sort((a, b) => b - a), // Descending
+            financialYears: Array.from(financialYearSet).sort((a, b) => b.localeCompare(a)) // Descending
         };
     }, [rows]);
 
+    // Privacy Mode: Check if any filters are active
+    const hasActiveFilters = useMemo(() => {
+        return statusFilters.length > 0 ||
+            customerFilters.length > 0 ||
+            siteFilters.length > 0 ||
+            yearFilters.length > 0 ||
+            q.trim() !== '';
+    }, [statusFilters, customerFilters, siteFilters, yearFilters, q]);
+
     const filtered = useMemo(() => {
+        // Privacy: Return empty if no filters are active (dashboard only shows data when filtered)
+        if (!hasActiveFilters) return [];
+
         const query = q.trim().toLowerCase();
         return rows
             .filter((r) => {
@@ -322,11 +368,25 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 if (customerFilters.length > 0 && !customerFilters.includes(r.customer)) return false;
                 // Site filter
                 if (siteFilters.length > 0 && !siteFilters.includes(r.managedSite)) return false;
-                // Year filter (multi-select based on PO Date)
+                // Year filter (multi-select based on PO Date - respects yearType)
                 if (yearFilters.length > 0) {
                     if (!r.poDate) return false;
-                    const year = r.poDate.substring(0, 4);
-                    if (!yearFilters.includes(year)) return false;
+                    const date = new Date(r.poDate);
+                    if (isNaN(date.getTime())) return false;
+
+                    if (yearType === "financial") {
+                        // Match against FY label (e.g., "FY24-25")
+                        const month = date.getMonth();
+                        const year = date.getFullYear();
+                        const fyEndYear = month >= 6 ? year + 1 : year;
+                        const fyStartYear = fyEndYear - 1;
+                        const fyLabel = `FY${String(fyStartYear).slice(-2)}-${String(fyEndYear).slice(-2)}`;
+                        if (!yearFilters.includes(fyLabel)) return false;
+                    } else {
+                        // Match against calendar year
+                        const calYear = date.getFullYear().toString();
+                        if (!yearFilters.includes(calYear)) return false;
+                    }
                 }
                 // Role-based visibility for Technicians
                 if (isTech) {
@@ -369,7 +429,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                 const comparison = String(aVal).localeCompare(String(bVal));
                 return sortDirection === "asc" ? comparison : -comparison;
             });
-    }, [rows, q, statusFilters, customerFilters, siteFilters, yearFilters, sortColumn, sortDirection]);
+    }, [rows, q, hasActiveFilters, statusFilters, customerFilters, siteFilters, yearFilters, yearType, isTech, sortColumn, sortDirection]);
 
     const handleSort = (column) => {
         if (sortColumn === column) {
@@ -670,9 +730,31 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
     }
     // === END TEMPORARY CSV IMPORT ===
 
-    // DEV: Clear all data - disabled for cloud storage
-    function clearAllData() {
-        alert('Bulk delete is not available when using cloud storage. Delete jobs individually.');
+    // DEV: Clear all job data for testing
+    async function clearAllData() {
+        const confirmText = prompt(
+            `⚠️ DANGER: This will delete ALL ${rows.length} jobs permanently!\n\n` +
+            `Type "DELETE ALL" to confirm:`
+        );
+
+        if (confirmText !== "DELETE ALL") {
+            alert("Deletion cancelled - text did not match.");
+            return;
+        }
+
+        try {
+            // Delete all jobs one by one
+            let deleted = 0;
+            for (const job of rows) {
+                await deleteJob(job.id);
+                deleted++;
+                // Optional: Could show progress
+            }
+            alert(`Successfully deleted ${deleted} jobs.`);
+        } catch (error) {
+            console.error("Error deleting jobs:", error);
+            alert(`Error deleting jobs: ${error.message}`);
+        }
     }
 
 
@@ -750,7 +832,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
         >
             {/* Filters Card - needs relative positioning for dropdowns */}
             <Card className="p-4 mb-4 print:hidden relative z-30">
-                <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-4 lg:grid-cols-8 gap-4 items-end">
                     <div>
                         <label className="text-xs text-slate-400 block mb-1">Search Database</label>
                         <TextInput
@@ -773,7 +855,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                             ] : STATUSES}
                             selected={statusFilters}
                             onChange={setStatusFilters}
-                            placeholder="All Statuses"
+                            placeholder="Select status..."
                         />
                     </div>
 
@@ -783,7 +865,7 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                             options={filterOptions.customers}
                             selected={customerFilters}
                             onChange={setCustomerFilters}
-                            placeholder="All Customers"
+                            placeholder="Select customer..."
                         />
                     </div>
 
@@ -793,18 +875,20 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                             options={filterOptions.sites}
                             selected={siteFilters}
                             onChange={setSiteFilters}
-                            placeholder="All Sites"
+                            placeholder="Select site..."
                         />
                     </div>
 
                     <div className="flex items-end gap-1">
                         <div className="flex-1">
-                            <label className="text-xs text-slate-400 block mb-1">Year (PO Date)</label>
+                            <label className="text-xs text-slate-400 block mb-1">
+                                {yearType === "financial" ? "Financial Year" : "Year (PO Date)"}
+                            </label>
                             <MultiSelectDropdown
-                                options={filterOptions.years}
+                                options={yearType === "financial" ? filterOptions.financialYears : filterOptions.calendarYears}
                                 selected={yearFilters}
                                 onChange={setYearFilters}
-                                placeholder="All Years"
+                                placeholder={yearType === "financial" ? "Select FY..." : "Select year..."}
                             />
                         </div>
                         {(statusFilters.length > 0 || customerFilters.length > 0 || siteFilters.length > 0 || yearFilters.length > 0 || q) && (
@@ -818,8 +902,34 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
                         )}
                     </div>
 
-                    <div className="flex flex-col justify-end gap-2">
-                        <div className="text-sm text-slate-400 bg-slate-950/30 px-3 py-2 rounded-lg border border-slate-800/50 flex justify-between">
+                    {/* Year Type Toggle */}
+                    <div className="flex flex-col justify-end">
+                        <label className="text-xs text-slate-400 block mb-1">Year Mode</label>
+                        <div className="flex rounded-lg border border-slate-700 overflow-hidden h-[42px] w-[140px]">
+                            <button
+                                onClick={() => setYearType("calendar")}
+                                className={`flex-1 py-2 text-xs transition text-center ${yearType === "calendar"
+                                    ? "bg-cyan-500/20 text-cyan-300 font-bold"
+                                    : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                    }`}
+                            >
+                                CY
+                            </button>
+                            <button
+                                onClick={() => setYearType("financial")}
+                                className={`flex-1 py-2 text-xs transition text-center ${yearType === "financial"
+                                    ? "bg-cyan-500/20 text-cyan-300 font-bold"
+                                    : "bg-slate-900 text-slate-400 hover:bg-slate-800"
+                                    }`}
+                            >
+                                FY
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="flex flex-col justify-end">
+                        <label className="text-xs text-slate-400 block mb-1 opacity-0">-</label>
+                        <div className="text-sm text-slate-400 bg-slate-950/30 px-3 py-2 h-[42px] rounded-lg border border-slate-800/50 flex items-center justify-between gap-2">
                             <span>Results</span>
                             <span className="text-cyan-400 font-bold font-mono">{filtered.length}</span>
                         </div>
@@ -828,231 +938,235 @@ export default function JobSheetPage({ onBack, currentUser, userRole }) {
             </Card>
 
             {/* Dashboard View - Only for non-techs */}
-            {viewMode === "dashboard" && !isTech && (
-                <>
-                    <JobSheetDashboard
-                        filteredData={filtered}
-                        allData={rows}
-                        onDrillDown={handleDrillDown}
-                        drillDownFilter={drillDownFilter}
-                        yearType={yearType}
-                        onYearTypeChange={setYearType}
-                    />
+            {
+                viewMode === "dashboard" && !isTech && (
+                    <>
+                        <JobSheetDashboard
+                            filteredData={filtered}
+                            allData={rows}
+                            onDrillDown={handleDrillDown}
+                            drillDownFilter={drillDownFilter}
+                            yearType={yearType}
+                            onYearTypeChange={setYearType}
+                            hasActiveFilters={hasActiveFilters}
+                        />
 
-                    {/* Drill-Down Job List */}
-                    {drillDownFilter && drillDownFiltered.length > 0 && (
-                        <Card className="mt-6">
-                            <div className="p-4 border-b border-slate-800">
-                                <h3 className="text-lg font-bold text-white">
-                                    {drillDownFiltered.length} Job{drillDownFiltered.length !== 1 ? 's' : ''} - {drillDownFilter.type}: {drillDownFilter.value}
-                                </h3>
-                            </div>
-                            <div className="overflow-auto max-h-[400px]">
-                                <table className="w-full text-sm">
-                                    <thead className="bg-slate-900 border-b border-slate-700 sticky top-0">
-                                        <tr>
-                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Job #</th>
-                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Customer</th>
-                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Type</th>
-                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Status</th>
-                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">PO Value</th>
-                                            <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">PO Date</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {drillDownFiltered.map(job => (
-                                            <tr
-                                                key={job.id}
-                                                className={`border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer ${statusRowColor(job.status)}`}
-                                                onClick={() => {
-                                                    setSelectedId(job.id);
-                                                    openEditModal(job);
-                                                }}
-                                            >
-                                                <td className="p-3 text-slate-200 font-mono text-xs">{job.jobNumber}</td>
-                                                <td className="p-3 text-slate-200">{job.customer || 'N/A'}</td>
-                                                <td className="p-3 text-slate-200">{job.type}</td>
-                                                <td className="p-3">
-                                                    <StatusBadge tone={statusTone(job.status)}>{job.status}</StatusBadge>
-                                                </td>
-                                                <td className="p-3 text-slate-200">
-                                                    {job.poValueExGst ? `$${Number(job.poValueExGst).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}
-                                                </td>
-                                                <td className="p-3 text-slate-400 text-xs">
-                                                    {job.poDate || 'N/A'}
-                                                </td>
+                        {/* Drill-Down Job List */}
+                        {drillDownFilter && drillDownFiltered.length > 0 && (
+                            <Card className="mt-6">
+                                <div className="p-4 border-b border-slate-800">
+                                    <h3 className="text-lg font-bold text-white">
+                                        {drillDownFiltered.length} Job{drillDownFiltered.length !== 1 ? 's' : ''} - {drillDownFilter.type}: {drillDownFilter.value}
+                                    </h3>
+                                </div>
+                                <div className="overflow-auto max-h-[400px]">
+                                    <table className="w-full text-sm">
+                                        <thead className="bg-slate-900 border-b border-slate-700 sticky top-0">
+                                            <tr>
+                                                <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Job #</th>
+                                                <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Customer</th>
+                                                <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Type</th>
+                                                <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">Status</th>
+                                                <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">PO Value</th>
+                                                <th className="p-3 text-left text-xs font-bold uppercase text-slate-400">PO Date</th>
                                             </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </Card>
-                    )}
-                </>
-            )}
+                                        </thead>
+                                        <tbody>
+                                            {drillDownFiltered.map(job => (
+                                                <tr
+                                                    key={job.id}
+                                                    className={`border-b border-slate-800/30 hover:bg-slate-800/30 cursor-pointer ${statusRowColor(job.status)}`}
+                                                    onClick={() => {
+                                                        setSelectedId(job.id);
+                                                        openEditModal(job);
+                                                    }}
+                                                >
+                                                    <td className="p-3 text-slate-200 font-mono text-xs">{job.jobNumber}</td>
+                                                    <td className="p-3 text-slate-200">{job.customer || 'N/A'}</td>
+                                                    <td className="p-3 text-slate-200">{job.type}</td>
+                                                    <td className="p-3">
+                                                        <StatusBadge tone={statusTone(job.status)}>{job.status}</StatusBadge>
+                                                    </td>
+                                                    <td className="p-3 text-slate-200">
+                                                        {job.poValueExGst ? `$${Number(job.poValueExGst).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : 'N/A'}
+                                                    </td>
+                                                    <td className="p-3 text-slate-400 text-xs">
+                                                        {job.poDate || 'N/A'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </Card>
+                        )}
+                    </>
+                )
+            }
 
             {/* Table View */}
-            {viewMode === "table" && (
-                <Card className="job-sheet-table overflow-hidden print:border print:bg-white flex-1">
-                    {/* Print Header - Only visible in print */}
-                    <div className="hidden print:flex job-sheet-header justify-between items-center px-4 py-2">
-                        <h1 className="text-xl font-bold">Accurate Industries Job Sheet</h1>
-                        <div className="print-date text-sm text-gray-600">
-                            Printed: {new Date().toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+            {
+                viewMode === "table" && (
+                    <Card className="job-sheet-table overflow-hidden print:border print:bg-white flex-1">
+                        {/* Print Header - Only visible in print */}
+                        <div className="hidden print:flex job-sheet-header justify-between items-center px-4 py-2">
+                            <h1 className="text-xl font-bold">Accurate Industries Job Sheet</h1>
+                            <div className="print-date text-sm text-gray-600">
+                                Printed: {new Date().toLocaleDateString('en-AU', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                            </div>
                         </div>
-                    </div>
-                    <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
-                        <table className="w-full text-sm border-collapse">
-                            <thead className="bg-slate-950 border-b border-slate-800 sticky top-0 z-20">
-                                <tr>
-                                    {columns.map((c) => (
-                                        <th
-                                            key={c.key}
-                                            className={`py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-cyan-400 select-none ${c.w ?? ""} ${c.printHide ? "print-hide-col" : ""}`}
-                                            onClick={() => handleSort(c.key)}
-                                        >
-                                            <div className="flex items-center gap-1">
-                                                {c.label}
-                                                {sortColumn === c.key && (
-                                                    sortDirection === "asc"
-                                                        ? <ChevronUp size={12} className="text-cyan-500" />
-                                                        : <ChevronDown size={12} className="text-cyan-500" />
-                                                )}
-                                            </div>
-                                        </th>
-                                    ))}
-                                    <th className="py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[110px] print-hide-col">Updated</th>
-                                    <th className="sticky right-0 z-10 bg-slate-950 py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 border-l border-slate-800 w-[60px] print-hide-col"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filtered.map((r) => {
-                                    const selected = r.id === selectedId;
-                                    return (
-                                        <React.Fragment key={r.id}>
-                                            <tr
-                                                className={[
-                                                    "print:border-gray-300 group border-b border-[var(--border-subtle)]",
-                                                    selected ? "ring-1 ring-[var(--accent)]/30 bg-[var(--bg-active)]" : statusRowColor(r.status),
-                                                    "transition-colors",
-                                                ].join(" ")}
-                                                onClick={() => setSelectedId(r.id)}
+                        <div className="overflow-auto custom-scrollbar max-h-[calc(100vh-280px)]">
+                            <table className="w-full text-sm border-collapse">
+                                <thead className="bg-slate-950 border-b border-slate-800 sticky top-0 z-20">
+                                    <tr>
+                                        {columns.map((c) => (
+                                            <th
+                                                key={c.key}
+                                                className={`py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 cursor-pointer hover:text-cyan-400 select-none ${c.w ?? ""} ${c.printHide ? "print-hide-col" : ""}`}
+                                                onClick={() => handleSort(c.key)}
                                             >
-                                                {columns.map((c) => {
-                                                    let value = r[c.key] ?? "";
-                                                    const key = c.key;
+                                                <div className="flex items-center gap-1">
+                                                    {c.label}
+                                                    {sortColumn === c.key && (
+                                                        sortDirection === "asc"
+                                                            ? <ChevronUp size={12} className="text-cyan-500" />
+                                                            : <ChevronDown size={12} className="text-cyan-500" />
+                                                    )}
+                                                </div>
+                                            </th>
+                                        ))}
+                                        <th className="py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 w-[110px] print-hide-col">Updated</th>
+                                        <th className="sticky right-0 z-10 bg-slate-950 py-2 px-3 text-left text-[10px] font-bold uppercase tracking-wider text-slate-500 border-l border-slate-800 w-[60px] print-hide-col"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filtered.map((r) => {
+                                        const selected = r.id === selectedId;
+                                        return (
+                                            <React.Fragment key={r.id}>
+                                                <tr
+                                                    className={[
+                                                        "print:border-gray-300 group border-b border-[var(--border-subtle)]",
+                                                        selected ? "ring-1 ring-[var(--accent)]/30 bg-[var(--bg-active)]" : statusRowColor(r.status),
+                                                        "transition-colors",
+                                                    ].join(" ")}
+                                                    onClick={() => setSelectedId(r.id)}
+                                                >
+                                                    {columns.map((c) => {
+                                                        let value = r[c.key] ?? "";
+                                                        const key = c.key;
 
-                                                    // Format quote and invoice with prefix for display
-                                                    if (key === "quote" && value) {
-                                                        value = formatQuote(value);
-                                                    }
-                                                    if (key === "invNo" && value) {
-                                                        value = formatInvoice(value);
-                                                    }
+                                                        // Format quote and invoice with prefix for display
+                                                        if (key === "quote" && value) {
+                                                            value = formatQuote(value);
+                                                        }
+                                                        if (key === "invNo" && value) {
+                                                            value = formatInvoice(value);
+                                                        }
 
-                                                    if (key === "status") {
-                                                        // Inline compact badge matching row text size
-                                                        const tone = statusTone(value);
-                                                        const toneClasses = {
-                                                            success: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10',
-                                                            danger: 'border-red-500/40 text-red-400 bg-red-500/10',
-                                                            orange: 'border-orange-500/40 text-orange-400 bg-orange-500/10',
-                                                            warning: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10',
-                                                            info: 'border-blue-500/40 text-blue-400 bg-blue-500/10',
-                                                            grey: 'border-slate-500/40 text-slate-400 bg-slate-500/10'
-                                                        };
+                                                        if (key === "status") {
+                                                            // Inline compact badge matching row text size
+                                                            const tone = statusTone(value);
+                                                            const toneClasses = {
+                                                                success: 'border-emerald-500/40 text-emerald-400 bg-emerald-500/10',
+                                                                danger: 'border-red-500/40 text-red-400 bg-red-500/10',
+                                                                orange: 'border-orange-500/40 text-orange-400 bg-orange-500/10',
+                                                                warning: 'border-yellow-500/40 text-yellow-400 bg-yellow-500/10',
+                                                                info: 'border-blue-500/40 text-blue-400 bg-blue-500/10',
+                                                                grey: 'border-slate-500/40 text-slate-400 bg-slate-500/10'
+                                                            };
+                                                            return (
+                                                                <td key={key} className={`py-2 px-3 text-center ${c.printHide ? "print-hide-col" : ""}`}>
+                                                                    <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide border ${toneClasses[tone] || toneClasses.grey}`}>
+                                                                        {String(value || "N/A")}
+                                                                    </span>
+                                                                </td>
+                                                            );
+                                                        }
+
+                                                        // Typography hierarchy: monospace for IDs/numbers, regular for text
+                                                        const isMonospace = ["jobNumber", "quote", "invNo", "po"].includes(key);
+                                                        const isMoney = key.toLowerCase().includes("value");
+                                                        const isPrimary = ["customer", "jobDescription"].includes(key);
+                                                        const isDate = key.toLowerCase().includes("date");
+
+                                                        const displayValue = (isMoney && value && !isNaN(value))
+                                                            ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                            : value || <span className="text-slate-600">—</span>;
+
+                                                        // Build dynamic classes
+                                                        const cellClasses = [
+                                                            "py-2 px-3 truncate text-xs",
+                                                            isMonospace ? "font-mono font-bold text-slate-200" : "",
+                                                            isMoney ? "font-mono text-slate-300" : "",
+                                                            isPrimary ? "font-medium text-white" : "",
+                                                            isDate ? "font-mono text-slate-400 text-[11px]" : "",
+                                                            !isMonospace && !isMoney && !isPrimary && !isDate ? "text-slate-400" : "",
+                                                            c.printHide ? "print-hide-col" : ""
+                                                        ].filter(Boolean).join(" ");
+
                                                         return (
-                                                            <td key={key} className={`py-2 px-3 text-center ${c.printHide ? "print-hide-col" : ""}`}>
-                                                                <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-medium uppercase tracking-wide border ${toneClasses[tone] || toneClasses.grey}`}>
-                                                                    {String(value || "N/A")}
-                                                                </span>
+                                                            <td key={key} className={cellClasses}>
+                                                                {displayValue}
                                                             </td>
                                                         );
-                                                    }
+                                                    })}
 
-                                                    // Typography hierarchy: monospace for IDs/numbers, regular for text
-                                                    const isMonospace = ["jobNumber", "quote", "invNo", "po"].includes(key);
-                                                    const isMoney = key.toLowerCase().includes("value");
-                                                    const isPrimary = ["customer", "jobDescription"].includes(key);
-                                                    const isDate = key.toLowerCase().includes("date");
+                                                    <td className="py-2 px-3 text-[10px] text-slate-500 font-mono print-hide-col">
+                                                        {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : "—"}
+                                                    </td>
 
-                                                    const displayValue = (isMoney && value && !isNaN(value))
-                                                        ? `$${Number(value).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-                                                        : value || <span className="text-slate-600">—</span>;
+                                                    {/* Actions column - Ghost icon button */}
+                                                    <td className="sticky right-0 z-10 bg-slate-900 py-2 px-3 border-l border-slate-800 print-hide-col">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <button
+                                                                className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors print:hidden"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openEditModal(r);
+                                                                }}
+                                                                title={isTech ? "View Details" : "Edit Job"}
+                                                            >
+                                                                {isTech ? <Eye size={14} /> : <Edit2 size={14} />}
+                                                            </button>
+                                                            {r.notes && (
+                                                                <MessageSquare size={12} className="text-amber-500" title="Has notes" />
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {/* Notes sub-row - only visible in print */}
+                                                {
+                                                    r.notes && (
+                                                        <tr className="hidden print:table-row bg-slate-50 border-b border-gray-200">
+                                                            <td colSpan={columns.length + 2} className="py-1 px-3 text-xs text-gray-600 italic">
+                                                                <span className="font-semibold text-gray-700 not-italic">Notes:</span> {r.notes.substring(0, 200)}{r.notes.length > 200 ? '...' : ''}
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                }
+                                            </React.Fragment>
+                                        );
+                                    })}
 
-                                                    // Build dynamic classes
-                                                    const cellClasses = [
-                                                        "py-2 px-3 truncate text-xs",
-                                                        isMonospace ? "font-mono font-bold text-slate-200" : "",
-                                                        isMoney ? "font-mono text-slate-300" : "",
-                                                        isPrimary ? "font-medium text-white" : "",
-                                                        isDate ? "font-mono text-slate-400 text-[11px]" : "",
-                                                        !isMonospace && !isMoney && !isPrimary && !isDate ? "text-slate-400" : "",
-                                                        c.printHide ? "print-hide-col" : ""
-                                                    ].filter(Boolean).join(" ");
-
-                                                    return (
-                                                        <td key={key} className={cellClasses}>
-                                                            {displayValue}
-                                                        </td>
-                                                    );
-                                                })}
-
-                                                <td className="py-2 px-3 text-[10px] text-slate-500 font-mono print-hide-col">
-                                                    {r.updatedAt ? new Date(r.updatedAt).toLocaleString() : "—"}
-                                                </td>
-
-                                                {/* Actions column - Ghost icon button */}
-                                                <td className="sticky right-0 z-10 bg-slate-900 py-2 px-3 border-l border-slate-800 print-hide-col">
-                                                    <div className="flex items-center justify-end gap-1">
-                                                        <button
-                                                            className="p-1.5 rounded-md hover:bg-slate-700 text-slate-400 hover:text-cyan-400 transition-colors print:hidden"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                openEditModal(r);
-                                                            }}
-                                                            title={isTech ? "View Details" : "Edit Job"}
-                                                        >
-                                                            {isTech ? <Eye size={14} /> : <Edit2 size={14} />}
-                                                        </button>
-                                                        {r.notes && (
-                                                            <MessageSquare size={12} className="text-amber-500" title="Has notes" />
-                                                        )}
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                            {/* Notes sub-row - only visible in print */}
-                                            {
-                                                r.notes && (
-                                                    <tr className="hidden print:table-row bg-slate-50 border-b border-gray-200">
-                                                        <td colSpan={columns.length + 2} className="py-1 px-3 text-xs text-gray-600 italic">
-                                                            <span className="font-semibold text-gray-700 not-italic">Notes:</span> {r.notes.substring(0, 200)}{r.notes.length > 200 ? '...' : ''}
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            }
-                                        </React.Fragment>
-                                    );
-                                })}
-
-                                {!filtered.length && (
-                                    <tr>
-                                        <td
-                                            colSpan={columns.length + 2}
-                                            className="p-12 text-center text-slate-500"
-                                        >
-                                            <div className="flex flex-col items-center gap-2">
-                                                <span className="text-4xl">🔍</span>
-                                                <p className="text-lg">No matching records found in database.</p>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
-                </Card>
-            )
+                                    {!filtered.length && (
+                                        <tr>
+                                            <td
+                                                colSpan={columns.length + 2}
+                                                className="p-12 text-center text-slate-500"
+                                            >
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <span className="text-4xl">🔍</span>
+                                                    <p className="text-lg">No matching records found in database.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </Card>
+                )
             }
 
             {/* Edit / Add Modal */}
