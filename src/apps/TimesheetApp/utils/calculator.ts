@@ -156,13 +156,14 @@ export interface OvertimeSplit {
  * - Sunday: All hours @ 2.0x (NO base or 1.5x rate)
  * 
  * Public Holiday Rules:
- * - First 2 hours @ 1.5x, remainder @ 2.0x (NO base rate)
- * - Same as Saturday/Nightshift rules
+ * - ONLY applies when isPublicHoliday=true AND activity is actual work (Site, Travel, etc.)
+ * - If activity = "Public Holiday" (taking day off), normal hours are used
+ * - When working on a PH: First 2 hours @ 1.5x, remainder @ 2.0x (NO base rate)
  * 
  * @param netHours - Total net hours worked
  * @param day - Day of week (affects weekend rate calculation)
  * @param isNightshift - Whether shift is a nightshift (treats Mon-Fri like Saturday)
- * @param isPublicHoliday - Whether shift is on a public holiday (treats like Saturday)
+ * @param isPublicHoliday - Whether shift is actual work on a public holiday (already filtered by caller)
  * @returns Object with hours split into each tier
  */
 export function splitOvertimeHours(
@@ -405,11 +406,17 @@ export function calculateEntry(entry: TimesheetEntry): EntryCalculations {
     const hasValidationError = validationMessage !== '';
 
     const netHours = calculateNetHours(entry);
+
+    // Public holiday overtime logic:
+    // - If activity = "Public Holiday" → person is taking the day off, normal hours (no OT)
+    // - If isPublicHoliday flag = true AND activity is actual work (Site, Travel, etc.) → overtime rates
+    const isActualWorkOnPublicHoliday = entry.isPublicHoliday && entry.activity !== 'Public Holiday';
+
     const { baseHours, overtimeHours15x, overtimeHours20x } = splitOvertimeHours(
         netHours,
         entry.day,
         entry.isNightshift,
-        entry.isPublicHoliday || false
+        isActualWorkOnPublicHoliday
     );
     const perDiem = calculatePerDiem(entry);
     const isChargeable = isEntryChargeable(entry);
@@ -472,6 +479,7 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
         let dayChargeableHours = 0;
         let isNightshift = false;
         let isPublicHoliday = false;
+        let hasPublicHolidayActivity = false;
 
         for (const entry of dayEntries) {
             const calc = calculateEntry(entry);
@@ -487,18 +495,27 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
                 isNightshift = true;
             }
 
-            // If ANY entry on this day is a public holiday, treat the whole day as public holiday
+            // Track public holiday flag
             if (entry.isPublicHoliday) {
                 isPublicHoliday = true;
             }
+
+            // Track if anyone has "Public Holiday" as their activity (taking day off)
+            if (entry.activity === 'Public Holiday') {
+                hasPublicHolidayActivity = true;
+            }
         }
+
+        // Only apply PH overtime if there's actual work on a public holiday
+        // (not just someone taking the day off with activity = "Public Holiday")
+        const isActualWorkOnPublicHoliday = isPublicHoliday && !hasPublicHolidayActivity;
 
         // Apply overtime logic to the DAY's total hours
         const { baseHours, overtimeHours15x, overtimeHours20x } = splitOvertimeHours(
             dayNetHours,
             dayName,
             isNightshift,
-            isPublicHoliday
+            isActualWorkOnPublicHoliday
         );
 
         // Calculate chargeable BASE hours for utilization
