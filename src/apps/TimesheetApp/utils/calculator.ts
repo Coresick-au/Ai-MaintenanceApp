@@ -155,12 +155,22 @@ export interface OvertimeSplit {
  * - Saturday OR Nightshift: First 2 hours @ 1.5x, remainder @ 2.0x (NO base rate)
  * - Sunday: All hours @ 2.0x (NO base or 1.5x rate)
  * 
+ * Public Holiday Rules:
+ * - First 2 hours @ 1.5x, remainder @ 2.0x (NO base rate)
+ * - Same as Saturday/Nightshift rules
+ * 
  * @param netHours - Total net hours worked
  * @param day - Day of week (affects weekend rate calculation)
  * @param isNightshift - Whether shift is a nightshift (treats Mon-Fri like Saturday)
+ * @param isPublicHoliday - Whether shift is on a public holiday (treats like Saturday)
  * @returns Object with hours split into each tier
  */
-export function splitOvertimeHours(netHours: number, day: string = 'Monday', isNightshift: boolean = false): OvertimeSplit {
+export function splitOvertimeHours(
+    netHours: number,
+    day: string = 'Monday',
+    isNightshift: boolean = false,
+    isPublicHoliday: boolean = false
+): OvertimeSplit {
     if (netHours <= 0) {
         return { baseHours: 0, overtimeHours15x: 0, overtimeHours20x: 0 };
     }
@@ -174,9 +184,10 @@ export function splitOvertimeHours(netHours: number, day: string = 'Monday', isN
         };
     }
 
-    // SATURDAY OR NIGHTSHIFT: First 2 hours at 1.5x, rest at 2.0x
+    // SATURDAY, NIGHTSHIFT, OR PUBLIC HOLIDAY: First 2 hours at 1.5x, rest at 2.0x
     // Nightshift effectively converts weekday hours to Saturday OT rates
-    if (day === 'Saturday' || isNightshift) {
+    // Public holidays also get the same treatment
+    if (day === 'Saturday' || isNightshift || isPublicHoliday) {
         const ot15xThreshold = 2.0; // First 2 hours at 1.5x
         const overtimeHours15x = Math.min(netHours, ot15xThreshold);
         const overtimeHours20x = Math.max(0, netHours - ot15xThreshold);
@@ -394,7 +405,12 @@ export function calculateEntry(entry: TimesheetEntry): EntryCalculations {
     const hasValidationError = validationMessage !== '';
 
     const netHours = calculateNetHours(entry);
-    const { baseHours, overtimeHours15x, overtimeHours20x } = splitOvertimeHours(netHours, entry.day, entry.isNightshift);
+    const { baseHours, overtimeHours15x, overtimeHours20x } = splitOvertimeHours(
+        netHours,
+        entry.day,
+        entry.isNightshift,
+        entry.isPublicHoliday || false
+    );
     const perDiem = calculatePerDiem(entry);
     const isChargeable = isEntryChargeable(entry);
 
@@ -455,6 +471,7 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
         let dayPerDiem = 0;
         let dayChargeableHours = 0;
         let isNightshift = false;
+        let isPublicHoliday = false;
 
         for (const entry of dayEntries) {
             const calc = calculateEntry(entry);
@@ -469,13 +486,19 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
             if (entry.isNightshift) {
                 isNightshift = true;
             }
+
+            // If ANY entry on this day is a public holiday, treat the whole day as public holiday
+            if (entry.isPublicHoliday) {
+                isPublicHoliday = true;
+            }
         }
 
         // Apply overtime logic to the DAY's total hours
         const { baseHours, overtimeHours15x, overtimeHours20x } = splitOvertimeHours(
             dayNetHours,
             dayName,
-            isNightshift
+            isNightshift,
+            isPublicHoliday
         );
 
         // Calculate chargeable BASE hours for utilization

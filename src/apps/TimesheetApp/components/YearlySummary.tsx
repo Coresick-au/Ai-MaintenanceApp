@@ -42,6 +42,7 @@ interface MonthlyData {
     averageUtilization: number;
     saturdaysWorked: number;
     sundaysWorked: number;
+    publicHolidaysWorked: number;
 }
 
 // ============================================================================
@@ -123,6 +124,10 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
         const saved = localStorage.getItem('timesheet_use_mock_data');
         return saved === 'true';
     });
+    const [cardView, setCardView] = useState<'standard' | 'weekend'>(() => {
+        const saved = localStorage.getItem('timesheet_card_view');
+        return (saved === 'weekend' || saved === 'standard') ? saved : 'standard';
+    });
 
     // Save preferences
     useEffect(() => {
@@ -133,6 +138,11 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
     useEffect(() => {
         localStorage.setItem('timesheet_use_mock_data', useMockData.toString());
     }, [useMockData]);
+
+    // Save card view preference
+    useEffect(() => {
+        localStorage.setItem('timesheet_card_view', cardView);
+    }, [cardView]);
 
     // Mock data generator for Financial Year
     // fyEndYear: e.g., 2026 generates data for July 2025 - June 2026
@@ -413,7 +423,8 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                     weeksWorked: 0,
                     averageUtilization: 0,
                     saturdaysWorked: 0,
-                    sundaysWorked: 0
+                    sundaysWorked: 0,
+                    publicHolidaysWorked: 0
                 };
             }
 
@@ -424,6 +435,9 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
             // Count weekend days worked (unique dates)
             const saturdayDates = new Set(monthEntries.filter(e => e.day === 'Saturday').map(e => e.date || e.weekKey + e.day));
             const sundayDates = new Set(monthEntries.filter(e => e.day === 'Sunday').map(e => e.date || e.weekKey + e.day));
+
+            // Count public holidays worked (unique dates) - based on isPublicHoliday flag
+            const publicHolidayDates = new Set(monthEntries.filter(e => e.isPublicHoliday).map(e => e.date || e.weekKey + e.day));
 
             return {
                 month,
@@ -436,7 +450,8 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                 weeksWorked: weekGroups.size,
                 averageUtilization: summary.utilizationPercent,
                 saturdaysWorked: saturdayDates.size,
-                sundaysWorked: sundayDates.size
+                sundaysWorked: sundayDates.size,
+                publicHolidaysWorked: publicHolidayDates.size
             };
         });
     }, [entries, selectedYear, yearType]);
@@ -457,9 +472,11 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
         (yearlySummary.totalOT15x * 1.5) +
         (yearlySummary.totalOT20x * 2);
 
-    // Calculate total weekend days worked
+    // Calculate total weekend days and public holidays worked
     const totalSaturdaysWorked = monthlyData.reduce((sum, m) => sum + m.saturdaysWorked, 0);
     const totalSundaysWorked = monthlyData.reduce((sum, m) => sum + m.sundaysWorked, 0);
+    const totalPublicHolidaysWorked = monthlyData.reduce((sum, m) => sum + m.publicHolidaysWorked, 0);
+
 
 
     if (!isOpen) return null;
@@ -556,50 +573,76 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                         </div>
                     ) : (
                         <>
-                            {/* Summary Cards */}
-                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                                <SummaryCard
-                                    icon={<Clock className="w-5 h-5" />}
-                                    label="Total Hours Worked"
-                                    value={yearlySummary.totalNetHours.toFixed(1)}
-                                    subValue={`${yearlySummary.weeksWorked} weeks`}
-                                    accent="cyan"
-                                />
-                                <SummaryCard
-                                    icon={<TrendingUp className="w-5 h-5" />}
-                                    label="Equivalent Hours"
-                                    value={equivalentHours.toFixed(1)}
-                                    subValue="Including OT rates"
-                                    accent="green"
-                                />
-                                <SummaryCard
-                                    icon={<DollarSign className="w-5 h-5" />}
-                                    label="Total Per Diem"
-                                    value={`$${yearlySummary.totalPerDiem.toFixed(2)}`}
-                                    subValue="Allowances earned"
-                                    accent="amber"
-                                />
-                                <SummaryCard
-                                    icon={<BarChart3 className="w-5 h-5" />}
-                                    label="Avg Utilisation"
-                                    value={`${yearlySummary.averageUtilization.toFixed(0)}%`}
-                                    subValue="Weekly average"
-                                    accent="purple"
-                                />
-                                <SummaryCard
-                                    icon={<Calendar className="w-5 h-5" />}
-                                    label="Saturdays Worked"
-                                    value={String(totalSaturdaysWorked)}
-                                    subValue="Weekend days"
-                                    accent="orange"
-                                />
-                                <SummaryCard
-                                    icon={<Calendar className="w-5 h-5" />}
-                                    label="Sundays Worked"
-                                    value={String(totalSundaysWorked)}
-                                    subValue="Weekend days"
-                                    accent="red"
-                                />
+                            {/* Summary Cards with Toggle */}
+                            <div className="space-y-4">
+                                {/* Toggle Button */}
+                                <div className="flex justify-end">
+                                    <button
+                                        onClick={() => setCardView(cardView === 'standard' ? 'weekend' : 'standard')}
+                                        className="px-4 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-slate-300 hover:text-white transition-colors text-sm font-medium"
+                                    >
+                                        {cardView === 'standard' ? 'Show Weekend/Holiday Stats' : 'Show Standard Stats'}
+                                    </button>
+                                </div>
+
+                                {/* Standard View Cards */}
+                                {cardView === 'standard' ? (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                        <SummaryCard
+                                            icon={<Clock className="w-5 h-5" />}
+                                            label="Total Hours Worked"
+                                            value={yearlySummary.totalNetHours.toFixed(1)}
+                                            subValue={`${yearlySummary.weeksWorked} weeks`}
+                                            accent="cyan"
+                                        />
+                                        <SummaryCard
+                                            icon={<TrendingUp className="w-5 h-5" />}
+                                            label="Equivalent Hours"
+                                            value={equivalentHours.toFixed(1)}
+                                            subValue="Including OT rates"
+                                            accent="green"
+                                        />
+                                        <SummaryCard
+                                            icon={<DollarSign className="w-5 h-5" />}
+                                            label="Total Per Diem"
+                                            value={`$${yearlySummary.totalPerDiem.toFixed(2)}`}
+                                            subValue="Allowances earned"
+                                            accent="amber"
+                                        />
+                                        <SummaryCard
+                                            icon={<BarChart3 className="w-5 h-5" />}
+                                            label="Avg Utilisation"
+                                            value={`${yearlySummary.averageUtilization.toFixed(0)}%`}
+                                            subValue="Weekly average"
+                                            accent="purple"
+                                        />
+                                    </div>
+                                ) : (
+                                    /* Weekend/Holiday View Cards */
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                        <SummaryCard
+                                            icon={<Calendar className="w-5 h-5" />}
+                                            label="Saturdays Worked"
+                                            value={String(totalSaturdaysWorked)}
+                                            subValue="Weekend days"
+                                            accent="orange"
+                                        />
+                                        <SummaryCard
+                                            icon={<Calendar className="w-5 h-5" />}
+                                            label="Sundays Worked"
+                                            value={String(totalSundaysWorked)}
+                                            subValue="Weekend days"
+                                            accent="red"
+                                        />
+                                        <SummaryCard
+                                            icon={<Calendar className="w-5 h-5" />}
+                                            label="Public Holidays Worked"
+                                            value={String(totalPublicHolidaysWorked)}
+                                            subValue="Holiday days"
+                                            accent="amber"
+                                        />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Hours Breakdown */}
@@ -720,6 +763,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                             <th className="px-4 py-3 text-right">OT 2x</th>
                                             <th className="px-4 py-3 text-right">Sat</th>
                                             <th className="px-4 py-3 text-right">Sun</th>
+                                            <th className="px-4 py-3 text-right">PH</th>
                                             <th className="px-4 py-3 text-right">Per Diem</th>
                                         </tr>
                                     </thead>
@@ -737,6 +781,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                                 <td className="px-4 py-3 text-right text-red-400 font-mono">{month.ot20Hours.toFixed(1)}</td>
                                                 <td className="px-4 py-3 text-right text-orange-400 font-mono">{month.saturdaysWorked || 0}</td>
                                                 <td className="px-4 py-3 text-right text-rose-400 font-mono">{month.sundaysWorked || 0}</td>
+                                                <td className="px-4 py-3 text-right text-amber-400 font-mono">{month.publicHolidaysWorked || 0}</td>
                                                 <td className="px-4 py-3 text-right text-green-400 font-mono">${month.perDiem.toFixed(2)}</td>
                                             </tr>
                                         ))}
@@ -751,6 +796,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                                             <td className="px-4 py-3 text-right text-red-400 font-mono">{yearlySummary.totalOT20x.toFixed(1)}</td>
                                             <td className="px-4 py-3 text-right text-orange-400 font-mono">{totalSaturdaysWorked}</td>
                                             <td className="px-4 py-3 text-right text-rose-400 font-mono">{totalSundaysWorked}</td>
+                                            <td className="px-4 py-3 text-right text-amber-400 font-mono">{totalPublicHolidaysWorked}</td>
                                             <td className="px-4 py-3 text-right text-green-400 font-mono">${yearlySummary.totalPerDiem.toFixed(2)}</td>
                                         </tr>
                                     </tfoot>
@@ -760,7 +806,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                     )}
                 </div>
             </div>
-        </div>
+        </div >
     );
 }
 

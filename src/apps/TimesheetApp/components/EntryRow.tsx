@@ -6,7 +6,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from 'react';
-import { Trash2, Moon, Bed, AlertCircle, StickyNote } from 'lucide-react';
+import { Trash2, Moon, Bed, AlertCircle, StickyNote, Calendar } from 'lucide-react';
 import type { TimesheetEntry, ActivityType, DayOfWeek, JobOption } from '../types';
 import { ACTIVITY_TYPES, DAYS_OF_WEEK } from '../types';
 import { calculateEntry, hasTimeConflict, calculateSimplifiedEntryTimes, getDaySummaryFromEntries, parseTimeToMinutes, formatMinutesToTime } from '../utils/calculator';
@@ -158,7 +158,7 @@ export function EntryRow({
         : 'border-slate-600';
 
     // Count columns for notes row colspan
-    const columnCount = showDayColumn ? 12 : 11;
+    const columnCount = showDayColumn ? 13 : 12;
 
     return (
         <>
@@ -300,6 +300,23 @@ export function EntryRow({
                         title="Nightshift"
                     >
                         <Moon className="w-4 h-4" />
+                    </button>
+                </td>
+
+                {/* Public Holiday Toggle */}
+                <td className="px-3 py-2 text-center">
+                    <button
+                        type="button"
+                        disabled={isLocked}
+                        onClick={() => handleChange('isPublicHoliday', !entry.isPublicHoliday)}
+                        className={`w-8 h-8 rounded-lg transition-colors flex items-center justify-center ${entry.isPublicHoliday
+                                ? 'bg-amber-900 text-amber-300'
+                                : 'bg-slate-700 text-slate-500'
+                            } ${isLocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        aria-label="Toggle public holiday"
+                        title="Public Holiday"
+                    >
+                        <Calendar className="w-4 h-4" />
                     </button>
                 </td>
 

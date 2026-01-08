@@ -227,6 +227,7 @@ export function DayGroup({
                                         <th className="px-3 py-2 text-left">Activity</th>
                                         <th className="px-3 py-2 text-left">Job #</th>
                                         <th className="px-3 py-2 text-center">Nightshift</th>
+                                        <th className="px-3 py-2 text-center">PH</th>
                                         <th className="px-3 py-2 text-center">Per Diem</th>
                                         <th className="px-3 py-2 text-center">Hours</th>
                                         <th className="px-3 py-2 text-center">Allowance</th>

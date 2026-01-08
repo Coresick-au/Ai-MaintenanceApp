@@ -97,6 +97,8 @@ export interface TimesheetEntry {
     jobNo: string;
     /** Whether this is a nightshift (affects pay calculations) */
     isNightshift: boolean;
+    /** Whether this is worked on a public holiday (affects overtime calculations) */
+    isPublicHoliday: boolean;
     /** Whether this involves an overnight stay (triggers $85 per diem) */
     isOvernight: boolean;
     /** Explicit per diem selection: 'none', 'half' ($42.50), or 'full' ($85.00) */
