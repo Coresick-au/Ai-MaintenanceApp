@@ -41,12 +41,14 @@ function createNewEntry(day: DayOfWeek, userId: string, weekKey: string): Timesh
         userId,
         weekKey,
         day,
+        date: '', // Will be calculated based on weekKey and day
         startTime: '08:00', // Will be overwritten
         finishTime: '', // Empty until duration added
         breakDuration: 0, // No auto-break
         activity: 'Site',
         jobNo: '',
         isNightshift: false,
+        isPublicHoliday: false,
         isOvernight: false,
         notes: '',
         status: 'draft',
@@ -262,7 +264,11 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
     }, [loadEntries]);
 
     // Add a new entry
-    const handleAddEntry = useCallback(async (day: DayOfWeek, initialStartTime?: string) => {
+    const handleAddEntry = useCallback(async (
+        day: DayOfWeek,
+        initialStartTime?: string,
+        daySummaryValues?: { dayStart: string; dayFinish: string; dayBreak: number }
+    ) => {
         if (!userId) return;
 
         // Auto-expand the day when adding an entry
@@ -293,15 +299,19 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
         const newEntry = createNewEntry(day, userId, weekKey);
         newEntry.startTime = startTime;
 
-        // Propagate day summary info
-        if (dayEntries.length > 0) {
+        // Propagate day summary info - prioritize passed daySummaryValues to preserve user input
+        if (daySummaryValues) {
+            // Use the values passed from DayGroup's local state (user input)
+            newEntry.dayStart = daySummaryValues.dayStart || startTime || '08:00';
+            newEntry.dayFinish = daySummaryValues.dayFinish || '16:00';
+            newEntry.dayBreak = daySummaryValues.dayBreak ?? 0.5;
+        } else if (dayEntries.length > 0) {
             // Copy from existing entries, with fallbacks for undefined values
             newEntry.dayStart = dayEntries[0].dayStart || startTime || '08:00';
             newEntry.dayFinish = dayEntries[0].dayFinish || '16:00';
             newEntry.dayBreak = dayEntries[0].dayBreak ?? 0.5;
         } else {
-            // First entry: set day summary defaults
-            // Use initialStartTime if provided, otherwise use entry's startTime
+            // First entry without daySummaryValues: set day summary defaults
             newEntry.dayStart = initialStartTime || startTime || '08:00';
             newEntry.dayFinish = '16:00'; // Default 8-hour day
             newEntry.dayBreak = 0.5; // Default break for day summary

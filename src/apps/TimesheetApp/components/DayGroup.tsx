@@ -5,7 +5,7 @@
  * Displays day header with totals and allows adding new entries.
  */
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect, useRef } from 'react';
 import { PlusCircle, ChevronDown, ChevronUp } from 'lucide-react';
 import { TimesheetEntry, DayOfWeek, DAYS_OF_WEEK, JobOption } from '../types';
 import { EntryRow } from './EntryRow';
@@ -16,7 +16,7 @@ interface DayGroupProps {
     day: DayOfWeek;
     weekStart: Date;
     entries: TimesheetEntry[];
-    onAddEntry: (day: DayOfWeek, initialStart?: string) => void;
+    onAddEntry: (day: DayOfWeek, initialStart?: string, daySummaryValues?: { dayStart: string; dayFinish: string; dayBreak: number }) => void;
     onUpdateEntry: (id: string, updates: Partial<TimesheetEntry>) => void;
     onDeleteEntry: (id: string) => void;
     jobs?: JobOption[];
@@ -45,15 +45,49 @@ export function DayGroup({
     isCollapsed,
     onToggleCollapse
 }: DayGroupProps) {
-    // Get day summary
-    const daySummary = getDaySummaryFromEntries(entries);
-
-    // Calculate day totals
-    const dayTotals = calculateWeeklySummary(entries);
-
     // Get day index for styling weekend differently
     const dayIndex = DAYS_OF_WEEK.indexOf(day);
     const isWeekend = dayIndex >= 5; // Saturday = 5, Sunday = 6
+
+    // Default times: Weekdays 08:00-16:00, Weekends empty (manual)
+    const defaultStart = isWeekend ? '' : '08:00';
+    const defaultFinish = isWeekend ? '' : '16:00';
+    const defaultBreak = 0.5;
+
+    // Get day summary from entries (if any exist)
+    const entrySummary = getDaySummaryFromEntries(entries);
+
+    // Local state for day summary - persists user input even before entries exist
+    // This fixes the bug where adding an entry would reset user-typed start/finish times
+    const [localDaySummary, setLocalDaySummary] = useState({
+        dayStart: entrySummary?.dayStart || defaultStart,
+        dayFinish: entrySummary?.dayFinish || defaultFinish,
+        dayBreak: entrySummary?.dayBreak ?? defaultBreak,
+    });
+
+    // Track if we've initialized from entries to prevent overwriting user input
+    const hasInitializedFromEntries = useRef(false);
+
+    // Sync local summary with entries when entries change (e.g., week change or reload)
+    // But only if entries have actual values (not empty), and only on initial load
+    useEffect(() => {
+        if (entrySummary && !hasInitializedFromEntries.current) {
+            setLocalDaySummary({
+                dayStart: entrySummary.dayStart || defaultStart,
+                dayFinish: entrySummary.dayFinish || defaultFinish,
+                dayBreak: entrySummary.dayBreak ?? defaultBreak,
+            });
+            hasInitializedFromEntries.current = true;
+        }
+    }, [entrySummary, defaultStart, defaultFinish, defaultBreak]);
+
+    // Reset the initialized flag when week changes (entries array reference changes)
+    useEffect(() => {
+        hasInitializedFromEntries.current = entries.length > 0;
+    }, [entries.length]);
+
+    // Calculate day totals
+    const dayTotals = calculateWeeklySummary(entries);
 
     // Calculate the actual date for this day
     const dayDate = new Date(weekStart);
@@ -67,41 +101,44 @@ export function DayGroup({
 
     // Calculate overflow hours
     const overflowHours = useMemo(() => {
-        if (!daySummary?.dayStart || !daySummary?.dayFinish) return 0;
+        if (!localDaySummary.dayStart || !localDaySummary.dayFinish) return 0;
 
-        const [startH, startM] = daySummary.dayStart.split(':').map(Number);
-        const [finishH, finishM] = daySummary.dayFinish.split(':').map(Number);
+        const [startH, startM] = localDaySummary.dayStart.split(':').map(Number);
+        const [finishH, finishM] = localDaySummary.dayFinish.split(':').map(Number);
         if (isNaN(startH) || isNaN(startM) || isNaN(finishH) || isNaN(finishM)) return 0;
 
         let availableHours = (finishH + finishM / 60) - (startH + startM / 60);
         if (availableHours < 0) availableHours += 24;
-        availableHours -= daySummary.dayBreak || 0;
+        availableHours -= localDaySummary.dayBreak || 0;
 
         const overflow = totalHoursUsed - availableHours;
         return overflow > 0 ? overflow : 0;
-    }, [daySummary, totalHoursUsed]);
+    }, [localDaySummary, totalHoursUsed]);
 
     // Calculate available and remaining hours for minimized view
     const availableHours = useMemo(() => {
-        if (!daySummary?.dayStart || !daySummary?.dayFinish) return 0;
+        if (!localDaySummary.dayStart || !localDaySummary.dayFinish) return 0;
 
-        const [startH, startM] = daySummary.dayStart.split(':').map(Number);
-        const [finishH, finishM] = daySummary.dayFinish.split(':').map(Number);
+        const [startH, startM] = localDaySummary.dayStart.split(':').map(Number);
+        const [finishH, finishM] = localDaySummary.dayFinish.split(':').map(Number);
         if (isNaN(startH) || isNaN(startM) || isNaN(finishH) || isNaN(finishM)) return 0;
 
         let hours = (finishH + finishM / 60) - (startH + startM / 60);
         if (hours < 0) hours += 24;
-        hours -= daySummary.dayBreak || 0;
+        hours -= localDaySummary.dayBreak || 0;
 
         return hours;
-    }, [daySummary]);
+    }, [localDaySummary]);
 
     const remainingHours = useMemo(() => {
         return availableHours - totalHoursUsed;
     }, [availableHours, totalHoursUsed]);
 
-    // Handle day summary update
+    // Handle day summary update - update local state AND entries
     const handleDaySummaryUpdate = (summary: { dayStart: string; dayFinish: string; dayBreak: number }) => {
+        // Always update local state
+        setLocalDaySummary(summary);
+
         // If there are entries, update them all
         if (entries.length > 0) {
             entries.forEach(entry => {
@@ -169,7 +206,7 @@ export function DayGroup({
                     )}
 
                     {/* Available/Remaining Hours (shown when collapsed) */}
-                    {isCollapsed && daySummary && (
+                    {isCollapsed && (localDaySummary.dayStart || localDaySummary.dayFinish) && (
                         <div className="flex items-center gap-2 text-sm">
                             <span className="font-mono w-32 text-right text-cyan-400">
                                 {availableHours.toFixed(2)}h available
@@ -186,9 +223,8 @@ export function DayGroup({
                     <button
                         type="button"
                         onClick={() => {
-                            const defaultStart = isWeekend ? '' : '08:00';
-                            const startToPass = daySummary?.dayStart || defaultStart;
-                            onAddEntry(day, startToPass);
+                            // Pass the local day summary values to preserve user input
+                            onAddEntry(day, localDaySummary.dayStart, localDaySummary);
                         }}
                         className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors"
                     >
@@ -204,9 +240,9 @@ export function DayGroup({
                     {/* Day Summary (Simplified Mode) */}
                     <div className="px-4 pb-2">
                         <DaySummary
-                            dayStart={daySummary?.dayStart}
-                            dayFinish={daySummary?.dayFinish}
-                            dayBreak={daySummary?.dayBreak}
+                            dayStart={localDaySummary.dayStart}
+                            dayFinish={localDaySummary.dayFinish}
+                            dayBreak={localDaySummary.dayBreak}
                             totalHoursUsed={totalHoursUsed}
                             onUpdate={handleDaySummaryUpdate}
                             isLocked={isLocked}
