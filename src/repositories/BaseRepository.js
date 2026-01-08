@@ -65,12 +65,29 @@ export class BaseRepository {
     async create(id, data) {
         try {
             const docRef = doc(db, this.collectionName, id);
-            await setDoc(docRef, data);
-            return { id, ...data };
+            const cleanedData = this._stripUndefined(data);
+            await setDoc(docRef, cleanedData);
+            return { id, ...cleanedData };
         } catch (error) {
             console.error(`Error creating ${this.collectionName}:`, error);
             throw error;
         }
+    }
+
+    /**
+     * Helper to remove undefined values from an object (Firestore doesn't allow undefined)
+     * @param {Object} obj - The object to clean
+     * @returns {Object} Cleaned object
+     */
+    _stripUndefined(obj) {
+        if (!obj || typeof obj !== 'object') return obj;
+        const cleaned = {};
+        Object.keys(obj).forEach(key => {
+            if (obj[key] !== undefined) {
+                cleaned[key] = obj[key];
+            }
+        });
+        return cleaned;
     }
 
     /**
@@ -82,8 +99,9 @@ export class BaseRepository {
     async update(id, data) {
         try {
             const docRef = doc(db, this.collectionName, id);
-            await updateDoc(docRef, data);
-            return { id, ...data };
+            const cleanedData = this._stripUndefined(data);
+            await updateDoc(docRef, cleanedData);
+            return { id, ...cleanedData };
         } catch (error) {
             console.error(`Error updating ${this.collectionName}:`, error);
             throw error;
@@ -103,11 +121,13 @@ export class BaseRepository {
             let docId;
             let docData;
 
-            if (data.id) {
+            const cleanedInput = this._stripUndefined(data);
+
+            if (cleanedInput.id) {
                 // Update existing document
-                docId = data.id;
+                docId = cleanedInput.id;
                 docRef = doc(db, this.collectionName, docId);
-                const { createdAt: _createdAt, ...restData } = data;
+                const { createdAt: _createdAt, ...restData } = cleanedInput;
                 docData = {
                     ...restData,
                     id: docId, // Ensure id is always in the document
@@ -119,7 +139,7 @@ export class BaseRepository {
                 docRef = doc(collection(db, this.collectionName));
                 docId = docRef.id;
                 docData = {
-                    ...data,
+                    ...cleanedInput,
                     id: docId, // Include id in the document
                     createdAt: now,
                     updatedAt: now
@@ -184,13 +204,14 @@ export class BaseRepository {
 
             operations.forEach(({ type, id, data }) => {
                 const docRef = doc(db, this.collectionName, id);
+                const cleanedData = this._stripUndefined(data);
 
                 switch (type) {
                     case 'set':
-                        batch.set(docRef, data);
+                        batch.set(docRef, cleanedData);
                         break;
                     case 'update':
-                        batch.update(docRef, data);
+                        batch.update(docRef, cleanedData);
                         break;
                     case 'delete':
                         batch.delete(docRef);

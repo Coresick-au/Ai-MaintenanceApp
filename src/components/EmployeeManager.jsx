@@ -103,7 +103,7 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
                                     <tr
                                         key={idx}
                                         className="hover:bg-slate-700/50 cursor-pointer transition-colors"
-                                        onClick={() => onSelectEmp(item.emp)}
+                                        onClick={() => onSelectEmp({ ...item.emp })}
                                     >
                                         <td className="px-4 py-2 font-medium text-slate-200">{item.empName}</td>
                                         <td className="px-4 py-2 text-slate-400">{item.type}</td>
@@ -214,7 +214,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                     <div className="w-1/3 border-r border-slate-700 pr-4 flex flex-col">
                         <div className="mb-4 space-y-2">
                             <button
-                                onClick={() => setSelectedEmp(null)}
+                                onClick={() => {
+                                    setSelectedEmp(null);
+                                    setIsEditingEmployee(false);
+                                    setEditEmployeeForm(null);
+                                }}
                                 className={`w-full px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-left ${selectedEmp === null
                                     ? 'bg-purple-600 text-white shadow-lg'
                                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
@@ -223,7 +227,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                 <Icons.Activity size={16} /> Compliance Overview
                             </button>
                             <button
-                                onClick={() => setSelectedEmp('new')}
+                                onClick={() => {
+                                    setSelectedEmp('new');
+                                    setIsEditingEmployee(false);
+                                    setEditEmployeeForm(null);
+                                }}
                                 className={`w-full px-4 py-2 rounded-lg font-medium flex items-center gap-2 transition-colors text-left ${selectedEmp === 'new'
                                     ? 'bg-cyan-600 text-white shadow-lg'
                                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
@@ -244,7 +252,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                 return (
                                     <div
                                         key={emp.id}
-                                        onClick={() => setSelectedEmp(emp)}
+                                        onClick={() => {
+                                            setSelectedEmp({ ...emp });
+                                            setIsEditingEmployee(false);
+                                            setEditEmployeeForm(null);
+                                        }}
                                         className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedEmp?.id === emp.id
                                             ? 'bg-cyan-900/30 border-cyan-500'
                                             : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-700/50'
@@ -269,7 +281,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                 {employees.filter(emp => emp.status === 'archived').map(emp => (
                                     <div
                                         key={emp.id}
-                                        onClick={() => setSelectedEmp(emp)}
+                                        onClick={() => {
+                                            setSelectedEmp({ ...emp });
+                                            setIsEditingEmployee(false);
+                                            setEditEmployeeForm(null);
+                                        }}
                                         className={`p-3 rounded-lg cursor-pointer border transition-all ${selectedEmp?.id === emp.id
                                             ? 'bg-purple-900/30 border-purple-500'
                                             : 'bg-slate-800 border-slate-700 hover:border-slate-500 hover:bg-slate-700/50 opacity-70'
@@ -1127,7 +1143,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                             </div>
                         ) : (
                             /* COMPLIANCE DASHBOARD */
-                            <ComplianceDashboard employees={employees} onSelectEmp={setSelectedEmp} />
+                            <ComplianceDashboard employees={employees} onSelectEmp={(emp) => {
+                                setSelectedEmp(emp);
+                                setIsEditingEmployee(false);
+                                setEditEmployeeForm(null);
+                            }} />
                         )}
                     </div>
                 </div>
