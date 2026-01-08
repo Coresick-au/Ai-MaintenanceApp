@@ -132,7 +132,7 @@ export function TimesheetApp({ onBack }: TimesheetAppProps) {
                 return newState;
             });
         }
-    }, [isLoading, weekKey]); // Re-run when loading finishes or week changes.
+    }, [isLoading, weekKey, entries]); // Added 'entries' to ensure re-initialization when entries load
 
     // Actions
     const handleToggleDay = (day: string) => {

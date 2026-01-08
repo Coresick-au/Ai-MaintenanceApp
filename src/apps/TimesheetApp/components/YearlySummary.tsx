@@ -237,9 +237,10 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                 // Load all entries for the user
                 const allEntries = await timesheetRepository.getByUserId(currentUser.uid);
 
-                // Filter to entries that MIGHT contain days in the selected year
-                // Include entries from selectedYear AND adjacent years (to handle ISO week boundaries)
-                // e.g., 2026-W01 starts on Dec 29, 2025, so we need entries from both 2025 and 2026 weekKeys
+                // Filter to entries that MIGHT contain days in the selected year/FY
+                // For Calendar Year: include entries from selectedYear only
+                // For Financial Year: include entries from BOTH (selectedYear-1) and selectedYear
+                // e.g., FY 2025-26 runs July 2025 - June 2026, so we need entries from both 2025 and 2026
                 const yearEntries = allEntries.filter((entry: TimesheetEntry) => {
                     if (!entry.weekKey || !entry.day) return false;
 
@@ -254,8 +255,24 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
                     const entryDate = new Date(weekStart);
                     entryDate.setDate(weekStart.getDate() + dayOffset);
 
-                    // Include entry if its actual date falls in the selected year
-                    return entryDate.getFullYear() === selectedYear;
+                    const entryYear = entryDate.getFullYear();
+                    const entryMonth = entryDate.getMonth(); // 0-indexed
+
+                    // For Financial Year: include entries from July (selectedYear-1) to June (selectedYear)
+                    // For Calendar Year: include entries from selectedYear only
+                    if (yearType === 'financial') {
+                        const fyStartYear = selectedYear - 1;
+                        // Include if:
+                        // - Entry is in July-Dec of (selectedYear-1), OR
+                        // - Entry is in Jan-June of selectedYear
+                        return (
+                            (entryYear === fyStartYear && entryMonth >= 6) || // July-Dec of start year
+                            (entryYear === selectedYear && entryMonth < 6)     // Jan-June of end year
+                        );
+                    } else {
+                        // Calendar year: include entry if its actual date falls in the selected year
+                        return entryYear === selectedYear;
+                    }
                 });
 
                 // DEBUG: Log loaded entries for diagnosis
@@ -278,7 +295,7 @@ export function YearlySummaryModal({ isOpen, onClose }: YearlySummaryProps) {
         };
 
         loadYearData();
-    }, [isOpen, currentUser?.uid, selectedYear, useMockData]);
+    }, [isOpen, currentUser?.uid, selectedYear, yearType, useMockData]);
 
     // Calculate yearly summary
     const yearlySummary = useMemo((): YearlySummaryType => {
