@@ -152,6 +152,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
     const [editInductionForm, setEditInductionForm] = useState({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
 
     // NEW: Employee edit state
+    const [isEditingEmployee, setIsEditingEmployee] = useState(false);
     const [editEmployeeForm, setEditEmployeeForm] = useState(null);
 
     // Photo cropping states
