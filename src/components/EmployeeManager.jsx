@@ -62,7 +62,7 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
                         <table className="w-full text-sm text-left">
                             <thead className="text-xs text-slate-500 uppercase bg-slate-900 sticky top-0">
                                 <tr>
-                                    <th className="px-4 py-2">Technician</th>
+                                    <th className="px-4 py-2">Team Member</th>
                                     <th className="px-4 py-2">Type</th>
                                     <th className="px-4 py-2">Item</th>
                                     <th className="px-4 py-2">Expiry</th>
@@ -107,6 +107,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
         email: '',
         phone: '',
         address: '',
+        usiNumber: '',
         emergencyContactName: '',
         emergencyContactPhone: '',
         status: 'active'
@@ -123,6 +124,9 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
     // NEW: Employee edit state
     const [isEditingEmployee, setIsEditingEmployee] = useState(false);
     const [editEmployeeForm, setEditEmployeeForm] = useState(null);
+
+    // Sort state for certifications
+    const [certSortOrder, setCertSortOrder] = useState('asc'); // 'asc' or 'desc'
 
     // Collect managed sites from customers for induction dropdown
     const managedSites = useMemo(() => {
@@ -156,7 +160,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                 {/* Header */}
                 <div className="p-4 bg-slate-800 border-b border-slate-700 flex justify-between items-center flex-shrink-0">
                     <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                        <Icons.Users /> Technician & Training Tracker
+                        <Icons.Users /> Team Tracker
                     </h2>
                     <button
                         onClick={onClose}
@@ -188,11 +192,11 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                     : 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
                                     }`}
                             >
-                                <Icons.Plus size={16} /> Add Technician
+                                <Icons.Plus size={16} /> Add Team Member
                             </button>
                         </div>
 
-                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Technicians</div>
+                        <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Team Members</div>
 
                         <div className="space-y-2 overflow-y-auto flex-1">
                             {employees.filter(emp => emp.status !== 'archived').map(emp => {
@@ -222,7 +226,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                         {/* Option to show Archived employees */}
                         <details className="mt-2 text-sm">
                             <summary className="text-slate-400 cursor-pointer hover:text-slate-200 px-1">
-                                View Archived Technicians ({employees.filter(emp => emp.status === 'archived').length})
+                                View Archived Team Members ({employees.filter(emp => emp.status === 'archived').length})
                             </summary>
                             <div className="space-y-2 mt-2">
                                 {employees.filter(emp => emp.status === 'archived').map(emp => (
@@ -313,6 +317,14 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                         onChange={e => setNewEmpForm({ ...newEmpForm, address: e.target.value })}
                                     />
 
+                                    {/* USI Number Field */}
+                                    <input
+                                        placeholder="USI Number (Unique Student Identifier)"
+                                        className="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-cyan-500 outline-none"
+                                        value={newEmpForm.usiNumber}
+                                        onChange={e => setNewEmpForm({ ...newEmpForm, usiNumber: e.target.value })}
+                                    />
+
                                     {/* NEW: Emergency Contact Fields */}
                                     <div className="grid grid-cols-2 gap-4 pt-2 border-t border-slate-700">
                                         <input
@@ -341,6 +353,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 email: '',
                                                 phone: '',
                                                 address: '',
+                                                usiNumber: '',
                                                 emergencyContactName: '',
                                                 emergencyContactPhone: '',
                                                 status: 'active'
@@ -376,6 +389,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     email: selectedEmp.email,
                                                     phone: selectedEmp.phone,
                                                     address: selectedEmp.address,
+                                                    usiNumber: selectedEmp.usiNumber,
                                                     emergencyContactName: selectedEmp.emergencyContactName,
                                                     emergencyContactPhone: selectedEmp.emergencyContactPhone
                                                 });
@@ -471,6 +485,15 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     onChange={e => setEditEmployeeForm({ ...editEmployeeForm, address: e.target.value })}
                                                 />
                                             </div>
+                                            <div className="col-span-2">
+                                                <label className="text-xs text-slate-400 block mb-1">USI Number</label>
+                                                <input
+                                                    placeholder="Unique Student Identifier"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.usiNumber}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, usiNumber: e.target.value })}
+                                                />
+                                            </div>
                                             <div>
                                                 <label className="text-xs text-slate-400 block mb-1">Emergency Contact Name</label>
                                                 <input
@@ -513,6 +536,9 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                         <div className="grid grid-cols-2 gap-y-2 text-sm">
                                             <div className="text-slate-500">Address:</div>
                                             <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
+
+                                            <div className="text-slate-500">USI Number:</div>
+                                            <div className="text-slate-300">{selectedEmp.usiNumber || 'N/A'}</div>
 
                                             <div className="text-slate-500">Emergency Contact Name:</div>
                                             <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
@@ -600,139 +626,165 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                             <tr>
                                                 <th className="px-4 py-2">Certification</th>
                                                 <th className="px-4 py-2">Provider</th>
-                                                <th className="px-4 py-2">Expiry</th>
+                                                <th
+                                                    className="px-4 py-2 cursor-pointer hover:text-slate-300 select-none"
+                                                    onClick={() => setCertSortOrder(certSortOrder === 'asc' ? 'desc' : 'asc')}
+                                                    title="Click to sort by expiry date"
+                                                >
+                                                    <div className="flex items-center gap-1">
+                                                        Expiry
+                                                        <span className="text-[10px]">{certSortOrder === 'asc' ? '▲' : '▼'}</span>
+                                                    </div>
+                                                </th>
                                                 <th className="px-4 py-2">Status</th>
                                                 <th className="px-4 py-2 w-12">PDF</th>
                                                 <th className="px-4 py-2 w-20">Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-slate-700">
-                                            {(selectedEmp.certifications || []).map(cert => {
-                                                const status = getExpiryStatus(cert.expiry);
-                                                const isEditing = editingCertId === cert.id;
+                                            {(selectedEmp.certifications || [])
+                                                .sort((a, b) => {
+                                                    // Handle N/A values - always put them at the end
+                                                    if (a.expiry === 'N/A' && b.expiry === 'N/A') return 0;
+                                                    if (a.expiry === 'N/A') return 1;
+                                                    if (b.expiry === 'N/A') return -1;
 
-                                                return (
-                                                    <tr key={cert.id} className="hover:bg-slate-700/50">
-                                                        {isEditing ? (
-                                                            <>
-                                                                <td className="px-4 py-2">
-                                                                    <input
-                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
-                                                                        value={editCertForm.name}
-                                                                        onChange={e => setEditCertForm({ ...editCertForm, name: e.target.value })}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-2">
-                                                                    <input
-                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
-                                                                        value={editCertForm.provider}
-                                                                        onChange={e => setEditCertForm({ ...editCertForm, provider: e.target.value })}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-2">
-                                                                    <input
-                                                                        type="date"
-                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
-                                                                        value={editCertForm.expiry}
-                                                                        onChange={e => setEditCertForm({ ...editCertForm, expiry: e.target.value })}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-2"></td>
-                                                                <td className="px-4 py-2">
-                                                                    <input
-                                                                        placeholder="PDF URL"
-                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
-                                                                        value={editCertForm.pdfUrl}
-                                                                        onChange={e => setEditCertForm({ ...editCertForm, pdfUrl: e.target.value })}
-                                                                    />
-                                                                </td>
-                                                                <td className="px-4 py-2">
-                                                                    <div className="flex gap-1">
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                const updatedCerts = selectedEmp.certifications.map(c =>
-                                                                                    c.id === cert.id ? { ...c, ...editCertForm } : c
-                                                                                );
-                                                                                onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
-                                                                                setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
-                                                                                setEditingCertId(null);
-                                                                            }}
-                                                                            className="text-green-400 hover:text-green-300"
-                                                                            title="Save"
-                                                                        >
-                                                                            <Icons.Check size={14} />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => setEditingCertId(null)}
-                                                                            className="text-slate-400 hover:text-slate-300"
-                                                                            title="Cancel"
-                                                                        >
-                                                                            <Icons.X size={14} />
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </>
-                                                        ) : (
-                                                            <>
-                                                                <td className="px-4 py-2 font-medium text-slate-200">{cert.name}</td>
-                                                                <td className="px-4 py-2 text-slate-400">{cert.provider || '-'}</td>
-                                                                <td className="px-4 py-2 text-slate-300">{cert.expiry ? formatDate(cert.expiry) : '-'}</td>
-                                                                <td className="px-4 py-2">
-                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
-                                                                        {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
-                                                                    </span>
-                                                                </td>
-                                                                <td className="px-4 py-2 text-center">
-                                                                    {cert.pdfUrl ? (
-                                                                        <a
-                                                                            href={cert.pdfUrl}
-                                                                            target="_blank"
-                                                                            rel="noopener noreferrer"
-                                                                            className="text-blue-400 hover:text-blue-300 transition-colors inline-block"
-                                                                            title="View Certificate PDF"
-                                                                        >
-                                                                            <Icons.ExternalLink size={14} />
-                                                                        </a>
-                                                                    ) : (
-                                                                        <span className="text-slate-600">-</span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-4 py-2">
-                                                                    <div className="flex gap-1">
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                setEditingCertId(cert.id);
-                                                                                setEditCertForm({
-                                                                                    name: cert.name,
-                                                                                    provider: cert.provider || '',
-                                                                                    expiry: cert.expiry || '',
-                                                                                    pdfUrl: cert.pdfUrl || ''
-                                                                                });
-                                                                            }}
-                                                                            className="text-blue-400 hover:text-blue-300"
-                                                                            title="Edit"
-                                                                        >
-                                                                            <Icons.Edit size={14} />
-                                                                        </button>
-                                                                        <button
-                                                                            onClick={() => {
-                                                                                if (!window.confirm(`Are you sure you want to delete the certification "${cert.name}"?`)) return;
-                                                                                const updatedCerts = selectedEmp.certifications.filter(c => c.id !== cert.id);
-                                                                                onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
-                                                                                setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
-                                                                            }}
-                                                                            className="text-red-400 hover:text-red-300"
-                                                                            title="Delete"
-                                                                        >
-                                                                            <Icons.Trash size={14} />
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </>
-                                                        )}
-                                                    </tr>
-                                                );
-                                            })}
+                                                    // Handle empty values
+                                                    if (!a.expiry && !b.expiry) return 0;
+                                                    if (!a.expiry) return 1;
+                                                    if (!b.expiry) return -1;
+
+                                                    // Sort by date
+                                                    const dateA = new Date(a.expiry);
+                                                    const dateB = new Date(b.expiry);
+                                                    return certSortOrder === 'asc' ? dateA - dateB : dateB - dateA;
+                                                })
+                                                .map(cert => {
+                                                    const status = getExpiryStatus(cert.expiry);
+                                                    const isEditing = editingCertId === cert.id;
+
+                                                    return (
+                                                        <tr key={cert.id} className="hover:bg-slate-700/50">
+                                                            {isEditing ? (
+                                                                <>
+                                                                    <td className="px-4 py-2">
+                                                                        <input
+                                                                            className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                            value={editCertForm.name}
+                                                                            onChange={e => setEditCertForm({ ...editCertForm, name: e.target.value })}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2">
+                                                                        <input
+                                                                            className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                            value={editCertForm.provider}
+                                                                            onChange={e => setEditCertForm({ ...editCertForm, provider: e.target.value })}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2">
+                                                                        <input
+                                                                            type="date"
+                                                                            className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                            value={editCertForm.expiry}
+                                                                            onChange={e => setEditCertForm({ ...editCertForm, expiry: e.target.value })}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2"></td>
+                                                                    <td className="px-4 py-2">
+                                                                        <input
+                                                                            placeholder="PDF URL"
+                                                                            className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                            value={editCertForm.pdfUrl}
+                                                                            onChange={e => setEditCertForm({ ...editCertForm, pdfUrl: e.target.value })}
+                                                                        />
+                                                                    </td>
+                                                                    <td className="px-4 py-2">
+                                                                        <div className="flex gap-1">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    const updatedCerts = selectedEmp.certifications.map(c =>
+                                                                                        c.id === cert.id ? { ...c, ...editCertForm } : c
+                                                                                    );
+                                                                                    onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
+                                                                                    setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
+                                                                                    setEditingCertId(null);
+                                                                                }}
+                                                                                className="text-green-400 hover:text-green-300"
+                                                                                title="Save"
+                                                                            >
+                                                                                <Icons.Check size={14} />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => setEditingCertId(null)}
+                                                                                className="text-slate-400 hover:text-slate-300"
+                                                                                title="Cancel"
+                                                                            >
+                                                                                <Icons.X size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <td className="px-4 py-2 font-medium text-slate-200">{cert.name}</td>
+                                                                    <td className="px-4 py-2 text-slate-400">{cert.provider || '-'}</td>
+                                                                    <td className="px-4 py-2 text-slate-300">{cert.expiry ? formatDate(cert.expiry) : '-'}</td>
+                                                                    <td className="px-4 py-2">
+                                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
+                                                                            {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="px-4 py-2 text-center">
+                                                                        {cert.pdfUrl ? (
+                                                                            <a
+                                                                                href={cert.pdfUrl}
+                                                                                target="_blank"
+                                                                                rel="noopener noreferrer"
+                                                                                className="text-blue-400 hover:text-blue-300 transition-colors inline-block"
+                                                                                title="View Certificate PDF"
+                                                                            >
+                                                                                <Icons.ExternalLink size={14} />
+                                                                            </a>
+                                                                        ) : (
+                                                                            <span className="text-slate-600">-</span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="px-4 py-2">
+                                                                        <div className="flex gap-1">
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    setEditingCertId(cert.id);
+                                                                                    setEditCertForm({
+                                                                                        name: cert.name,
+                                                                                        provider: cert.provider || '',
+                                                                                        expiry: cert.expiry || '',
+                                                                                        pdfUrl: cert.pdfUrl || ''
+                                                                                    });
+                                                                                }}
+                                                                                className="text-blue-400 hover:text-blue-300"
+                                                                                title="Edit"
+                                                                            >
+                                                                                <Icons.Edit size={14} />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => {
+                                                                                    if (!window.confirm(`Are you sure you want to delete the certification "${cert.name}"?`)) return;
+                                                                                    const updatedCerts = selectedEmp.certifications.filter(c => c.id !== cert.id);
+                                                                                    onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
+                                                                                    setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
+                                                                                }}
+                                                                                className="text-red-400 hover:text-red-300"
+                                                                                title="Delete"
+                                                                            >
+                                                                                <Icons.Trash size={14} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </>
+                                                            )}
+                                                        </tr>
+                                                    );
+                                                })}
                                             {(!selectedEmp.certifications || selectedEmp.certifications.length === 0) && (
                                                 <tr><td colSpan="5" className="p-4 text-center text-slate-500 italic">No certifications yet. Add one above.</td></tr>
                                             )}
