@@ -96,7 +96,7 @@ export default function Dashboard({
     };
 
     return (
-        <div className="min-h-screen bg-bg-primary p-6 pt-14">
+        <div className="min-h-screen bg-bg-primary p-6 pt-6">
             <div className="max-w-[95%] mx-auto">
                 {/* Header & Tabs */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">

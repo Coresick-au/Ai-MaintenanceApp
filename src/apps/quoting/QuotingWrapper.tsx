@@ -19,7 +19,8 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
         return (
             <div className="relative">
                 {/* Unified Back Button - Top Left */}
-                <div className="fixed top-4 left-4 z-[9999] print:hidden">
+                {/* Unified Back Button - Static Top Left */}
+                <div className="p-4 pb-0 bg-bg-primary print:hidden">
                     <BackButton label="Back to Portal" onClick={onBack} />
                 </div>
                 <Suspense fallback={<div className="min-h-screen bg-slate-900 flex items-center justify-center text-slate-200">Loading Dashboard...</div>}>
@@ -50,7 +51,8 @@ export const QuotingWrapper = ({ onBack }: { onBack: () => void }) => {
     return (
         <div className="relative">
             {/* Unified Back Button - Top Left */}
-            <div className="fixed top-4 left-4 z-[9999] print:hidden">
+            {/* Unified Back Button - Static Top Left */}
+            <div className="p-4 pb-0 bg-bg-primary print:hidden">
                 <BackButton label="Back to Portal" onClick={onBack} />
             </div>
             <Layout

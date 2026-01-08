@@ -7,7 +7,7 @@ import BackButton from '../../components/ui/BackButton';
  * Inner component that uses the context
  */
 const EmployeeAppInner = ({ onBack }) => {
-    const { employees, sites, customers, addEmployee, updateEmployee } = useGlobalData();
+    const { employees, sites, customers, addEmployee, updateEmployee, deleteEmployee } = useGlobalData();
 
     return (
         <div className="relative min-h-screen bg-slate-950">
@@ -25,6 +25,7 @@ const EmployeeAppInner = ({ onBack }) => {
                 customers={customers}
                 onAddEmployee={addEmployee}
                 onUpdateEmployee={updateEmployee}
+                onDeleteEmployee={deleteEmployee}
             />
         </div>
     );

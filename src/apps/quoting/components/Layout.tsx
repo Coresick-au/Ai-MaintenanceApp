@@ -48,7 +48,7 @@ export default function Layout({ children, activeTab, setActiveTab, status, tota
     return (
         <div className="flex min-h-screen bg-bg-primary text-slate-200 font-sans">
             {/* Side Panel Navigation (Fixed) */}
-            <nav className="w-64 bg-bg-secondary flex flex-col p-4 pt-14 shadow-2xl z-20 sticky top-0 h-screen">
+            <nav className="w-64 bg-bg-secondary flex flex-col p-4 pt-4 shadow-2xl z-20 sticky top-0 h-screen">
 
                 {/* App Menu Section */}
                 <div className="mb-6 pb-4 border-b border-gray-700">

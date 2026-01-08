@@ -128,7 +128,7 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
     );
 };
 
-export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, onAddEmployee, onUpdateEmployee }) => {
+export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, onAddEmployee, onUpdateEmployee, onDeleteEmployee }) => {
     const [selectedEmp, setSelectedEmp] = useState(null);
     const [newEmpForm, setNewEmpForm] = useState({
         name: '',
@@ -455,15 +455,20 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                             <Icons.Edit size={12} /> Edit
                                         </button>
                                         <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 if (!window.confirm(`Are you sure you want to permanently delete ${selectedEmp.name}? This action cannot be undone.`)) return;
                                                 if (!window.confirm(`FINAL WARNING: Deleting ${selectedEmp.name} will remove all their data permanently. Continue?`)) return;
-                                                // Note: onDeleteEmployee needs to be added to props
-                                                if (onUpdateEmployee) {
-                                                    // For now, we'll archive instead of delete since delete handler may not exist
-                                                    onUpdateEmployee(selectedEmp.id, { status: 'archived' });
+                                                if (onDeleteEmployee) {
+                                                    await onDeleteEmployee(selectedEmp.id);
                                                     setSelectedEmp(null);
-                                                    alert('Employee archived (delete functionality requires backend implementation)');
+                                                    setIsEditingEmployee(false);
+                                                    setEditEmployeeForm(null);
+                                                } else {
+                                                    // Fallback if prop missing
+                                                    if (onUpdateEmployee) {
+                                                        onUpdateEmployee(selectedEmp.id, { status: 'archived' });
+                                                        setSelectedEmp(null);
+                                                    }
                                                 }
                                             }}
                                             className="px-2.5 py-1.5 text-xs rounded transition-colors bg-red-900 hover:bg-red-800 text-white flex items-center gap-1"
