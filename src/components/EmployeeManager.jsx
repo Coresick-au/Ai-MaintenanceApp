@@ -498,13 +498,75 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 />
                                             </div>
                                             <div className="col-span-2">
-                                                <label className="text-xs text-slate-400 block mb-1">Photo URL</label>
-                                                <input
-                                                    placeholder="OneDrive or web link to staff photo"
-                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
-                                                    value={editEmployeeForm.photoUrl}
-                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, photoUrl: e.target.value })}
-                                                />
+                                                <label className="text-xs text-slate-400 block mb-1">Staff Photo</label>
+                                                <div className="flex gap-2 items-start">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        onChange={async (e) => {
+                                                            const file = e.target.files?.[0];
+                                                            if (!file) return;
+
+                                                            // Compress and convert to base64
+                                                            const compressImage = (file, maxWidth = 400, quality = 0.8) => {
+                                                                return new Promise((resolve) => {
+                                                                    const reader = new FileReader();
+                                                                    reader.onload = (e) => {
+                                                                        const img = new Image();
+                                                                        img.onload = () => {
+                                                                            const canvas = document.createElement('canvas');
+                                                                            let width = img.width;
+                                                                            let height = img.height;
+
+                                                                            // Resize if needed
+                                                                            if (width > maxWidth) {
+                                                                                height = (height * maxWidth) / width;
+                                                                                width = maxWidth;
+                                                                            }
+
+                                                                            canvas.width = width;
+                                                                            canvas.height = height;
+                                                                            const ctx = canvas.getContext('2d');
+                                                                            ctx.drawImage(img, 0, 0, width, height);
+
+                                                                            // Convert to base64 with compression
+                                                                            const compressed = canvas.toDataURL('image/jpeg', quality);
+                                                                            resolve(compressed);
+                                                                        };
+                                                                        img.src = e.target.result;
+                                                                    };
+                                                                    reader.readAsDataURL(file);
+                                                                });
+                                                            };
+
+                                                            const compressed = await compressImage(file);
+                                                            setEditEmployeeForm({ ...editEmployeeForm, photoUrl: compressed });
+                                                        }}
+                                                        className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 file:cursor-pointer"
+                                                    />
+                                                    {editEmployeeForm.photoUrl && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditEmployeeForm({ ...editEmployeeForm, photoUrl: '' })}
+                                                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded"
+                                                            title="Remove photo"
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {editEmployeeForm.photoUrl && (
+                                                    <div className="mt-2">
+                                                        <img
+                                                            src={editEmployeeForm.photoUrl}
+                                                            alt="Preview"
+                                                            className="w-24 h-24 rounded object-cover border border-slate-600"
+                                                        />
+                                                        <p className="text-[10px] text-slate-500 mt-1">
+                                                            Size: {(editEmployeeForm.photoUrl.length * 0.75 / 1024).toFixed(0)}KB
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
                                             <div>
                                                 <label className="text-xs text-slate-400 block mb-1">Emergency Contact Name</label>
