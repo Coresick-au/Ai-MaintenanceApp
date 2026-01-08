@@ -1,5 +1,6 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import * as ReactDOM from 'react-dom';
+import Cropper from 'react-easy-crop';
 import { Modal, Button } from './UIComponents';
 import { Icons } from '../constants/icons';
 import { formatDate } from '../utils/helpers';
@@ -14,6 +15,34 @@ const ROLES = [
     'Service Manager',
     'Projects Manager'
 ];
+
+// --- HELPER: Crop Image ---
+const getCroppedImg = async (imageSrc, pixelCrop) => {
+    const image = new Image();
+    image.src = imageSrc;
+    await new Promise(resolve => image.onload = resolve);
+
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Set canvas to 400x400 for consistent quality/size
+    canvas.width = 400;
+    canvas.height = 400;
+
+    ctx.drawImage(
+        image,
+        pixelCrop.x,
+        pixelCrop.y,
+        pixelCrop.width,
+        pixelCrop.height,
+        0,
+        0,
+        400,
+        400
+    );
+
+    return canvas.toDataURL('image/jpeg', 0.8);
+};
 
 // --- NEW COMPONENT: Compliance Overview Dashboard ---
 const ComplianceDashboard = ({ employees, onSelectEmp }) => {
@@ -123,8 +152,14 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
     const [editInductionForm, setEditInductionForm] = useState({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
 
     // NEW: Employee edit state
-    const [isEditingEmployee, setIsEditingEmployee] = useState(false);
     const [editEmployeeForm, setEditEmployeeForm] = useState(null);
+
+    // Photo cropping states
+    const [tempPhotoUrl, setTempPhotoUrl] = useState(null); // The raw image picked by user
+    const [crop, setCrop] = useState({ x: 0, y: 0 });
+    const [zoom, setZoom] = useState(1);
+    const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
+    const [isCropping, setIsCropping] = useState(false);
 
     // Sort state for certifications
     const [certSortOrder, setCertSortOrder] = useState('asc'); // 'asc' or 'desc'
@@ -503,44 +538,17 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     <input
                                                         type="file"
                                                         accept="image/*"
-                                                        onChange={async (e) => {
+                                                        onChange={(e) => {
                                                             const file = e.target.files?.[0];
                                                             if (!file) return;
-
-                                                            // Compress and convert to base64
-                                                            const compressImage = (file, maxWidth = 400, quality = 0.8) => {
-                                                                return new Promise((resolve) => {
-                                                                    const reader = new FileReader();
-                                                                    reader.onload = (e) => {
-                                                                        const img = new Image();
-                                                                        img.onload = () => {
-                                                                            const canvas = document.createElement('canvas');
-                                                                            let width = img.width;
-                                                                            let height = img.height;
-
-                                                                            // Resize if needed
-                                                                            if (width > maxWidth) {
-                                                                                height = (height * maxWidth) / width;
-                                                                                width = maxWidth;
-                                                                            }
-
-                                                                            canvas.width = width;
-                                                                            canvas.height = height;
-                                                                            const ctx = canvas.getContext('2d');
-                                                                            ctx.drawImage(img, 0, 0, width, height);
-
-                                                                            // Convert to base64 with compression
-                                                                            const compressed = canvas.toDataURL('image/jpeg', quality);
-                                                                            resolve(compressed);
-                                                                        };
-                                                                        img.src = e.target.result;
-                                                                    };
-                                                                    reader.readAsDataURL(file);
-                                                                });
+                                                            const reader = new FileReader();
+                                                            reader.onload = (e) => {
+                                                                setTempPhotoUrl(e.target.result);
+                                                                setIsCropping(true);
+                                                                setZoom(1);
+                                                                setCrop({ x: 0, y: 0 });
                                                             };
-
-                                                            const compressed = await compressImage(file);
-                                                            setEditEmployeeForm({ ...editEmployeeForm, photoUrl: compressed });
+                                                            reader.readAsDataURL(file);
                                                         }}
                                                         className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 file:cursor-pointer"
                                                     />
@@ -563,7 +571,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                             className="w-24 h-24 rounded object-cover border border-slate-600"
                                                         />
                                                         <p className="text-[10px] text-slate-500 mt-1">
-                                                            Size: {(editEmployeeForm.photoUrl.length * 0.75 / 1024).toFixed(0)}KB
+                                                            Optimized Size: {(editEmployeeForm.photoUrl.length * 0.75 / 1024).toFixed(0)}KB
                                                         </p>
                                                     </div>
                                                 )}
@@ -1122,6 +1130,72 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                         )}
                     </div>
                 </div>
+
+                {/* NEW: Photo Cropper Modal */}
+                {isCropping && tempPhotoUrl && (
+                    <div className="fixed inset-0 z-[100] bg-slate-950/90 flex flex-col items-center justify-center p-4">
+                        <div className="bg-slate-900 rounded-xl w-full max-w-lg overflow-hidden border border-slate-700 shadow-2xl">
+                            <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+                                <h3 className="text-lg font-bold text-white">Center & Crop Photo</h3>
+                                <button onClick={() => setIsCropping(false)} className="text-slate-400 hover:text-white">
+                                    <Icons.X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="relative h-80 bg-black">
+                                <Cropper
+                                    image={tempPhotoUrl}
+                                    crop={crop}
+                                    zoom={zoom}
+                                    aspect={1}
+                                    onCropChange={setCrop}
+                                    onZoomChange={setZoom}
+                                    onCropComplete={(_, pixels) => setCroppedAreaPixels(pixels)}
+                                />
+                            </div>
+
+                            <div className="p-4 space-y-4">
+                                <div className="flex items-center gap-4">
+                                    <span className="text-xs text-slate-400">Zoom</span>
+                                    <input
+                                        type="range"
+                                        min={1}
+                                        max={3}
+                                        step={0.1}
+                                        value={zoom}
+                                        onChange={(e) => setZoom(parseFloat(e.target.value))}
+                                        className="flex-1 accent-cyan-500"
+                                    />
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setIsCropping(false)}
+                                        className="flex-1 py-2 text-sm font-medium text-slate-300 bg-slate-800 hover:bg-slate-700 rounded-lg transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const cropped = await getCroppedImg(tempPhotoUrl, croppedAreaPixels);
+                                                setEditEmployeeForm({ ...editEmployeeForm, photoUrl: cropped });
+                                                setIsCropping(false);
+                                                setTempPhotoUrl(null);
+                                            } catch (e) {
+                                                console.error(e);
+                                            }
+                                        }}
+                                        className="flex-1 py-2 text-sm font-medium text-white bg-cyan-600 hover:bg-cyan-500 rounded-lg transition-colors"
+                                    >
+                                        Apply Crop
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <p className="mt-4 text-xs text-slate-400">Drag to position • Scroll or use slider to zoom</p>
+                    </div>
+                )}
             </div>
         </div>
     );
