@@ -422,15 +422,15 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                             onClick={() => {
                                                 setIsEditingEmployee(true);
                                                 setEditEmployeeForm({
-                                                    name: selectedEmp.name,
-                                                    role: selectedEmp.role,
-                                                    email: selectedEmp.email,
-                                                    phone: selectedEmp.phone,
-                                                    address: selectedEmp.address,
-                                                    usiNumber: selectedEmp.usiNumber,
-                                                    photoUrl: selectedEmp.photoUrl,
-                                                    emergencyContactName: selectedEmp.emergencyContactName,
-                                                    emergencyContactPhone: selectedEmp.emergencyContactPhone
+                                                    name: selectedEmp.name || '',
+                                                    role: selectedEmp.role || '',
+                                                    email: selectedEmp.email || '',
+                                                    phone: selectedEmp.phone || '',
+                                                    address: selectedEmp.address || '',
+                                                    usiNumber: selectedEmp.usiNumber || '',
+                                                    photoUrl: selectedEmp.photoUrl || '',
+                                                    emergencyContactName: selectedEmp.emergencyContactName || '',
+                                                    emergencyContactPhone: selectedEmp.emergencyContactPhone || ''
                                                 });
                                             }}
                                             className="px-2.5 py-1.5 text-xs rounded transition-colors bg-blue-700 hover:bg-blue-600 text-white flex items-center gap-1"
