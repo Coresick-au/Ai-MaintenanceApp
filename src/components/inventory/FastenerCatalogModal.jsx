@@ -3,7 +3,7 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { addFastenerToCatalog, updateFastener, filterSuppliersByCategories } from '../../services/inventoryService';
-import { generateNextFastenerSKU, checkFastenerSKUExists } from '../../utils/skuGenerator';
+import { generateNextFastenerSKU } from '../../utils/skuGenerator';
 import { CategorySelect } from './categories/CategorySelect';
 import { LocationSelect } from './LocationSelect';
 import { CategoryProvider } from '../../context/CategoryContext';
@@ -15,9 +15,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [filteredSuppliers, setFilteredSuppliers] = useState([]);
-    const [showAddCategory, setShowAddCategory] = useState(false);
     const [newCategoryName, setNewCategoryName] = useState('');
-    const [generatingSKU, setGeneratingSKU] = useState(false);
     const [selectedSupplier, setSelectedSupplier] = useState('');
     const [activeTab, setActiveTab] = useState('details');
     const [lowestSupplierPrice, setLowestSupplierPrice] = useState(null);
@@ -64,7 +62,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
         });
 
         return () => unsubscribe();
-    }, []);
+    }, [formData.category]);
 
     // Load suppliers from Firestore
     useEffect(() => {
@@ -133,7 +131,6 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
             setListPriceSource('MANUAL');
         }
         setError('');
-        setShowAddCategory(false);
         setNewCategoryName('');
         setActiveTab('details'); // Reset to details tab
     }, [editingFastener, isOpen, categories]);
@@ -249,14 +246,6 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
         setSaving(true);
 
         try {
-            // Check for duplicate SKU
-            const skuExists = await checkFastenerSKUExists(formData.sku.trim(), editingFastener?.id);
-            if (skuExists) {
-                setError(`SKU "${formData.sku}" already exists. Please use a different SKU.`);
-                setSaving(false);
-                return;
-            }
-
             // Start with base fastener data
             // NOTE: costPriceSource is NOT included here because it's managed independently
             // in the PartPricingTab to avoid overwriting changes with stale formData

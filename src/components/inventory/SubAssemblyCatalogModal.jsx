@@ -9,7 +9,7 @@ import { BOMEditor } from './BOMEditor';
 import { ProductCostToggle } from './ProductCostToggle';
 import { ListPriceToggle } from './ListPriceToggle';
 import { subAssemblyCompositionRepository } from '../../repositories';
-import { getSubAssemblyCostAtDate, getPartCostAtDate } from '../../services/costingService';
+import { getPartCostAtDate } from '../../services/costingService';
 import { getLabourRate } from '../../services/settingsService';
 
 /**

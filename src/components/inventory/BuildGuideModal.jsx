@@ -127,7 +127,7 @@ export function BuildGuideModal({ isOpen, onClose, product, existingGuide, bom, 
         if (bom && steps.length > 0) {
             calculateAvailableItems();
         }
-    }, [steps, bom]);
+    }, [steps, bom, calculateAvailableItems]);
 
     if (!isOpen) return null;
 

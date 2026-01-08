@@ -3,14 +3,13 @@ import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { addPartToCatalog, updatePart, filterSuppliersByCategories } from '../../services/inventoryService';
-import { generateNextSKU } from '../../utils/skuGenerator';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { PartPricingTab } from './PartPricingTab';
 import { ListPriceToggle } from './ListPriceToggle';
 import { CategorySelect } from './categories/CategorySelect';
 import { LocationSelect } from './LocationSelect';
 import { getLowestSupplierPrice } from '../../services/partPricingService';
-import { generateNextPartSKU, checkPartSKUExists } from '../../utils/skuGenerator';
+import { generateNextPartSKU } from '../../utils/skuGenerator';
 
 export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     const [categories, setCategories] = useState([]);

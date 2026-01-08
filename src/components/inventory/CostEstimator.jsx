@@ -153,7 +153,7 @@ export const CostEstimator = () => {
         );
 
         return () => unsubscribe();
-    }, []);
+    }, [weighModuleParams.modelId]);
 
     const handleEstimate = async () => {
         setEstimating(true);
