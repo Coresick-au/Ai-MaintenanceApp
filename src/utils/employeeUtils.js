@@ -2,11 +2,11 @@
 
 /**
  * Calculate expiry status based on days remaining
- * @param {string} expiryDate - ISO date string
+ * @param {string} expiryDate - ISO date string or 'N/A' for no expiry
  * @returns {'valid'|'warning'|'expired'} Status indicator
  */
 export const getExpiryStatus = (expiryDate) => {
-    if (!expiryDate) return 'valid';
+    if (!expiryDate || expiryDate === 'N/A') return 'valid';
 
     const days = Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
 
@@ -17,11 +17,11 @@ export const getExpiryStatus = (expiryDate) => {
 
 /**
  * Get days until expiry
- * @param {string} expiryDate - ISO date string
- * @returns {number} Days remaining (negative if expired)
+ * @param {string} expiryDate - ISO date string or 'N/A' for no expiry
+ * @returns {number} Days remaining (negative if expired, Infinity if no expiry)
  */
 export const getDaysUntilExpiry = (expiryDate) => {
-    if (!expiryDate) return Infinity;
+    if (!expiryDate || expiryDate === 'N/A') return Infinity;
     return Math.ceil((new Date(expiryDate) - new Date()) / (1000 * 60 * 60 * 24));
 };
 

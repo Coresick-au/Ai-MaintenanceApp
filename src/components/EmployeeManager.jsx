@@ -111,7 +111,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
         emergencyContactPhone: '',
         status: 'active'
     });
-    const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '' });
+    const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '', noExpiry: false });
     const [newInductionForm, setNewInductionForm] = useState({ siteId: '', category: 'site', customCategory: '', expiry: '', notes: '' });
 
     // NEW: Edit states
@@ -535,49 +535,64 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                     </div>
 
                                     {/* Add Cert Form (Inline) */}
-                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700 grid grid-cols-6 gap-2">
-                                        <input
-                                            placeholder="Name (e.g. First Aid)"
-                                            className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
-                                            value={newCertForm.name}
-                                            onChange={e => setNewCertForm({ ...newCertForm, name: e.target.value })}
-                                        />
-                                        <input
-                                            placeholder="Provider"
-                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
-                                            value={newCertForm.provider}
-                                            onChange={e => setNewCertForm({ ...newCertForm, provider: e.target.value })}
-                                        />
-                                        <input
-                                            type="date"
-                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
-                                            value={newCertForm.expiry}
-                                            onChange={e => setNewCertForm({ ...newCertForm, expiry: e.target.value })}
-                                            title="Expiry Date"
-                                        />
-                                        <input
-                                            placeholder="PDF Link (OneDrive)"
-                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
-                                            value={newCertForm.pdfUrl}
-                                            onChange={e => setNewCertForm({ ...newCertForm, pdfUrl: e.target.value })}
-                                            title="OneDrive PDF Link"
-                                        />
-                                        <button
-                                            onClick={() => {
-                                                if (!newCertForm.name) return;
-                                                const updatedCerts = [...(selectedEmp.certifications || []), {
-                                                    ...newCertForm,
-                                                    id: `cert-${Date.now()}`,
-                                                    date: new Date().toISOString().split('T')[0]
-                                                }];
-                                                onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
-                                                setNewCertForm({ name: '', provider: '', expiry: '', pdfUrl: '' });
-                                                setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
-                                            }}
-                                            className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
-                                        >
-                                            + Add
-                                        </button>
+                                    <div className="p-4 bg-slate-800/50 border-b border-slate-700">
+                                        <div className="grid grid-cols-6 gap-2 mb-2">
+                                            <input
+                                                placeholder="Name (e.g. First Aid)"
+                                                className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newCertForm.name}
+                                                onChange={e => setNewCertForm({ ...newCertForm, name: e.target.value })}
+                                            />
+                                            <input
+                                                placeholder="Provider"
+                                                className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newCertForm.provider}
+                                                onChange={e => setNewCertForm({ ...newCertForm, provider: e.target.value })}
+                                            />
+                                            <input
+                                                type="date"
+                                                className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                                                value={newCertForm.noExpiry ? '' : newCertForm.expiry}
+                                                onChange={e => setNewCertForm({ ...newCertForm, expiry: e.target.value })}
+                                                title="Expiry Date"
+                                                disabled={newCertForm.noExpiry}
+                                            />
+                                            <input
+                                                placeholder="PDF Link (OneDrive)"
+                                                className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                                value={newCertForm.pdfUrl}
+                                                onChange={e => setNewCertForm({ ...newCertForm, pdfUrl: e.target.value })}
+                                                title="OneDrive PDF Link"
+                                            />
+                                            <button
+                                                onClick={() => {
+                                                    if (!newCertForm.name) return;
+                                                    const updatedCerts = [...(selectedEmp.certifications || []), {
+                                                        name: newCertForm.name,
+                                                        provider: newCertForm.provider,
+                                                        expiry: newCertForm.noExpiry ? 'N/A' : newCertForm.expiry,
+                                                        pdfUrl: newCertForm.pdfUrl,
+                                                        id: `cert-${Date.now()}`,
+                                                        date: new Date().toISOString().split('T')[0]
+                                                    }];
+                                                    onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
+                                                    setNewCertForm({ name: '', provider: '', expiry: '', pdfUrl: '', noExpiry: false });
+                                                    setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
+                                                }}
+                                                className="bg-cyan-600 hover:bg-cyan-500 text-white rounded text-xs font-medium transition-colors"
+                                            >
+                                                + Add
+                                            </button>
+                                        </div>
+                                        <label className="flex items-center gap-2 text-xs text-slate-400 cursor-pointer hover:text-slate-300">
+                                            <input
+                                                type="checkbox"
+                                                checked={newCertForm.noExpiry}
+                                                onChange={e => setNewCertForm({ ...newCertForm, noExpiry: e.target.checked, expiry: e.target.checked ? '' : newCertForm.expiry })}
+                                                className="w-3 h-3 rounded border-slate-600 bg-slate-900 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                            />
+                                            No Expiry Date (e.g., lifetime certification)
+                                        </label>
                                     </div>
 
                                     <table className="w-full text-sm text-left">
