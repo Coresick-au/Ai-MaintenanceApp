@@ -108,6 +108,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
         phone: '',
         address: '',
         usiNumber: '',
+        photoUrl: '',
         emergencyContactName: '',
         emergencyContactPhone: '',
         status: 'active'
@@ -354,6 +355,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 phone: '',
                                                 address: '',
                                                 usiNumber: '',
+                                                photoUrl: '',
                                                 emergencyContactName: '',
                                                 emergencyContactPhone: '',
                                                 status: 'active'
@@ -390,6 +392,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     phone: selectedEmp.phone,
                                                     address: selectedEmp.address,
                                                     usiNumber: selectedEmp.usiNumber,
+                                                    photoUrl: selectedEmp.photoUrl,
                                                     emergencyContactName: selectedEmp.emergencyContactName,
                                                     emergencyContactPhone: selectedEmp.emergencyContactPhone
                                                 });
@@ -494,6 +497,15 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     onChange={e => setEditEmployeeForm({ ...editEmployeeForm, usiNumber: e.target.value })}
                                                 />
                                             </div>
+                                            <div className="col-span-2">
+                                                <label className="text-xs text-slate-400 block mb-1">Photo URL</label>
+                                                <input
+                                                    placeholder="OneDrive or web link to staff photo"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.photoUrl}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, photoUrl: e.target.value })}
+                                                />
+                                            </div>
                                             <div>
                                                 <label className="text-xs text-slate-400 block mb-1">Emergency Contact Name</label>
                                                 <input
@@ -533,22 +545,43 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                 ) : (
                                     <div className="bg-slate-800 rounded-xl border border-slate-700 p-4">
                                         <h3 className="font-bold text-slate-200 mb-3">Personnel Details</h3>
-                                        <div className="grid grid-cols-2 gap-y-2 text-sm">
-                                            <div className="text-slate-500">Address:</div>
-                                            <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
+                                        <div className="flex gap-4">
+                                            {/* Photo */}
+                                            <div className="flex-shrink-0">
+                                                {selectedEmp.photoUrl ? (
+                                                    <img
+                                                        src={selectedEmp.photoUrl}
+                                                        alt={selectedEmp.name}
+                                                        className="w-32 h-32 rounded-lg object-cover border-2 border-slate-600"
+                                                        onError={(e) => {
+                                                            e.target.onerror = null;
+                                                            e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 24 24" fill="none" stroke="%23475569" stroke-width="2"%3E%3Cpath d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"%3E%3C/path%3E%3Ccircle cx="12" cy="7" r="4"%3E%3C/circle%3E%3C/svg%3E';
+                                                        }}
+                                                    />
+                                                ) : (
+                                                    <div className="w-32 h-32 rounded-lg bg-slate-700 border-2 border-slate-600 flex items-center justify-center">
+                                                        <Icons.User className="w-16 h-16 text-slate-500" />
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* Details */}
+                                            <div className="grid grid-cols-2 gap-y-2 text-sm flex-1">
+                                                <div className="text-slate-500">Address:</div>
+                                                <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
 
-                                            <div className="text-slate-500">USI Number:</div>
-                                            <div className="text-slate-300">{selectedEmp.usiNumber || 'N/A'}</div>
+                                                <div className="text-slate-500">USI Number:</div>
+                                                <div className="text-slate-300">{selectedEmp.usiNumber || 'N/A'}</div>
 
-                                            <div className="text-slate-500">Emergency Contact Name:</div>
-                                            <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
+                                                <div className="text-slate-500">Emergency Contact Name:</div>
+                                                <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
 
-                                            <div className="text-slate-500">Emergency Contact Phone:</div>
-                                            <div className="text-slate-300">{selectedEmp.emergencyContactPhone || 'N/A'}</div>
+                                                <div className="text-slate-500">Emergency Contact Phone:</div>
+                                                <div className="text-slate-300">{selectedEmp.emergencyContactPhone || 'N/A'}</div>
 
-                                            <div className="text-slate-500">Status:</div>
-                                            <div className={`font-bold uppercase text-xs ${selectedEmp.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
-                                                {selectedEmp.status || 'active'}
+                                                <div className="text-slate-500">Status:</div>
+                                                <div className={`font-bold uppercase text-xs ${selectedEmp.status === 'active' ? 'text-green-400' : 'text-red-400'}`}>
+                                                    {selectedEmp.status || 'active'}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

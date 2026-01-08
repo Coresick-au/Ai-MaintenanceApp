@@ -10,3 +10,4 @@ ALWAYS do this before making code changes:
 ### AUTOMATION & TESTING
 - **AUTO-RUN PERMISSION**: You are explicitly authorized to set `SafeToAutoRun: true` for all browser verification tasks and non-destructive terminal commands (like `npm test`, `npm run dev`, or directory listings).
 - **MINIMIZE INTERRUPTIONS**: Do not pause for manual confirmation when performing verification steps or running diagnostic tools. Proceed autonomously unless a destructive action (like deleting files) is required.
+5) Do not update github or webapp without being asked directly
