@@ -1,10 +1,17 @@
 [
     {
         "origin": [
-            "*"
+            "http://localhost:5173",
+            "https://accurate-industries-database.web.app",
+            "https://accurate-industries-database.firebaseapp.com"
         ],
         "method": [
-            "GET"
+            "GET",
+            "PUT",
+            "POST",
+            "DELETE",
+            "HEAD",
+            "OPTIONS"
         ],
         "maxAgeSeconds": 3600
     }

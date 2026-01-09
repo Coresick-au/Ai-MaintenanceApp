@@ -1,25 +1,55 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Helper function to check if user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
     
+    // Helper function to check if user has 'admin' role
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Default: Allow all for now (matching existing loose rules)
-    // But we will add specific rules for timesheets as requested
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper function to check if user is accessing their own document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Specific rules for timesheets
+    // --- Specific Collection Rules ---
+
+    // Users Collection: Protect against privilege escalation
+    match /users/{userId} {
+      // Users can read their own profile; Admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Only Admins can create/delete users or change roles
+      // Users can update their own profile BUT NOT their role
+      allow create: if isAdmin();
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Timesheets: Existing rules preserved and refined
     match /timesheets/{timesheetId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Business Data: Customers, Sites, Employees, Quotes
+    // Currently allowing read/write for ALL authenticated users to prevent lockout
+    // TODO: Refine this further if regular users shouldn't edit customers/sites
+    match /customers/{document=**} { allow read, write: if isSignedIn(); }
+    match /sites/{document=**} { allow read, write: if isSignedIn(); }
+    match /employees/{document=**} { allow read, write: if isSignedIn(); }
+    match /quotes/{document=**} { allow read, write: if isSignedIn(); }
+    match /inventory/{document=**} { allow read, write: if isSignedIn(); }
+
+    // Default Fallback: DENY EVERYTHING else
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
