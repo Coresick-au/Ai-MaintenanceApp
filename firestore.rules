@@ -48,21 +48,50 @@ service cloud.firestore {
     match /inventory/{document=**} { allow read, write: if isSignedIn(); }
     match /jobsheets/{document=**} { allow read, write: if isSignedIn(); }
     
-    // Inventory App Collections
+    // Inventory & Catalog
     match /part_catalog/{document=**} { allow read, write: if isSignedIn(); }
-    match /fasteners/{document=**} { allow read, write: if isSignedIn(); }
+    match /fastener_catalog/{document=**} { allow read, write: if isSignedIn(); }
     match /products/{document=**} { allow read, write: if isSignedIn(); }
-    match /subassemblies/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assemblies/{document=**} { allow read, write: if isSignedIn(); }
     match /categories/{document=**} { allow read, write: if isSignedIn(); }
     match /locations/{document=**} { allow read, write: if isSignedIn(); }
     match /suppliers/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Inventory Management
+    match /part_suppliers/{document=**} { allow read, write: if isSignedIn(); }
     match /part_supplier_pricing/{document=**} { allow read, write: if isSignedIn(); }
     match /inventory_state/{document=**} { allow read, write: if isSignedIn(); }
+    match /stock_movements/{document=**} { allow read, write: if isSignedIn(); }
     match /serialized_assets/{document=**} { allow read, write: if isSignedIn(); }
+    match /shipping_records/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Composition & BOM
+    match /product_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_fastener_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_sub_assembly_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assembly_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assembly_fastener_composition/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Specialized Components
+    match /weigher_models/{document=**} { allow read, write: if isSignedIn(); }
+    match /weigh_modules_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /idler_frames_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /billet_weights_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /rollers_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /speed_sensors_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /tmd_frames_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /idler_frame_config/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Misc
     match /settings/{document=**} { allow read, write: if isSignedIn(); }
+    match /app_settings/{document=**} { allow read, write: if isSignedIn(); }
     match /build_guides/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_build_guides/{document=**} { allow read, write: if isSignedIn(); }
     match /specialized_components/{document=**} { allow read, write: if isSignedIn(); }
-    match /shipping_history/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Cost History (Additional)
+    match /part_cost_history/{document=**} { allow read, write: if isSignedIn(); }
 
     // Default Fallback: DENY EVERYTHING else
     match /{document=**} {
