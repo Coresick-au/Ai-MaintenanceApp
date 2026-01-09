@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { customerRepository, siteRepository, employeeRepository, jobsheetRepository } from '../repositories';
+import { useAuth } from './AuthContext';
 
 const GlobalDataContext = createContext();
 
 export const GlobalDataProvider = ({ children }) => {
+    const { currentUser } = useAuth();
     const [customers, setCustomers] = useState([]);
     const [sites, setSites] = useState([]);
     const [employees, setEmployees] = useState([]);
@@ -13,8 +15,20 @@ export const GlobalDataProvider = ({ children }) => {
     const [isRepairing, setIsRepairing] = useState(false);
 
     // --- SYNC FROM FIREBASE USING REPOSITORIES ---
+    // Only subscribe when user is authenticated
     useEffect(() => {
-        console.log('[GlobalDataContext] Initializing Repository Listeners...');
+        // If not logged in, reset state and don't subscribe
+        if (!currentUser) {
+            console.log('[GlobalDataContext] No user logged in, skipping subscriptions');
+            setCustomers([]);
+            setSites([]);
+            setEmployees([]);
+            setJobsheets([]);
+            setLoading(false);
+            return;
+        }
+
+        console.log('[GlobalDataContext] User authenticated, initializing Repository Listeners...');
 
         // 1. Sync Customers
         const unsubCustomers = customerRepository.subscribe(
@@ -71,7 +85,7 @@ export const GlobalDataProvider = ({ children }) => {
             unsubEmployees();
             unsubJobsheets();
         };
-    }, []);
+    }, [currentUser]);
 
     // --- AUTO-REPAIR ORPHANED SITES ---
     // This finds sites that have a 'customer' name string but no 'customerId' link

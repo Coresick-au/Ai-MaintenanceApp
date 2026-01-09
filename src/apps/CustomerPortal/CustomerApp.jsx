@@ -582,8 +582,8 @@ export const CustomerApp = ({ onBack }) => {
                                     </div>
 
                                     <div className="space-y-3">
-                                        {(selectedCustomer.contacts || []).map(contact => (
-                                            <div key={contact.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700/50 group">
+                                        {(selectedCustomer.contacts || []).map((contact, index) => (
+                                            <div key={contact.id || `contact-${index}`} className="bg-slate-800 p-3 rounded-lg border border-slate-700/50 group">
                                                 <div className="flex justify-between items-start">
                                                     <div className="flex-1">
                                                         <div className="flex items-center gap-2">
@@ -618,10 +618,10 @@ export const CustomerApp = ({ onBack }) => {
                                                     {contact.managedSites && contact.managedSites.length > 0 && (
                                                         <div className="flex flex-wrap gap-1 mt-2">
                                                             <span className="text-slate-400">Manages:</span>
-                                                            {contact.managedSites.map(siteId => {
+                                                            {contact.managedSites.map((siteId, idx) => {
                                                                 const site = sites.find(s => s.id === siteId);
                                                                 return site ? (
-                                                                    <span key={siteId} className="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded text-[10px] border border-emerald-800">
+                                                                    <span key={siteId || `site-${idx}`} className="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded text-[10px] border border-emerald-800">
                                                                         {site.name}
                                                                     </span>
                                                                 ) : null;
