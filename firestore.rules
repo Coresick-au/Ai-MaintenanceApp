@@ -47,6 +47,22 @@ service cloud.firestore {
     match /quotes/{document=**} { allow read, write: if isSignedIn(); }
     match /inventory/{document=**} { allow read, write: if isSignedIn(); }
     match /jobsheets/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Inventory App Collections
+    match /part_catalog/{document=**} { allow read, write: if isSignedIn(); }
+    match /fasteners/{document=**} { allow read, write: if isSignedIn(); }
+    match /products/{document=**} { allow read, write: if isSignedIn(); }
+    match /subassemblies/{document=**} { allow read, write: if isSignedIn(); }
+    match /categories/{document=**} { allow read, write: if isSignedIn(); }
+    match /locations/{document=**} { allow read, write: if isSignedIn(); }
+    match /suppliers/{document=**} { allow read, write: if isSignedIn(); }
+    match /part_supplier_pricing/{document=**} { allow read, write: if isSignedIn(); }
+    match /inventory_state/{document=**} { allow read, write: if isSignedIn(); }
+    match /serialized_assets/{document=**} { allow read, write: if isSignedIn(); }
+    match /settings/{document=**} { allow read, write: if isSignedIn(); }
+    match /build_guides/{document=**} { allow read, write: if isSignedIn(); }
+    match /specialized_components/{document=**} { allow read, write: if isSignedIn(); }
+    match /shipping_history/{document=**} { allow read, write: if isSignedIn(); }
 
     // Default Fallback: DENY EVERYTHING else
     match /{document=**} {
