@@ -5,6 +5,8 @@ import { Icons } from '../../constants/icons';
 import { getLowestSupplierPrice } from '../../services/partPricingService';
 import { formatCurrency } from '../../utils/helpers';
 import { deletePart } from '../../services/inventoryService';
+import { getAllPricing } from '../../services/partPricingService';
+import { exportToCSV } from '../../utils/csvExportImport';
 import { FilterPanel } from './categories/FilterPanel';
 import { useCategories } from '../../context/CategoryContext';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
@@ -18,6 +20,7 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
     const [viewingPart, setViewingPart] = useState(null);
     const [lowestPrices, setLowestPrices] = useState({});
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const [categoryFilters, setCategoryFilters] = useState([]);
     const { categories } = useCategories();
     const tableRef = useRef(null);
@@ -197,6 +200,70 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
         return 'text-red-400';
     };
 
+    const handleExportCatalog = () => {
+        try {
+            const dataToExport = filteredAndSortedParts.map(part => ({
+                SKU: part.sku,
+                Name: part.name,
+                Category: getCategoryName(part.categoryId),
+                Subcategories: (part.subcategoryIds || (part.subcategoryId ? [part.subcategoryId] : []))
+                    .map(id => getCategoryName(id))
+                    .join('; '),
+                Material: part.material || '',
+                Description: part.description || '',
+                Suppliers: (part.suppliers || []).join('; '),
+                'Supplier SKUs': Object.entries(part.supplierSKUs || {})
+                    .map(([supplier, sku]) => `${supplier}: ${sku}`)
+                    .join('; '),
+                'Cost Price': (part.activeCost / 100).toFixed(2),
+                'List Price': (part.listPrice / 100).toFixed(2),
+                'Margin %': part.actualMarginPercent.toFixed(1),
+                'Stock Count': part.actualStockCount || 0,
+                'Reorder Level': part.reorderLevel || 0,
+                'Location ID': part.locationId || ''
+            }));
+
+            const timestamp = new Date().toISOString().split('T')[0];
+            exportToCSV(dataToExport, `Parts_Catalog_Export_${timestamp}.csv`);
+        } catch (error) {
+            console.error('Error exporting catalog:', error);
+            alert('Failed to export catalog');
+        }
+    };
+
+    const handleExportCosts = async () => {
+        try {
+            // Get all pricing data
+            const allPricing = await getAllPricing();
+
+            // Filter to include only parts currently in view
+            const visiblePartIds = new Set(filteredAndSortedParts.map(p => p.id));
+
+            const dataToExport = allPricing
+                .filter(price => visiblePartIds.has(price.partId))
+                .map(price => {
+                    const part = parts.find(p => p.id === price.partId);
+                    return {
+                        'Part SKU': part ? part.sku : 'Unknown',
+                        'Part Name': part ? part.name : 'Unknown',
+                        'Supplier': price.supplierName,
+                        'Effective Date': price.effectiveDate ? new Date(price.effectiveDate).toLocaleDateString() : '',
+                        'Cost Price': (price.costPrice / 100).toFixed(2),
+                        'Quantity': price.quantity || 1,
+                        'Unit Cost': (price.costPrice / 100).toFixed(2),
+                        'Total Cost': ((price.costPrice * (price.quantity || 1)) / 100).toFixed(2),
+                        'Notes': price.notes || ''
+                    };
+                });
+
+            const timestamp = new Date().toISOString().split('T')[0];
+            exportToCSV(dataToExport, `Parts_Cost_History_${timestamp}.csv`);
+        } catch (error) {
+            console.error('Error exporting costs:', error);
+            alert('Failed to export cost history');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -251,6 +318,45 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                             <Icons.Plus size={18} />
                             Add Part
                         </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors border ${isExportMenuOpen ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600'}`}
+                            >
+                                <Icons.Download size={18} />
+                                Export
+                            </button>
+                            {isExportMenuOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-10"
+                                        onClick={() => setIsExportMenuOpen(false)}
+                                    ></div>
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
+                                        <button
+                                            onClick={() => {
+                                                handleExportCatalog();
+                                                setIsExportMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-3 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2"
+                                        >
+                                            <Icons.FileText size={16} />
+                                            Export Catalog
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleExportCosts();
+                                                setIsExportMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-3 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2 border-t border-slate-700"
+                                        >
+                                            <Icons.DollarSign size={16} />
+                                            Export Cost History
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 

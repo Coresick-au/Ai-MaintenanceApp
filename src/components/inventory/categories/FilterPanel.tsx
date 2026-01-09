@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Filter, X } from 'lucide-react';
 import { useCategories } from '../../../context/CategoryContext';
 
@@ -19,8 +19,28 @@ interface FilterPanelProps {
  */
 export function FilterPanel({ onApply, onClose, activeFilters = [] }: FilterPanelProps) {
     const { categories } = useCategories();
-    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>(activeFilters);
+    const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
     const [selectedSubcategoryIds, setSelectedSubcategoryIds] = useState<string[]>([]);
+
+    // Initialize state from activeFilters prop safely
+    // We need to do this in an effect because categories might load asynchronously
+    useEffect(() => {
+        if (categories.length > 0) {
+            const roots: string[] = [];
+            const subs: string[] = [];
+
+            activeFilters.forEach(id => {
+                const cat = categories.find(c => c.id === id);
+                if (cat) {
+                    if (cat.parentId === null) roots.push(id);
+                    else subs.push(id);
+                }
+            });
+
+            setSelectedCategoryIds(roots);
+            setSelectedSubcategoryIds(subs);
+        }
+    }, [categories, activeFilters]);
 
     // Filter root categories (parentId === null)
     const rootCategories = useMemo(() => {
@@ -39,6 +59,21 @@ export function FilterPanel({ onApply, onClose, activeFilters = [] }: FilterPane
         );
     }, [categories, selectedCategoryIds]);
 
+    // Group available subcategories by name to deduplicate in UI
+    const subcategoriesByName = useMemo(() => {
+        const groups: Record<string, string[]> = {};
+        availableSubcategories.forEach(sub => {
+            if (!groups[sub.name]) groups[sub.name] = [];
+            groups[sub.name].push(sub.id);
+        });
+        return groups;
+    }, [availableSubcategories]);
+
+    // Get sorted unique subcategory names
+    const sortedSubNames = useMemo(() => {
+        return Object.keys(subcategoriesByName).sort();
+    }, [subcategoriesByName]);
+
     const handleCategoryToggle = (categoryId: string) => {
         setSelectedCategoryIds(prev => {
             const newSelection = prev.includes(categoryId)
@@ -48,12 +83,26 @@ export function FilterPanel({ onApply, onClose, activeFilters = [] }: FilterPane
         });
     };
 
-    const handleSubcategoryToggle = (subcategoryId: string) => {
+    const handleSubcategoryNameToggle = (name: string) => {
+        const idsForName = subcategoriesByName[name] || [];
+
         setSelectedSubcategoryIds(prev => {
-            const newSelection = prev.includes(subcategoryId)
-                ? prev.filter(id => id !== subcategoryId)
-                : [...prev, subcategoryId];
-            return newSelection;
+            // Check if all IDs for this name are currently selected
+            // (or if at least one is selected? Logic: treating name as the entity implies yes/no)
+            // Let's strictly toggle: 
+            // If ALL are selected -> Deselect ALL
+            // Otherwise -> Select ALL (including missing ones)
+
+            const allSelected = idsForName.every(id => prev.includes(id));
+
+            if (allSelected) {
+                // Remove all IDs associated with this name
+                return prev.filter(id => !idsForName.includes(id));
+            } else {
+                // Add all IDs associated with this name (filtering out ones already there to be safe)
+                const toAdd = idsForName.filter(id => !prev.includes(id));
+                return [...prev, ...toAdd];
+            }
         });
     };
 
@@ -69,6 +118,12 @@ export function FilterPanel({ onApply, onClose, activeFilters = [] }: FilterPane
     };
 
     const activeFilterCount = selectedCategoryIds.length + selectedSubcategoryIds.length;
+
+    // Helper to check if a subcategory name group is selected
+    const isSubcategoryNameSelected = (name: string) => {
+        const ids = subcategoriesByName[name] || [];
+        return ids.length > 0 && ids.every(id => selectedSubcategoryIds.includes(id));
+    };
 
     return (
         <div className="fixed inset-0 z-40 flex items-start justify-end bg-black/50" onClick={onClose}>
@@ -134,7 +189,7 @@ export function FilterPanel({ onApply, onClose, activeFilters = [] }: FilterPane
                     </div>
 
                     {/* Subcategories */}
-                    {availableSubcategories.length > 0 && (
+                    {sortedSubNames.length > 0 && (
                         <div>
                             <div className="flex items-center justify-between mb-3">
                                 <label className="text-sm font-medium text-slate-300">Subcategories</label>
@@ -148,18 +203,18 @@ export function FilterPanel({ onApply, onClose, activeFilters = [] }: FilterPane
                                 )}
                             </div>
                             <div className="space-y-2">
-                                {availableSubcategories.map(subcategory => (
+                                {sortedSubNames.map(name => (
                                     <label
-                                        key={subcategory.id}
+                                        key={name}
                                         className="flex items-center gap-3 p-2 rounded hover:bg-slate-700/50 cursor-pointer transition-colors"
                                     >
                                         <input
                                             type="checkbox"
-                                            checked={selectedSubcategoryIds.includes(subcategory.id)}
-                                            onChange={() => handleSubcategoryToggle(subcategory.id)}
+                                            checked={isSubcategoryNameSelected(name)}
+                                            onChange={() => handleSubcategoryNameToggle(name)}
                                             className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-800"
                                         />
-                                        <span className="text-sm text-slate-200">{subcategory.name}</span>
+                                        <span className="text-sm text-slate-200">{name}</span>
                                     </label>
                                 ))}
                             </div>

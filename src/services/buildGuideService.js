@@ -3,22 +3,23 @@ import { db } from '../firebase';
 import { storage } from '../firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { collection, getDocs, query, where } from 'firebase/firestore';
-import { buildGuideRepository, productCompositionRepository } from '../repositories';
+import { buildGuideRepository, productCompositionRepository, subAssemblyCompositionRepository } from '../repositories';
 import { compressImage } from '../utils/imageCompression';
 
 /**
- * Save or update a build guide for a product
+ * Save or update a build guide for an item (product or sub assembly)
  * @description Creates a new build guide or updates existing one.
  * Validates that steps array is not empty.
- * @param {string} productId - The product ID
+ * @param {string} itemId - The item ID (product or sub assembly)
+ * @param {string} itemType - The item type ('product' or 'subassembly')
  * @param {Array<Object>} steps - Array of build steps
  * @returns {Promise<Object>} Saved build guide
  * @example
- * const guide = await saveBuildGuide('prod-123', [
+ * const guide = await saveBuildGuide('prod-123', 'product', [
  *   { stepNumber: 1, instruction: 'Attach base plate', notes: '' }
  * ]);
  */
-export const saveBuildGuide = async (productId, steps) => {
+export const saveBuildGuide = async (itemId, itemType, steps) => {
     try {
         if (!steps || steps.length === 0) {
             throw new Error('At least one build step is required');
@@ -31,11 +32,12 @@ export const saveBuildGuide = async (productId, steps) => {
             }
         });
 
-        // Check if guide already exists for this product
-        const existingGuide = await buildGuideRepository.getBuildGuideForProduct(productId);
+        // Check if guide already exists for this item
+        const existingGuide = await buildGuideRepository.getBuildGuideForItem(itemId, itemType);
 
         const buildGuideData = {
-            productId,
+            itemId,
+            itemType,
             steps: steps.map((step, index) => ({
                 stepNumber: index + 1,
                 instruction: step.instruction,
@@ -62,24 +64,30 @@ export const saveBuildGuide = async (productId, steps) => {
 
 /**
  * Get build guide with enriched BOM data
- * @description Fetches the build guide and enriches it with product BOM details
+ * @description Fetches the build guide and enriches it with item BOM details
  * including parts and fasteners with full catalog information.
- * @param {string} productId - The product ID
+ * @param {string} itemId - The item ID (product or sub assembly)
+ * @param {string} itemType - The item type ('product' or 'subassembly')
  * @returns {Promise<Object|null>} Build guide with BOM data or null if no guide exists
  * @example
- * const guideWithBOM = await getBuildGuideWithBOM('prod-123');
+ * const guideWithBOM = await getBuildGuideWithBOM('prod-123', 'product');
  * // returns {
- * //   guide: { id: 'guide-xxx', productId: 'prod-123', steps: [...] },
+ * //   guide: { id: 'guide-xxx', itemId: 'prod-123', itemType: 'product', steps: [...] },
  * //   bom: { parts: [...], fasteners: [...] }
  * // }
  */
-export const getBuildGuideWithBOM = async (productId) => {
+export const getBuildGuideWithBOM = async (itemId, itemType = 'product') => {
     try {
         // Fetch the build guide
-        const guide = await buildGuideRepository.getBuildGuideForProduct(productId);
+        const guide = await buildGuideRepository.getBuildGuideForItem(itemId, itemType);
 
-        // Fetch the product's BOM
-        const bom = await productCompositionRepository.getBOMForProduct(productId);
+        // Fetch the item's BOM based on type
+        let bom;
+        if (itemType === 'subassembly') {
+            bom = await subAssemblyCompositionRepository.getBOMForSubAssembly(itemId);
+        } else {
+            bom = await productCompositionRepository.getBOMForProduct(itemId);
+        }
 
         // Enrich BOM with catalog data
         const enrichedBOM = await enrichBOMWithCatalogData(bom);
@@ -173,19 +181,20 @@ const enrichBOMWithCatalogData = async (bom) => {
 
 /**
  * Upload an image for a build guide step
- * @param {string} productId - The product ID
+ * @param {string} itemId - The item ID (product or sub assembly)
+ * @param {string} itemType - The item type ('product' or 'subassembly')
  * @param {number} stepNumber - The step number
  * @param {File} file - Image file to upload
  * @returns {Promise<Object>} { url, path } of uploaded image
  */
-export const uploadStepImage = async (productId, stepNumber, file) => {
+export const uploadStepImage = async (itemId, itemType, stepNumber, file) => {
     try {
         // Compress the image first
         console.log('[BuildGuideService] Compressing image...');
         const compressedFile = await compressImage(file);
 
         // Create storage path
-        const imagePath = `build-guides/${productId}/${stepNumber}/image.jpg`;
+        const imagePath = `build-guides/${itemType}/${itemId}/${stepNumber}/image.jpg`;
         const storageRef = ref(storage, imagePath);
 
         // Upload compressed image
@@ -228,14 +237,15 @@ export const deleteStepImage = async (imagePath) => {
 };
 
 /**
- * Delete a build guide for a product
+ * Delete a build guide for an item
  * @description Removes the build guide document from Firestore and cleans up associated images
- * @param {string} productId - The product ID
+ * @param {string} itemId - The item ID (product or sub assembly)
+ * @param {string} itemType - The item type ('product' or 'subassembly')
  * @returns {Promise<boolean>} True if successful
  */
-export const deleteBuildGuide = async (productId) => {
+export const deleteBuildGuide = async (itemId, itemType = 'product') => {
     try {
-        const guide = await buildGuideRepository.getBuildGuideForProduct(productId);
+        const guide = await buildGuideRepository.getBuildGuideForItem(itemId, itemType);
 
         if (!guide) {
             throw new Error('No build guide found for this product');
@@ -256,7 +266,7 @@ export const deleteBuildGuide = async (productId) => {
         }
 
         await buildGuideRepository.delete(guide.id);
-        console.log('[BuildGuideService] Build guide deleted for product:', productId);
+        console.log('[BuildGuideService] Build guide deleted for item:', itemId, itemType);
         return true;
     } catch (error) {
         console.error('[BuildGuideService] Error deleting build guide:', error);

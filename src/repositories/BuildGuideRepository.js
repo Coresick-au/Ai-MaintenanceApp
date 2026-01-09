@@ -3,31 +3,33 @@ import { db } from '../firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 
 /**
- * Repository for managing product build guides
+ * Repository for managing build guides for products and sub assemblies
  * @description Handles CRUD operations for assembly instructions and build guides
- * that reference product BOMs (Bill of Materials).
+ * that reference product or sub assembly BOMs (Bill of Materials).
  * @extends BaseRepository
  */
 export class BuildGuideRepository extends BaseRepository {
     constructor() {
-        super('product_build_guides');
+        super('build_guides');
     }
 
     /**
-     * Get build guide for a specific product
-     * @description Retrieves the build guide document for a product.
-     * Returns null if no guide exists for the product.
-     * @param {string} productId - The product ID to query
+     * Get build guide for a specific item (product or sub assembly)
+     * @description Retrieves the build guide document for an item.
+     * Returns null if no guide exists for the item.
+     * @param {string} itemId - The item ID to query
+     * @param {string} itemType - The item type ('product' or 'subassembly')
      * @returns {Promise<Object|null>} Build guide document or null
      * @example
-     * const guide = await repo.getBuildGuideForProduct('prod-123');
-     * // returns { id: 'guide-xxx', productId: 'prod-123', steps: [...] }
+     * const guide = await repo.getBuildGuideForItem('prod-123', 'product');
+     * // returns { id: 'guide-xxx', itemId: 'prod-123', itemType: 'product', steps: [...] }
      */
-    async getBuildGuideForProduct(productId) {
+    async getBuildGuideForItem(itemId, itemType) {
         try {
             const q = query(
                 collection(db, this.collectionName),
-                where('productId', '==', productId)
+                where('itemId', '==', itemId),
+                where('itemType', '==', itemType)
             );
             const querySnapshot = await getDocs(q);
 
@@ -35,13 +37,23 @@ export class BuildGuideRepository extends BaseRepository {
                 return null;
             }
 
-            // Return the first matching guide (there should only be one per product)
+            // Return the first matching guide (there should only be one per item)
             const doc = querySnapshot.docs[0];
             return { id: doc.id, ...doc.data() };
         } catch (error) {
-            console.error('[BuildGuideRepository] Error getting build guide for product:', error);
+            console.error('[BuildGuideRepository] Error getting build guide for item:', error);
             throw error;
         }
+    }
+
+    /**
+     * Get build guide for a specific product (legacy method for backward compatibility)
+     * @deprecated Use getBuildGuideForItem instead
+     * @param {string} productId - The product ID to query
+     * @returns {Promise<Object|null>} Build guide document or null
+     */
+    async getBuildGuideForProduct(productId) {
+        return this.getBuildGuideForItem(productId, 'product');
     }
 
     /**
@@ -59,8 +71,14 @@ export class BuildGuideRepository extends BaseRepository {
     async save(buildGuideData) {
         try {
             // Validate required fields
-            if (!buildGuideData.productId) {
-                throw new Error('productId is required');
+            if (!buildGuideData.itemId) {
+                throw new Error('itemId is required');
+            }
+            if (!buildGuideData.itemType) {
+                throw new Error('itemType is required (product or subassembly)');
+            }
+            if (!['product', 'subassembly'].includes(buildGuideData.itemType)) {
+                throw new Error('itemType must be either "product" or "subassembly"');
             }
             if (!buildGuideData.steps || !Array.isArray(buildGuideData.steps)) {
                 throw new Error('steps array is required');

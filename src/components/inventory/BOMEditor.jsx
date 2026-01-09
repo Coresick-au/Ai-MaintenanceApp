@@ -41,7 +41,7 @@ export const BOMEditor = ({
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'part_catalog'), (snap) => {
             const partsList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            partsList.sort((a, b) => a.name.localeCompare(b.name));
+            partsList.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
             setParts(partsList);
         });
 
@@ -52,7 +52,7 @@ export const BOMEditor = ({
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'fastener_catalog'), (snap) => {
             const fastenersList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            fastenersList.sort((a, b) => a.name.localeCompare(b.name));
+            fastenersList.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
             setFasteners(fastenersList);
         });
 
@@ -63,7 +63,7 @@ export const BOMEditor = ({
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'sub_assemblies'), (snap) => {
             const subAssembliesList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            subAssembliesList.sort((a, b) => a.name.localeCompare(b.name));
+            subAssembliesList.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
             setSubAssemblies(subAssembliesList);
         });
 
@@ -236,7 +236,7 @@ export const BOMEditor = ({
                         <select
                             value={selectedPartId}
                             onChange={(e) => setSelectedPartId(e.target.value)}
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                            className="flex-1 min-w-[400px] px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                         >
                             <option value="">Select a part...</option>
                             {availableParts.map(part => (
@@ -339,7 +339,7 @@ export const BOMEditor = ({
                         <select
                             value={selectedFastenerId}
                             onChange={(e) => setSelectedFastenerId(e.target.value)}
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
+                            className="flex-1 min-w-[400px] px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-amber-500"
                         >
                             <option value="">Select a fastener...</option>
                             {availableFasteners.map(fastener => (
@@ -442,7 +442,7 @@ export const BOMEditor = ({
                         <select
                             value={selectedSubAssemblyId}
                             onChange={(e) => setSelectedSubAssemblyId(e.target.value)}
-                            className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            className="flex-1 min-w-[400px] px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-purple-500"
                         >
                             <option value="">Select a sub assembly...</option>
                             {availableSubAssemblies.map(subAssembly => (

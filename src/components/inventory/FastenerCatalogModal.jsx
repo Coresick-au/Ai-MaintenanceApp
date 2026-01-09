@@ -27,6 +27,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
         categoryId: null,
         subcategoryId: null,
         suppliers: [],
+        supplierSKUs: {}, // Map of supplier name to their SKU/part number
         description: '',
         material: '', // Optional material field
         costPrice: '',
@@ -41,6 +42,8 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [generatingSKU, setGeneratingSKU] = useState(false);
+    const [editingSKUs, setEditingSKUs] = useState({}); // Track which supplier SKUs are being edited
 
     // Preserve list price and margin when toggling saleable
     const [preservedListPrice, setPreservedListPrice] = useState('');
@@ -87,6 +90,19 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
 
     useEffect(() => {
         if (editingFastener) {
+            // Handle backward compatibility for supplierSKU -> supplierSKUs migration
+            let supplierSKUs = {};
+            if (editingFastener.supplierSKUs && typeof editingFastener.supplierSKUs === 'object') {
+                // New format: use the object directly
+                supplierSKUs = editingFastener.supplierSKUs;
+            } else if (editingFastener.supplierSKU && typeof editingFastener.supplierSKU === 'string') {
+                // Old format: apply the single SKU to all suppliers
+                const suppliers = editingFastener.suppliers || (editingFastener.supplier ? [editingFastener.supplier] : []);
+                suppliers.forEach(supplier => {
+                    supplierSKUs[supplier] = editingFastener.supplierSKU;
+                });
+            }
+
             setFormData({
                 sku: editingFastener.sku,
                 name: editingFastener.name,
@@ -95,6 +111,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 subcategoryId: editingFastener.subcategoryId || null,
                 // Migration: convert old supplier string to array
                 suppliers: editingFastener.suppliers || (editingFastener.supplier ? [editingFastener.supplier] : []),
+                supplierSKUs,
                 description: editingFastener.description || '',
                 material: editingFastener.material || '',
                 costPrice: (editingFastener.costPrice / 100).toFixed(2),
@@ -116,6 +133,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 categoryId: null,
                 subcategoryId: null,
                 suppliers: [],
+                supplierSKUs: {},
                 description: '',
                 material: '',
                 costPrice: '',
@@ -206,10 +224,20 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
     };
 
     const handleRemoveSupplier = (supplierToRemove) => {
-        setFormData(prev => ({
-            ...prev,
-            suppliers: (prev.suppliers || []).filter(s => s !== supplierToRemove)
-        }));
+        setFormData(prev => {
+            // Remove supplier from array
+            const updatedSuppliers = (prev.suppliers || []).filter(s => s !== supplierToRemove);
+
+            // Remove supplier's SKU from object
+            const updatedSKUs = { ...prev.supplierSKUs };
+            delete updatedSKUs[supplierToRemove];
+
+            return {
+                ...prev,
+                suppliers: updatedSuppliers,
+                supplierSKUs: updatedSKUs
+            };
+        });
     };
 
     // Calculate list price when in CALCULATED mode for saleable fasteners
@@ -256,6 +284,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 suppliers: formData.suppliers || [],
+                supplierSKUs: formData.supplierSKUs || {},
                 description: formData.description.trim(),
                 material: formData.material || '',
                 locationId: formData.locationId,
@@ -468,14 +497,36 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                                         </button>
                                     </div>
 
-                                    {/* Suppliers List */}
+                                    {/* Suppliers List with inline SKU inputs */}
                                     {formData.suppliers?.length > 0 && (
                                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                             <p className="text-xs text-slate-400 mb-2">Added Suppliers:</p>
-                                            <div className="space-y-1">
+                                            <div className="space-y-2">
                                                 {formData.suppliers.map((supplier, index) => (
-                                                    <div key={index} className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                                                        <span className="text-sm text-white">{supplier}</span>
+                                                    <div key={index} className="flex items-center gap-2 p-2 bg-slate-700/50 rounded">
+                                                        <span className="text-sm text-white font-medium min-w-[120px]">{supplier}</span>
+                                                        <input
+                                                            type="text"
+                                                            value={formData.supplierSKUs[supplier] || ''}
+                                                            onChange={(e) => setFormData(prev => ({
+                                                                ...prev,
+                                                                supplierSKUs: {
+                                                                    ...prev.supplierSKUs,
+                                                                    [supplier]: e.target.value
+                                                                }
+                                                            }))}
+                                                            placeholder="Supplier's part number..."
+                                                            readOnly={!editingSKUs[supplier]}
+                                                            className={`flex-1 px-2 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 ${!editingSKUs[supplier] ? 'cursor-not-allowed opacity-75' : ''}`}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingSKUs(prev => ({ ...prev, [supplier]: !prev[supplier] }))}
+                                                            className={`p-1 rounded transition-colors ${editingSKUs[supplier] ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-slate-600/50 text-slate-300 hover:bg-slate-600'}`}
+                                                            title={editingSKUs[supplier] ? 'Lock SKU' : 'Edit SKU'}
+                                                        >
+                                                            {editingSKUs[supplier] ? <Icons.Lock size={16} /> : <Icons.Edit size={16} />}
+                                                        </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveSupplier(supplier)}

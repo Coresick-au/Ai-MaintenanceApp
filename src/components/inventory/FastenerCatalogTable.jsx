@@ -5,6 +5,8 @@ import { Icons } from '../../constants/icons';
 import { getLowestSupplierPrice } from '../../services/partPricingService';
 import { formatCurrency } from '../../utils/helpers';
 import { deleteFastener } from '../../services/inventoryService';
+import { getAllPricing } from '../../services/partPricingService';
+import { exportToCSV } from '../../utils/csvExportImport';
 import { FilterPanel } from './categories/FilterPanel';
 import { useCategories } from '../../context/CategoryContext';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
@@ -18,6 +20,7 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
     const [viewingFastener, setViewingFastener] = useState(null);
     const [lowestPrices, setLowestPrices] = useState({});
     const [isFilterOpen, setIsFilterOpen] = useState(false);
+    const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
     const [categoryFilters, setCategoryFilters] = useState([]);
     const { categories } = useCategories();
     const tableRef = useRef(null);
@@ -187,6 +190,67 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
         return 'text-red-400';
     };
 
+    const handleExportCatalog = () => {
+        try {
+            const dataToExport = filteredAndSortedFasteners.map(fastener => ({
+                SKU: fastener.sku,
+                Name: fastener.name,
+                Category: getCategoryName(fastener.categoryId),
+                Subcategory: getCategoryName(fastener.subcategoryId) || '',
+                Description: fastener.description || '',
+                Suppliers: (fastener.suppliers || []).join('; '),
+                'Supplier SKUs': Object.entries(fastener.supplierSKUs || {})
+                    .map(([supplier, sku]) => `${supplier}: ${sku}`)
+                    .join('; '),
+                'Cost Price': (fastener.activeCost / 100).toFixed(2),
+                'List Price': (fastener.listPrice / 100).toFixed(2),
+                'Margin %': fastener.actualMarginPercent.toFixed(1),
+                'Stock Count': fastener.actualStockCount || 0,
+                'Reorder Level': fastener.reorderLevel || 0,
+                'Location ID': fastener.locationId || ''
+            }));
+
+            const timestamp = new Date().toISOString().split('T')[0];
+            exportToCSV(dataToExport, `Fasteners_Catalog_Export_${timestamp}.csv`);
+        } catch (error) {
+            console.error('Error exporting catalog:', error);
+            alert('Failed to export catalog');
+        }
+    };
+
+    const handleExportCosts = async () => {
+        try {
+            // Get all pricing data
+            const allPricing = await getAllPricing();
+
+            // Filter to include only fasteners currently in view
+            const visibleFastenerIds = new Set(filteredAndSortedFasteners.map(f => f.id));
+
+            const dataToExport = allPricing
+                .filter(price => visibleFastenerIds.has(price.partId))
+                .map(price => {
+                    const fastener = fasteners.find(f => f.id === price.partId);
+                    return {
+                        'Fastener SKU': fastener ? fastener.sku : 'Unknown',
+                        'Fastener Name': fastener ? fastener.name : 'Unknown',
+                        'Supplier': price.supplierName,
+                        'Effective Date': price.effectiveDate ? new Date(price.effectiveDate).toLocaleDateString() : '',
+                        'Cost Price': (price.costPrice / 100).toFixed(2),
+                        'Quantity': price.quantity || 1,
+                        'Unit Cost': (price.costPrice / 100).toFixed(2),
+                        'Total Cost': ((price.costPrice * (price.quantity || 1)) / 100).toFixed(2),
+                        'Notes': price.notes || ''
+                    };
+                });
+
+            const timestamp = new Date().toISOString().split('T')[0];
+            exportToCSV(dataToExport, `Fasteners_Cost_History_${timestamp}.csv`);
+        } catch (error) {
+            console.error('Error exporting costs:', error);
+            alert('Failed to export cost history');
+        }
+    };
+
     if (loading) {
         return (
             <div className="flex items-center justify-center h-64">
@@ -241,6 +305,45 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                             <Icons.Plus size={18} />
                             Add Fastener
                         </button>
+                        <div className="relative">
+                            <button
+                                onClick={() => setIsExportMenuOpen(!isExportMenuOpen)}
+                                className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-colors border ${isExportMenuOpen ? 'bg-slate-600 text-white border-slate-500' : 'bg-slate-700 text-white border-slate-600 hover:bg-slate-600'}`}
+                            >
+                                <Icons.Download size={18} />
+                                Export
+                            </button>
+                            {isExportMenuOpen && (
+                                <>
+                                    <div
+                                        className="fixed inset-0 z-10"
+                                        onClick={() => setIsExportMenuOpen(false)}
+                                    ></div>
+                                    <div className="absolute right-0 top-full mt-2 w-48 bg-slate-800 border border-slate-700 rounded-lg shadow-xl overflow-hidden z-20">
+                                        <button
+                                            onClick={() => {
+                                                handleExportCatalog();
+                                                setIsExportMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-3 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2"
+                                        >
+                                            <Icons.FileText size={16} />
+                                            Export Catalog
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                handleExportCosts();
+                                                setIsExportMenuOpen(false);
+                                            }}
+                                            className="w-full text-left px-4 py-3 hover:bg-slate-700 text-slate-300 hover:text-white transition-colors flex items-center gap-2 border-t border-slate-700"
+                                        >
+                                            <Icons.DollarSign size={16} />
+                                            Export Cost History
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
                 </div>
 

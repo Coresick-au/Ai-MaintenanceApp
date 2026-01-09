@@ -129,17 +129,15 @@ export function InventoryApp({ onBack }) {
     const tabs = [
         { id: 'catalog', label: 'Part Catalog', icon: Icons.Package },
         { id: 'fasteners', label: 'Fastener Catalog', icon: Icons.Wrench },
-        { id: 'products', label: 'Product Catalog', icon: Icons.Box },
         { id: 'subassemblies', label: 'Sub Assemblies', icon: Icons.Layers },
-        { id: 'buildguides', label: 'Build Guides', icon: Icons.BookOpen },
-        { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
+        { id: 'products', label: 'Product Catalog', icon: Icons.Box },
         { id: 'serialized', label: 'Serialized Assets', icon: Icons.Barcode },
         { id: 'specialized', label: 'Specialized', icon: Icons.Scale },
-        { id: 'shipping', label: 'Shipping Calculator', icon: Icons.Truck },
+        { id: 'buildguides', label: 'Build Guides', icon: Icons.BookOpen },
+        { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
         { id: 'categories', label: 'Categories', icon: Icons.FolderTree },
-        { id: 'locations', label: 'Locations', icon: Icons.MapPin },
         { id: 'suppliers', label: 'Suppliers', icon: Icons.Truck },
-        { id: 'history', label: 'Movement History', icon: Icons.History }
+        { id: 'shipping', label: 'Shipping Calculator', icon: Icons.Truck }
     ];
 
     return (
@@ -230,7 +228,11 @@ export function InventoryApp({ onBack }) {
                         {activeTab === 'buildguides' && <BuildGuideManager />}
 
                         {activeTab === 'stock' && (
-                            <StockOverview onAdjustStock={handleAdjustStock} />
+                            <StockOverview
+                                onAdjustStock={handleAdjustStock}
+                                LocationManager={LocationManager}
+                                StockMovementHistory={StockMovementHistory}
+                            />
                         )}
 
                         {activeTab === 'serialized' && <SerializedAssetsView />}
@@ -241,11 +243,7 @@ export function InventoryApp({ onBack }) {
 
                         {activeTab === 'categories' && <CategoryManager />}
 
-                        {activeTab === 'locations' && <LocationManager />}
-
                         {activeTab === 'suppliers' && <SupplierManager />}
-
-                        {activeTab === 'history' && <StockMovementHistory />}
                     </div>
                 </main>
 

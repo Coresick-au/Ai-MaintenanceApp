@@ -5,8 +5,8 @@ import { Icons } from '../../constants/icons';
 import { adjustStockQuantity } from '../../services/inventoryService';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
 
-export const StockOverview = ({ onAdjustStock }) => {
-    const [subView, setSubView] = useState('overview'); // 'overview' or 'stocktake'
+export const StockOverview = ({ onAdjustStock, LocationManager, StockMovementHistory }) => {
+    const [subView, setSubView] = useState('overview'); // 'overview', 'stocktake', 'locations', or 'history'
 
     // Stock Overview state
     const [parts, setParts] = useState([]);
@@ -383,7 +383,11 @@ export const StockOverview = ({ onAdjustStock }) => {
                             <p className="text-sm text-slate-400 mt-1">
                                 {subView === 'overview'
                                     ? `${stockOverview.filter(s => s.isLowStock).length} part${stockOverview.filter(s => s.isLowStock).length !== 1 ? 's' : ''} below reorder level`
-                                    : 'Physical inventory count'
+                                    : subView === 'stocktake'
+                                        ? 'Physical inventory count'
+                                        : subView === 'locations'
+                                            ? 'Manage warehouse locations'
+                                            : 'View stock movement history'
                                 }
                             </p>
                         </div>
@@ -410,6 +414,30 @@ export const StockOverview = ({ onAdjustStock }) => {
                                 <div className="flex items-center gap-2">
                                     <Icons.ClipboardList size={18} />
                                     Stock Take
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setSubView('locations')}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${subView === 'locations'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icons.MapPin size={18} />
+                                    Locations
+                                </div>
+                            </button>
+                            <button
+                                onClick={() => setSubView('history')}
+                                className={`px-4 py-2 rounded-lg font-medium transition-colors ${subView === 'history'
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                    }`}
+                            >
+                                <div className="flex items-center gap-2">
+                                    <Icons.History size={18} />
+                                    Movement History
                                 </div>
                             </button>
                         </div>
@@ -686,7 +714,7 @@ export const StockOverview = ({ onAdjustStock }) => {
                             </table>
                         </div>
                     </div>
-                ) : (
+                ) : subView === 'stocktake' ? (
                     /* Stock Take View */
                     <div className="flex flex-col flex-1 w-full">
                         <div className="mb-4">
@@ -865,7 +893,15 @@ export const StockOverview = ({ onAdjustStock }) => {
                             </div>
                         )}
                     </div>
-                )}
+                ) : subView === 'locations' ? (
+                    <div className="flex flex-col flex-1 w-full">
+                        {LocationManager && <LocationManager />}
+                    </div>
+                ) : subView === 'history' ? (
+                    <div className="flex flex-col flex-1 w-full">
+                        {StockMovementHistory && <StockMovementHistory />}
+                    </div>
+                ) : null}
             </div>
         </div>
     );

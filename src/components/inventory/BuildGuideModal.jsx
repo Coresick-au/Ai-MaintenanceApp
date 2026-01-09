@@ -7,7 +7,7 @@ import { validateImageFile } from '../../utils/imageCompression';
  * Build Guide Modal Component
  * @description Modal for creating and editing product build guides with step management
  */
-export function BuildGuideModal({ isOpen, onClose, product, existingGuide, bom, onSuccess }) {
+export function BuildGuideModal({ isOpen, onClose, product, itemType = 'product', existingGuide, bom, onSuccess }) {
     const [steps, setSteps] = useState([]);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
@@ -204,7 +204,7 @@ export function BuildGuideModal({ isOpen, onClose, product, existingGuide, bom, 
 
         try {
             // Upload and compress
-            const { url, path } = await uploadStepImage(product.id, steps[index].stepNumber, file);
+            const { url, path } = await uploadStepImage(product.id, itemType, steps[index].stepNumber, file);
 
             // Update step with image URL and path
             const newSteps = [...steps];
@@ -263,7 +263,7 @@ export function BuildGuideModal({ isOpen, onClose, product, existingGuide, bom, 
         setError('');
 
         try {
-            await saveBuildGuide(product.id, steps);
+            await saveBuildGuide(product.id, itemType, steps);
             onSuccess();
         } catch (err) {
             console.error('Error saving build guide:', err);
@@ -283,7 +283,7 @@ export function BuildGuideModal({ isOpen, onClose, product, existingGuide, bom, 
                             <Icons.ClipboardList size={24} />
                             {existingGuide ? 'Edit Build Guide' : 'Create Build Guide'}
                         </h2>
-                        <p className="text-sm text-slate-400 mt-1">Product: {product.name}</p>
+                        <p className="text-sm text-slate-400 mt-1">{itemType === 'product' ? 'Product' : 'Sub Assembly'}: {product.name}</p>
                     </div>
                     <button
                         onClick={onClose}

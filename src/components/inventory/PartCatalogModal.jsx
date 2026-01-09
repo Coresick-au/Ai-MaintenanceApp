@@ -27,6 +27,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         categoryId: null,
         subcategoryIds: [], // Changed from subcategoryId to support multiple
         suppliers: [],
+        supplierSKUs: {}, // Map of supplier name to their SKU/part number
         description: '',
         material: '', // Optional material field
         costPrice: '',
@@ -41,6 +42,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     });
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState('');
+    const [editingSKUs, setEditingSKUs] = useState({}); // Track which supplier SKUs are being edited
 
     // Preserve list price and margin when toggling saleable
     const [preservedListPrice, setPreservedListPrice] = useState('');
@@ -93,6 +95,18 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 subcategoryIds = [editingPart.subcategoryId];
             }
 
+            // Handle backward compatibility for supplierSKU -> supplierSKUs migration
+            let supplierSKUs = {};
+            if (editingPart.supplierSKUs && typeof editingPart.supplierSKUs === 'object') {
+                // New format: use the object directly
+                supplierSKUs = editingPart.supplierSKUs;
+            } else if (editingPart.supplierSKU && typeof editingPart.supplierSKU === 'string') {
+                // Old format: apply the single SKU to all suppliers
+                (editingPart.suppliers || []).forEach(supplier => {
+                    supplierSKUs[supplier] = editingPart.supplierSKU;
+                });
+            }
+
             setFormData({
                 sku: editingPart.sku,
                 name: editingPart.name,
@@ -100,6 +114,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 categoryId: editingPart.categoryId || null,
                 subcategoryIds,
                 suppliers: editingPart.suppliers || [],
+                supplierSKUs,
                 description: editingPart.description || '',
                 material: editingPart.material || '',
                 costPrice: (editingPart.costPrice / 100).toFixed(2),
@@ -121,6 +136,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 categoryId: null,
                 subcategoryIds: [],
                 suppliers: [],
+                supplierSKUs: {},
                 description: '',
                 material: '',
                 costPrice: '',
@@ -180,10 +196,20 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     };
 
     const handleRemoveSupplier = (supplierToRemove) => {
-        setFormData(prev => ({
-            ...prev,
-            suppliers: (prev.suppliers || []).filter(s => s !== supplierToRemove)
-        }));
+        setFormData(prev => {
+            // Remove supplier from array
+            const updatedSuppliers = (prev.suppliers || []).filter(s => s !== supplierToRemove);
+
+            // Remove supplier's SKU from object
+            const updatedSKUs = { ...prev.supplierSKUs };
+            delete updatedSKUs[supplierToRemove];
+
+            return {
+                ...prev,
+                suppliers: updatedSuppliers,
+                supplierSKUs: updatedSKUs
+            };
+        });
     };
 
     const handleGenerateSKU = async () => {
@@ -242,6 +268,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 categoryId: formData.categoryId,
                 subcategoryIds: formData.subcategoryIds || [],
                 suppliers: formData.suppliers || [],
+                supplierSKUs: formData.supplierSKUs || {},
                 description: formData.description.trim(),
                 material: formData.material || '',
                 locationId: formData.locationId,
@@ -455,14 +482,36 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                         </button>
                                     </div>
 
-                                    {/* Suppliers List */}
+                                    {/* Suppliers List with inline SKU inputs */}
                                     {formData.suppliers?.length > 0 && (
                                         <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                             <p className="text-xs text-slate-400 mb-2">Added Suppliers:</p>
-                                            <div className="space-y-1">
+                                            <div className="space-y-2">
                                                 {formData.suppliers.map((supplier, index) => (
-                                                    <div key={index} className="flex items-center justify-between p-2 bg-slate-700/50 rounded">
-                                                        <span className="text-sm text-white">{supplier}</span>
+                                                    <div key={index} className="flex items-center gap-2 p-2 bg-slate-700/50 rounded">
+                                                        <span className="text-sm text-white font-medium min-w-[120px]">{supplier}</span>
+                                                        <input
+                                                            type="text"
+                                                            value={formData.supplierSKUs[supplier] || ''}
+                                                            onChange={(e) => setFormData(prev => ({
+                                                                ...prev,
+                                                                supplierSKUs: {
+                                                                    ...prev.supplierSKUs,
+                                                                    [supplier]: e.target.value
+                                                                }
+                                                            }))}
+                                                            placeholder="Supplier's part number..."
+                                                            readOnly={!editingSKUs[supplier]}
+                                                            className={`flex-1 px-2 py-1 bg-slate-800 border border-slate-600 rounded text-white text-sm focus:outline-none focus:ring-1 focus:ring-cyan-500 ${!editingSKUs[supplier] ? 'cursor-not-allowed opacity-75' : ''}`}
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setEditingSKUs(prev => ({ ...prev, [supplier]: !prev[supplier] }))}
+                                                            className={`p-1 rounded transition-colors ${editingSKUs[supplier] ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' : 'bg-slate-600/50 text-slate-300 hover:bg-slate-600'}`}
+                                                            title={editingSKUs[supplier] ? 'Lock SKU' : 'Edit SKU'}
+                                                        >
+                                                            {editingSKUs[supplier] ? <Icons.Lock size={16} /> : <Icons.Edit size={16} />}
+                                                        </button>
                                                         <button
                                                             type="button"
                                                             onClick={() => handleRemoveSupplier(supplier)}

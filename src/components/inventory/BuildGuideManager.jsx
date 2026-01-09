@@ -13,44 +13,54 @@ import { useResizableColumns } from '../../hooks/useResizableColumns';
  * Allows users to select a product, view/edit build instructions, and see associated BOM.
  */
 export function BuildGuideManager() {
+    const [itemType, setItemType] = useState('product'); // 'product' or 'subassembly'
     const [products, setProducts] = useState([]);
-    const [selectedProductId, setSelectedProductId] = useState('');
+    const [subAssemblies, setSubAssemblies] = useState([]);
+    const [selectedItemId, setSelectedItemId] = useState('');
     const [buildGuideData, setBuildGuideData] = useState(null);
     const [loading, setLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [exporting, setExporting] = useState(false);
     const [error, setError] = useState('');
 
-    // Load products on mount
+    // Load items on mount and when item type changes
     useEffect(() => {
-        loadProducts();
-    }, []);
+        loadItems();
+        setSelectedItemId(''); // Reset selection when changing type
+        setBuildGuideData(null);
+    }, [itemType]);
 
-    // Load build guide when product changes
+    // Load build guide when selected item changes
     useEffect(() => {
-        if (selectedProductId) {
-            loadBuildGuide(selectedProductId);
+        if (selectedItemId) {
+            loadBuildGuide(selectedItemId, itemType);
         } else {
             setBuildGuideData(null);
         }
-    }, [selectedProductId]);
+    }, [selectedItemId, itemType]);
 
-    const loadProducts = async () => {
+    const loadItems = async () => {
         try {
-            const productsSnap = await getDocs(collection(db, 'products'));
-            const productsData = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            setProducts(productsData.sort((a, b) => a.name.localeCompare(b.name)));
+            if (itemType === 'product') {
+                const productsSnap = await getDocs(collection(db, 'products'));
+                const productsData = productsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setProducts(productsData.sort((a, b) => a.name.localeCompare(b.name)));
+            } else {
+                const subAssembliesSnap = await getDocs(collection(db, 'sub_assemblies'));
+                const subAssembliesData = subAssembliesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                setSubAssemblies(subAssembliesData.sort((a, b) => a.name.localeCompare(b.name)));
+            }
         } catch (err) {
-            console.error('Error loading products:', err);
-            setError('Failed to load products');
+            console.error('Error loading items:', err);
+            setError(`Failed to load ${itemType === 'product' ? 'products' : 'sub assemblies'}`);
         }
     };
 
-    const loadBuildGuide = async (productId) => {
+    const loadBuildGuide = async (itemId, type) => {
         setLoading(true);
         setError('');
         try {
-            const data = await getBuildGuideWithBOM(productId);
+            const data = await getBuildGuideWithBOM(itemId, type);
             setBuildGuideData(data);
         } catch (err) {
             console.error('Error loading build guide:', err);
@@ -74,7 +84,7 @@ export function BuildGuideManager() {
 
     const handleSaveSuccess = () => {
         setIsModalOpen(false);
-        loadBuildGuide(selectedProductId);
+        loadBuildGuide(selectedItemId, itemType);
     };
 
     const handleDeleteGuide = async () => {
@@ -83,7 +93,7 @@ export function BuildGuideManager() {
         }
 
         try {
-            await deleteBuildGuide(selectedProductId);
+            await deleteBuildGuide(selectedItemId, itemType);
             setBuildGuideData({ ...buildGuideData, guide: null });
         } catch (err) {
             console.error('Error deleting build guide:', err);
@@ -92,7 +102,7 @@ export function BuildGuideManager() {
     };
 
     const handleExportPDF = async () => {
-        if (!buildGuideData?.guide || !selectedProduct) {
+        if (!buildGuideData?.guide || !selectedItem) {
             setError('No build guide available to export');
             return;
         }
@@ -101,7 +111,7 @@ export function BuildGuideManager() {
         setError('');
 
         try {
-            await exportBuildGuideToPDF(selectedProduct, buildGuideData.guide, buildGuideData.bom);
+            await exportBuildGuideToPDF(selectedItem, buildGuideData.guide, buildGuideData.bom);
         } catch (err) {
             console.error('Error exporting PDF:', err);
             setError('Failed to export PDF: ' + err.message);
@@ -110,7 +120,9 @@ export function BuildGuideManager() {
         }
     };
 
-    const selectedProduct = products.find(p => p.id === selectedProductId);
+    const selectedItem = itemType === 'product'
+        ? products.find(p => p.id === selectedItemId)
+        : subAssemblies.find(sa => sa.id === selectedItemId);
 
     return (
         <div className="h-full flex flex-col">
@@ -120,28 +132,61 @@ export function BuildGuideManager() {
                     <div>
                         <h2 className="text-xl font-bold text-white flex items-center gap-2">
                             <Icons.ClipboardList size={24} />
-                            Product Build Guides
+                            Build Guides
                         </h2>
                         <p className="text-sm text-slate-400 mt-1">
-                            Create assembly instructions for products with BOM references
+                            Create assembly instructions with BOM references
                         </p>
                     </div>
                 </div>
 
-                {/* Product Selector */}
+                {/* Item Type Selector */}
                 <div className="mt-4">
                     <label className="block text-sm font-medium text-slate-300 mb-2">
-                        Select Product
+                        Item Type
+                    </label>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => setItemType('product')}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${itemType === 'product'
+                                    ? 'bg-cyan-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                }`}
+                        >
+                            <div className="flex items-center justify-center gap-2">
+                                <Icons.Box size={18} />
+                                Products
+                            </div>
+                        </button>
+                        <button
+                            onClick={() => setItemType('subassembly')}
+                            className={`flex-1 px-4 py-2 rounded-lg font-medium transition-colors ${itemType === 'subassembly'
+                                    ? 'bg-purple-600 text-white'
+                                    : 'bg-slate-700 text-slate-300 hover:bg-slate-600'
+                                }`}
+                        >
+                            <div className="flex items-center justify-center gap-2">
+                                <Icons.Layers size={18} />
+                                Sub Assemblies
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                {/* Item Selector */}
+                <div className="mt-4">
+                    <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Select {itemType === 'product' ? 'Product' : 'Sub Assembly'}
                     </label>
                     <select
-                        value={selectedProductId}
-                        onChange={(e) => setSelectedProductId(e.target.value)}
+                        value={selectedItemId}
+                        onChange={(e) => setSelectedItemId(e.target.value)}
                         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                     >
-                        <option value="">-- Select a product --</option>
-                        {products.map(product => (
-                            <option key={product.id} value={product.id}>
-                                {product.name}
+                        <option value="">-- Select {itemType === 'product' ? 'a product' : 'a sub assembly'} --</option>
+                        {(itemType === 'product' ? products : subAssemblies).map(item => (
+                            <option key={item.id} value={item.id}>
+                                {item.name}
                             </option>
                         ))}
                     </select>
@@ -159,11 +204,11 @@ export function BuildGuideManager() {
             )}
 
             {/* Content Area */}
-            {!selectedProductId ? (
+            {!selectedItemId ? (
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center text-slate-400">
                         <Icons.ClipboardList size={64} className="mx-auto mb-4 opacity-50" />
-                        <p className="text-lg">Select a product to view or create a build guide</p>
+                        <p className="text-lg">Select {itemType === 'product' ? 'a product' : 'a sub assembly'} to view or create a build guide</p>
                     </div>
                 </div>
             ) : loading ? (
@@ -288,7 +333,7 @@ export function BuildGuideManager() {
                 <div className="flex-1 flex items-center justify-center">
                     <div className="text-center">
                         <Icons.ClipboardList size={64} className="mx-auto mb-4 text-slate-600" />
-                        <p className="text-slate-400 mb-4">No build guide exists for this product</p>
+                        <p className="text-slate-400 mb-4">No build guide exists for this {itemType === 'product' ? 'product' : 'sub assembly'}</p>
                         <button
                             onClick={handleCreateGuide}
                             className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors mx-auto"
@@ -305,7 +350,8 @@ export function BuildGuideManager() {
                 <BuildGuideModal
                     isOpen={isModalOpen}
                     onClose={handleCloseModal}
-                    product={selectedProduct}
+                    product={selectedItem}
+                    itemType={itemType}
                     existingGuide={buildGuideData?.guide}
                     bom={buildGuideData?.bom}
                     onSuccess={handleSaveSuccess}
@@ -356,8 +402,8 @@ const BOMTable = ({ parts, fasteners }) => {
                         <tr key={idx} className="hover:bg-slate-700/50">
                             <td className="px-4 py-3">
                                 <span className={`text-xs px-2 py-1 rounded border ${item.type === 'Part'
-                                        ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
-                                        : 'bg-purple-500/10 text-purple-300 border-purple-500/30'
+                                    ? 'bg-cyan-500/10 text-cyan-300 border-cyan-500/30'
+                                    : 'bg-purple-500/10 text-purple-300 border-purple-500/30'
                                     }`}>
                                     {item.type}
                                 </span>

@@ -241,3 +241,29 @@ export async function getPricingHistory(partId, supplierName) {
         throw error;
     }
 }
+
+/**
+ * Get ALL pricing entries (for export)
+ * @returns {Promise<Array>} Array of all pricing entries
+ */
+export async function getAllPricing() {
+    try {
+        const q = query(
+            collection(db, 'part_supplier_pricing'),
+            orderBy('effectiveDate', 'desc')
+        );
+
+        const snapshot = await getDocs(q);
+        const pricing = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            effectiveDate: doc.data().effectiveDate?.toDate() // Convert Timestamp to Date
+        }));
+
+        console.log('[PartPricingService] Retrieved all pricing records:', pricing.length);
+        return pricing;
+    } catch (error) {
+        console.error('[PartPricingService] Error getting all pricing:', error);
+        throw error;
+    }
+}
