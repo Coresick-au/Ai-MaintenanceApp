@@ -380,22 +380,24 @@ export const EditAssetModal = ({
           )}
 
         </div>
-        {/* --- ACTION BUTTONS (REORDERED) --- */}
+        {/* --- ACTION BUTTONS (COMPACT) --- */}
         <div className="flex gap-2 pt-2 border-t border-slate-700">
 
-          {/* 1. Primary Save Button (WIDER) */}
-          <Button
+          {/* 1. Primary Save Button */}
+          <button
+            type="button"
             onClick={() => {
-              onSave(editingAsset, activeTab); // Save asset details
-              if (specs) onSaveSpecs(specs, editingAsset.id); // Save specs with asset ID
+              onSave(editingAsset, activeTab);
+              if (specs) onSaveSpecs(specs, editingAsset.id);
             }}
-            className="flex-[3] justify-center"
+            className="flex-[3] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1"
           >
             Save All Changes
-          </Button>
+          </button>
 
-          {/* 2. Archive/Reactivate Button (SMALLER) */}
-          <Button
+          {/* 2. Archive/Reactivate Button (Subtle) */}
+          <button
+            type="button"
             onClick={() => {
               const isArchiving = editingAsset.active !== false;
               const message = isArchiving
@@ -405,16 +407,18 @@ export const EditAssetModal = ({
               if (window.confirm(message)) {
                 const updatedAsset = { ...editingAsset, active: !isArchiving };
                 setEditingAsset(updatedAsset);
-                // CRITICAL FIX: Call onSave to persist the change
                 onSave(updatedAsset, activeTab);
               }
             }}
-            className={`flex-1 justify-center ${editingAsset.active !== false ? 'bg-orange-600 hover:bg-orange-500' : 'bg-green-600 hover:bg-green-500'}`}
+            className={`flex-1 px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1 border ${editingAsset.active !== false
+              ? 'bg-amber-900/30 text-amber-400 border-amber-800/50 hover:bg-amber-900/50'
+              : 'bg-green-900/30 text-green-400 border-green-800/50 hover:bg-green-900/50'}`}
           >
-            {editingAsset.active !== false ? '📦 Archive' : '✅ Reactivate'}
-          </Button>
+            {editingAsset.active !== false ? '📦' : '✅'}
+            <span className="hidden sm:inline">{editingAsset.active !== false ? 'Archive' : 'Reactivate'}</span>
+          </button>
 
-          {/* 3. Delete Button (SMALLER) */}
+          {/* 3. Delete Button (Subtle) */}
           <button
             type="button"
             onClick={() => {
@@ -424,9 +428,10 @@ export const EditAssetModal = ({
                 }
               }
             }}
-            className="flex-1 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-4 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
+            className="flex-1 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1"
           >
-            <Icons.Trash size={16} /> Delete
+            <Icons.Trash size={14} />
+            <span className="hidden sm:inline">Delete</span>
           </button>
         </div>
       </div>

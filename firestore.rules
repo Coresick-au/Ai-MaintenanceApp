@@ -1,25 +1,103 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Helper functions
+    // Helper function to check if user is signed in
     function isSignedIn() {
       return request.auth != null;
     }
     
+    // Helper function to check if user has 'admin' role
     function isAdmin() {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isSignedIn() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
-    // Default: Allow all for now (matching existing loose rules)
-    // But we will add specific rules for timesheets as requested
-    match /{document=**} {
-      allow read, write: if true;
+    // Helper function to check if user is accessing their own document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Specific rules for timesheets
+    // --- Specific Collection Rules ---
+
+    // Users Collection: Protect against privilege escalation
+    match /users/{userId} {
+      // Users can read their own profile; Admins can read all
+      allow read: if isOwner(userId) || isAdmin();
+      
+      // Only Admins can create/delete users or change roles
+      // Users can update their own profile BUT NOT their role
+      allow create: if isAdmin();
+      allow update: if (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role'])) || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Timesheets: Existing rules preserved and refined
     match /timesheets/{timesheetId} {
       allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
       allow read, update, delete: if isSignedIn() && (resource.data.userId == request.auth.uid || isAdmin());
+    }
+
+    // Business Data: Customers, Sites, Employees, Quotes
+    // Currently allowing read/write for ALL authenticated users to prevent lockout
+    // TODO: Refine this further if regular users shouldn't edit customers/sites
+    match /customers/{document=**} { allow read, write: if isSignedIn(); }
+    match /sites/{document=**} { allow read, write: if isSignedIn(); }
+    match /employees/{document=**} { allow read, write: if isSignedIn(); }
+    match /quotes/{document=**} { allow read, write: if isSignedIn(); }
+    match /inventory/{document=**} { allow read, write: if isSignedIn(); }
+    match /jobsheets/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Inventory & Catalog
+    match /part_catalog/{document=**} { allow read, write: if isSignedIn(); }
+    match /fastener_catalog/{document=**} { allow read, write: if isSignedIn(); }
+    match /products/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assemblies/{document=**} { allow read, write: if isSignedIn(); }
+    match /categories/{document=**} { allow read, write: if isSignedIn(); }
+    match /locations/{document=**} { allow read, write: if isSignedIn(); }
+    match /suppliers/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Inventory Management
+    match /part_suppliers/{document=**} { allow read, write: if isSignedIn(); }
+    match /part_supplier_pricing/{document=**} { allow read, write: if isSignedIn(); }
+    match /inventory_state/{document=**} { allow read, write: if isSignedIn(); }
+    match /stock_movements/{document=**} { allow read, write: if isSignedIn(); }
+    match /serialized_assets/{document=**} { allow read, write: if isSignedIn(); }
+    match /shipping_records/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Composition & BOM
+    match /product_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_fastener_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_sub_assembly_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assembly_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assembly_fastener_composition/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Specialized Components
+    match /weigher_models/{document=**} { allow read, write: if isSignedIn(); }
+    match /weigh_modules_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /idler_frames_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /billet_weights_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /rollers_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /speed_sensors_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /tmd_frames_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /idler_frame_config/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Misc
+    match /settings/{document=**} { allow read, write: if isSignedIn(); }
+    match /app_settings/{document=**} { allow read, write: if isSignedIn(); }
+    match /build_guides/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_build_guides/{document=**} { allow read, write: if isSignedIn(); }
+    match /specialized_components/{document=**} { allow read, write: if isSignedIn(); }
+    match /todos/{document=**} { allow read, write: if isSignedIn(); }
+    match /part_categories/{document=**} { allow read, write: if isSignedIn(); }
+    
+    // Cost History (Additional)
+    match /part_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+
+    // Default Fallback: DENY EVERYTHING else
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

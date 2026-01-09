@@ -485,23 +485,7 @@ const AssetTimeline = ({ assets = [], mode = 'service' }) => {
                 </div>
             </footer>
 
-            <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 8px;
-          height: 12px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #0f172a; /* slate-900 */
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #334155; /* slate-700 */
-          border-radius: 4px;
-          border: 2px solid #0f172a;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #475569; /* slate-600 */
-        }
-      `}</style>
+
         </div>
     );
 };

@@ -401,9 +401,14 @@ export const SiteProvider = ({ children }) => {
         // but ends with updateSiteData which now syncs to Firebase.
         // RE-IMPLEMENTING LOGIC FROM ORIGINAL FILE:
         if (!editingAsset) return;
-        const updatedPrimary = recalculateRow(editingAsset);
+        const calculated = recalculateRow(editingAsset);
         const newHistory = { date: new Date().toISOString(), action: 'Details Updated', user: 'User' };
-        updatedPrimary.history = [...(updatedPrimary.history || []), newHistory];
+
+        // Create a new object to avoid "Cannot assign to read only property" error
+        const updatedPrimary = {
+            ...calculated,
+            history: [...(calculated.history || []), newHistory]
+        };
 
         let newServiceData = [...currentServiceData];
         let newRollerData = [...currentRollerData];
