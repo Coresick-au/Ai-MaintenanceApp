@@ -46,6 +46,7 @@ service cloud.firestore {
     match /employees/{document=**} { allow read, write: if isSignedIn(); }
     match /quotes/{document=**} { allow read, write: if isSignedIn(); }
     match /inventory/{document=**} { allow read, write: if isSignedIn(); }
+    match /jobsheets/{document=**} { allow read, write: if isSignedIn(); }
 
     // Default Fallback: DENY EVERYTHING else
     match /{document=**} {
