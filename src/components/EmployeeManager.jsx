@@ -44,6 +44,40 @@ const getCroppedImg = async (imageSrc, pixelCrop) => {
     return canvas.toDataURL('image/jpeg', 0.8);
 };
 
+// --- HELPER: Calculate Years and Months from Date ---
+const calculateDuration = (dateString) => {
+    if (!dateString) return null;
+    const date = new Date(dateString);
+    const now = new Date();
+
+    let years = now.getFullYear() - date.getFullYear();
+    let months = now.getMonth() - date.getMonth();
+
+    if (months < 0) {
+        years--;
+        months += 12;
+    }
+
+    // Adjust if day hasn't passed yet this month
+    if (now.getDate() < date.getDate()) {
+        months--;
+        if (months < 0) {
+            years--;
+            months += 12;
+        }
+    }
+
+    if (years < 0) return null;
+
+    if (years === 0) {
+        return `${months} month${months !== 1 ? 's' : ''}`;
+    } else if (months === 0) {
+        return `${years} year${years !== 1 ? 's' : ''}`;
+    } else {
+        return `${years}y ${months}m`;
+    }
+};
+
 // --- NEW COMPONENT: Compliance Overview Dashboard ---
 const ComplianceDashboard = ({ employees, onSelectEmp }) => {
     const expiringItems = useMemo(() => {
@@ -142,6 +176,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
         photoUrl: '',
         emergencyContactName: '',
         emergencyContactPhone: '',
+        emergencyContactRelationship: '',
         status: 'active'
     });
     const [newCertForm, setNewCertForm] = useState({ name: '', provider: '', expiry: '', pdfUrl: '', noExpiry: false });
@@ -414,6 +449,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 photoUrl: '',
                                                 emergencyContactName: '',
                                                 emergencyContactPhone: '',
+                                                emergencyContactRelationship: '',
                                                 status: 'active'
                                             });
                                         }}
@@ -452,7 +488,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     usiNumber: selectedEmp.usiNumber || '',
                                                     photoUrl: selectedEmp.photoUrl || '',
                                                     emergencyContactName: selectedEmp.emergencyContactName || '',
-                                                    emergencyContactPhone: selectedEmp.emergencyContactPhone || ''
+                                                    emergencyContactPhone: selectedEmp.emergencyContactPhone || '',
+                                                    emergencyContactRelationship: selectedEmp.emergencyContactRelationship || ''
                                                 });
                                             }}
                                             className="px-2.5 py-1.5 text-xs rounded transition-colors bg-blue-700 hover:bg-blue-600 text-white flex items-center gap-1"
@@ -582,6 +619,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 <label className="text-xs text-slate-400 block mb-1">Staff Photo</label>
                                                 <div className="flex gap-2 items-start">
                                                     <input
+                                                        id="photo-upload"
                                                         type="file"
                                                         accept="image/*"
                                                         onChange={(e) => {
@@ -596,13 +634,19 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                             };
                                                             reader.readAsDataURL(file);
                                                         }}
-                                                        className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white file:mr-4 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-cyan-600 file:text-white hover:file:bg-cyan-500 file:cursor-pointer"
+                                                        className="hidden"
                                                     />
+                                                    <label
+                                                        htmlFor="photo-upload"
+                                                        className="px-3 py-2 text-xs bg-cyan-600 hover:bg-cyan-500 text-white rounded cursor-pointer transition-colors"
+                                                    >
+                                                        {editEmployeeForm.photoUrl ? 'Change Photo' : 'Choose File'}
+                                                    </label>
                                                     {editEmployeeForm.photoUrl && (
                                                         <button
                                                             type="button"
                                                             onClick={() => setEditEmployeeForm({ ...editEmployeeForm, photoUrl: '' })}
-                                                            className="px-2 py-1 text-xs bg-red-600 hover:bg-red-500 text-white rounded"
+                                                            className="px-3 py-2 text-xs bg-red-600 hover:bg-red-500 text-white rounded transition-colors"
                                                             title="Remove photo"
                                                         >
                                                             Remove
@@ -631,6 +675,15 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 />
                                             </div>
                                             <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Relationship</label>
+                                                <input
+                                                    placeholder="e.g. Wife, Daughter, Brother"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.emergencyContactRelationship}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, emergencyContactRelationship: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="col-span-2">
                                                 <label className="text-xs text-slate-400 block mb-1">Emergency Contact Phone</label>
                                                 <input
                                                     className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
@@ -686,16 +739,31 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
 
                                                 <div className="text-slate-500">Date of Birth:</div>
-                                                <div className="text-slate-300">{selectedEmp.dateOfBirth ? formatDate(selectedEmp.dateOfBirth) : 'N/A'}</div>
+                                                <div className="text-slate-300">
+                                                    {selectedEmp.dateOfBirth ? formatDate(selectedEmp.dateOfBirth) : 'N/A'}
+                                                    {selectedEmp.dateOfBirth && calculateDuration(selectedEmp.dateOfBirth) && (
+                                                        <span className="text-slate-500 ml-2">({calculateDuration(selectedEmp.dateOfBirth)} old)</span>
+                                                    )}
+                                                </div>
 
                                                 <div className="text-slate-500">Start Date:</div>
-                                                <div className="text-slate-300">{selectedEmp.startDate ? formatDate(selectedEmp.startDate) : 'N/A'}</div>
+                                                <div className="text-slate-300">
+                                                    {selectedEmp.startDate ? formatDate(selectedEmp.startDate) : 'N/A'}
+                                                    {selectedEmp.startDate && calculateDuration(selectedEmp.startDate) && (
+                                                        <span className="text-slate-500 ml-2">({calculateDuration(selectedEmp.startDate)})</span>
+                                                    )}
+                                                </div>
 
                                                 <div className="text-slate-500">USI Number:</div>
                                                 <div className="text-slate-300">{selectedEmp.usiNumber || 'N/A'}</div>
 
                                                 <div className="text-slate-500">Emergency Contact Name:</div>
-                                                <div className="text-slate-300">{selectedEmp.emergencyContactName || 'N/A'}</div>
+                                                <div className="text-slate-300">
+                                                    {selectedEmp.emergencyContactName || 'N/A'}
+                                                    {selectedEmp.emergencyContactRelationship && (
+                                                        <span className="text-slate-500 ml-1">({selectedEmp.emergencyContactRelationship})</span>
+                                                    )}
+                                                </div>
 
                                                 <div className="text-slate-500">Emergency Contact Phone:</div>
                                                 <div className="text-slate-300">{selectedEmp.emergencyContactPhone || 'N/A'}</div>
