@@ -89,6 +89,8 @@ service cloud.firestore {
     match /build_guides/{document=**} { allow read, write: if isSignedIn(); }
     match /product_build_guides/{document=**} { allow read, write: if isSignedIn(); }
     match /specialized_components/{document=**} { allow read, write: if isSignedIn(); }
+    match /todos/{document=**} { allow read, write: if isSignedIn(); }
+    match /part_categories/{document=**} { allow read, write: if isSignedIn(); }
     
     // Cost History (Additional)
     match /part_cost_history/{document=**} { allow read, write: if isSignedIn(); }
