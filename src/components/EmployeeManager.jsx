@@ -136,6 +136,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
         email: '',
         phone: '',
         address: '',
+        dateOfBirth: '',
+        startDate: '',
         usiNumber: '',
         photoUrl: '',
         emergencyContactName: '',
@@ -406,6 +408,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                 email: '',
                                                 phone: '',
                                                 address: '',
+                                                dateOfBirth: '',
+                                                startDate: '',
                                                 usiNumber: '',
                                                 photoUrl: '',
                                                 emergencyContactName: '',
@@ -443,6 +447,8 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     email: selectedEmp.email || '',
                                                     phone: selectedEmp.phone || '',
                                                     address: selectedEmp.address || '',
+                                                    dateOfBirth: selectedEmp.dateOfBirth || '',
+                                                    startDate: selectedEmp.startDate || '',
                                                     usiNumber: selectedEmp.usiNumber || '',
                                                     photoUrl: selectedEmp.photoUrl || '',
                                                     emergencyContactName: selectedEmp.emergencyContactName || '',
@@ -543,6 +549,24 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                     className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
                                                     value={editEmployeeForm.address}
                                                     onChange={e => setEditEmployeeForm({ ...editEmployeeForm, address: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Date of Birth</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.dateOfBirth}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, dateOfBirth: e.target.value })}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="text-xs text-slate-400 block mb-1">Start Date</label>
+                                                <input
+                                                    type="date"
+                                                    className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                                                    value={editEmployeeForm.startDate}
+                                                    onChange={e => setEditEmployeeForm({ ...editEmployeeForm, startDate: e.target.value })}
                                                 />
                                             </div>
                                             <div className="col-span-2">
@@ -660,6 +684,12 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                             <div className="grid grid-cols-2 gap-y-2 text-sm flex-1">
                                                 <div className="text-slate-500">Address:</div>
                                                 <div className="text-slate-300">{selectedEmp.address || 'N/A'}</div>
+
+                                                <div className="text-slate-500">Date of Birth:</div>
+                                                <div className="text-slate-300">{selectedEmp.dateOfBirth ? formatDate(selectedEmp.dateOfBirth) : 'N/A'}</div>
+
+                                                <div className="text-slate-500">Start Date:</div>
+                                                <div className="text-slate-300">{selectedEmp.startDate ? formatDate(selectedEmp.startDate) : 'N/A'}</div>
 
                                                 <div className="text-slate-500">USI Number:</div>
                                                 <div className="text-slate-300">{selectedEmp.usiNumber || 'N/A'}</div>
@@ -855,7 +885,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                                     <td className="px-4 py-2 text-slate-400">{cert.provider || '-'}</td>
                                                                     <td className="px-4 py-2 text-slate-300">{cert.expiry ? formatDate(cert.expiry) : '-'}</td>
                                                                     <td className="px-4 py-2">
-                                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
+                                                                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${getStatusColor(status)} uppercase`}>
                                                                             {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
                                                                         </span>
                                                                     </td>
@@ -1096,7 +1126,7 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                                 <td className="px-4 py-2 font-medium text-slate-200">{ind.name}</td>
                                                                 <td className="px-4 py-2 text-slate-300">{ind.expiry ? formatDate(ind.expiry) : '-'}</td>
                                                                 <td className="px-4 py-2">
-                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${getStatusColor(status)} uppercase`}>
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${getStatusColor(status)} uppercase`}>
                                                                         {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
                                                                     </span>
                                                                 </td>
