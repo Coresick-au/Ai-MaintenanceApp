@@ -163,6 +163,10 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                 const bSubIds = b.subcategoryIds || (b.subcategoryId ? [b.subcategoryId] : []);
                 aVal = aSubIds.length > 0 ? getCategoryName(aSubIds[0]) || '' : '';
                 bVal = bSubIds.length > 0 ? getCategoryName(bSubIds[0]) || '' : '';
+            } else if (sortConfig.key === 'suppliers') {
+                // Sort by first supplier
+                aVal = a.suppliers && a.suppliers.length > 0 ? a.suppliers[0] : '';
+                bVal = b.suppliers && b.suppliers.length > 0 ? b.suppliers[0] : '';
             }
 
             // Handle null/undefined values (sort to end)
@@ -437,8 +441,10 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         title="Drag to resize, double-click to auto-fit"
                                     />
                                 </th>
-                                <th className="px-3 py-3 relative" style={{ width: `${columnWidths[5]}px` }}>
-                                    <div className="column-content">Suppliers</div>
+                                <th className="px-3 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('suppliers')} style={{ width: `${columnWidths[5]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">
+                                        Suppliers {getSortIcon('suppliers')}
+                                    </div>
                                     <div
                                         className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors"
                                         onMouseDown={(e) => handleResizeStart(5, e)}

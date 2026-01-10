@@ -1,5 +1,5 @@
 // src/services/costEstimationService.js
-import { collection, getDocs, query, where } from 'firebase/firestore';
+import { collection, getDocs, getDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import {
     MATERIAL_TYPES,
@@ -47,6 +47,31 @@ export const filterByDateRange = (data, months) => {
         const itemDate = new Date(item.effectiveDate);
         return itemDate >= cutoffDate;
     });
+};
+
+/**
+ * Get current cost for a sub-assembly
+ * Fetches the sub-assembly from Firestore and calculates its cost based on costType
+ * @param {string} subAssemblyId - Sub-assembly ID
+ * @returns {Promise<number>} Cost per unit in cents
+ */
+export const getSubAssemblyCost = async (subAssemblyId) => {
+    try {
+        console.log('[getSubAssemblyCost] Fetching sub-assembly cost for:', subAssemblyId);
+
+        // Import the correct function from costingService
+        const { getSubAssemblyCostAtDate } = await import('./costingService');
+
+        // Use the same function that the SubAssemblyCatalogTable uses
+        const cost = await getSubAssemblyCostAtDate(subAssemblyId, new Date());
+
+        console.log('[getSubAssemblyCost] Calculated cost:', cost);
+        return cost || 0; // Already in cents
+
+    } catch (error) {
+        console.error('Error getting sub-assembly cost:', error);
+        return 0;
+    }
 };
 
 /**
@@ -341,8 +366,14 @@ const estimateWeighModuleCostForSupplier = (matches, params, dateRangeMonths, su
 /**
  * Estimate Weigh Module Cost
  */
-export const estimateWeighModuleCost = async (params, dateRangeMonths = 12) => {
+export const estimateWeighModuleCost = async (params, dateRangeMonths = 12, subAssembly = null) => {
     try {
+        // Calculate sub-assembly cost if provided (quantity is always 1 for Weigh Module)
+        let subAssemblyCost = 0;
+        if (subAssembly && subAssembly.id) {
+            subAssemblyCost = await getSubAssemblyCost(subAssembly.id);
+        }
+
         // Fetch all weigh modules
         const snapshot = await getDocs(collection(db, 'weigh_modules_cost_history'));
         let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -375,7 +406,21 @@ export const estimateWeighModuleCost = async (params, dateRangeMonths = 12) => {
 
         // Calculate estimate for each supplier
         const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
-            return estimateWeighModuleCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+            const baseEstimate = estimateWeighModuleCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+
+            // Add sub-assembly cost to the estimate
+            if (baseEstimate.success && subAssemblyCost > 0) {
+                return {
+                    ...baseEstimate,
+                    baseComponentCost: baseEstimate.estimatedCost,
+                    subAssemblyCost: subAssemblyCost,
+                    subAssemblyQuantity: 1,
+                    estimatedCost: baseEstimate.estimatedCost + subAssemblyCost,
+                    hasSubAssembly: true
+                };
+            }
+
+            return baseEstimate;
         }).filter(est => est.success);
 
         if (supplierEstimates.length === 0) {
@@ -732,8 +777,14 @@ const estimateBilletWeightCostForSupplier = (matches, params, dateRangeMonths, s
 /**
  * Estimate Billet Weight Cost
  */
-export const estimateBilletWeightCost = async (params, dateRangeMonths = 12) => {
+export const estimateBilletWeightCost = async (params, dateRangeMonths = 12, subAssembly = null) => {
     try {
+        // Calculate sub-assembly cost if provided (quantity is always 1 for Billet Weight)
+        let subAssemblyCost = 0;
+        if (subAssembly && subAssembly.id) {
+            subAssemblyCost = await getSubAssemblyCost(subAssembly.id);
+        }
+
         const snapshot = await getDocs(collection(db, 'billet_weights_cost_history'));
         let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -775,7 +826,21 @@ export const estimateBilletWeightCost = async (params, dateRangeMonths = 12) => 
 
         // Calculate estimate for each supplier
         const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
-            return estimateBilletWeightCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName, category);
+            const baseEstimate = estimateBilletWeightCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName, category);
+
+            // Add sub-assembly cost to the estimate
+            if (baseEstimate.success && subAssemblyCost > 0) {
+                return {
+                    ...baseEstimate,
+                    baseComponentCost: baseEstimate.estimatedCost,
+                    subAssemblyCost: subAssemblyCost,
+                    subAssemblyQuantity: 1,
+                    estimatedCost: baseEstimate.estimatedCost + subAssemblyCost,
+                    hasSubAssembly: true
+                };
+            }
+
+            return baseEstimate;
         }).filter(est => est.success);
 
         if (supplierEstimates.length === 0) {
@@ -1173,8 +1238,17 @@ const estimateSpeedSensorCostForSupplier = (matches, params, dateRangeMonths, su
 /**
  * Estimate Speed Sensor Cost
  */
-export const estimateSpeedSensorCost = async (params, dateRangeMonths = 12) => {
+export const estimateSpeedSensorCost = async (params, dateRangeMonths = 12, subAssembly = null) => {
     try {
+        // Calculate sub-assembly cost if provided (with user-specified quantity)
+        let subAssemblyCost = 0;
+        let subAssemblyQuantity = 0;
+        if (subAssembly && subAssembly.id) {
+            const unitCost = await getSubAssemblyCost(subAssembly.id);
+            subAssemblyQuantity = subAssembly.quantity || 1;
+            subAssemblyCost = unitCost * subAssemblyQuantity;
+        }
+
         const snapshot = await getDocs(collection(db, 'speed_sensors_cost_history'));
         let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -1192,10 +1266,15 @@ export const estimateSpeedSensorCost = async (params, dateRangeMonths = 12) => {
         const categoricalFields = ['designType'];
         let matches = findExactMatches(data, params, categoricalFields);
 
+        // If no exact matches, use all data for interpolation
+        if (matches.length === 0) {
+            matches = data;
+        }
+
         if (matches.length === 0) {
             return {
                 success: false,
-                error: 'No matching data found for the specified design',
+                error: 'No matching data found',
                 supplierEstimates: []
             };
         }
@@ -1205,7 +1284,22 @@ export const estimateSpeedSensorCost = async (params, dateRangeMonths = 12) => {
 
         // Calculate estimate for each supplier
         const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
-            return estimateSpeedSensorCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+            const baseEstimate = estimateSpeedSensorCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+
+            // Add sub-assembly cost to the estimate
+            if (baseEstimate.success && subAssemblyCost > 0) {
+                return {
+                    ...baseEstimate,
+                    baseComponentCost: baseEstimate.estimatedCost || baseEstimate.estimatedCostTotal,
+                    subAssemblyCost: subAssemblyCost,
+                    subAssemblyQuantity: subAssemblyQuantity,
+                    estimatedCost: (baseEstimate.estimatedCost || baseEstimate.estimatedCostTotal) + subAssemblyCost,
+                    estimatedCostTotal: (baseEstimate.estimatedCostTotal || baseEstimate.estimatedCost) + subAssemblyCost,
+                    hasSubAssembly: true
+                };
+            }
+
+            return baseEstimate;
         }).filter(est => est.success);
 
         if (supplierEstimates.length === 0) {
@@ -1386,8 +1480,17 @@ const estimateTMDFrameCostForSupplier = (matches, params, dateRangeMonths, suppl
 /**
  * Estimate TMD Frame Cost
  */
-export const estimateTMDFrameCost = async (params, dateRangeMonths = 12) => {
+export const estimateTMDFrameCost = async (params, dateRangeMonths = 12, subAssembly = null) => {
     try {
+        // Calculate sub-assembly cost if provided (with user-specified quantity)
+        let subAssemblyCost = 0;
+        let subAssemblyQuantity = 0;
+        if (subAssembly && subAssembly.id) {
+            const unitCost = await getSubAssemblyCost(subAssembly.id);
+            subAssemblyQuantity = subAssembly.quantity || 1;
+            subAssemblyCost = unitCost * subAssemblyQuantity;
+        }
+
         const snapshot = await getDocs(collection(db, 'tmd_frames_cost_history'));
         let data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -1422,7 +1525,22 @@ export const estimateTMDFrameCost = async (params, dateRangeMonths = 12) => {
 
         // Calculate estimate for each supplier
         const supplierEstimates = Object.entries(supplierGroups).map(([supplierName, supplierMatches]) => {
-            return estimateTMDFrameCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+            const baseEstimate = estimateTMDFrameCostForSupplier(supplierMatches, params, dateRangeMonths, supplierName);
+
+            // Add sub-assembly cost to the estimate
+            if (baseEstimate.success && subAssemblyCost > 0) {
+                return {
+                    ...baseEstimate,
+                    baseComponentCost: baseEstimate.estimatedCost || baseEstimate.estimatedCostTotal,
+                    subAssemblyCost: subAssemblyCost,
+                    subAssemblyQuantity: subAssemblyQuantity,
+                    estimatedCost: (baseEstimate.estimatedCost || baseEstimate.estimatedCostTotal) + subAssemblyCost,
+                    estimatedCostTotal: (baseEstimate.estimatedCostTotal || baseEstimate.estimatedCost) + subAssemblyCost,
+                    hasSubAssembly: true
+                };
+            }
+
+            return baseEstimate;
         }).filter(est => est.success);
 
         if (supplierEstimates.length === 0) {

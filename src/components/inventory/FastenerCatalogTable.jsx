@@ -153,6 +153,10 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
             } else if (sortConfig.key === 'subcategoryId') {
                 aVal = getCategoryName(a.subcategoryId) || '';
                 bVal = getCategoryName(b.subcategoryId) || '';
+            } else if (sortConfig.key === 'suppliers') {
+                // Sort by first supplier
+                aVal = a.suppliers && a.suppliers.length > 0 ? a.suppliers[0] : '';
+                bVal = b.suppliers && b.suppliers.length > 0 ? b.suppliers[0] : '';
             }
 
             // Handle null/undefined values (sort to end)
@@ -380,8 +384,8 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                                     <div className="flex items-center gap-2 column-content">Subcategory {getSortIcon('subcategoryId')}</div>
                                     <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(3, e)} onDoubleClick={() => autoFitColumn(3, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
                                 </th>
-                                <th className="px-4 py-3 relative" style={{ width: `${columnWidths[4]}px` }}>
-                                    <div className="column-content">Suppliers</div>
+                                <th className="px-4 py-3 cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('suppliers')} style={{ width: `${columnWidths[4]}px` }}>
+                                    <div className="flex items-center gap-2 column-content">Suppliers {getSortIcon('suppliers')}</div>
                                     <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(4, e)} onDoubleClick={() => autoFitColumn(4, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
                                 </th>
                                 <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('costPrice')} style={{ width: `${columnWidths[5]}px` }}>

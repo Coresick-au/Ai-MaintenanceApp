@@ -29,6 +29,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
         category: '', // Legacy field
         categoryId: null,
         subcategoryId: null,
+        componentCategory: null, // NEW: For specialized components (Weigh Module, Billet Weight, etc.)
         description: '',
         costType: 'MANUAL',
         manualCost: '',
@@ -60,6 +61,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     category: editingSubAssembly.category || '', // Legacy field
                     categoryId: editingSubAssembly.categoryId || null,
                     subcategoryId: editingSubAssembly.subcategoryId || null,
+                    componentCategory: editingSubAssembly.componentCategory || null,
                     description: editingSubAssembly.description || '',
                     targetMarginPercent: editingSubAssembly.targetMarginPercent || 30,
                     listPrice: editingSubAssembly.listPrice ? (editingSubAssembly.listPrice / 100).toFixed(2) : '',
@@ -92,6 +94,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     category: '', // Legacy field
                     categoryId: null,
                     subcategoryId: null,
+                    componentCategory: null,
                     description: '',
                     targetMarginPercent: 30,
                     listPrice: '',
@@ -240,6 +243,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                 category: formData.category.trim(), // Legacy field
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
+                componentCategory: formData.componentCategory,
                 description: formData.description.trim(),
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
                 listPrice: listPriceCents,
@@ -459,6 +463,28 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                         placeholder="Optional details..."
                                     />
+                                </div>
+
+                                {/* Component Category - For Cost Estimator filtering */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        Component Category
+                                    </label>
+                                    <select
+                                        value={formData.componentCategory || ''}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, componentCategory: e.target.value || null }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    >
+                                        <option value="">None (General Sub-Assembly)</option>
+                                        <option value="Weigh Module">Weigh Module</option>
+                                        <option value="Billet Weight">Billet Weight</option>
+                                        <option value="Speed Sensor">Speed Sensor</option>
+                                        <option value="TMD Frame">TMD Frame</option>
+                                    </select>
+                                    <p className="text-xs text-slate-400 mt-1">
+                                        <Icons.Info size={12} className="inline mr-1" />
+                                        Select a component type to make this sub-assembly available in the Cost Estimator
+                                    </p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">

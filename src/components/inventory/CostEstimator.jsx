@@ -137,6 +137,34 @@ export const CostEstimator = () => {
         quantity: 1
     });
 
+    // Sub-assembly state
+    const [subAssemblies, setSubAssemblies] = useState([]);
+    const [selectedSubAssemblies, setSelectedSubAssemblies] = useState({
+        'weigh-module': { id: null, quantity: 1 },
+        'billet-weight': { id: null, quantity: 1 },
+        'speed-sensor': { id: null, quantity: 1 },
+        'tmd-frame': { id: null, quantity: 1 }
+    });
+
+    // Load sub-assemblies from Firestore
+    useEffect(() => {
+        const unsubscribe = onSnapshot(
+            collection(db, 'sub_assemblies'),
+            (snapshot) => {
+                const subAssemblyData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                setSubAssemblies(subAssemblyData);
+            },
+            (error) => {
+                console.error('Error loading sub-assemblies:', error);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
     // Load weigher models
     useEffect(() => {
         const unsubscribe = onSnapshot(
@@ -164,24 +192,32 @@ export const CostEstimator = () => {
             let estimationResult;
 
             switch (componentType) {
-                case 'weigh-module':
-                    estimationResult = await estimateWeighModuleCost(weighModuleParams, dateRange);
+                case 'weigh-module': {
+                    const subAssembly = selectedSubAssemblies['weigh-module'].id ? selectedSubAssemblies['weigh-module'] : null;
+                    estimationResult = await estimateWeighModuleCost(weighModuleParams, dateRange, subAssembly);
                     break;
+                }
                 case 'idler-frame':
                     estimationResult = await estimateIdlerFrameCost(idlerFrameParams, dateRange);
                     break;
-                case 'billet-weight':
-                    estimationResult = await estimateBilletWeightCost(billetWeightParams, dateRange);
+                case 'billet-weight': {
+                    const subAssembly = selectedSubAssemblies['billet-weight'].id ? selectedSubAssemblies['billet-weight'] : null;
+                    estimationResult = await estimateBilletWeightCost(billetWeightParams, dateRange, subAssembly);
                     break;
+                }
                 case 'roller':
                     estimationResult = await estimateRollerCost(rollerParams, dateRange);
                     break;
-                case 'speed-sensor':
-                    estimationResult = await estimateSpeedSensorCost(speedSensorParams, dateRange);
+                case 'speed-sensor': {
+                    const subAssembly = selectedSubAssemblies['speed-sensor'].id ? selectedSubAssemblies['speed-sensor'] : null;
+                    estimationResult = await estimateSpeedSensorCost(speedSensorParams, dateRange, subAssembly);
                     break;
-                case 'tmd-frame':
-                    estimationResult = await estimateTMDFrameCost(tmdFrameParams, dateRange);
+                }
+                case 'tmd-frame': {
+                    const subAssembly = selectedSubAssemblies['tmd-frame'].id ? selectedSubAssemblies['tmd-frame'] : null;
+                    estimationResult = await estimateTMDFrameCost(tmdFrameParams, dateRange, subAssembly);
                     break;
+                }
                 default:
                     throw new Error('Invalid component type');
             }
@@ -222,6 +258,58 @@ export const CostEstimator = () => {
                     ))}
                 </div>
                 <span className="text-xs opacity-75">({Math.round(confidence.score)}%)</span>
+            </div>
+        );
+    };
+
+    // Helper function to get sub-assemblies for a specific component type
+    const getSubAssembliesForComponent = (componentCategory) => {
+        return subAssemblies.filter(sa => sa.componentCategory === componentCategory);
+    };
+
+    // Helper function to render sub-assembly selector
+    const renderSubAssemblySelector = (componentKey, componentCategory, showQuantity = false) => {
+        const availableSubAssemblies = getSubAssembliesForComponent(componentCategory);
+
+        if (availableSubAssemblies.length === 0) {
+            return null; // Don't show selector if no sub-assemblies available
+        }
+
+        return (
+            <div className="mt-3 pt-3 border-t border-slate-700">
+                <label className="block text-xs text-slate-400 mb-1">Sub-Assembly (Optional)</label>
+                <div className="grid grid-cols-1 gap-2">
+                    <select
+                        value={selectedSubAssemblies[componentKey].id || ''}
+                        onChange={(e) => setSelectedSubAssemblies(prev => ({
+                            ...prev,
+                            [componentKey]: { ...prev[componentKey], id: e.target.value || null }
+                        }))}
+                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                        <option value="">None</option>
+                        {availableSubAssemblies.map(sa => (
+                            <option key={sa.id} value={sa.id}>
+                                {sa.name} {sa.sku ? `(${sa.sku})` : ''}
+                            </option>
+                        ))}
+                    </select>
+                    {showQuantity && selectedSubAssemblies[componentKey].id && (
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Sub-Assembly Quantity</label>
+                            <input
+                                type="number"
+                                min="1"
+                                value={selectedSubAssemblies[componentKey].quantity}
+                                onChange={(e) => setSelectedSubAssemblies(prev => ({
+                                    ...prev,
+                                    [componentKey]: { ...prev[componentKey], quantity: parseInt(e.target.value) || 1 }
+                                }))}
+                                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
+                            />
+                        </div>
+                    )}
+                </div>
             </div>
         );
     };
@@ -401,6 +489,8 @@ export const CostEstimator = () => {
                                         </select>
                                     </div>
                                 </div>
+                                {/* Sub-Assembly Selector for Weigh Module */}
+                                {renderSubAssemblySelector('weigh-module', 'Weigh Module', false)}
                             </div>
                         )}
 
@@ -514,6 +604,8 @@ export const CostEstimator = () => {
                                         <option value="GALVANISED">{MATERIAL_TYPES.GALVANISED}</option>
                                     </select>
                                 </div>
+                                {/* Sub-Assembly Selector for Billet Weight */}
+                                {renderSubAssemblySelector('billet-weight', 'Billet Weight', false)}
                             </div>
                         )}
 
@@ -623,6 +715,8 @@ export const CostEstimator = () => {
                                         />
                                     </div>
                                 </div>
+                                {/* Sub-Assembly Selector for Speed Sensor */}
+                                {renderSubAssemblySelector('speed-sensor', 'Speed Sensor', true)}
                             </div>
                         )}
 
@@ -653,6 +747,8 @@ export const CostEstimator = () => {
                                         />
                                     </div>
                                 </div>
+                                {/* Sub-Assembly Selector for TMD Frame */}
+                                {renderSubAssemblySelector('tmd-frame', 'TMD Frame', true)}
                             </div>
                         )}
                     </div>
@@ -742,6 +838,30 @@ export const CostEstimator = () => {
                                                 </div>
                                             </>
                                         )}
+
+                                        {/* Cost Breakdown for Sub-Assemblies */}
+                                        {estimate.hasSubAssembly && (
+                                            <div className="mt-4 p-3 bg-slate-800/50 rounded border border-slate-700">
+                                                <div className="text-xs font-medium text-slate-300 mb-2">Cost Breakdown</div>
+                                                <div className="space-y-1.5 text-sm">
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-slate-400">Base Component:</span>
+                                                        <span className="text-white font-medium">{formatCurrency(estimate.baseComponentCost)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="text-slate-400">
+                                                            Sub-Assembly {estimate.subAssemblyQuantity > 1 ? `(×${estimate.subAssemblyQuantity})` : ''}:
+                                                        </span>
+                                                        <span className="text-cyan-400 font-medium">{formatCurrency(estimate.subAssemblyCost)}</span>
+                                                    </div>
+                                                    <div className="border-t border-slate-600 pt-1.5 mt-1.5 flex justify-between items-center">
+                                                        <span className="text-white font-medium">Total Cost:</span>
+                                                        <span className="text-emerald-400 font-bold text-lg">{formatCurrency(estimate.estimatedCost)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
 
                                         <div className="flex items-center gap-2">
                                             <span className="text-xs text-slate-400">Confidence:</span>
