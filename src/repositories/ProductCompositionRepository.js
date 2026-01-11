@@ -53,11 +53,20 @@ export class ProductCompositionRepository extends BaseRepository {
             const subAssembliesSnapshot = await getDocs(subAssembliesQuery);
             const subAssemblies = subAssembliesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-            // Return structured object with all three
+            // Get electrical BOM
+            const electricalQuery = query(
+                collection(db, 'product_electrical_composition'),
+                where('productId', '==', productId)
+            );
+            const electricalSnapshot = await getDocs(electricalQuery);
+            const electrical = electricalSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Return structured object with all four
             return {
                 parts,
                 fasteners,
-                subAssemblies
+                subAssemblies,
+                electrical
             };
         } catch (error) {
             console.error('[ProductComposition] Error getting BOM:', error);
@@ -214,8 +223,70 @@ export class ProductCompositionRepository extends BaseRepository {
      * Helper method to update in a specific collection
      */
     async updateInCollection(collectionName, id, updates) {
+        const { doc, updateDoc } = await import('firebase/firestore');
         const docRef = doc(db, collectionName, id);
         await updateDoc(docRef, updates);
+    }
+
+    // ==========================================
+    // ELECTRICAL BOM OPERATIONS
+    // ==========================================
+
+    /**
+     * Add an electrical component to a product's BOM
+     */
+    async addElectricalToBOM(productId, electricalId, quantityUsed) {
+        try {
+            if (quantityUsed <= 0) {
+                throw new Error('Quantity must be greater than zero');
+            }
+
+            const bomEntry = {
+                id: `${productId}_${electricalId}`,
+                productId,
+                electricalId,
+                quantityUsed,
+                createdAt: new Date().toISOString()
+            };
+
+            await this.createInCollection('product_electrical_composition', bomEntry.id, bomEntry);
+            return bomEntry;
+        } catch (error) {
+            console.error('[ProductComposition] Error adding electrical to BOM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove an electrical component from a product's BOM
+     */
+    async removeElectricalFromBOM(productId, electricalId) {
+        try {
+            const bomId = `${productId}_${electricalId}`;
+            await deleteDoc(doc(db, 'product_electrical_composition', bomId));
+            return true;
+        } catch (error) {
+            console.error('[ProductComposition] Error removing electrical from BOM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update the quantity of an electrical component in a product's BOM
+     */
+    async updateElectricalQuantity(productId, electricalId, quantityUsed) {
+        try {
+            if (quantityUsed <= 0) {
+                throw new Error('Quantity must be greater than zero');
+            }
+
+            const bomId = `${productId}_${electricalId}`;
+            await this.updateInCollection('product_electrical_composition', bomId, { quantityUsed });
+            return { id: bomId, productId, electricalId, quantityUsed };
+        } catch (error) {
+            console.error('[ProductComposition] Error updating electrical quantity:', error);
+            throw error;
+        }
     }
 
     // ==========================================

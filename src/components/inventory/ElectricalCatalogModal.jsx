@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
-import { addPartToCatalog, updatePart, filterSuppliersByCategories } from '../../services/inventoryService';
+import { addElectricalItemToCatalog, updateElectricalItem, filterSuppliersByCategories } from '../../services/inventoryService';
 import { CategoryProvider } from '../../context/CategoryContext';
 import { PartPricingTab } from './PartPricingTab';
 import { ListPriceToggle } from './ListPriceToggle';
@@ -11,9 +11,9 @@ import { LocationSelect } from './LocationSelect';
 import { getLowestSupplierPrice } from '../../services/partPricingService';
 import { generateNextPartSKU } from '../../utils/skuGenerator';
 
-export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
-    // Track the current part state separately to handle updates from children
-    const [activePart, setActivePart] = useState(editingPart);
+export const ElectricalCatalogModal = ({ isOpen, onClose, editingItem = null }) => {
+    // Track the current item state separately to handle updates from children
+    const [activeItem, setActiveItem] = useState(editingItem);
     const [categories, setCategories] = useState([]);
     const [suppliers, setSuppliers] = useState([]);
     const [filteredSuppliers, setFilteredSuppliers] = useState([]);
@@ -27,7 +27,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         name: '',
         category: '', // Legacy field
         categoryId: null,
-        subcategoryIds: [], // Changed from subcategoryId to support multiple
+        subcategoryIds: [],
         suppliers: [],
         supplierSKUs: {}, // Map of supplier name to their SKU/part number
         description: '',
@@ -50,12 +50,12 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
     const [preservedListPrice, setPreservedListPrice] = useState('');
     const [preservedTargetMargin, setPreservedTargetMargin] = useState(30);
 
-    // Load categories from Firestore (filter for part categories)
+    // Load categories from Firestore (filter for part categories - assume cabling uses same categories or maybe new ones? Using 'part' for now as cabling is a type of part)
     useEffect(() => {
         const unsubscribe = onSnapshot(collection(db, 'part_categories'), (snap) => {
             const categoriesList = snap.docs
                 .map(doc => doc.data())
-                .filter(cat => cat.type === 'part'); // Filter only part categories
+            // .filter(cat => cat.type === 'part'); // Filter only part categories - keep as is for now
             categoriesList.sort((a, b) => a.name.localeCompare(b.name));
             setCategories(categoriesList);
 
@@ -79,7 +79,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         return () => unsubscribe();
     }, []);
 
-    // Filter suppliers by part's categories
+    // Filter suppliers by categories
     useEffect(() => {
         const categoryIds = [];
         if (formData.categoryId) categoryIds.push(formData.categoryId);
@@ -89,52 +89,50 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         setFilteredSuppliers(filtered);
     }, [suppliers, formData.categoryId, formData.subcategoryIds]);
 
-    // Sync activePart when editingPart prop changes
+    // Sync activeItem when editingItem prop changes
     useEffect(() => {
-        setActivePart(editingPart);
-    }, [editingPart]);
+        setActiveItem(editingItem);
+    }, [editingItem]);
 
     useEffect(() => {
-        if (editingPart) {
+        if (editingItem) {
             // Migrate old subcategoryId to subcategoryIds array
-            let subcategoryIds = editingPart.subcategoryIds || [];
-            if (!subcategoryIds.length && editingPart.subcategoryId) {
-                subcategoryIds = [editingPart.subcategoryId];
+            let subcategoryIds = editingItem.subcategoryIds || [];
+            if (!subcategoryIds.length && editingItem.subcategoryId) {
+                subcategoryIds = [editingItem.subcategoryId];
             }
 
             // Handle backward compatibility for supplierSKU -> supplierSKUs migration
             let supplierSKUs = {};
-            if (editingPart.supplierSKUs && typeof editingPart.supplierSKUs === 'object') {
-                // New format: use the object directly
-                supplierSKUs = editingPart.supplierSKUs;
-            } else if (editingPart.supplierSKU && typeof editingPart.supplierSKU === 'string') {
-                // Old format: apply the single SKU to all suppliers
-                (editingPart.suppliers || []).forEach(supplier => {
-                    supplierSKUs[supplier] = editingPart.supplierSKU;
+            if (editingItem.supplierSKUs && typeof editingItem.supplierSKUs === 'object') {
+                supplierSKUs = editingItem.supplierSKUs;
+            } else if (editingItem.supplierSKU && typeof editingItem.supplierSKU === 'string') {
+                (editingItem.suppliers || []).forEach(supplier => {
+                    supplierSKUs[supplier] = editingItem.supplierSKU;
                 });
             }
 
             setFormData({
-                sku: editingPart.sku,
-                name: editingPart.name,
-                category: editingPart.category, // Legacy field
-                categoryId: editingPart.categoryId || null,
+                sku: editingItem.sku,
+                name: editingItem.name,
+                category: editingItem.category, // Legacy field
+                categoryId: editingItem.categoryId || null,
                 subcategoryIds,
-                suppliers: (editingPart.suppliers || []).sort((a, b) => a.localeCompare(b)),
+                suppliers: (editingItem.suppliers || []).sort((a, b) => a.localeCompare(b)),
                 supplierSKUs,
-                description: editingPart.description || '',
-                material: editingPart.material || '',
-                costPrice: (editingPart.costPrice / 100).toFixed(2),
-                costPriceSource: editingPart.costPriceSource || 'MANUAL',
-                listPrice: (editingPart.listPrice / 100).toFixed(2),
-                targetMarginPercent: editingPart.targetMarginPercent,
-                isSerialized: editingPart.isSerialized,
-                isSaleable: editingPart.isSaleable || false,
-                trackStock: editingPart.trackStock !== undefined ? editingPart.trackStock : false,
-                reorderLevel: editingPart.reorderLevel,
-                locationId: editingPart.locationId || null
+                description: editingItem.description || '',
+                material: editingItem.material || '',
+                costPrice: (editingItem.costPrice / 100).toFixed(2),
+                costPriceSource: editingItem.costPriceSource || 'MANUAL',
+                listPrice: (editingItem.listPrice / 100).toFixed(2),
+                targetMarginPercent: editingItem.targetMarginPercent,
+                isSerialized: editingItem.isSerialized,
+                isSaleable: editingItem.isSaleable || false,
+                trackStock: editingItem.trackStock !== undefined ? editingItem.trackStock : false,
+                reorderLevel: editingItem.reorderLevel,
+                locationId: editingItem.locationId || null
             });
-            setListPriceSource(editingPart.listPriceSource || 'MANUAL');
+            setListPriceSource(editingItem.listPriceSource || 'MANUAL');
         } else {
             setFormData({
                 sku: '',
@@ -160,40 +158,39 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         }
         setError('');
         setActiveTab('details'); // Reset to details tab
-    }, [editingPart, isOpen, categories]);
+    }, [editingItem, isOpen, categories]);
 
-    // Refresh part data from Firebase after updates in PartPricingTab
-    const handlePartUpdate = async () => {
-        if (!editingPart?.id) return;
+    // Refresh data from Firebase after updates in PartPricingTab
+    const handleItemUpdate = async () => {
+        if (!editingItem?.id) return;
 
         try {
-            const collection = editingPart.id.startsWith('fastener-') ? 'fastener_catalog' : 'part_catalog';
-            const partDoc = await getDoc(doc(db, collection, editingPart.id));
+            const itemDoc = await getDoc(doc(db, 'electrical_catalog', editingItem.id));
 
-            if (partDoc.exists()) {
-                const refreshedPart = partDoc.data();
-                setActivePart(refreshedPart);
+            if (itemDoc.exists()) {
+                const refreshedItem = itemDoc.data();
+                setActiveItem(refreshedItem);
 
-                // Update formData to reflect changes immediately (e.g. cost price change -> list price recalc)
+                // Update formData to reflect changes immediately
                 setFormData(prev => ({
                     ...prev,
-                    costPrice: (refreshedPart.costPrice / 100).toFixed(2),
-                    costPriceSource: refreshedPart.costPriceSource || 'MANUAL',
-                    listPrice: (refreshedPart.listPrice / 100).toFixed(2)
+                    costPrice: (refreshedItem.costPrice / 100).toFixed(2),
+                    costPriceSource: refreshedItem.costPriceSource || 'MANUAL',
+                    listPrice: (refreshedItem.listPrice / 100).toFixed(2)
                 }));
             }
         } catch (err) {
-            console.error('Error refreshing part data:', err);
+            console.error('Error refreshing item data:', err);
         }
     };
 
     // Load lowest supplier price when editing
     useEffect(() => {
         const loadLowestPrice = async () => {
-            if (editingPart?.id) {
+            if (editingItem?.id) {
                 try {
-                    const validSuppliers = editingPart.suppliers || [];
-                    const lowest = await getLowestSupplierPrice(editingPart.id, new Date(), validSuppliers);
+                    const validSuppliers = editingItem.suppliers || [];
+                    const lowest = await getLowestSupplierPrice(editingItem.id, new Date(), validSuppliers);
                     setLowestSupplierPrice(lowest);
                 } catch (err) {
                     console.error('Error loading lowest supplier price:', err);
@@ -206,7 +203,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         if (isOpen) {
             loadLowestPrice();
         }
-    }, [editingPart?.id, isOpen, formData.suppliers]);
+    }, [editingItem?.id, isOpen, formData.suppliers]);
 
     const handleAddSupplier = () => {
         if (!selectedSupplier) return;
@@ -254,6 +251,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         try {
             // Use first subcategory for SKU generation
             const subcategoryId = formData.subcategoryIds?.[0] || null;
+            // Note: generateNextPartSKU might need checking if it works for electrical if we want unique SKUs or share part sequence
             const newSKU = await generateNextPartSKU(formData.categoryId, subcategoryId);
             setFormData(prev => ({ ...prev, sku: newSKU }));
         } catch (err) {
@@ -263,7 +261,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         }
     };
 
-    // Calculate list price when in CALCULATED mode for saleable parts
+    // Calculate list price when in CALCULATED mode for saleable items
     const calculatedListPrice = useMemo(() => {
         if (formData.isSaleable && listPriceSource === 'CALCULATED') {
             // Use active cost price based on source
@@ -290,10 +288,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         setSaving(true);
 
         try {
-            // Start with base part data
-            // NOTE: costPriceSource is NOT included here because it's managed independently
-            // in the PartPricingTab to avoid overwriting changes with stale formData
-            const partData = {
+            const itemData = {
                 sku: formData.sku.trim(),
                 name: formData.name.trim(),
                 category: formData.category.trim(), // Legacy field
@@ -312,33 +307,30 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                 reorderLevel: parseInt(formData.reorderLevel || '0')
             };
 
-            // For new parts, initialize costPriceSource to MANUAL and set initial cost price
-            if (!editingPart) {
-                partData.costPriceSource = 'MANUAL';
-                // Convert dollars to cents for new parts
+            // For new items, initialize costPriceSource to MANUAL and set initial cost price
+            if (!editingItem) {
+                itemData.costPriceSource = 'MANUAL';
                 const costPriceValue = parseFloat(formData.costPrice || '0');
-                partData.costPrice = Math.round(costPriceValue * 100);
+                itemData.costPrice = Math.round(costPriceValue * 100);
             }
-            // NOTE: When editing, we DO NOT update costPrice here because it's managed 
-            // independently in the PartPricingTab based on costPriceSource setting
 
             // Calculate list price based on source
             if (formData.isSaleable && listPriceSource === 'CALCULATED') {
-                partData.listPrice = calculatedListPrice;
+                itemData.listPrice = calculatedListPrice;
             } else {
                 const listPriceValue = parseFloat(formData.listPrice || '0');
-                partData.listPrice = Math.round(listPriceValue * 100);
+                itemData.listPrice = Math.round(listPriceValue * 100);
             }
 
-            if (editingPart) {
-                await updatePart(editingPart.id, partData);
+            if (editingItem) {
+                await updateElectricalItem(editingItem.id, itemData);
             } else {
-                await addPartToCatalog(partData);
+                await addElectricalItemToCatalog(itemData);
             }
 
             onClose();
         } catch (err) {
-            setError(err.message || 'Failed to save part');
+            setError(err.message || 'Failed to save item');
         } finally {
             setSaving(false);
         }
@@ -365,7 +357,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                     <div className="border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
                         <div className="flex items-center justify-between p-6 pb-0">
                             <h2 className="text-xl font-bold text-white">
-                                {editingPart ? 'Edit Part' : 'Add New Part'}
+                                {editingItem ? 'Edit Electrical Component' : 'Add New Electrical Component'}
                             </h2>
                             <button
                                 onClick={onClose}
@@ -376,7 +368,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                         </div>
 
                         {/* Tab Navigation */}
-                        {editingPart && (
+                        {editingItem && (
                             <div className="flex gap-2 px-6 pt-4">
                                 <button
                                     type="button"
@@ -423,7 +415,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                             required
                                             value={formData.sku}
                                             onChange={(e) => {
-                                                if (editingPart) {
+                                                if (editingItem) {
                                                     // Show confirmation when trying to edit existing SKU
                                                     if (confirm('WARNING: Changing the SKU of an existing item can cause data inconsistencies. Are you sure you want to proceed?')) {
                                                         setFormData(prev => ({ ...prev, sku: e.target.value }));
@@ -433,7 +425,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                                 }
                                             }}
                                             className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="PART-001"
+                                            placeholder="ELEC-001"
                                         />
                                         <button
                                             type="button"
@@ -450,9 +442,9 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                         </button>
                                     </div>
                                     <p className="text-xs text-slate-400 mt-1">
-                                        {editingPart
+                                        {editingItem
                                             ? '⚠️ SKU is locked after creation - changing it may cause issues'
-                                            : 'Auto-generates based on category/subcategory'
+                                            : 'Auto-generates based on category'
                                         }
                                     </p>
                                 </div>
@@ -468,7 +460,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                         value={formData.name}
                                         onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        placeholder="Conveyor Belt..."
+                                        placeholder="Ethernet Cable..."
                                     />
                                 </div>
                             </div>
@@ -585,17 +577,14 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                 >
                                     <option value="">-- None --</option>
-                                    <option value="Stainless 304">Stainless 304</option>
-                                    <option value="Stainless 316">Stainless 316</option>
-                                    <option value="Galvanised">Galvanised</option>
-                                    <option value="Zinc">Zinc</option>
-                                    <option value="Aluminium">Aluminium</option>
-                                    <option value="Mild Steel">Mild Steel</option>
-                                    <option value="Brass">Brass</option>
-                                    <option value="AB2">AB2</option>
-                                    <option value="FRP">FRP</option>
+                                    <option value="Copper">Copper</option>
+                                    <option value="Fiber Optic">Fiber Optic</option>
+                                    <option value="PVC">PVC</option>
+                                    <option value="LSZH">LSZH</option>
+                                    <option value="Rubber">Rubber</option>
                                     <option value="Plastic">Plastic</option>
                                     <option value="Nylon">Nylon</option>
+                                    <option value="Other">Other</option>
                                 </select>
                                 <p className="text-xs text-slate-400 mt-1">Optional material specification</p>
                             </div>
@@ -767,7 +756,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                             const checked = e.target.checked;
                                             // Confirm when unchecking
                                             if (!checked) {
-                                                if (confirm('Are you sure you want to stop tracking stock for this part? This will remove it from stock take and hide reorder level.')) {
+                                                if (confirm('Are you sure you want to stop tracking stock for this item? This will remove it from stock take and hide reorder level.')) {
                                                     setFormData(prev => ({ ...prev, trackStock: false }));
                                                 }
                                             } else {
@@ -800,9 +789,9 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                     ) : (
                         /* Pricing Tab */
                         <PartPricingTab
-                            part={activePart}
+                            part={activeItem}
                             suppliers={formData.suppliers || []}
-                            onPartUpdate={handlePartUpdate}
+                            onPartUpdate={handleItemUpdate}
                         />
                     )}
 
@@ -821,7 +810,7 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                             disabled={saving}
                             className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {saving ? 'Saving...' : (editingPart ? 'Update Part' : 'Add Part')}
+                            {saving ? 'Saving...' : (editingItem ? 'Update Component' : 'Add Component')}
                         </button>
                     </div>
                 </div>

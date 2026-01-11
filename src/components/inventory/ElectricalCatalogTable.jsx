@@ -4,20 +4,20 @@ import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { getLowestSupplierPrice, getCurrentPriceForSupplier } from '../../services/partPricingService';
 import { formatCurrency } from '../../utils/helpers';
-import { deletePart } from '../../services/inventoryService';
+import { deleteElectricalItem } from '../../services/inventoryService';
 import { getAllPricing } from '../../services/partPricingService';
 import { exportToCSV } from '../../utils/csvExportImport';
 import { FilterPanel } from './categories/FilterPanel';
 import { useCategories } from '../../context/CategoryContext';
 import { useResizableColumns } from '../../hooks/useResizableColumns';
 
-export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
-    const [parts, setParts] = useState([]);
+export const ElectricalCatalogTable = ({ onAddElectrical, onEditElectrical }) => {
+    const [electricalItems, setElectricalItems] = useState([]);
     const [inventory, setInventory] = useState([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState({ key: 'sku', direction: 'ascending' });
     const [loading, setLoading] = useState(true);
-    const [viewingPart, setViewingPart] = useState(null);
+    const [viewingItem, setViewingItem] = useState(null);
     const [lowestPrices, setLowestPrices] = useState({});
     const [isFilterOpen, setIsFilterOpen] = useState(false);
     const [isExportMenuOpen, setIsExportMenuOpen] = useState(false);
@@ -28,17 +28,17 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
     // Resizable columns - initial widths auto-sized to content
     const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([150, 250, 150, 150, 130, 150, 110, 100, 100, 130, 80, 100]);
 
-    // Real-time listener for parts catalog
+    // Real-time listener for electrical catalog
     useEffect(() => {
         const unsubscribe = onSnapshot(
-            collection(db, 'part_catalog'),
+            collection(db, 'electrical_catalog'),
             (snapshot) => {
-                const partsList = snapshot.docs.map(doc => doc.data());
-                setParts(partsList);
+                const itemsList = snapshot.docs.map(doc => doc.data());
+                setElectricalItems(itemsList);
                 setLoading(false);
             },
             (error) => {
-                console.error('[PartCatalog] Error fetching parts:', error);
+                console.error('[ElectricalCatalog] Error fetching items:', error);
                 setLoading(false);
             }
         );
@@ -55,83 +55,83 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                 setInventory(inventoryList);
             },
             (error) => {
-                console.error('[PartCatalog] Error fetching inventory:', error);
+                console.error('[ElectricalCatalog] Error fetching inventory:', error);
             }
         );
 
         return () => unsubscribe();
     }, []);
 
-    // Load lowest supplier prices for all parts
+    // Load lowest supplier prices for all items
     useEffect(() => {
         const loadLowestPrices = async () => {
             const prices = {};
-            for (const part of parts) {
-                if (part.id && part.costPriceSource === 'SUPPLIER_LOWEST') {
+            for (const item of electricalItems) {
+                if (item.id && item.costPriceSource === 'SUPPLIER_LOWEST') {
                     try {
-                        const validSuppliers = part.suppliers || [];
-                        const lowest = await getLowestSupplierPrice(part.id, new Date(), validSuppliers);
+                        const validSuppliers = item.suppliers || [];
+                        const lowest = await getLowestSupplierPrice(item.id, new Date(), validSuppliers);
                         if (lowest) {
-                            prices[part.id] = {
+                            prices[item.id] = {
                                 price: lowest.costPrice,
                                 date: lowest.effectiveDate
                             };
                         }
                     } catch (err) {
-                        console.error(`Error loading lowest price for ${part.id}:`, err);
+                        console.error(`Error loading lowest price for ${item.id}:`, err);
                     }
-                } else if (part.id && part.costPriceSource === 'PREFERRED_SUPPLIER' && part.preferredSupplier) {
+                } else if (item.id && item.costPriceSource === 'PREFERRED_SUPPLIER' && item.preferredSupplier) {
                     try {
-                        const preferredPrice = await getCurrentPriceForSupplier(part.id, part.preferredSupplier, new Date());
+                        const preferredPrice = await getCurrentPriceForSupplier(item.id, item.preferredSupplier, new Date());
                         if (preferredPrice) {
-                            prices[part.id] = {
+                            prices[item.id] = {
                                 price: preferredPrice.costPrice,
                                 date: preferredPrice.effectiveDate
                             };
                         }
                     } catch (err) {
-                        console.error(`Error loading preferred supplier price for ${part.id}:`, err);
+                        console.error(`Error loading preferred supplier price for ${item.id}:`, err);
                     }
                 }
             }
             setLowestPrices(prices);
         };
 
-        if (parts.length > 0) {
+        if (electricalItems.length > 0) {
             loadLowestPrices();
         }
-    }, [parts]);
+    }, [electricalItems]);
 
-    // Calculate actual margin and stock for each part
-    const partsWithMargins = useMemo(() => {
-        return parts.map(part => {
+    // Calculate actual margin and stock for each item
+    const itemsWithMargins = useMemo(() => {
+        return electricalItems.map(item => {
             // Determine active cost and date based on source
-            let activeCost = part.costPrice;
-            let costDate = part.updatedAt; // Default to update time for manual
+            let activeCost = item.costPrice;
+            let costDate = item.updatedAt; // Default to update time for manual
 
-            if ((part.costPriceSource === 'SUPPLIER_LOWEST' || part.costPriceSource === 'PREFERRED_SUPPLIER') && lowestPrices[part.id]) {
-                activeCost = lowestPrices[part.id].price;
-                costDate = lowestPrices[part.id].date;
+            if ((item.costPriceSource === 'SUPPLIER_LOWEST' || item.costPriceSource === 'PREFERRED_SUPPLIER') && lowestPrices[item.id]) {
+                activeCost = lowestPrices[item.id].price;
+                costDate = lowestPrices[item.id].date;
             }
 
-            const actualMargin = part.listPrice > 0
-                ? ((part.listPrice - activeCost) / part.listPrice) * 100
+            const actualMargin = item.listPrice > 0
+                ? ((item.listPrice - activeCost) / item.listPrice) * 100
                 : 0;
 
             // Calculate actual stock count from inventory_state
             const actualStockCount = inventory
-                .filter(inv => inv.partId === part.id)
+                .filter(inv => inv.partId === item.id)
                 .reduce((total, inv) => total + (inv.quantity || 0), 0);
 
             return {
-                ...part,
+                ...item,
                 activeCost,
                 costDate, // Expose for table
                 actualMarginPercent: actualMargin,
                 actualStockCount
             };
         });
-    }, [parts, lowestPrices, inventory]);
+    }, [electricalItems, lowestPrices, inventory]);
 
     // Helper to get category name by ID
     const getCategoryName = (categoryId) => {
@@ -140,31 +140,31 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
     };
 
     // Filter and sort
-    const filteredAndSortedParts = useMemo(() => {
-        let filtered = partsWithMargins.filter(part => {
+    const filteredAndSortedItems = useMemo(() => {
+        let filtered = itemsWithMargins.filter(item => {
             const searchLower = searchTerm.toLowerCase();
-            const categoryName = getCategoryName(part.categoryId)?.toLowerCase() || '';
+            const categoryName = getCategoryName(item.categoryId)?.toLowerCase() || '';
 
             // Check all subcategories for search term
-            const subcategoryIds = part.subcategoryIds || (part.subcategoryId ? [part.subcategoryId] : []);
+            const subcategoryIds = item.subcategoryIds || (item.subcategoryId ? [item.subcategoryId] : []);
             const subcategoryNames = subcategoryIds
                 .map(id => getCategoryName(id)?.toLowerCase() || '')
                 .join(' ');
 
-            return part.name.toLowerCase().includes(searchLower) ||
-                part.sku.toLowerCase().includes(searchLower) ||
+            return item.name.toLowerCase().includes(searchLower) ||
+                item.sku.toLowerCase().includes(searchLower) ||
                 categoryName.includes(searchLower) ||
                 subcategoryNames.includes(searchLower);
         });
 
         // Apply category filters
         if (categoryFilters.length > 0) {
-            filtered = filtered.filter(part => {
-                const subcategoryIds = part.subcategoryIds || (part.subcategoryId ? [part.subcategoryId] : []);
-                if (!part.categoryId && subcategoryIds.length === 0) return false;
+            filtered = filtered.filter(item => {
+                const subcategoryIds = item.subcategoryIds || (item.subcategoryId ? [item.subcategoryId] : []);
+                if (!item.categoryId && subcategoryIds.length === 0) return false;
 
                 return categoryFilters.some(filterId =>
-                    filterId === part.categoryId || subcategoryIds.includes(filterId)
+                    filterId === item.categoryId || subcategoryIds.includes(filterId)
                 );
             });
         }
@@ -204,7 +204,7 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
         });
 
         return filtered;
-    }, [partsWithMargins, searchTerm, sortConfig, categoryFilters, categories]);
+    }, [itemsWithMargins, searchTerm, sortConfig, categoryFilters, categories]);
 
     const handleSort = (key) => {
         setSortConfig(prev => ({
@@ -220,8 +220,6 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
             : <Icons.ChevronDown size={14} className="text-cyan-400" />;
     };
 
-
-
     const getMarginColor = (actual, target) => {
         if (actual >= target) return 'text-emerald-400';
         if (actual >= target * 0.9) return 'text-amber-400';
@@ -230,29 +228,29 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
 
     const handleExportCatalog = () => {
         try {
-            const dataToExport = filteredAndSortedParts.map(part => ({
-                SKU: part.sku,
-                Name: part.name,
-                Category: getCategoryName(part.categoryId),
-                Subcategories: (part.subcategoryIds || (part.subcategoryId ? [part.subcategoryId] : []))
+            const dataToExport = filteredAndSortedItems.map(item => ({
+                SKU: item.sku,
+                Name: item.name,
+                Category: getCategoryName(item.categoryId),
+                Subcategories: (item.subcategoryIds || (item.subcategoryId ? [item.subcategoryId] : []))
                     .map(id => getCategoryName(id))
                     .join('; '),
-                Material: part.material || '',
-                Description: part.description || '',
-                Suppliers: (part.suppliers || []).join('; '),
-                'Supplier SKUs': Object.entries(part.supplierSKUs || {})
+                Material: item.material || '',
+                Description: item.description || '',
+                Suppliers: (item.suppliers || []).join('; '),
+                'Supplier SKUs': Object.entries(item.supplierSKUs || {})
                     .map(([supplier, sku]) => `${supplier}: ${sku}`)
                     .join('; '),
-                'Cost Price': (part.activeCost / 100).toFixed(2),
-                'List Price': (part.listPrice / 100).toFixed(2),
-                'Margin %': part.actualMarginPercent.toFixed(1),
-                'Stock Count': part.actualStockCount || 0,
-                'Reorder Level': part.reorderLevel || 0,
-                'Location ID': part.locationId || ''
+                'Cost Price': (item.activeCost / 100).toFixed(2),
+                'List Price': (item.listPrice / 100).toFixed(2),
+                'Margin %': item.actualMarginPercent.toFixed(1),
+                'Stock Count': item.actualStockCount || 0,
+                'Reorder Level': item.reorderLevel || 0,
+                'Location ID': item.locationId || ''
             }));
 
             const timestamp = new Date().toISOString().split('T')[0];
-            exportToCSV(dataToExport, `Parts_Catalog_Export_${timestamp}.csv`);
+            exportToCSV(dataToExport, `Electrical_Catalog_Export_${timestamp}.csv`);
         } catch (error) {
             console.error('Error exporting catalog:', error);
             alert('Failed to export catalog');
@@ -264,16 +262,16 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
             // Get all pricing data
             const allPricing = await getAllPricing();
 
-            // Filter to include only parts currently in view
-            const visiblePartIds = new Set(filteredAndSortedParts.map(p => p.id));
+            // Filter to include only items currently in view
+            const visibleIds = new Set(filteredAndSortedItems.map(i => i.id));
 
             const dataToExport = allPricing
-                .filter(price => visiblePartIds.has(price.partId))
+                .filter(price => visibleIds.has(price.partId))
                 .map(price => {
-                    const part = parts.find(p => p.id === price.partId);
+                    const item = electricalItems.find(i => i.id === price.partId);
                     return {
-                        'Part SKU': part ? part.sku : 'Unknown',
-                        'Part Name': part ? part.name : 'Unknown',
+                        'Part SKU': item ? item.sku : 'Unknown',
+                        'Part Name': item ? item.name : 'Unknown',
                         'Supplier': price.supplierName,
                         'Effective Date': price.effectiveDate ? new Date(price.effectiveDate).toLocaleDateString() : '',
                         'Cost Price': (price.costPrice / 100).toFixed(2),
@@ -285,7 +283,7 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                 });
 
             const timestamp = new Date().toISOString().split('T')[0];
-            exportToCSV(dataToExport, `Parts_Cost_History_${timestamp}.csv`);
+            exportToCSV(dataToExport, `Electrical_Cost_History_${timestamp}.csv`);
         } catch (error) {
             console.error('Error exporting costs:', error);
             alert('Failed to export cost history');
@@ -318,8 +316,8 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                         </div>
                         <div className="text-sm text-slate-400">
                             {categoryFilters.length > 0
-                                ? `Showing ${filteredAndSortedParts.length} of ${partsWithMargins.length} parts (filtered)`
-                                : `${filteredAndSortedParts.length} part${filteredAndSortedParts.length !== 1 ? 's' : ''}`
+                                ? `Showing ${filteredAndSortedItems.length} of ${itemsWithMargins.length} items (filtered)`
+                                : `${filteredAndSortedItems.length} item${filteredAndSortedItems.length !== 1 ? 's' : ''}`
                             }
                         </div>
                     </div>
@@ -340,11 +338,11 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                             )}
                         </button>
                         <button
-                            onClick={onAddPart}
+                            onClick={onAddElectrical}
                             className="flex items-center gap-2 px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
                         >
                             <Icons.Plus size={18} />
-                            Add Part
+                            Add Component
                         </button>
                         <div className="relative">
                             <button
@@ -543,36 +541,36 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700">
-                            {filteredAndSortedParts.length === 0 ? (
+                            {filteredAndSortedItems.length === 0 ? (
                                 <tr>
                                     <td colSpan="12" className="px-4 py-8 text-center text-slate-400">
-                                        {searchTerm ? 'No parts match your search' : 'No parts in catalog. Add your first part to get started.'}
+                                        {searchTerm ? 'No electrical items match your search' : 'No electrical items in catalog. Add your first item to get started.'}
                                     </td>
                                 </tr>
                             ) : (
-                                filteredAndSortedParts.map(part => (
+                                filteredAndSortedItems.map(item => (
                                     <tr
-                                        key={part.id}
+                                        key={item.id}
                                         className="hover:bg-slate-700/50 transition-colors cursor-pointer"
-                                        onClick={() => setViewingPart(part)}
+                                        onClick={() => setViewingItem(item)}
                                     >
-                                        <td className="px-4 py-3 font-mono text-xs text-cyan-400">{part.sku}</td>
+                                        <td className="px-4 py-3 font-mono text-xs text-cyan-400">{item.sku}</td>
                                         <td className="px-4 py-3">
                                             <div className="flex items-center gap-2">
-                                                {part.isSerialized && (
-                                                    <Icons.Barcode size={16} className="text-purple-400" title="Serialized Part" />
+                                                {item.isSerialized && (
+                                                    <Icons.Barcode size={16} className="text-purple-400" title="Serialized Item" />
                                                 )}
-                                                <span className="text-white font-medium">{part.name}</span>
+                                                <span className="text-white font-medium">{item.name}</span>
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-slate-300">
                                             <span className="text-xs px-2 py-1 bg-cyan-500/10 text-cyan-300 rounded border border-cyan-500/30">
-                                                {getCategoryName(part.categoryId) || '-'}
+                                                {getCategoryName(item.categoryId) || '-'}
                                             </span>
                                         </td>
                                         <td className="px-4 py-3 text-slate-300">
                                             {(() => {
-                                                const subcategoryIds = part.subcategoryIds || (part.subcategoryId ? [part.subcategoryId] : []);
+                                                const subcategoryIds = item.subcategoryIds || (item.subcategoryId ? [item.subcategoryId] : []);
                                                 if (subcategoryIds.length === 0) {
                                                     return <span className="text-slate-500">-</span>;
                                                 }
@@ -588,24 +586,24 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                             })()}
                                         </td>
                                         <td className="px-3 py-3 text-slate-300">
-                                            {part.material ? (
+                                            {item.material ? (
                                                 <span className="text-xs px-2 py-1 bg-amber-500/10 text-amber-300 rounded border border-amber-500/30 whitespace-nowrap">
-                                                    {part.material}
+                                                    {item.material}
                                                 </span>
                                             ) : (
                                                 <span className="text-slate-500">-</span>
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-sm text-slate-400">
-                                            {part.suppliers?.length > 0 ? (
+                                            {item.suppliers?.length > 0 ? (
                                                 <div className="flex flex-wrap gap-1">
-                                                    {part.suppliers.slice(0, 2).map((s, i) => (
+                                                    {item.suppliers.slice(0, 2).map((s, i) => (
                                                         <span key={i} className="text-xs text-slate-500 bg-slate-800/50 px-1.5 py-0.5 rounded">
                                                             {s}
                                                         </span>
                                                     ))}
-                                                    {part.suppliers.length > 2 && (
-                                                        <span className="text-xs text-slate-500 px-1">+ {part.suppliers.length - 2}</span>
+                                                    {item.suppliers.length > 2 && (
+                                                        <span className="text-xs text-slate-500 px-1">+ {item.suppliers.length - 2}</span>
                                                     )}
                                                 </div>
                                             ) : '-'}
@@ -613,13 +611,13 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         <td className="px-4 py-3 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <span className="text-slate-300">
-                                                    {part.activeCost === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(part.activeCost)}
+                                                    {item.activeCost === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(item.activeCost)}
                                                 </span>
-                                                {part.costPriceSource === 'SUPPLIER_LOWEST' && lowestPrices[part.id] ? (
+                                                {item.costPriceSource === 'SUPPLIER_LOWEST' && lowestPrices[item.id] ? (
                                                     <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" title="Using lowest supplier price">
                                                         Auto
                                                     </span>
-                                                ) : part.costPriceSource === 'PREFERRED_SUPPLIER' ? (
+                                                ) : item.costPriceSource === 'PREFERRED_SUPPLIER' ? (
                                                     <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-purple-500/20 text-purple-300 border border-purple-500/30" title="Using preferred supplier price">
                                                         Preferred
                                                     </span>
@@ -631,19 +629,19 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-right text-slate-400 text-xs">
-                                            {part.costDate ? new Date(part.costDate).toLocaleDateString() : '-'}
+                                            {item.costDate ? new Date(item.costDate).toLocaleDateString() : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-right text-white font-medium">
-                                            {part.listPrice === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(part.listPrice)}
+                                            {item.listPrice === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(item.listPrice)}
                                         </td>
                                         <td className="px-4 py-3 text-right">
-                                            {part.listPrice > 0 ? (
+                                            {item.listPrice > 0 ? (
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <span className={`font-bold ${getMarginColor(part.actualMarginPercent, part.targetMarginPercent)}`}>
-                                                        {part.actualMarginPercent.toFixed(1)}%
+                                                    <span className={`font-bold ${getMarginColor(item.actualMarginPercent, item.targetMarginPercent)}`}>
+                                                        {item.actualMarginPercent.toFixed(1)}%
                                                     </span>
                                                     <span className="text-xs text-slate-500">
-                                                        (Target: {part.targetMarginPercent}%)
+                                                        (Target: {item.targetMarginPercent}%)
                                                     </span>
                                                 </div>
                                             ) : (
@@ -651,14 +649,14 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                             )}
                                         </td>
                                         <td className="px-4 py-3 text-center">
-                                            {part.trackStock ? (
-                                                <span className={`font-medium ${part.actualStockCount <= part.reorderLevel
+                                            {item.trackStock ? (
+                                                <span className={`font-medium ${item.actualStockCount <= item.reorderLevel
                                                     ? 'text-red-400'
-                                                    : part.actualStockCount <= part.reorderLevel * 1.5
+                                                    : item.actualStockCount <= item.reorderLevel * 1.5
                                                         ? 'text-amber-400'
                                                         : 'text-emerald-400'
                                                     }`}>
-                                                    {part.actualStockCount || 0}
+                                                    {item.actualStockCount || 0}
                                                 </span>
                                             ) : (
                                                 <span className="text-slate-600 text-xs">-</span>
@@ -670,20 +668,20 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        onEditPart(part);
+                                                        onEditElectrical(item);
                                                     }}
                                                     className="p-1.5 rounded hover:bg-slate-600 text-blue-400 transition-colors"
-                                                    title="Edit Part"
+                                                    title="Edit Item"
                                                 >
                                                     <Icons.Edit size={16} />
                                                 </button>
                                                 <button
                                                     onClick={(e) => {
                                                         e.stopPropagation();
-                                                        setViewingPart({ ...part, confirmDelete: true });
+                                                        setViewingItem({ ...item, confirmDelete: true });
                                                     }}
                                                     className="p-1.5 rounded hover:bg-slate-600 text-red-400 transition-colors"
-                                                    title="Delete Part"
+                                                    title="Delete Item"
                                                 >
                                                     <Icons.Trash size={16} />
                                                 </button>
@@ -696,10 +694,10 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                     </table>
                 </div>
 
-                {/* Part Details Modal or Delete Confirmation */}
-                {viewingPart && (
+                {/* Item Details Modal or Delete Confirmation */}
+                {viewingItem && (
                     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
-                        {viewingPart.confirmDelete ? (
+                        {viewingItem.confirmDelete ? (
                             /* Delete Confirmation Dialog */
                             <div className="bg-slate-900 w-full max-w-md rounded-xl border border-red-500/30 shadow-2xl">
                                 <div className="p-6">
@@ -708,17 +706,17 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                             <Icons.AlertTriangle className="w-6 h-6 text-red-400" />
                                         </div>
                                         <div className="flex-1">
-                                            <h3 className="text-lg font-bold text-white mb-2">Delete Part?</h3>
+                                            <h3 className="text-lg font-bold text-white mb-2">Delete Electrical Item?</h3>
                                             <p className="text-slate-300 text-sm mb-1">
-                                                Are you sure you want to delete <strong>{viewingPart.name}</strong>?
+                                                Are you sure you want to delete <strong>{viewingItem.name}</strong>?
                                             </p>
-                                            <p className="text-slate-400 text-xs font-mono">SKU: {viewingPart.sku}</p>
+                                            <p className="text-slate-400 text-xs font-mono">SKU: {viewingItem.sku}</p>
                                             <p className="text-red-400 text-sm mt-3">This action cannot be undone.</p>
                                         </div>
                                     </div>
                                     <div className="flex justify-end gap-3 mt-6">
                                         <button
-                                            onClick={() => setViewingPart(null)}
+                                            onClick={() => setViewingItem(null)}
                                             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
                                         >
                                             Cancel
@@ -726,31 +724,31 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         <button
                                             onClick={async () => {
                                                 try {
-                                                    await deletePart(viewingPart.id);
-                                                    setViewingPart(null);
+                                                    await deleteElectricalItem(viewingItem.id);
+                                                    setViewingItem(null);
                                                 } catch (error) {
-                                                    console.error('Error deleting part:', error);
-                                                    alert(error.message || 'Failed to delete part. Please try again.');
+                                                    console.error('Error deleting electrical item:', error);
+                                                    alert(error.message || 'Failed to delete item. Please try again.');
                                                 }
                                             }}
                                             className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors"
                                         >
-                                            Delete Part
+                                            Delete Item
                                         </button>
                                     </div>
                                 </div>
                             </div>
                         ) : (
-                            /* Part Details Modal */
+                            /* Item Details Modal */
                             <div className="bg-slate-900 w-full max-w-2xl rounded-xl border border-slate-700 shadow-2xl max-h-[90vh] overflow-y-auto">
                                 {/* Header */}
                                 <div className="flex items-center justify-between p-6 border-b border-slate-700 sticky top-0 bg-slate-900 z-10">
                                     <div>
-                                        <h2 className="text-xl font-bold text-white">{viewingPart.name}</h2>
-                                        <p className="text-sm text-slate-400 font-mono mt-1">{viewingPart.sku}</p>
+                                        <h2 className="text-xl font-bold text-white">{viewingItem.name}</h2>
+                                        <p className="text-sm text-slate-400 font-mono mt-1">{viewingItem.sku}</p>
                                     </div>
                                     <button
-                                        onClick={() => setViewingPart(null)}
+                                        onClick={() => setViewingItem(null)}
                                         className="p-2 hover:bg-slate-800 rounded-lg transition-colors"
                                     >
                                         <Icons.X size={20} className="text-slate-400" />
@@ -763,12 +761,12 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div>
                                             <label className="block text-xs font-medium text-slate-400 mb-1">Category</label>
-                                            <p className="text-white">{getCategoryName(viewingPart.categoryId)}</p>
+                                            <p className="text-white">{getCategoryName(viewingItem.categoryId)}</p>
                                         </div>
                                         <div>
                                             <label className="block text-xs font-medium text-slate-400 mb-1">Subcategories</label>
                                             {(() => {
-                                                const subcategoryIds = viewingPart.subcategoryIds || (viewingPart.subcategoryId ? [viewingPart.subcategoryId] : []);
+                                                const subcategoryIds = viewingItem.subcategoryIds || (viewingItem.subcategoryId ? [viewingItem.subcategoryId] : []);
                                                 if (subcategoryIds.length === 0) {
                                                     return <p className="text-white">-</p>;
                                                 }
@@ -783,26 +781,26 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                                 );
                                             })()}
                                         </div>
-                                        {viewingPart.material && (
+                                        {viewingItem.material && (
                                             <div>
                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Material</label>
-                                                <p className="text-white">{viewingPart.material}</p>
+                                                <p className="text-white">{viewingItem.material}</p>
                                             </div>
                                         )}
                                         <div className="col-span-2">
                                             <label className="block text-xs font-medium text-slate-400 mb-1">Type</label>
-                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${viewingPart.isSerialized
+                                            <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${viewingItem.isSerialized
                                                 ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
                                                 : 'bg-slate-700 text-slate-300'
                                                 }`}>
-                                                {viewingPart.isSerialized ? 'Serialized' : 'Consumable'}
+                                                {viewingItem.isSerialized ? 'Serialized' : 'Consumable'}
                                             </span>
                                         </div>
-                                        {viewingPart.suppliers && viewingPart.suppliers.length > 0 && (
+                                        {viewingItem.suppliers && viewingItem.suppliers.length > 0 && (
                                             <div className="col-span-2">
                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Suppliers</label>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {viewingPart.suppliers.map((supplier, index) => (
+                                                    {viewingItem.suppliers.map((supplier, index) => (
                                                         <span key={index} className="inline-flex px-2 py-1 bg-emerald-500/20 text-emerald-300 text-xs font-medium rounded border border-emerald-500/30">
                                                             {supplier}
                                                         </span>
@@ -812,10 +810,10 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         )}
                                     </div>
 
-                                    {viewingPart.description && (
+                                    {viewingItem.description && (
                                         <div>
                                             <label className="block text-xs font-medium text-slate-400 mb-1">Description</label>
-                                            <p className="text-slate-300">{viewingPart.description}</p>
+                                            <p className="text-slate-300">{viewingItem.description}</p>
                                         </div>
                                     )}
 
@@ -824,44 +822,44 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                         <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                                             <label className="block text-xs font-medium text-slate-400 mb-1">
                                                 Cost Price
-                                                {viewingPart.costPriceSource === 'SUPPLIER_LOWEST' && (
+                                                {viewingItem.costPriceSource === 'SUPPLIER_LOWEST' && (
                                                     <span className="ml-2 inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
                                                         Auto
                                                     </span>
                                                 )}
-                                                {viewingPart.costPriceSource === 'PREFERRED_SUPPLIER' && (
+                                                {viewingItem.costPriceSource === 'PREFERRED_SUPPLIER' && (
                                                     <span className="ml-2 inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
                                                         Preferred
                                                     </span>
                                                 )}
                                             </label>
                                             <p className="text-xl font-bold text-white">
-                                                {viewingPart.activeCost === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(viewingPart.activeCost)}
+                                                {viewingItem.activeCost === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(viewingItem.activeCost)}
                                             </p>
-                                            {viewingPart.costPriceSource === 'SUPPLIER_LOWEST' && lowestPrices[viewingPart.id] && (
+                                            {viewingItem.costPriceSource === 'SUPPLIER_LOWEST' && lowestPrices[viewingItem.id] && (
                                                 <p className="text-xs text-slate-500 mt-1">
-                                                    Manual: {formatCurrency(viewingPart.costPrice)}
+                                                    Manual: {formatCurrency(viewingItem.costPrice)}
                                                 </p>
                                             )}
                                         </div>
                                         <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                                             <label className="block text-xs font-medium text-slate-400 mb-1">List Price</label>
                                             <p className="text-xl font-bold text-white">
-                                                {viewingPart.listPrice === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(viewingPart.listPrice)}
+                                                {viewingItem.listPrice === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(viewingItem.listPrice)}
                                             </p>
                                         </div>
                                         <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                                             <label className="block text-xs font-medium text-slate-400 mb-1">Margin</label>
                                             <p className="text-xl font-bold">
-                                                {viewingPart.listPrice > 0 ? (
-                                                    <span className={getMarginColor(viewingPart.actualMarginPercent, viewingPart.targetMarginPercent)}>
-                                                        {viewingPart.actualMarginPercent.toFixed(1)}%
+                                                {viewingItem.listPrice > 0 ? (
+                                                    <span className={getMarginColor(viewingItem.actualMarginPercent, viewingItem.targetMarginPercent)}>
+                                                        {viewingItem.actualMarginPercent.toFixed(1)}%
                                                     </span>
                                                 ) : (
                                                     <span className="text-slate-600">--</span>
                                                 )}
                                             </p>
-                                            <p className="text-xs text-slate-500 mt-1">Target: {viewingPart.targetMarginPercent}%</p>
+                                            <p className="text-xs text-slate-500 mt-1">Target: {viewingItem.targetMarginPercent}%</p>
                                         </div>
                                     </div>
 
@@ -869,13 +867,13 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                     <div className="grid grid-cols-2 gap-4">
                                         <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                                             <label className="block text-xs font-medium text-slate-400 mb-1">Reorder Level</label>
-                                            <p className="text-lg font-semibold text-white">{viewingPart.reorderLevel}</p>
+                                            <p className="text-lg font-semibold text-white">{viewingItem.reorderLevel}</p>
                                         </div>
-                                        {viewingPart.isSaleable !== undefined && (
+                                        {viewingItem.isSaleable !== undefined && (
                                             <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700">
                                                 <label className="block text-xs font-medium text-slate-400 mb-1">Saleable</label>
                                                 <p className="text-lg font-semibold">
-                                                    {viewingPart.isSaleable ? (
+                                                    {viewingItem.isSaleable ? (
                                                         <span className="text-emerald-400">✓ Yes</span>
                                                     ) : (
                                                         <span className="text-slate-500">✗ No</span>
@@ -888,19 +886,19 @@ export const PartCatalogTable = ({ onAddPart, onEditPart }) => {
                                     {/* Actions */}
                                     <div className="flex justify-end gap-3 pt-4 border-t border-slate-700">
                                         <button
-                                            onClick={() => setViewingPart(null)}
+                                            onClick={() => setViewingItem(null)}
                                             className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg transition-colors"
                                         >
                                             Close
                                         </button>
                                         <button
                                             onClick={() => {
-                                                onEditPart(viewingPart);
-                                                setViewingPart(null);
+                                                onEditElectrical(viewingItem);
+                                                setViewingItem(null);
                                             }}
                                             className="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg font-medium transition-colors"
                                         >
-                                            Edit Part
+                                            Edit Item
                                         </button>
                                     </div>
                                 </div>

@@ -100,6 +100,12 @@ export async function deleteProduct(productId) {
             await productCompositionRepository.removeFastenerFromBOM(productId, bomEntry.fastenerId);
         }
 
+        // Delete electrical BOM entries
+        const electrical = bom.electrical || [];
+        for (const bomEntry of electrical) {
+            await productCompositionRepository.removeElectricalFromBOM(productId, bomEntry.electricalId);
+        }
+
         // Delete the product
         return await productRepository.delete(productId);
     } catch (error) {
@@ -220,6 +226,34 @@ export async function getBOMWithCosts(productId, date = new Date()) {
             });
         }
 
+        // Process electrical
+        const electrical = bom.electrical || [];
+        for (const bomEntry of electrical) {
+            const electricalRef = await getDocs(
+                query(collection(db, 'electrical_catalog'), where('id', '==', bomEntry.electricalId))
+            );
+
+            if (electricalRef.empty) {
+                console.warn(`[ProductService] Electrical item ${bomEntry.electricalId} not found in catalog`);
+                continue;
+            }
+
+            const electricalData = electricalRef.docs[0].data();
+            // Reuse getPartCostAtDate - we will update it to check electrical catalog
+            const electricalCost = await getPartCostAtDate(bomEntry.electricalId, date);
+            const subtotal = Math.round(electricalCost * bomEntry.quantityUsed);
+
+            enrichedBOM.push({
+                electricalId: bomEntry.electricalId,
+                electricalSku: electricalData.sku,
+                electricalName: electricalData.name,
+                type: 'electrical',
+                quantity: bomEntry.quantityUsed,
+                cost: electricalCost,
+                subtotal
+            });
+        }
+
         return enrichedBOM;
     } catch (error) {
         console.error('[ProductService] Error getting BOM with costs:', error);
@@ -321,6 +355,55 @@ export async function updateSubAssemblyQuantity(productId, subAssemblyId, quanti
         return await productCompositionRepository.updateSubAssemblyQuantity(productId, subAssemblyId, quantityUsed);
     } catch (error) {
         console.error('[ProductService] Error updating sub assembly quantity:', error);
+        throw error;
+    }
+}
+
+// ==========================================
+// ELECTRICAL BOM OPERATIONS
+// ==========================================
+
+/**
+ * Add an electrical component to a product's Bill of Materials
+ */
+export async function addElectricalToBOM(productId, electricalId, quantityUsed) {
+    try {
+        // Validate electrical item exists
+        const electricalRef = await getDocs(
+            query(collection(db, 'electrical_catalog'), where('id', '==', electricalId))
+        );
+
+        if (electricalRef.empty) {
+            throw new Error(`Electrical item ${electricalId} not found in catalog`);
+        }
+
+        return await productCompositionRepository.addElectricalToBOM(productId, electricalId, quantityUsed);
+    } catch (error) {
+        console.error('[ProductService] Error adding electrical to BOM:', error);
+        throw error;
+    }
+}
+
+/**
+ * Remove an electrical component from a product's Bill of Materials
+ */
+export async function removeElectricalFromBOM(productId, electricalId) {
+    try {
+        return await productCompositionRepository.removeElectricalFromBOM(productId, electricalId);
+    } catch (error) {
+        console.error('[ProductService] Error removing electrical from BOM:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update the quantity of an electrical component in a product's BOM
+ */
+export async function updateElectricalQuantity(productId, electricalId, quantityUsed) {
+    try {
+        return await productCompositionRepository.updateElectricalQuantity(productId, electricalId, quantityUsed);
+    } catch (error) {
+        console.error('[ProductService] Error updating electrical quantity:', error);
         throw error;
     }
 }

@@ -22,6 +22,10 @@ export const BOMEditor = ({
     onAddSubAssembly,
     onRemoveSubAssembly,
     onUpdateSubAssemblyQuantity,
+    bomElectricalEntries = [],
+    onAddElectrical,
+    onRemoveElectrical,
+    onUpdateElectricalQuantity,
     disabled = false
 }) => {
     const [parts, setParts] = useState([]);
@@ -36,6 +40,10 @@ export const BOMEditor = ({
     const [partCosts, setPartCosts] = useState({});
     const [fastenerCosts, setFastenerCosts] = useState({});
     const [subAssemblyCosts, setSubAssemblyCosts] = useState({});
+    const [electricalItems, setElectricalItems] = useState([]);
+    const [selectedElectricalId, setSelectedElectricalId] = useState('');
+    const [electricalQuantity, setElectricalQuantity] = useState('1');
+    const [electricalCosts, setElectricalCosts] = useState({});
 
     // Load parts from catalog
     useEffect(() => {
@@ -65,6 +73,17 @@ export const BOMEditor = ({
             const subAssembliesList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             subAssembliesList.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
             setSubAssemblies(subAssembliesList);
+        });
+
+        return () => unsubscribe();
+    }, []);
+
+    // Load electrical items from catalog
+    useEffect(() => {
+        const unsubscribe = onSnapshot(collection(db, 'electrical_catalog'), (snap) => {
+            const electricalList = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+            electricalList.sort((a, b) => (a.sku || '').localeCompare(b.sku || ''));
+            setElectricalItems(electricalList);
         });
 
         return () => unsubscribe();
@@ -133,6 +152,27 @@ export const BOMEditor = ({
         }
     }, [bomSubAssemblyEntries]);
 
+    // Load current costs for BOM electrical items
+    useEffect(() => {
+        const loadElectricalCosts = async () => {
+            const costs = {};
+            for (const entry of bomElectricalEntries) {
+                try {
+                    const cost = await getPartCostAtDate(entry.electricalId, new Date());
+                    costs[entry.electricalId] = cost;
+                } catch (error) {
+                    console.error('Error loading electrical cost:', error);
+                    costs[entry.electricalId] = 0;
+                }
+            }
+            setElectricalCosts(costs);
+        };
+
+        if (bomElectricalEntries.length > 0) {
+            loadElectricalCosts();
+        }
+    }, [bomElectricalEntries]);
+
     const handleAddPart = () => {
         if (!selectedPartId || !partQuantity || parseFloat(partQuantity) <= 0) {
             return;
@@ -163,6 +203,16 @@ export const BOMEditor = ({
         setSubAssemblyQuantity('1');
     };
 
+    const handleAddElectrical = () => {
+        if (!selectedElectricalId || !electricalQuantity || parseFloat(electricalQuantity) <= 0) {
+            return;
+        }
+
+        onAddElectrical(selectedElectricalId, parseFloat(electricalQuantity));
+        setSelectedElectricalId('');
+        setElectricalQuantity('1');
+    };
+
     const handlePartQuantityChange = (partId, newQuantity) => {
         if (parseFloat(newQuantity) > 0) {
             onUpdateQuantity(partId, parseFloat(newQuantity));
@@ -178,6 +228,12 @@ export const BOMEditor = ({
     const handleSubAssemblyQuantityChange = (subAssemblyId, newQuantity) => {
         if (parseFloat(newQuantity) > 0) {
             onUpdateSubAssemblyQuantity(subAssemblyId, parseFloat(newQuantity));
+        }
+    };
+
+    const handleElectricalQuantityChange = (electricalId, newQuantity) => {
+        if (parseFloat(newQuantity) > 0) {
+            onUpdateElectricalQuantity(electricalId, parseFloat(newQuantity));
         }
     };
 
@@ -199,8 +255,14 @@ export const BOMEditor = ({
         return sum + (subAssemblyCost * entry.quantityUsed);
     }, 0);
 
+    // Calculate electrical subtotal
+    const electricalSubtotal = bomElectricalEntries.reduce((sum, entry) => {
+        const electricalCost = electricalCosts[entry.electricalId] || 0;
+        return sum + (electricalCost * entry.quantityUsed);
+    }, 0);
+
     // Total cost
-    const totalCost = partsSubtotal + fastenersSubtotal + subAssembliesSubtotal;
+    const totalCost = partsSubtotal + fastenersSubtotal + subAssembliesSubtotal + electricalSubtotal;
 
     // Filter out parts already in BOM
     const availableParts = parts.filter(p => !bomEntries.some(e => e.partId === p.id));
@@ -211,6 +273,9 @@ export const BOMEditor = ({
     // Filter out sub assemblies already in BOM
     const availableSubAssemblies = subAssemblies.filter(sa => !bomSubAssemblyEntries.some(e => e.subAssemblyId === sa.id));
 
+    // Filter out electrical items already in BOM
+    const availableElectrical = electricalItems.filter(e => !bomElectricalEntries.some(be => be.electricalId === e.id));
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -218,7 +283,7 @@ export const BOMEditor = ({
                     Bill of Materials
                 </label>
                 <span className="text-xs text-slate-400">
-                    {bomEntries.length + bomFastenerEntries.length + bomSubAssemblyEntries.length} item{(bomEntries.length + bomFastenerEntries.length + bomSubAssemblyEntries.length) !== 1 ? 's' : ''}
+                    {bomEntries.length + bomFastenerEntries.length + bomSubAssemblyEntries.length + bomElectricalEntries.length} item{(bomEntries.length + bomFastenerEntries.length + bomSubAssemblyEntries.length + bomElectricalEntries.length) !== 1 ? 's' : ''}
                 </span>
             </div>
 
@@ -531,8 +596,111 @@ export const BOMEditor = ({
                 )}
             </div>
 
+            {/* ELECTRICAL SECTION */}
+            <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                    <Icons.Zap size={16} className="text-yellow-400" />
+                    <h3 className="text-sm font-semibold text-white">Electrical</h3>
+                    <span className="text-xs text-slate-500">({bomElectricalEntries.length})</span>
+                </div>
+
+                {/* Add Electrical Form */}
+                {!disabled && (
+                    <div className="flex gap-2">
+                        <select
+                            value={selectedElectricalId}
+                            onChange={(e) => setSelectedElectricalId(e.target.value)}
+                            className="flex-1 min-w-[400px] px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        >
+                            <option value="">Select an electrical component...</option>
+                            {availableElectrical.map(item => (
+                                <option key={item.id} value={item.id}>
+                                    {item.sku} - {item.name}
+                                </option>
+                            ))}
+                        </select>
+                        <input
+                            type="number"
+                            min="1"
+                            step="1"
+                            value={electricalQuantity}
+                            onChange={(e) => setElectricalQuantity(e.target.value)}
+                            placeholder="Qty"
+                            className="w-24 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                        />
+                        <button
+                            type="button"
+                            onClick={handleAddElectrical}
+                            disabled={!selectedElectricalId || !electricalQuantity}
+                            className="px-4 py-2 bg-yellow-600 hover:bg-yellow-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <Icons.Plus size={18} />
+                        </button>
+                    </div>
+                )}
+
+                {/* Electrical List */}
+                {bomElectricalEntries.length > 0 ? (
+                    <div className="space-y-2">
+                        {bomElectricalEntries.map(entry => {
+                            const item = electricalItems.find(i => i.id === entry.electricalId);
+                            const itemCost = electricalCosts[entry.electricalId] || 0;
+                            const subtotal = itemCost * entry.quantityUsed;
+
+                            return (
+                                <div
+                                    key={entry.electricalId}
+                                    className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700"
+                                >
+                                    <div className="flex-1">
+                                        <div className="font-medium text-white">
+                                            {item?.sku || 'Unknown'} - {item?.name || 'Unknown Item'}
+                                        </div>
+                                        <div className="text-xs text-slate-400 mt-1">
+                                            ${(itemCost / 100).toFixed(2)} × {entry.quantityUsed} = ${(subtotal / 100).toFixed(2)}
+                                        </div>
+                                    </div>
+                                    {!disabled && (
+                                        <>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                value={entry.quantityUsed}
+                                                onChange={(e) => handleElectricalQuantityChange(entry.electricalId, e.target.value)}
+                                                className="w-20 px-2 py-1 bg-slate-800 border border-slate-700 rounded text-white text-sm focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={() => onRemoveElectrical(entry.electricalId)}
+                                                className="p-2 hover:bg-red-500/20 text-red-400 rounded transition-colors"
+                                                title="Remove electrical item"
+                                            >
+                                                <Icons.Trash size={16} />
+                                            </button>
+                                        </>
+                                    )}
+                                </div>
+                            );
+                        })}
+
+                        {/* Electrical Subtotal */}
+                        <div className="flex items-center justify-between p-2 px-3 bg-slate-800/30 rounded border border-slate-700/50">
+                            <span className="text-sm text-slate-400">Electrical Subtotal:</span>
+                            <span className="text-sm font-semibold text-white">
+                                ${(electricalSubtotal / 100).toFixed(2)}
+                            </span>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="p-4 text-center text-slate-500 bg-slate-800/20 rounded-lg border border-dashed border-slate-700">
+                        <p className="text-xs">No electrical items added</p>
+                    </div>
+                )}
+            </div>
+
             {/* Total Cost Display */}
-            {(bomEntries.length > 0 || bomFastenerEntries.length > 0 || bomSubAssemblyEntries.length > 0) && (
+            {(bomEntries.length > 0 || bomFastenerEntries.length > 0 || bomSubAssemblyEntries.length > 0 || bomElectricalEntries.length > 0) && (
                 <div className="flex items-center justify-between p-3 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
                     <span className="font-medium text-white">Total BOM Cost:</span>
                     <span className="text-lg font-bold text-cyan-400">
@@ -541,7 +709,7 @@ export const BOMEditor = ({
                 </div>
             )}
 
-            {(bomEntries.length === 0 && bomFastenerEntries.length === 0 && bomSubAssemblyEntries.length === 0) && (
+            {(bomEntries.length === 0 && bomFastenerEntries.length === 0 && bomSubAssemblyEntries.length === 0 && bomElectricalEntries.length === 0) && (
                 <div className="p-6 text-center text-slate-400 bg-slate-800/30 rounded-lg border border-dashed border-slate-700">
                     <Icons.Package size={32} className="mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No items added yet</p>

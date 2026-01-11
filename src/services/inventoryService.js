@@ -102,6 +102,74 @@ export const deletePart = async (partId) => {
 };
 
 // ==========================================
+// Electrical Catalog Operations
+// ==========================================
+
+export const addElectricalItemToCatalog = async (itemData) => {
+    try {
+        const itemId = `elec-${Date.now()}`;
+        const now = new Date().toISOString();
+
+        const newItem = {
+            id: itemId,
+            ...itemData,
+            createdAt: now,
+            updatedAt: now
+        };
+
+        await setDoc(doc(db, 'electrical_catalog', itemId), newItem);
+        console.log('[Inventory] Electrical item added to catalog:', itemId);
+        return itemId;
+    } catch (error) {
+        console.error('[Inventory] Error adding electrical item:', error);
+        throw new Error('Failed to add electrical item to catalog');
+    }
+};
+
+export const updateElectricalItem = async (itemId, updates) => {
+    try {
+        await updateDoc(doc(db, 'electrical_catalog', itemId), {
+            ...updates,
+            updatedAt: new Date().toISOString()
+        });
+        console.log('[Inventory] Electrical item updated:', itemId);
+    } catch (error) {
+        console.error('[Inventory] Error updating electrical item:', error);
+        throw new Error('Failed to update electrical item');
+    }
+};
+
+export const deleteElectricalItem = async (itemId) => {
+    try {
+        // Check for inventory with actual stock
+        const inventorySnap = await getDocs(query(collection(db, 'inventory_state'), where('partId', '==', itemId)));
+        const hasStock = inventorySnap.docs.some(doc => {
+            const quantity = doc.data().quantity || 0;
+            return quantity > 0;
+        });
+
+        if (hasStock) {
+            throw new Error('Cannot delete item with existing stock. Adjust inventory to zero first.');
+        }
+
+        // Delete the item
+        await deleteDoc(doc(db, 'electrical_catalog', itemId));
+
+        // Clean up any inventory_state records with 0 quantity
+        const batch = writeBatch(db);
+        inventorySnap.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
+        console.log('[Inventory] Electrical item deleted:', itemId);
+    } catch (error) {
+        console.error('[Inventory] Error deleting electrical item:', error);
+        throw error;
+    }
+};
+
+// ==========================================
 // FASTENER CATALOG OPERATIONS
 // ==========================================
 
@@ -684,116 +752,5 @@ export const bulkImportParts = async (partsArray) => {
     } catch (error) {
         console.error('[Inventory] Error during bulk import:', error);
         throw new Error('Failed to import parts');
-    }
-};
-
-// ==========================================
-// SHIPPING COST TRACKING
-// ==========================================
-
-export const addShippingRecord = async (partId, deliveryCost, units, date, notes = '', userId = 'current-user', addressData = null) => {
-    try {
-        const recordId = `ship-${Date.now()}`;
-        const costPerUnit = Math.round(deliveryCost / units);
-        const now = new Date().toISOString();
-
-        const shippingRecord = {
-            id: recordId,
-            partId,
-            deliveryCost, // in cents
-            units,
-            costPerUnit,  // in cents
-            notes,
-            userId,
-            date: date || now.split('T')[0], // Use provided date or default to today
-            createdAt: now,
-            // Address fields
-            originAddress: addressData?.originAddress || null,
-            destinationAddress: addressData?.destinationAddress || null
-        };
-
-        await setDoc(doc(db, 'shipping_records', recordId), shippingRecord);
-        console.log('[Inventory] Shipping record added:', recordId);
-        return recordId;
-    } catch (error) {
-        console.error('[Inventory] Error adding shipping record:', error);
-        throw new Error('Failed to add shipping record');
-    }
-};
-
-export const deleteShippingRecord = async (recordId) => {
-    try {
-        await deleteDoc(doc(db, 'shipping_records', recordId));
-        console.log('[Inventory] Shipping record deleted:', recordId);
-    } catch (error) {
-        console.error('[Inventory] Error deleting shipping record:', error);
-        throw new Error('Failed to delete shipping record');
-    }
-};
-
-export const updateShippingRecord = async (recordId, deliveryCost, units, date, notes = '', addressData = null) => {
-    try {
-        const costPerUnit = Math.round(deliveryCost / units);
-
-        const updateData = {
-            deliveryCost,
-            units,
-            costPerUnit,
-            date,
-            notes,
-            // Address fields
-            originAddress: addressData?.originAddress || null,
-            destinationAddress: addressData?.destinationAddress || null
-        };
-
-        await updateDoc(doc(db, 'shipping_records', recordId), updateData);
-        console.log('[Inventory] Shipping record updated:', recordId);
-    } catch (error) {
-        console.error('[Inventory] Error updating shipping record:', error);
-        throw new Error('Failed to update shipping record');
-    }
-};
-
-export const getShippingHistory = async (partId) => {
-    try {
-        const q = query(
-            collection(db, 'shipping_records'),
-            where('partId', '==', partId),
-            orderBy('createdAt', 'desc')
-        );
-        const querySnapshot = await getDocs(q);
-        return querySnapshot.docs.map(doc => doc.data());
-    } catch (error) {
-        console.error('[Inventory] Error fetching shipping history:', error);
-        throw new Error('Failed to fetch shipping history');
-    }
-};
-
-export const calculateAverageShippingCost = async (partId) => {
-    try {
-        const history = await getShippingHistory(partId);
-
-        if (history.length === 0) {
-            return {
-                averageCostPerUnit: 0,
-                totalRecords: 0,
-                totalUnits: 0,
-                totalCost: 0
-            };
-        }
-
-        const totalCost = history.reduce((sum, record) => sum + record.deliveryCost, 0);
-        const totalUnits = history.reduce((sum, record) => sum + record.units, 0);
-        const averageCostPerUnit = totalUnits > 0 ? Math.round(totalCost / totalUnits) : 0;
-
-        return {
-            averageCostPerUnit, // in cents
-            totalRecords: history.length,
-            totalUnits,
-            totalCost // in cents
-        };
-    } catch (error) {
-        console.error('[Inventory] Error calculating average shipping cost:', error);
-        throw new Error('Failed to calculate average shipping cost');
     }
 };

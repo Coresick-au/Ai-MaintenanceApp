@@ -36,9 +36,18 @@ export class SubAssemblyCompositionRepository extends BaseRepository {
             const fastenersSnapshot = await getDocs(fastenersQuery);
             const fasteners = fastenersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
+            // Get electrical BOM
+            const electricalQuery = query(
+                collection(db, 'sub_assembly_electrical_composition'),
+                where('subAssemblyId', '==', subAssemblyId)
+            );
+            const electricalSnapshot = await getDocs(electricalQuery);
+            const electrical = electricalSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
             return {
                 parts,
-                fasteners
+                fasteners,
+                electrical
             };
         } catch (error) {
             console.error('[SubAssemblyComposition] Error getting BOM:', error);
@@ -178,5 +187,66 @@ export class SubAssemblyCompositionRepository extends BaseRepository {
         const { doc, updateDoc } = await import('firebase/firestore');
         const docRef = doc(db, collectionName, id);
         await updateDoc(docRef, updates);
+    }
+
+    // ==========================================
+    // ELECTRICAL BOM OPERATIONS
+    // ==========================================
+
+    /**
+     * Add an electrical component to a sub assembly's BOM
+     */
+    async addElectricalToBOM(subAssemblyId, electricalId, quantityUsed) {
+        try {
+            if (quantityUsed <= 0) {
+                throw new Error('Quantity must be greater than zero');
+            }
+
+            const bomEntry = {
+                id: `${subAssemblyId}_${electricalId}`,
+                subAssemblyId,
+                electricalId,
+                quantityUsed,
+                createdAt: new Date().toISOString()
+            };
+
+            await this.createInCollection('sub_assembly_electrical_composition', bomEntry.id, bomEntry);
+            return bomEntry;
+        } catch (error) {
+            console.error('[SubAssemblyComposition] Error adding electrical to BOM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove an electrical component from a sub assembly's BOM
+     */
+    async removeElectricalFromBOM(subAssemblyId, electricalId) {
+        try {
+            const bomId = `${subAssemblyId}_${electricalId}`;
+            await deleteDoc(doc(db, 'sub_assembly_electrical_composition', bomId));
+            return true;
+        } catch (error) {
+            console.error('[SubAssemblyComposition] Error removing electrical from BOM:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Update the quantity of an electrical component in a sub assembly's BOM
+     */
+    async updateElectricalQuantity(subAssemblyId, electricalId, quantityUsed) {
+        try {
+            if (quantityUsed <= 0) {
+                throw new Error('Quantity must be greater than zero');
+            }
+
+            const bomId = `${subAssemblyId}_${electricalId}`;
+            await this.updateInCollection('sub_assembly_electrical_composition', bomId, { quantityUsed });
+            return { id: bomId, subAssemblyId, electricalId, quantityUsed };
+        } catch (error) {
+            console.error('[SubAssemblyComposition] Error updating electrical quantity:', error);
+            throw error;
+        }
     }
 }

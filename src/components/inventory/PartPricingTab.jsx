@@ -8,17 +8,11 @@ import {
     updatePricing,
     deletePricing
 } from '../../services/partPricingService';
-import {
-    addShippingRecord,
-    deleteShippingRecord,
-    updateShippingRecord,
-    getShippingHistory,
-    calculateAverageShippingCost
-} from '../../services/inventoryService';
+
 import { calculateLinearTrend, forecastCostAtDate } from '../../utils/costForecasting';
 import { formatCurrency } from '../../utils/helpers';
 
-export const PartPricingTab = ({ part, suppliers }) => {
+export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
     const [pricingEntries, setPricingEntries] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -36,51 +30,25 @@ export const PartPricingTab = ({ part, suppliers }) => {
 
     // Forcasting state
     const [costPriceSource, setCostPriceSource] = useState('MANUAL');
+    const [preferredSupplier, setPreferredSupplier] = useState(''); // Local state for optimistic updates
     const [trendData, setTrendData] = useState(null);
-    const [hasSufficientHistory, setHasSufficientHistory] = useState(false);
+    const [hasSufficientHistory, setHasSufficientHistory] = useState(false); // Controls visibility of the section
+    const [trendSupplier, setTrendSupplier] = useState(''); // The supplier currently being analyzed
     const [manualCostPrice, setManualCostPrice] = useState('');
 
-    // Shipping history state
-    const [shippingRecords, setShippingRecords] = useState([]);
-    const [shippingAverage, setShippingAverage] = useState(null);
-    const [editingShippingId, setEditingShippingId] = useState(null);
-    const [shippingTrendData, setShippingTrendData] = useState(null);
-    const [hasShippingSufficientHistory, setHasShippingSufficientHistory] = useState(false);
-    const [shippingForm, setShippingForm] = useState({
-        deliveryCost: '',
-        units: '',
-        date: new Date().toISOString().split('T')[0], // Default to today
-        notes: '',
-        // Address fields
-        originSuburb: '',
-        originState: 'QLD',
-        originPostcode: '',
-        destinationSuburb: '',
-        destinationState: 'QLD',
-        destinationPostcode: ''
-    });
+
 
     // Load pricing entries
     useEffect(() => {
         if (part?.id) {
             loadPricing();
-            loadShippingData();
             setCostPriceSource(part.costPriceSource || 'MANUAL');
+            setPreferredSupplier(part.preferredSupplier || ''); // Sync local state
             setManualCostPrice((part.costPrice / 100).toFixed(2));
         }
-    }, [part?.id, part?.costPrice]);
+    }, [part?.id, part?.costPrice, part?.costPriceSource, part?.preferredSupplier]);
 
-    const loadShippingData = async () => {
-        try {
-            const records = await getShippingHistory(part.id);
-            setShippingRecords(records);
 
-            const avgData = await calculateAverageShippingCost(part.id);
-            setShippingAverage(avgData);
-        } catch (err) {
-            console.error('Error loading shipping data:', err);
-        }
-    };
 
     const loadPricing = async () => {
         try {
@@ -196,121 +164,57 @@ export const PartPricingTab = ({ part, suppliers }) => {
         setError('');
     };
 
-    const handleShippingSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
 
-        try {
-            const deliveryCostCents = Math.round(parseFloat(shippingForm.deliveryCost) * 100);
-            const units = parseInt(shippingForm.units);
-
-            if (deliveryCostCents <= 0 || units <= 0) {
-                setError('Delivery cost and units must be greater than 0');
-                return;
-            }
-
-            // Prepare address data
-            const addressData = {
-                originAddress: {
-                    suburb: shippingForm.originSuburb || '',
-                    state: shippingForm.originState || 'QLD',
-                    postcode: shippingForm.originPostcode || ''
-                },
-                destinationAddress: {
-                    suburb: shippingForm.destinationSuburb || '',
-                    state: shippingForm.destinationState || 'QLD',
-                    postcode: shippingForm.destinationPostcode || ''
-                }
-            };
-
-            if (editingShippingId) {
-                // Update existing record
-                await updateShippingRecord(editingShippingId, deliveryCostCents, units, shippingForm.date, shippingForm.notes, addressData);
-            } else {
-                // Add new record
-                await addShippingRecord(part.id, deliveryCostCents, units, shippingForm.date, shippingForm.notes, 'current-user', addressData);
-            }
-
-            // Reload shipping data
-            await loadShippingData();
-
-            // Reset form
-            setEditingShippingId(null);
-            setShippingForm({
-                deliveryCost: '',
-                units: '',
-                date: new Date().toISOString().split('T')[0],
-                notes: '',
-                originSuburb: '',
-                originState: 'QLD',
-                originPostcode: '',
-                destinationSuburb: '',
-                destinationState: 'QLD',
-                destinationPostcode: ''
-            });
-        } catch (err) {
-            console.error('Error adding shipping record:', err);
-            setError('Failed to save shipping record');
-        }
-    };
-
-    const handleShippingEdit = (record) => {
-        setEditingShippingId(record.id);
-        setShippingForm({
-            deliveryCost: (record.deliveryCost / 100).toFixed(2),
-            units: record.units.toString(),
-            date: record.date,
-            notes: record.notes || '',
-            // Load address data
-            originSuburb: record.originAddress?.suburb || '',
-            originState: record.originAddress?.state || 'QLD',
-            originPostcode: record.originAddress?.postcode || '',
-            destinationSuburb: record.destinationAddress?.suburb || '',
-            destinationState: record.destinationAddress?.state || 'QLD',
-            destinationPostcode: record.destinationAddress?.postcode || ''
-        });
-        setError('');
-    };
-
-    const handleShippingCancelEdit = () => {
-        setEditingShippingId(null);
-        setShippingForm({
-            deliveryCost: '',
-            units: '',
-            date: new Date().toISOString().split('T')[0],
-            notes: '',
-            originSuburb: '',
-            originState: 'QLD',
-            originPostcode: '',
-            destinationSuburb: '',
-            destinationState: 'QLD',
-            destinationPostcode: ''
-        });
-        setError('');
-    };
-
-    const handleShippingDelete = async (recordId) => {
-        if (!confirm('Delete this shipping record?')) return;
-
-        try {
-            await deleteShippingRecord(recordId);
-            await loadShippingData();
-        } catch (err) {
-            console.error('Error deleting shipping record:', err);
-            setError('Failed to delete shipping record');
-        }
-    };
 
     // Calculate trend data when pricing history changes
     useEffect(() => {
         const calculateTrend = async () => {
-            // Filter out entries marked as "ignore for trend"
-            const validPricingEntries = pricingEntries.filter(p => !p.ignoreForTrend);
+            // Group pricing by supplier
+            const bySupplier = pricingEntries.reduce((acc, p) => {
+                if (!acc[p.supplierName]) acc[p.supplierName] = [];
+                acc[p.supplierName].push(p);
+                return acc;
+            }, {});
 
-            if (validPricingEntries.length >= 2) {
-                setHasSufficientHistory(true);
+            const availableSuppliers = Object.keys(bySupplier);
 
-                const trend = calculateLinearTrend(validPricingEntries.map(p => ({
+            // Determine if ANY supplier has sufficient history (to show the section)
+            const anySufficient = availableSuppliers.some(s =>
+                bySupplier[s].filter(p => !p.ignoreForTrend).length >= 2
+            );
+            setHasSufficientHistory(anySufficient);
+
+            // Handle supplier selection
+            let currentSupplier = trendSupplier;
+
+            // If no trend supplier selected (or selected one is invalid), pick the best one
+            if (!currentSupplier || !bySupplier[currentSupplier]) {
+                // Prefer supplier with most data points, tie-break with most recent
+                const bestSupplier = availableSuppliers.sort((a, b) => {
+                    const countA = bySupplier[a].filter(p => !p.ignoreForTrend).length;
+                    const countB = bySupplier[b].filter(p => !p.ignoreForTrend).length;
+                    if (countB !== countA) return countB - countA;
+                    // If counts equal, pick one with most recent date
+                    return bySupplier[b][0].effectiveDate - bySupplier[a][0].effectiveDate;
+                })[0];
+
+                if (bestSupplier) {
+                    setTrendSupplier(bestSupplier);
+                    currentSupplier = bestSupplier;
+                }
+            }
+
+            if (!currentSupplier || !bySupplier[currentSupplier]) {
+                setTrendData(null);
+                setHasSufficientHistory(false);
+                return;
+            }
+
+            // Calculate trend for the specific supplier
+            const supplierEntries = bySupplier[currentSupplier].filter(p => !p.ignoreForTrend);
+
+            if (supplierEntries.length >= 2) {
+                const trend = calculateLinearTrend(supplierEntries.map(p => ({
                     date: new Date(p.effectiveDate),
                     cost: p.costPrice
                 })));
@@ -320,106 +224,41 @@ export const PartPricingTab = ({ part, suppliers }) => {
                     const msPerMonth = 30 * 24 * 60 * 60 * 1000;
                     const slopePerMonth = trend.slope * msPerMonth;
 
-                    // Forecast for today
-                    const today = new Date();
-                    const forecastToday = forecastCostAtDate(validPricingEntries, today);
+                    // Find the lowest historical price for this supplier to use as a floor
+                    const minHistoricalPrice = Math.min(...supplierEntries.map(p => p.costPrice));
 
-                    // Forecast 6 months from today
+                    // Forecast for today (clamped to minHistoricalPrice)
+                    const today = new Date();
+                    const forecastToday = forecastCostAtDate(supplierEntries, today);
+                    const clampedForecastToday = forecastToday
+                        ? Math.max(forecastToday.forecastedCost, minHistoricalPrice)
+                        : 0;
+
+                    // Forecast 6 months from today (clamped to minHistoricalPrice)
                     const sixMonthsFromNow = new Date();
                     sixMonthsFromNow.setMonth(sixMonthsFromNow.getMonth() + 6);
-                    const forecast6Months = forecastCostAtDate(validPricingEntries, sixMonthsFromNow);
+                    const forecast6Months = forecastCostAtDate(supplierEntries, sixMonthsFromNow);
+                    const clampedForecast6Months = forecast6Months
+                        ? Math.max(forecast6Months.forecastedCost, minHistoricalPrice)
+                        : 0;
 
                     setTrendData({
                         slopePerMonth,
                         confidence: trend.r2,
-                        forecastToday: forecastToday?.forecastedCost || 0,
-                        forecast6Months: forecast6Months?.forecastedCost || 0
+                        forecastToday: clampedForecastToday,
+                        forecast6Months: clampedForecast6Months,
+                        dataPointCount: supplierEntries.length
                     });
                 }
             } else {
-                setHasSufficientHistory(false);
                 setTrendData(null);
             }
         };
 
         calculateTrend();
-    }, [pricingEntries]);
+    }, [pricingEntries, trendSupplier]);
 
-    // Calculate shipping trend data when shipping history changes
-    useEffect(() => {
-        const calculateShippingTrend = async () => {
-            if (shippingRecords.length >= 2) {
-                setHasShippingSufficientHistory(true);
 
-                // Instead of trending cost per unit, we'll use linear regression on:
-                // Total Delivery Cost = Base Cost + (Per-Unit Cost × Units)
-                // This accounts for quantity-based pricing
-
-                const dataPoints = shippingRecords.map(r => ({
-                    units: r.units,
-                    totalCost: r.deliveryCost // total delivery cost in cents
-                }));
-
-                // Calculate linear regression: y = mx + b
-                // where y = total cost, x = units, m = per-unit cost, b = base cost
-                const n = dataPoints.length;
-                const sumX = dataPoints.reduce((sum, p) => sum + p.units, 0);
-                const sumY = dataPoints.reduce((sum, p) => sum + p.totalCost, 0);
-                const sumXY = dataPoints.reduce((sum, p) => sum + (p.units * p.totalCost), 0);
-                const sumX2 = dataPoints.reduce((sum, p) => sum + (p.units * p.units), 0);
-
-                // Calculate slope (per-unit cost) and intercept (base cost)
-                const denominator = n * sumX2 - sumX * sumX;
-
-                let slope, intercept, r2;
-
-                if (denominator === 0 || !isFinite(denominator)) {
-                    // All data points have the same X value (units), can't calculate slope
-                    // Fall back to average cost per unit
-                    slope = 0;
-                    intercept = sumY / n; // Use average total cost as base
-                    r2 = 0; // No meaningful R² when there's no variance in X
-                } else {
-                    slope = (n * sumXY - sumX * sumY) / denominator;
-                    intercept = (sumY - slope * sumX) / n;
-
-                    // Calculate R² (coefficient of determination)
-                    const meanY = sumY / n;
-                    const ssTotal = dataPoints.reduce((sum, p) => sum + Math.pow(p.totalCost - meanY, 2), 0);
-                    const ssResidual = dataPoints.reduce((sum, p) => {
-                        const predicted = slope * p.units + intercept;
-                        return sum + Math.pow(p.totalCost - predicted, 2);
-                    }, 0);
-                    r2 = ssTotal > 0 ? 1 - (ssResidual / ssTotal) : 0;
-                }
-
-                // Handle NaN or Infinity values
-                if (!isFinite(slope)) slope = 0;
-                if (!isFinite(intercept)) intercept = sumY / n;
-                if (!isFinite(r2)) r2 = 0;
-
-                // Forecast for common quantities
-                const forecastSmall = Math.max(0, slope * 1 + intercept); // 1 unit
-                const forecastMedium = Math.max(0, slope * 10 + intercept); // 10 units
-                const forecastLarge = Math.max(0, slope * 50 + intercept); // 50 units
-
-                setShippingTrendData({
-                    baseCost: Math.max(0, Math.round(intercept)), // Minimum shipping cost in cents
-                    perUnitCost: Math.max(0, Math.round(slope)), // Additional cost per unit in cents
-                    confidence: Math.max(0, Math.min(1, r2)), // R² bounded 0-1
-                    forecastSmall: isFinite(forecastSmall) ? forecastSmall : 0,
-                    forecastMedium: isFinite(forecastMedium) ? forecastMedium : 0,
-                    forecastLarge: isFinite(forecastLarge) ? forecastLarge : 0,
-                    dataPoints: n
-                });
-            } else {
-                setHasShippingSufficientHistory(false);
-                setShippingTrendData(null);
-            }
-        };
-
-        calculateShippingTrend();
-    }, [shippingRecords]);
 
     // Handle cost source change
     const handleCostSourceChange = async (e) => {
@@ -435,21 +274,20 @@ export const PartPricingTab = ({ part, suppliers }) => {
                 costPriceSource: newSource
             };
 
-            // If switching to SUPPLIER_LOWEST, calculate and save the lowest price
+            // Define today for filtering
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // Filter to pricing entries that are effective (on or before today)
+            const effectivePricing = pricingEntries.filter(entry => {
+                const effectiveDate = entry.effectiveDate instanceof Date
+                    ? entry.effectiveDate
+                    : new Date(entry.effectiveDate);
+                effectiveDate.setHours(0, 0, 0, 0);
+                return effectiveDate <= today;
+            });
+
             if (newSource === 'SUPPLIER_LOWEST') {
-                // Get today's date to find current prices
-                const today = new Date();
-                today.setHours(0, 0, 0, 0);
-
-                // Filter to pricing entries that are effective (on or before today)
-                const effectivePricing = pricingEntries.filter(entry => {
-                    const effectiveDate = entry.effectiveDate instanceof Date
-                        ? entry.effectiveDate
-                        : new Date(entry.effectiveDate);
-                    effectiveDate.setHours(0, 0, 0, 0);
-                    return effectiveDate <= today;
-                });
-
                 if (effectivePricing.length > 0) {
                     // Find the lowest cost price
                     const lowestPrice = Math.min(...effectivePricing.map(entry => entry.costPrice));
@@ -460,15 +298,123 @@ export const PartPricingTab = ({ part, suppliers }) => {
                     setCostPriceSource(part.costPriceSource || 'MANUAL'); // Revert
                     return;
                 }
+            } else if (newSource === 'PREFERRED_SUPPLIER') {
+                if (!part.preferredSupplier) {
+                    setError('No preferred supplier selected. Please mark a supplier as preferred in the history above.');
+                    setCostPriceSource(part.costPriceSource || 'MANUAL'); // Revert
+                    return;
+                }
+
+                // Find pricing for preferred supplier
+                const preferredPricing = effectivePricing
+                    .filter(p => p.supplierName === part.preferredSupplier)
+                    .sort((a, b) => b.effectiveDate - a.effectiveDate); // Newest first
+
+                if (preferredPricing.length > 0) {
+                    updateData.costPrice = preferredPricing[0].costPrice;
+                    console.log('[PartPricingTab] Setting preferred supplier price:', preferredPricing[0].costPrice);
+                } else {
+                    setError(`No current pricing available for preferred supplier. Please add pricing or check selected supplier.`);
+                    setCostPriceSource(part.costPriceSource || 'MANUAL'); // Revert
+                    return;
+                }
+            }
+
+            // If the part is saleable with calculated list price, update list price too
+            if (part.isSaleable && part.listPriceSource === 'CALCULATED' && updateData.costPrice) {
+                const newCostPrice = updateData.costPrice; // in cents
+                const marginPercent = parseFloat(part.targetMarginPercent || 0) / 100;
+
+                if (marginPercent < 1 && newCostPrice > 0) {
+                    const calculatedListPrice = Math.round(newCostPrice / (1 - marginPercent));
+                    updateData.listPrice = calculatedListPrice;
+                    console.log('[PartPricingTab] Auto-updating list price:', calculatedListPrice);
+                }
             }
 
             // Update part in database
             await updateDoc(doc(db, collection, part.id), updateData);
+
+            // Notify parent to refresh part data
+            if (onPartUpdate) {
+                await onPartUpdate();
+            }
         } catch (err) {
             console.error(`Error updating cost source:`, err);
             setError('Failed to update cost source');
         }
     };
+
+    const handleTogglePreferredSupplier = async (supplierName) => {
+        try {
+            const collection = part.id.startsWith('fastener-') ? 'fastener_catalog' : 'part_catalog';
+            const currentPreferred = preferredSupplier || part.preferredSupplier;
+            const newPreferred = currentPreferred === supplierName ? null : supplierName;
+
+            // Optimistic update - update UI immediately
+            setPreferredSupplier(newPreferred || '');
+
+            const updateData = {
+                preferredSupplier: newPreferred
+            };
+
+            // If we are currently using PREFERRED_SUPPLIER as source, we need to update the price too
+            if (costPriceSource === 'PREFERRED_SUPPLIER') {
+                if (!newPreferred) {
+                    // If removing preference, revert to manual
+                    updateData.costPriceSource = 'MANUAL';
+                    // keep existing cost price
+                } else {
+                    // Recalculate price for new preferred supplier
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+
+                    const effectivePricing = pricingEntries.filter(entry => {
+                        const effectiveDate = entry.effectiveDate instanceof Date
+                            ? entry.effectiveDate
+                            : new Date(entry.effectiveDate);
+                        effectiveDate.setHours(0, 0, 0, 0);
+                        return effectiveDate <= today && entry.supplierName === newPreferred;
+                    }).sort((a, b) => b.effectiveDate - a.effectiveDate);
+
+                    if (effectivePricing.length > 0) {
+                        updateData.costPrice = effectivePricing[0].costPrice;
+                    } else {
+                        // Warn and revert if no price found
+                        updateData.costPriceSource = 'MANUAL';
+                        setError(`Preferred supplier set to ${newPreferred}, but no current pricing found. Reverting to Manual source.`);
+                    }
+                }
+            } else if (newPreferred && costPriceSource === 'SUPPLIER_LOWEST') {
+                // If we switch preference but are on lowest, we stay on lowest. logic remains same.
+            }
+
+            // If the part is saleable with calculated list price and we're updating cost price, update list price too
+            if (part.isSaleable && part.listPriceSource === 'CALCULATED' && updateData.costPrice) {
+                const newCostPrice = updateData.costPrice; // in cents
+                const marginPercent = parseFloat(part.targetMarginPercent || 0) / 100;
+
+                if (marginPercent < 1 && newCostPrice > 0) {
+                    const calculatedListPrice = Math.round(newCostPrice / (1 - marginPercent));
+                    updateData.listPrice = calculatedListPrice;
+                    console.log('[PartPricingTab] Auto-updating list price due to preferred supplier change:', calculatedListPrice);
+                }
+            }
+
+            await updateDoc(doc(db, collection, part.id), updateData);
+
+            // Notify parent to refresh part data
+            if (onPartUpdate) {
+                await onPartUpdate();
+            }
+        } catch (err) {
+            console.error('Error updating preferred supplier:', err);
+            setError('Failed to update preferred supplier');
+            // Revert optimistic update on error
+            setPreferredSupplier(part.preferredSupplier || '');
+        }
+    };
+
 
     // Handle manual cost price change
     const handleManualCostBlur = async () => {
@@ -688,8 +634,30 @@ export const PartPricingTab = ({ part, suppliers }) => {
                     </div>
                 ) : (
                     Object.entries(groupedPricing).map(([supplierName, pricing]) => (
-                        <div key={supplierName} className="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
-                            <h4 className="text-md font-semibold text-white mb-3">{supplierName}</h4>
+                        <div key={supplierName} className={`bg-slate-800/50 rounded-lg border p-4 transition-colors ${preferredSupplier === supplierName
+                            ? 'border-amber-500/50 bg-amber-500/5'
+                            : 'border-slate-700'
+                            }`}>
+                            <div className="flex items-center justify-between mb-3">
+                                <h4 className="text-md font-semibold text-white flex items-center gap-2">
+                                    {supplierName}
+                                    {preferredSupplier === supplierName && (
+                                        <span className="text-xs bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                                            Preferred
+                                        </span>
+                                    )}
+                                </h4>
+                                <button
+                                    onClick={() => handleTogglePreferredSupplier(supplierName)}
+                                    className={`p-1.5 rounded transition-colors ${preferredSupplier === supplierName
+                                        ? 'text-amber-400 bg-amber-500/10 hover:bg-amber-500/20'
+                                        : 'text-slate-500 hover:text-amber-400 hover:bg-slate-700'
+                                        }`}
+                                    title={preferredSupplier === supplierName ? "Remove as preferred" : "Set as preferred supplier"}
+                                >
+                                    {preferredSupplier === supplierName ? <Icons.CheckCircle size={18} className="text-amber-400" /> : <Icons.Circle size={18} />}
+                                </button>
+                            </div>
                             <div className="space-y-2">
                                 {pricing.map((entry) => {
                                     const status = getPricingStatus(entry.effectiveDate);
@@ -817,415 +785,115 @@ export const PartPricingTab = ({ part, suppliers }) => {
                             <p className="text-xs text-slate-400">Automatically use lowest supplier price from history below</p>
                         </div>
                     </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                            type="radio"
+                            name="costPriceSource"
+                            value="PREFERRED_SUPPLIER"
+                            checked={costPriceSource === 'PREFERRED_SUPPLIER'}
+                            onChange={handleCostSourceChange}
+                            className="w-4 h-4 text-cyan-600"
+                        />
+                        <div>
+                            <span className="text-white font-medium">Preferred Supplier</span>
+                            <p className="text-xs text-slate-400">
+                                Use price from preferred supplier
+                                {preferredSupplier ? ` (${preferredSupplier})` : ''}
+                            </p>
+                            {!preferredSupplier && costPriceSource === 'PREFERRED_SUPPLIER' && (
+                                <p className="text-xs text-red-400 mt-1">Select a preferred supplier in History above</p>
+                            )}
+                        </div>
+                    </label>
                 </div>
             </div>
 
-            {/* Forecasted Trend Analysis - Always show when sufficient history */}
-            {hasSufficientHistory && trendData && (
+            {/* Forecasted Trend Analysis */}
+            {hasSufficientHistory && (
                 <div className="mb-6 p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
-                    <div className="flex items-center gap-2 mb-3">
-                        <Icons.TrendingUp className="text-purple-400" size={20} />
-                        <h3 className="text-lg font-semibold text-white">Forecasted Trend Analysis</h3>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <p className="text-xs text-slate-400 mb-1">Cost Change (per month)</p>
-                            <p className={`text-lg font-bold ${trendData.slopePerMonth > 0 ? 'text-red-400' :
-                                trendData.slopePerMonth < 0 ? 'text-emerald-400' : 'text-slate-400'
-                                }`}>
-                                {trendData.slopePerMonth > 0 ? '+' : ''}
-                                ${(trendData.slopePerMonth / 100).toFixed(2)}
-                            </p>
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <Icons.TrendingUp className="text-purple-400" size={20} />
+                            <h3 className="text-lg font-semibold text-white">Forecasted Trend Analysis</h3>
                         </div>
 
-                        <div>
-                            <div className="text-slate-400 text-xs mb-1">Confidence (R²)</div>
-                            <div className={`font-mono font-bold ${trendData.confidence >= 0.7 ? 'text-emerald-400' :
-                                trendData.confidence >= 0.3 ? 'text-amber-400' : 'text-red-400'
-                                }`}>
-                                {(trendData.confidence * 100).toFixed(1)}%
-                            </div>
-                        </div>
-
-                        <div>
-                            <p className="text-xs text-slate-400 mb-1">Current Day Forecast</p>
-                            <p className="text-lg font-bold text-cyan-400">
-                                ${(trendData.forecastToday / 100).toFixed(2)}
-                            </p>
-                        </div>
-
-                        <div>
-                            <p className="text-xs text-slate-400 mb-1">Predicted Price (6 months)</p>
-                            <p className="text-lg font-bold text-white">
-                                ${(trendData.forecast6Months / 100).toFixed(2)}
-                            </p>
-                        </div>
-
-                        <div>
-                            <div className="text-slate-400 text-xs mb-1">Based On</div>
-                            <div className="text-white">
-                                {pricingEntries.length} data points
-                            </div>
+                        {/* Supplier Selector */}
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs text-slate-400">Analysis Source:</label>
+                            <select
+                                value={trendSupplier}
+                                onChange={(e) => setTrendSupplier(e.target.value)}
+                                className="bg-slate-800 border border-slate-600 rounded text-xs text-white px-2 py-1 focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            >
+                                {Object.keys(groupedPricing).map(supplier => (
+                                    <option key={supplier} value={supplier}>{supplier}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 
-                    {trendData.confidence < 0.3 && (
-                        <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300 flex items-start gap-2">
-                            <Icons.AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                            <span>Low confidence trend. System will fall back to manual cost price for calculations.</span>
+                    {trendData ? (
+                        <>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs text-slate-400 mb-1">Cost Change (per month)</p>
+                                    <p className={`text-lg font-bold ${trendData.slopePerMonth > 0 ? 'text-red-400' :
+                                        trendData.slopePerMonth < 0 ? 'text-emerald-400' : 'text-slate-400'
+                                        }`}>
+                                        {trendData.slopePerMonth > 0 ? '+' : ''}
+                                        ${(trendData.slopePerMonth / 100).toFixed(2)}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <div className="text-slate-400 text-xs mb-1">Confidence (R²)</div>
+                                    <div className={`font-mono font-bold ${trendData.confidence >= 0.7 ? 'text-emerald-400' :
+                                        trendData.confidence >= 0.3 ? 'text-amber-400' : 'text-red-400'
+                                        }`}>
+                                        {(trendData.confidence * 100).toFixed(1)}%
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs text-slate-400 mb-1">Current Day Forecast</p>
+                                    <p className="text-lg font-bold text-cyan-400">
+                                        ${(trendData.forecastToday / 100).toFixed(2)}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <p className="text-xs text-slate-400 mb-1">Predicted Price (6 months)</p>
+                                    <p className="text-lg font-bold text-white">
+                                        ${(trendData.forecast6Months / 100).toFixed(2)}
+                                    </p>
+                                </div>
+
+                                <div>
+                                    <div className="text-slate-400 text-xs mb-1">Based On</div>
+                                    <div className="text-white">
+                                        {trendData.dataPointCount} data points ({trendSupplier})
+                                    </div>
+                                </div>
+                            </div>
+
+                            {trendData.confidence < 0.3 && (
+                                <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300 flex items-start gap-2">
+                                    <Icons.AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
+                                    <span>Low confidence trend. System will fall back to manual cost price for calculations.</span>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        <div className="p-4 text-center text-slate-400 text-sm bg-slate-800/30 rounded-lg">
+                            <Icons.Info size={24} className="mx-auto mb-2 opacity-50" />
+                            <p>Insufficient data for <strong>{trendSupplier}</strong>.</p>
+                            <p className="text-xs mt-1">Need at least 2 data points for this supplier to calculate a trend.</p>
                         </div>
                     )}
                 </div>
             )}
 
-            {/* Shipping History */}
-            <div className="mb-6">
-                <h3 className="text-lg font-semibold text-white mb-3">Delivery Cost Tracking</h3>
 
-                {/* Average Display */}
-                {shippingAverage && shippingAverage.totalRecords > 0 && (
-                    <div className="mb-4 p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30">
-                        <div className="grid grid-cols-3 gap-4">
-                            <div>
-                                <div className="text-xs text-slate-400 mb-1">Average Cost/Unit</div>
-                                <div className="text-xl font-bold text-cyan-400">
-                                    {formatCurrency(shippingAverage.averageCostPerUnit)}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-xs text-slate-400 mb-1">Total Units Shipped</div>
-                                <div className="text-xl font-bold text-white">
-                                    {shippingAverage.totalUnits.toLocaleString()}
-                                </div>
-                            </div>
-                            <div>
-                                <div className="text-xs text-slate-400 mb-1">Total Records</div>
-                                <div className="text-xl font-bold text-white">
-                                    {shippingAverage.totalRecords}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                )}
-
-                {/* Add Shipping Record Form */}
-                <div className="p-4 bg-slate-800/50 rounded-lg border border-slate-700 mb-4">
-                    <h4 className="text-md font-medium text-white mb-3">
-                        {editingShippingId ? 'Edit Delivery Record' : 'Add Delivery Record'}
-                    </h4>
-                    <form onSubmit={handleShippingSubmit} className="space-y-3">
-                        <div className="grid grid-cols-4 gap-3">
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Delivery Cost ($) <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    value={shippingForm.deliveryCost}
-                                    onChange={(e) => setShippingForm(prev => ({ ...prev, deliveryCost: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    placeholder="0.00"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Units <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    type="number"
-                                    min="1"
-                                    step="1"
-                                    value={shippingForm.units}
-                                    onChange={(e) => setShippingForm(prev => ({ ...prev, units: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    placeholder="0"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Date <span className="text-red-400">*</span>
-                                </label>
-                                <input
-                                    type="date"
-                                    value={shippingForm.date}
-                                    onChange={(e) => setShippingForm(prev => ({ ...prev, date: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    required
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-slate-300 mb-1">
-                                    Notes
-                                </label>
-                                <input
-                                    type="text"
-                                    value={shippingForm.notes}
-                                    onChange={(e) => setShippingForm(prev => ({ ...prev, notes: e.target.value }))}
-                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                    placeholder="Optional..."
-                                    maxLength={200}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Address Section */}
-                        <div className="bg-slate-800/30 rounded-lg border border-slate-700 p-3 space-y-3">
-                            <div className="flex items-center gap-2">
-                                <Icons.MapPin size={14} className="text-cyan-400" />
-                                <span className="text-sm font-medium text-white">Shipping Route</span>
-                                <span className="text-xs text-slate-400">(optional)</span>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                {/* Origin Address */}
-                                <div className="space-y-2">
-                                    <div className="text-xs font-medium text-emerald-400">From (Origin)</div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <input
-                                            type="text"
-                                            value={shippingForm.originSuburb}
-                                            onChange={(e) => setShippingForm(prev => ({ ...prev, originSuburb: e.target.value }))}
-                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="Suburb"
-                                        />
-                                        <select
-                                            value={shippingForm.originState}
-                                            onChange={(e) => setShippingForm(prev => ({ ...prev, originState: e.target.value }))}
-                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            <option value="QLD">QLD</option>
-                                            <option value="NSW">NSW</option>
-                                            <option value="VIC">VIC</option>
-                                            <option value="SA">SA</option>
-                                            <option value="WA">WA</option>
-                                            <option value="TAS">TAS</option>
-                                            <option value="NT">NT</option>
-                                            <option value="ACT">ACT</option>
-                                        </select>
-                                        <input
-                                            type="text"
-                                            value={shippingForm.originPostcode}
-                                            onChange={(e) => setShippingForm(prev => ({ ...prev, originPostcode: e.target.value }))}
-                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="P/code"
-                                            maxLength={4}
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Destination Address */}
-                                <div className="space-y-2">
-                                    <div className="text-xs font-medium text-amber-400">To (Destination)</div>
-                                    <div className="grid grid-cols-3 gap-2">
-                                        <input
-                                            type="text"
-                                            value={shippingForm.destinationSuburb}
-                                            onChange={(e) => setShippingForm(prev => ({ ...prev, destinationSuburb: e.target.value }))}
-                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="Suburb"
-                                        />
-                                        <select
-                                            value={shippingForm.destinationState}
-                                            onChange={(e) => setShippingForm(prev => ({ ...prev, destinationState: e.target.value }))}
-                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        >
-                                            <option value="QLD">QLD</option>
-                                            <option value="NSW">NSW</option>
-                                            <option value="VIC">VIC</option>
-                                            <option value="SA">SA</option>
-                                            <option value="WA">WA</option>
-                                            <option value="TAS">TAS</option>
-                                            <option value="NT">NT</option>
-                                            <option value="ACT">ACT</option>
-                                        </select>
-                                        <input
-                                            type="text"
-                                            value={shippingForm.destinationPostcode}
-                                            onChange={(e) => setShippingForm(prev => ({ ...prev, destinationPostcode: e.target.value }))}
-                                            className="px-2 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                            placeholder="P/code"
-                                            maxLength={4}
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="flex gap-2">
-                            {editingShippingId && (
-                                <button
-                                    type="button"
-                                    onClick={handleShippingCancelEdit}
-                                    className="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-white rounded-lg font-medium transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                            )}
-                            <button
-                                type="submit"
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                            >
-                                <Icons.Plus size={16} />
-                                {editingShippingId ? 'Update Record' : 'Add Shipping Record'}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-
-                {/* Shipping Records List */}
-                {shippingRecords.length > 0 && (
-                    <div className="bg-slate-800/50 rounded-lg border border-slate-700 p-4">
-                        <h4 className="text-md font-medium text-white mb-3">Shipping History</h4>
-                        <div className="space-y-2">
-                            {shippingRecords.map(record => (
-                                <div
-                                    key={record.id}
-                                    className="flex items-center justify-between p-3 bg-slate-700/50 rounded-lg hover:bg-slate-700 transition-colors"
-                                >
-                                    <div className="flex items-center gap-4 flex-1 flex-wrap">
-                                        <div className="text-sm text-slate-300 font-mono w-24">
-                                            {new Date(record.date).toLocaleDateString()}
-                                        </div>
-                                        <div className="text-sm text-white">
-                                            <span className="font-bold">{formatCurrency(record.deliveryCost)}</span>
-                                            <span className="text-slate-400 mx-1">÷</span>
-                                            <span className="font-bold">{record.units} units</span>
-                                        </div>
-                                        <div className="text-sm text-cyan-400 font-mono">
-                                            = {formatCurrency(record.costPerUnit)}/unit
-                                        </div>
-                                        {/* Route Display */}
-                                        {(record.originAddress?.suburb || record.destinationAddress?.suburb) && (
-                                            <div className="flex items-center gap-1 text-xs">
-                                                <Icons.MapPin size={12} className="text-slate-500" />
-                                                <span className="text-emerald-400">
-                                                    {record.originAddress?.suburb || '?'}, {record.originAddress?.state || '?'}
-                                                </span>
-                                                <span className="text-slate-500">→</span>
-                                                <span className="text-amber-400">
-                                                    {record.destinationAddress?.suburb || '?'}, {record.destinationAddress?.state || '?'}
-                                                </span>
-                                            </div>
-                                        )}
-                                        {record.notes && (
-                                            <div className="text-sm text-slate-400 flex-1 truncate">
-                                                {record.notes}
-                                            </div>
-                                        )}
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => handleShippingEdit(record)}
-                                            className="p-1.5 hover:bg-blue-500/20 rounded text-blue-400 transition-colors"
-                                            title="Edit"
-                                        >
-                                            <Icons.Edit size={16} />
-                                        </button>
-                                        <button
-                                            onClick={() => handleShippingDelete(record.id)}
-                                            className="p-1.5 hover:bg-red-500/20 rounded text-red-400 transition-colors"
-                                            title="Delete"
-                                        >
-                                            <Icons.Trash size={16} />
-                                        </button>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Shipping Cost Trend Analysis */}
-                {hasShippingSufficientHistory && shippingTrendData && (
-                    <div className="mt-4 p-4 bg-purple-500/10 rounded-lg border border-purple-500/30">
-                        <div className="flex items-center gap-2 mb-3">
-                            <Icons.TrendingUp className="text-purple-400" size={20} />
-                            <h4 className="text-md font-semibold text-white">Delivery Cost Model</h4>
-                        </div>
-
-                        {/* Pricing Model Formula */}
-                        <div className="mb-4 p-3 bg-slate-900/50 rounded-lg border border-slate-700">
-                            <div className="text-xs text-slate-400 mb-2">Estimated Cost Formula:</div>
-                            <div className="font-mono text-white">
-                                <span className="text-cyan-400">${((shippingTrendData.baseCost || 0) / 100).toFixed(2)}</span>
-                                {(shippingTrendData.perUnitCost || 0) > 0 && (
-                                    <>
-                                        <span className="text-slate-400"> + </span>
-                                        <span className="text-emerald-400">${((shippingTrendData.perUnitCost || 0) / 100).toFixed(2)}</span>
-                                        <span className="text-slate-400"> × units</span>
-                                    </>
-                                )}
-                            </div>
-                            <div className="text-xs text-slate-400 mt-1">
-                                Base shipping cost {(shippingTrendData.perUnitCost || 0) > 0 && '+ per-unit increment'}
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <p className="text-xs text-slate-400 mb-1">Base Shipping Cost</p>
-                                <p className="text-lg font-bold text-cyan-400">
-                                    ${((shippingTrendData.baseCost || 0) / 100).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-slate-500">Minimum cost (1 unit)</p>
-                            </div>
-
-                            <div>
-                                <p className="text-xs text-slate-400 mb-1">Per-Unit Increment</p>
-                                <p className="text-lg font-bold text-emerald-400">
-                                    ${((shippingTrendData.perUnitCost || 0) / 100).toFixed(2)}
-                                </p>
-                                <p className="text-xs text-slate-500">Additional cost per unit</p>
-                            </div>
-
-                            <div>
-                                <div className="text-slate-400 text-xs mb-1">Confidence (R²)</div>
-                                <div className={`font-mono font-bold ${(shippingTrendData.confidence || 0) >= 0.7 ? 'text-emerald-400' :
-                                    (shippingTrendData.confidence || 0) >= 0.3 ? 'text-amber-400' : 'text-red-400'
-                                    }`}>
-                                    {((shippingTrendData.confidence || 0) * 100).toFixed(1)}%
-                                </div>
-                            </div>
-
-                            <div>
-                                <div className="text-slate-400 text-xs mb-1">Based On</div>
-                                <div className="text-white">
-                                    {shippingTrendData.dataPoints || 0} deliveries
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Example Forecasts */}
-                        <div className="mt-4 pt-4 border-t border-purple-500/30">
-                            <div className="text-xs text-slate-400 mb-2">Estimated Costs by Quantity:</div>
-                            <div className="grid grid-cols-3 gap-3">
-                                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
-                                    <div className="text-xs text-slate-400">1 unit</div>
-                                    <div className="text-white font-bold">${((shippingTrendData.forecastSmall || 0) / 100).toFixed(2)}</div>
-                                </div>
-                                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
-                                    <div className="text-xs text-slate-400">10 units</div>
-                                    <div className="text-white font-bold">${((shippingTrendData.forecastMedium || 0) / 100).toFixed(2)}</div>
-                                </div>
-                                <div className="p-2 bg-slate-900/50 rounded border border-slate-700">
-                                    <div className="text-xs text-slate-400">50 units</div>
-                                    <div className="text-white font-bold">${((shippingTrendData.forecastLarge || 0) / 100).toFixed(2)}</div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {(shippingTrendData.confidence || 0) < 0.3 && (
-                            <div className="mt-3 p-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-300 flex items-start gap-2">
-                                <Icons.AlertTriangle size={14} className="flex-shrink-0 mt-0.5" />
-                                <span>Low confidence model. More delivery records with varying quantities needed for accurate forecasting.</span>
-                            </div>
-                        )}
-                    </div>
-                )}
-            </div>
         </div>
     );
 };

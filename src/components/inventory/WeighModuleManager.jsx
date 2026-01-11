@@ -120,7 +120,7 @@ export const WeighModuleManager = () => {
 
         setFormData(prev => ({
             ...prev,
-            suppliers: [...(prev.suppliers || []), selectedSupplier]
+            suppliers: [...(prev.suppliers || []), selectedSupplier].sort((a, b) => a.localeCompare(b))
         }));
         setSelectedSupplier('');
         setError('');
@@ -144,7 +144,7 @@ export const WeighModuleManager = () => {
                 idlerSpacing: module.idlerSpacing,
                 categoryId: module.categoryId || null,
                 subcategoryId: module.subcategoryId || null,
-                suppliers: module.suppliers || [],
+                suppliers: (module.suppliers || []).sort((a, b) => a.localeCompare(b)),
                 costPrice: (module.costPrice / 100).toFixed(2),
                 effectiveDate: module.effectiveDate,
                 notes: module.notes || '',

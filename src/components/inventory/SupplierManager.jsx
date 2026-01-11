@@ -333,6 +333,21 @@ const SupplierModal = ({ supplier, categories, onClose }) => {
         );
     }, [categories, formData.categoryIds]);
 
+    // Group subcategories by name to avoid duplicates
+    const groupedSubcategories = useMemo(() => {
+        const groups = {};
+        availableSubcategories.forEach(sub => {
+            if (!groups[sub.name]) {
+                groups[sub.name] = [];
+            }
+            groups[sub.name].push(sub.id);
+        });
+        return Object.entries(groups).map(([name, ids]) => ({
+            name,
+            ids
+        })).sort((a, b) => a.name.localeCompare(b.name));
+    }, [availableSubcategories]);
+
     useEffect(() => {
         if (supplier) {
             setFormData({
@@ -408,13 +423,18 @@ const SupplierModal = ({ supplier, categories, onClose }) => {
         });
     };
 
-    const handleSubcategoryToggle = (subcategoryId, isChecked) => {
-        setFormData(prev => ({
-            ...prev,
-            subcategoryIds: isChecked
-                ? [...prev.subcategoryIds, subcategoryId]
-                : prev.subcategoryIds.filter(id => id !== subcategoryId)
-        }));
+    const handleSubcategoryToggle = (subcategoryIds, isChecked) => {
+        setFormData(prev => {
+            // Remove any of the target IDs from the current list first
+            const currentIds = prev.subcategoryIds.filter(id => !subcategoryIds.includes(id));
+
+            return {
+                ...prev,
+                subcategoryIds: isChecked
+                    ? [...currentIds, ...subcategoryIds]
+                    : currentIds
+            };
+        });
     };
 
     return (
@@ -554,20 +574,24 @@ const SupplierModal = ({ supplier, categories, onClose }) => {
                                     </p>
                                 ) : (
                                     <div className="space-y-2">
-                                        {availableSubcategories.map(subcategory => (
-                                            <label
-                                                key={subcategory.id}
-                                                className="flex items-center gap-2 p-2 hover:bg-slate-700/50 rounded cursor-pointer transition-colors"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.subcategoryIds.includes(subcategory.id)}
-                                                    onChange={(e) => handleSubcategoryToggle(subcategory.id, e.target.checked)}
-                                                    className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
-                                                />
-                                                <span className="text-sm text-white">{subcategory.name}</span>
-                                            </label>
-                                        ))}
+                                        {groupedSubcategories.map(group => {
+                                            const isChecked = group.ids.every(id => formData.subcategoryIds.includes(id));
+
+                                            return (
+                                                <label
+                                                    key={group.name}
+                                                    className="flex items-center gap-2 p-2 hover:bg-slate-700/50 rounded cursor-pointer transition-colors"
+                                                >
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isChecked}
+                                                        onChange={(e) => handleSubcategoryToggle(group.ids, e.target.checked)}
+                                                        className="w-4 h-4 rounded border-slate-600 text-purple-600 focus:ring-purple-500 focus:ring-offset-slate-900"
+                                                    />
+                                                    <span className="text-sm text-white">{group.name}</span>
+                                                </label>
+                                            );
+                                        })}
                                     </div>
                                 )}
                             </div>

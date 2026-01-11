@@ -26,7 +26,7 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
     const tableRef = useRef(null);
 
     // Resizable columns
-    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([120, 220, 140, 140, 150, 110, 100, 130, 80, 100]);
+    const { columnWidths, handleResizeStart, autoFitColumn } = useResizableColumns([120, 220, 140, 140, 150, 110, 100, 100, 130, 80, 100]);
 
     // Real-time listener for fasteners catalog
     useEffect(() => {
@@ -72,7 +72,10 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                         const validSuppliers = fastener.suppliers || [];
                         const lowest = await getLowestSupplierPrice(fastener.id, new Date(), validSuppliers);
                         if (lowest) {
-                            prices[fastener.id] = lowest.costPrice;
+                            prices[fastener.id] = {
+                                price: lowest.costPrice,
+                                date: lowest.effectiveDate
+                            };
                         }
                     } catch (err) {
                         console.error(`Error loading lowest price for ${fastener.id}:`, err);
@@ -90,10 +93,14 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
     // Calculate actual margin and stock for each fastener
     const fastenersWithMargins = useMemo(() => {
         return fasteners.map(fastener => {
-            // Determine active cost based on source
-            const activeCost = fastener.costPriceSource === 'SUPPLIER_LOWEST' && lowestPrices[fastener.id]
-                ? lowestPrices[fastener.id]
-                : fastener.costPrice;
+            // Determine active cost and date based on source
+            let activeCost = fastener.costPrice;
+            let costDate = fastener.updatedAt;
+
+            if (fastener.costPriceSource === 'SUPPLIER_LOWEST' && lowestPrices[fastener.id]) {
+                activeCost = lowestPrices[fastener.id].price;
+                costDate = lowestPrices[fastener.id].date;
+            }
 
             const actualMargin = fastener.listPrice > 0
                 ? ((fastener.listPrice - activeCost) / fastener.listPrice) * 100
@@ -107,6 +114,7 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
             return {
                 ...fastener,
                 activeCost,
+                costDate, // Expose for table
                 actualMarginPercent: actualMargin,
                 actualStockCount
             };
@@ -157,6 +165,10 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                 // Sort by first supplier
                 aVal = a.suppliers && a.suppliers.length > 0 ? a.suppliers[0] : '';
                 bVal = b.suppliers && b.suppliers.length > 0 ? b.suppliers[0] : '';
+            } else if (sortConfig.key === 'costDate') {
+                // Handle date sorting
+                aVal = a.costDate ? new Date(a.costDate).getTime() : 0;
+                bVal = b.costDate ? new Date(b.costDate).getTime() : 0;
             }
 
             // Handle null/undefined values (sort to end)
@@ -392,19 +404,23 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                                     <div className="flex items-center justify-end gap-2 column-content">Cost {getSortIcon('costPrice')}</div>
                                     <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(5, e)} onDoubleClick={() => autoFitColumn(5, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
                                 </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('listPrice')} style={{ width: `${columnWidths[6]}px` }}>
-                                    <div className="flex items-center justify-end gap-2 column-content">List {getSortIcon('listPrice')}</div>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('costDate')} style={{ width: `${columnWidths[6]}px` }}>
+                                    <div className="flex items-center justify-end gap-2 column-content">Cost Date {getSortIcon('costDate')}</div>
                                     <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(6, e)} onDoubleClick={() => autoFitColumn(6, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
                                 </th>
-                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('actualMarginPercent')} style={{ width: `${columnWidths[7]}px` }}>
-                                    <div className="flex items-center justify-end gap-2 column-content">Margin {getSortIcon('actualMarginPercent')}</div>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('listPrice')} style={{ width: `${columnWidths[7]}px` }}>
+                                    <div className="flex items-center justify-end gap-2 column-content">List {getSortIcon('listPrice')}</div>
                                     <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(7, e)} onDoubleClick={() => autoFitColumn(7, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
                                 </th>
-                                <th className="px-4 py-3 text-center cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('stockCount')} style={{ width: `${columnWidths[8]}px` }}>
-                                    <div className="flex items-center justify-center gap-2 column-content">Stock {getSortIcon('stockCount')}</div>
+                                <th className="px-4 py-3 text-right cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('actualMarginPercent')} style={{ width: `${columnWidths[8]}px` }}>
+                                    <div className="flex items-center justify-end gap-2 column-content">Margin {getSortIcon('actualMarginPercent')}</div>
                                     <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(8, e)} onDoubleClick={() => autoFitColumn(8, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
                                 </th>
-                                <th className="px-4 py-3 text-center relative" style={{ width: `${columnWidths[9]}px` }}>
+                                <th className="px-4 py-3 text-center cursor-pointer hover:bg-slate-800 transition-colors relative" onClick={() => handleSort('stockCount')} style={{ width: `${columnWidths[9]}px` }}>
+                                    <div className="flex items-center justify-center gap-2 column-content">Stock {getSortIcon('stockCount')}</div>
+                                    <div className="absolute right-0 top-0 bottom-0 w-1.5 cursor-col-resize hover:bg-cyan-400 active:bg-cyan-500 transition-colors" onMouseDown={(e) => handleResizeStart(9, e)} onDoubleClick={() => autoFitColumn(9, tableRef)} onClick={(e) => e.stopPropagation()} title="Drag to resize, double-click to auto-fit" />
+                                </th>
+                                <th className="px-4 py-3 text-center relative" style={{ width: `${columnWidths[10]}px` }}>
                                     <div className="column-content">Actions</div>
                                 </th>
                             </tr>
@@ -412,7 +428,7 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                         <tbody className="divide-y divide-slate-700">
                             {filteredAndSortedFasteners.length === 0 ? (
                                 <tr>
-                                    <td colSpan="10" className="px-4 py-8 text-center text-slate-400">
+                                    <td colSpan="11" className="px-4 py-8 text-center text-slate-400">
                                         {searchTerm ? 'No fasteners match your search' : 'No fasteners in catalog. Add your first fastener to get started.'}
                                     </td>
                                 </tr>
@@ -475,6 +491,9 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                                                     </span>
                                                 )}
                                             </div>
+                                        </td>
+                                        <td className="px-4 py-3 text-right text-slate-400 text-xs">
+                                            {fastener.costDate ? new Date(fastener.costDate).toLocaleDateString() : '-'}
                                         </td>
                                         <td className="px-4 py-3 text-right text-white font-medium">
                                             {fastener.listPrice === 0 ? <span className="text-amber-500/50">--</span> : formatCurrency(fastener.listPrice)}

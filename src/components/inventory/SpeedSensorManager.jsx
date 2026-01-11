@@ -101,7 +101,7 @@ export const SpeedSensorManager = () => {
 
         setFormData(prev => ({
             ...prev,
-            suppliers: [...(prev.suppliers || []), selectedSupplier]
+            suppliers: [...(prev.suppliers || []), selectedSupplier].sort((a, b) => a.localeCompare(b))
         }));
         setSelectedSupplier('');
         setError('');
@@ -125,7 +125,7 @@ export const SpeedSensorManager = () => {
                 quantity: sensor.quantity,
                 categoryId: sensor.categoryId || null,
                 subcategoryId: sensor.subcategoryId || null,
-                suppliers: sensor.suppliers || [],
+                suppliers: (sensor.suppliers || []).sort((a, b) => a.localeCompare(b)),
                 costPrice: (sensor.costPrice / 100).toFixed(2),
                 effectiveDate: sensor.effectiveDate,
                 notes: sensor.notes || ''

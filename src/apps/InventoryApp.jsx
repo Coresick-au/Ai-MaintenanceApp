@@ -15,11 +15,13 @@ import { CategoryManager } from '../components/inventory/categories/CategoryMana
 import { CategoryProvider } from '../context/CategoryContext';
 import { FastenerCatalogTable } from '../components/inventory/FastenerCatalogTable';
 import { FastenerCatalogModal } from '../components/inventory/FastenerCatalogModal';
+import { ElectricalCatalogTable } from '../components/inventory/ElectricalCatalogTable';
+import { ElectricalCatalogModal } from '../components/inventory/ElectricalCatalogModal';
 import { LabourRateModal } from '../components/settings/LabourRateModal';
 import { TemplateManager } from '../components/inventory/TemplateManager';
 import { ManufacturedPartCalculator } from '../components/inventory/ManufacturedPartCalculator';
 import { SpecializedComponentsView } from '../components/inventory/SpecializedComponentsView';
-import { ShippingCalculator } from '../components/inventory/ShippingCalculator';
+
 import { BuildGuideManager } from '../components/inventory/BuildGuideManager';
 import { Icons } from '../constants/icons';
 import BackButton from '../components/ui/BackButton';
@@ -41,6 +43,12 @@ export function InventoryApp({ onBack }) {
     // Sub Assembly catalog state
     const [isSubAssemblyModalOpen, setIsSubAssemblyModalOpen] = useState(false);
     const [editingSubAssembly, setEditingSubAssembly] = useState(null);
+
+
+
+    // Electrical catalog state
+    const [isElectricalModalOpen, setIsElectricalModalOpen] = useState(false);
+    const [editingElectrical, setEditingElectrical] = useState(null);
 
     const [showLabourRateModal, setShowLabourRateModal] = useState(false);
     const [showManufacturedCalculator, setShowManufacturedCalculator] = useState(false);
@@ -105,6 +113,21 @@ export function InventoryApp({ onBack }) {
         setEditingSubAssembly(null);
     };
 
+    const handleAddElectrical = () => {
+        setEditingElectrical(null);
+        setIsElectricalModalOpen(true);
+    };
+
+    const handleEditElectrical = (item) => {
+        setEditingElectrical(item);
+        setIsElectricalModalOpen(true);
+    };
+
+    const handleCloseElectricalModal = () => {
+        setIsElectricalModalOpen(false);
+        setEditingElectrical(null);
+    };
+
     const handleAdjustStock = (part) => {
         setAdjustingPart(part);
         setIsStockAdjustmentOpen(true);
@@ -129,6 +152,7 @@ export function InventoryApp({ onBack }) {
     const tabs = [
         { id: 'catalog', label: 'Part Catalog', icon: Icons.Package },
         { id: 'fasteners', label: 'Fastener Catalog', icon: Icons.Wrench },
+        { id: 'electrical', label: 'Electrical Catalog', icon: Icons.Zap },
         { id: 'subassemblies', label: 'Sub Assemblies', icon: Icons.Layers },
         { id: 'products', label: 'Product Catalog', icon: Icons.Box },
         { id: 'serialized', label: 'Serialized Assets', icon: Icons.Barcode },
@@ -136,8 +160,7 @@ export function InventoryApp({ onBack }) {
         { id: 'buildguides', label: 'Build Guides', icon: Icons.BookOpen },
         { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
         { id: 'categories', label: 'Categories', icon: Icons.FolderTree },
-        { id: 'suppliers', label: 'Suppliers', icon: Icons.Truck },
-        { id: 'shipping', label: 'Shipping Calculator', icon: Icons.Truck }
+        { id: 'suppliers', label: 'Suppliers', icon: Icons.Truck }
     ];
 
     return (
@@ -210,6 +233,13 @@ export function InventoryApp({ onBack }) {
                             />
                         )}
 
+                        {activeTab === 'electrical' && (
+                            <ElectricalCatalogTable
+                                onAddElectrical={handleAddElectrical}
+                                onEditElectrical={handleEditElectrical}
+                            />
+                        )}
+
                         {activeTab === 'products' && (
                             <ProductCatalogTable
                                 onAddProduct={handleAddProduct}
@@ -239,7 +269,7 @@ export function InventoryApp({ onBack }) {
 
                         {activeTab === 'specialized' && <SpecializedComponentsView />}
 
-                        {activeTab === 'shipping' && <ShippingCalculator />}
+
 
                         {activeTab === 'categories' && <CategoryManager />}
 
@@ -263,6 +293,11 @@ export function InventoryApp({ onBack }) {
                     isOpen={showFastenerModal}
                     onClose={handleCloseFastenerModal}
                     editingFastener={editingFastener}
+                />
+                <ElectricalCatalogModal
+                    isOpen={isElectricalModalOpen}
+                    onClose={handleCloseElectricalModal}
+                    editingItem={editingElectrical}
                 />
 
                 <LabourRateModal

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Icons } from '../../constants/icons';
-import { addSubAssembly, updateSubAssembly, addPartToBOM, removePartFromBOM, updatePartQuantity, addFastenerToBOM, removeFastenerFromBOM, updateFastenerQuantity } from '../../services/subAssemblyService';
+import { addSubAssembly, updateSubAssembly, addPartToBOM, removePartFromBOM, updatePartQuantity, addFastenerToBOM, removeFastenerFromBOM, updateFastenerQuantity, addElectricalToBOM, removeElectricalFromBOM, updateElectricalQuantity } from '../../services/subAssemblyService';
 import { generateNextSubAssemblySKU } from '../../utils/skuGenerator';
 import { CategorySelect } from './categories/CategorySelect';
 import { LocationSelect } from './LocationSelect';
@@ -43,6 +43,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
     });
     const [bomEntries, setBomEntries] = useState([]);
     const [bomFastenerEntries, setBomFastenerEntries] = useState([]);
+    const [bomElectricalEntries, setBomElectricalEntries] = useState([]);
     const [costType, setCostType] = useState('CALCULATED');
     const [listPriceSource, setListPriceSource] = useState('MANUAL');
     const [bomCost, setBomCost] = useState(0);
@@ -80,8 +81,10 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     const bom = await subAssemblyCompositionRepository.getBOMForSubAssembly(editingSubAssembly.id);
                     const bomParts = bom.parts || (Array.isArray(bom) ? bom : []);
                     const bomFasteners = bom.fasteners || [];
+                    const bomElectrical = bom.electrical || [];
                     setBomEntries(bomParts);
                     setBomFastenerEntries(bomFasteners);
+                    setBomElectricalEntries(bomElectrical);
                 } catch (error) {
                     console.error('Error loading BOM:', error);
                 }
@@ -107,6 +110,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                 });
                 setBomEntries([]);
                 setBomFastenerEntries([]);
+                setBomElectricalEntries([]);
             }
             setError('');
         };
@@ -142,6 +146,16 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     }
                 }
 
+                // Calculate cost for each electrical item in BOM
+                for (const entry of bomElectricalEntries) {
+                    try {
+                        const electricalCost = await getPartCostAtDate(entry.electricalId, new Date());
+                        totalCost += electricalCost * entry.quantityUsed;
+                    } catch (err) {
+                        console.error(`Error loading cost for electrical item ${entry.electricalId}:`, err);
+                    }
+                }
+
                 // Add labour cost
                 if (formData.labourHours > 0 || formData.labourMinutes > 0) {
                     const labourRate = await getLabourRate();
@@ -158,7 +172,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
         };
 
         calcBomCost();
-    }, [bomEntries, bomFastenerEntries, formData.labourHours, formData.labourMinutes]);
+    }, [bomEntries, bomFastenerEntries, bomElectricalEntries, formData.labourHours, formData.labourMinutes]);
 
     // Calculate list price when in CALCULATED mode
     const calculatedListPrice = React.useMemo(() => {
@@ -199,6 +213,20 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
     const handleUpdateFastenerQuantity = (fastenerId, quantity) => {
         setBomFastenerEntries(prev => prev.map(e =>
             e.fastenerId === fastenerId ? { ...e, quantityUsed: quantity } : e
+        ));
+    };
+
+    const handleAddElectrical = (electricalId, quantity) => {
+        setBomElectricalEntries(prev => [...prev, { electricalId, quantityUsed: quantity }]);
+    };
+
+    const handleRemoveElectrical = (electricalId) => {
+        setBomElectricalEntries(prev => prev.filter(e => e.electricalId !== electricalId));
+    };
+
+    const handleUpdateElectricalQuantity = (electricalId, quantity) => {
+        setBomElectricalEntries(prev => prev.map(e =>
+            e.electricalId === electricalId ? { ...e, quantityUsed: quantity } : e
         ));
     };
 
@@ -302,6 +330,26 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                         await addFastenerToBOM(subAssemblyId, entry.fastenerId, entry.quantityUsed);
                     }
                 }
+
+                // Get existing electrical from BOM
+                const existingElectrical = existingBOM.electrical || [];
+
+                // Remove electrical items no longer in BOM
+                for (const existing of existingElectrical) {
+                    if (!bomElectricalEntries.some(e => e.electricalId === existing.electricalId)) {
+                        await removeElectricalFromBOM(subAssemblyId, existing.electricalId);
+                    }
+                }
+
+                // Add or update electrical items
+                for (const entry of bomElectricalEntries) {
+                    const exists = existingElectrical.some(e => e.electricalId === entry.electricalId);
+                    if (exists) {
+                        await updateElectricalQuantity(subAssemblyId, entry.electricalId, entry.quantityUsed);
+                    } else {
+                        await addElectricalToBOM(subAssemblyId, entry.electricalId, entry.quantityUsed);
+                    }
+                }
             } else {
                 // Create new sub assembly
                 const result = await addSubAssembly(subAssemblyData);
@@ -315,6 +363,11 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                 // Add fastener BOM entries
                 for (const entry of bomFastenerEntries) {
                     await addFastenerToBOM(subAssemblyId, entry.fastenerId, entry.quantityUsed);
+                }
+
+                // Add electrical BOM entries
+                for (const entry of bomElectricalEntries) {
+                    await addElectricalToBOM(subAssemblyId, entry.electricalId, entry.quantityUsed);
                 }
             }
 
@@ -630,6 +683,10 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                                     onAddFastener={handleAddFastener}
                                     onRemoveFastener={handleRemoveFastener}
                                     onUpdateFastenerQuantity={handleUpdateFastenerQuantity}
+                                    bomElectricalEntries={bomElectricalEntries}
+                                    onAddElectrical={handleAddElectrical}
+                                    onRemoveElectrical={handleRemoveElectrical}
+                                    onUpdateElectricalQuantity={handleUpdateElectricalQuantity}
                                 />
 
                                 {/* Cost Type Toggle */}

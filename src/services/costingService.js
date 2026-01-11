@@ -76,6 +76,11 @@ export async function getPartCostAtDate(partId, date) {
             catalogRef = await getDocs(query(collection(db, 'fastener_catalog'), where('id', '==', partId)));
         }
 
+        // If not found in fastener catalog, try electrical catalog
+        if (catalogRef.empty) {
+            catalogRef = await getDocs(query(collection(db, 'electrical_catalog'), where('id', '==', partId)));
+        }
+
         if (!catalogRef.empty) {
             const itemData = catalogRef.docs[0].data();
 
@@ -162,6 +167,7 @@ export async function getSubAssemblyCostAtDate(subAssemblyId, date) {
 
         const parts = bom.parts || [];
         const fasteners = bom.fasteners || [];
+        const electrical = bom.electrical || [];
 
         let totalCost = 0;
 
@@ -175,6 +181,12 @@ export async function getSubAssemblyCostAtDate(subAssemblyId, date) {
         for (const bomEntry of fasteners) {
             const fastenerCost = await getPartCostAtDate(bomEntry.fastenerId, date);
             totalCost += Math.round(fastenerCost * bomEntry.quantityUsed);
+        }
+
+        // Calculate cost for electrical items
+        for (const bomEntry of electrical) {
+            const electricalCost = await getPartCostAtDate(bomEntry.electricalId, date);
+            totalCost += Math.round(electricalCost * bomEntry.quantityUsed);
         }
 
         // Add labour cost
@@ -215,6 +227,7 @@ export async function calculateProductCost(productId, date = new Date()) {
         const parts = bom.parts || (Array.isArray(bom) ? bom : []);
         const fasteners = bom.fasteners || [];
         const subAssemblies = bom.subAssemblies || [];
+        const electrical = bom.electrical || [];
 
         if (parts.length === 0 && fasteners.length === 0 && subAssemblies.length === 0) {
             console.warn(`[CostingService] Product ${productId} has no BOM`);

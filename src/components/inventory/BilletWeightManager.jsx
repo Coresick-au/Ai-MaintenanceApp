@@ -101,7 +101,7 @@ export const BilletWeightManager = () => {
 
         setFormData(prev => ({
             ...prev,
-            suppliers: [...(prev.suppliers || []), selectedSupplier]
+            suppliers: [...(prev.suppliers || []), selectedSupplier].sort((a, b) => a.localeCompare(b))
         }));
         setSelectedSupplier('');
         setError('');
@@ -125,7 +125,7 @@ export const BilletWeightManager = () => {
                 plateWeightQuantity: weight.plateWeightQuantity || '',
                 categoryId: weight.categoryId || null,
                 subcategoryId: weight.subcategoryId || null,
-                suppliers: weight.suppliers || [],
+                suppliers: (weight.suppliers || []).sort((a, b) => a.localeCompare(b)),
                 costPrice: (weight.costPrice / 100).toFixed(2),
                 setupCost: weight.setupCost ? (weight.setupCost / 100).toFixed(2) : '',
                 effectiveDate: weight.effectiveDate,

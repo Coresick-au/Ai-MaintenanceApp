@@ -110,7 +110,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                 categoryId: editingFastener.categoryId || null,
                 subcategoryId: editingFastener.subcategoryId || null,
                 // Migration: convert old supplier string to array
-                suppliers: editingFastener.suppliers || (editingFastener.supplier ? [editingFastener.supplier] : []),
+                suppliers: (editingFastener.suppliers || (editingFastener.supplier ? [editingFastener.supplier] : [])).sort((a, b) => a.localeCompare(b)),
                 supplierSKUs,
                 description: editingFastener.description || '',
                 material: editingFastener.material || '',
@@ -217,7 +217,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
 
         setFormData(prev => ({
             ...prev,
-            suppliers: [...(prev.suppliers || []), selectedSupplier]
+            suppliers: [...(prev.suppliers || []), selectedSupplier].sort((a, b) => a.localeCompare(b))
         }));
         setSelectedSupplier('');
         setError('');
@@ -573,6 +573,10 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                                     <option value="Galvanised">Galvanised</option>
                                     <option value="Zinc">Zinc</option>
                                     <option value="Aluminium">Aluminium</option>
+                                    <option value="Mild Steel">Mild Steel</option>
+                                    <option value="Brass">Brass</option>
+                                    <option value="AB2">AB2</option>
+                                    <option value="FRP">FRP</option>
                                     <option value="Plastic">Plastic</option>
                                     <option value="Nylon">Nylon</option>
                                 </select>

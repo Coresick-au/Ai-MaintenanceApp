@@ -96,7 +96,7 @@ export const TMDFrameManager = () => {
 
         setFormData(prev => ({
             ...prev,
-            suppliers: [...(prev.suppliers || []), selectedSupplier]
+            suppliers: [...(prev.suppliers || []), selectedSupplier].sort((a, b) => a.localeCompare(b))
         }));
         setSelectedSupplier('');
         setError('');
@@ -117,7 +117,7 @@ export const TMDFrameManager = () => {
                 quantity: frame.quantity,
                 categoryId: frame.categoryId || null,
                 subcategoryId: frame.subcategoryId || null,
-                suppliers: frame.suppliers || [],
+                suppliers: (frame.suppliers || []).sort((a, b) => a.localeCompare(b)),
                 costPrice: (frame.costPrice / 100).toFixed(2),
                 effectiveDate: frame.effectiveDate,
                 notes: frame.notes || ''

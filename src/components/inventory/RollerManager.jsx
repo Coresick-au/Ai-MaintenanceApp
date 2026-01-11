@@ -101,7 +101,7 @@ export const RollerManager = () => {
 
         setFormData(prev => ({
             ...prev,
-            suppliers: [...(prev.suppliers || []), selectedSupplier]
+            suppliers: [...(prev.suppliers || []), selectedSupplier].sort((a, b) => a.localeCompare(b))
         }));
         setSelectedSupplier('');
         setError('');
@@ -124,7 +124,7 @@ export const RollerManager = () => {
                 quantity: roller.quantity,
                 categoryId: roller.categoryId || null,
                 subcategoryId: roller.subcategoryId || null,
-                suppliers: roller.suppliers || [],
+                suppliers: (roller.suppliers || []).sort((a, b) => a.localeCompare(b)),
                 costPrice: (roller.costPrice / 100).toFixed(2),
                 effectiveDate: roller.effectiveDate,
                 notes: roller.notes || ''

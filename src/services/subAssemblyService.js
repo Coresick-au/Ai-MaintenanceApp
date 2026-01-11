@@ -79,6 +79,12 @@ export async function deleteSubAssembly(subAssemblyId) {
             await subAssemblyCompositionRepository.removeFastenerFromBOM(subAssemblyId, bomEntry.fastenerId);
         }
 
+        // Delete electrical BOM entries
+        const electrical = bom.electrical || [];
+        for (const bomEntry of electrical) {
+            await subAssemblyCompositionRepository.removeElectricalFromBOM(subAssemblyId, bomEntry.electricalId);
+        }
+
         // Delete the sub assembly
         return await subAssemblyRepository.delete(subAssemblyId);
     } catch (error) {
@@ -251,9 +257,85 @@ export async function getBOMWithCosts(subAssemblyId, date = new Date()) {
             });
         }
 
+        // Process electrical
+        const electrical = bom.electrical || [];
+        for (const bomEntry of electrical) {
+            const electricalRef = await getDocs(
+                query(collection(db, 'electrical_catalog'), where('id', '==', bomEntry.electricalId))
+            );
+
+            if (electricalRef.empty) {
+                console.warn(`[SubAssemblyService] Electrical item ${bomEntry.electricalId} not found in catalog`);
+                continue;
+            }
+
+            const electricalData = electricalRef.docs[0].data();
+            const electricalCost = await getPartCostAtDate(bomEntry.electricalId, date);
+            const subtotal = Math.round(electricalCost * bomEntry.quantityUsed);
+
+            enrichedBOM.push({
+                electricalId: bomEntry.electricalId,
+                electricalSku: electricalData.sku,
+                electricalName: electricalData.name,
+                type: 'electrical',
+                quantity: bomEntry.quantityUsed,
+                cost: electricalCost,
+                subtotal
+            });
+        }
+
         return enrichedBOM;
     } catch (error) {
         console.error('[SubAssemblyService] Error getting BOM with costs:', error);
+        throw error;
+    }
+}
+
+// ==========================================
+// ELECTRICAL BOM OPERATIONS
+// ==========================================
+
+/**
+ * Add an electrical component to a sub assembly's Bill of Materials
+ */
+export async function addElectricalToBOM(subAssemblyId, electricalId, quantityUsed) {
+    try {
+        // Validate electrical item exists
+        const electricalRef = await getDocs(
+            query(collection(db, 'electrical_catalog'), where('id', '==', electricalId))
+        );
+
+        if (electricalRef.empty) {
+            throw new Error(`Electrical item ${electricalId} not found in catalog`);
+        }
+
+        return await subAssemblyCompositionRepository.addElectricalToBOM(subAssemblyId, electricalId, quantityUsed);
+    } catch (error) {
+        console.error('[SubAssemblyService] Error adding electrical to BOM:', error);
+        throw error;
+    }
+}
+
+/**
+ * Remove an electrical component from a sub assembly's Bill of Materials
+ */
+export async function removeElectricalFromBOM(subAssemblyId, electricalId) {
+    try {
+        return await subAssemblyCompositionRepository.removeElectricalFromBOM(subAssemblyId, electricalId);
+    } catch (error) {
+        console.error('[SubAssemblyService] Error removing electrical from BOM:', error);
+        throw error;
+    }
+}
+
+/**
+ * Update the quantity of an electrical component in a sub assembly's BOM
+ */
+export async function updateElectricalQuantity(subAssemblyId, electricalId, quantityUsed) {
+    try {
+        return await subAssemblyCompositionRepository.updateElectricalQuantity(subAssemblyId, electricalId, quantityUsed);
+    } catch (error) {
+        console.error('[SubAssemblyService] Error updating electrical quantity:', error);
         throw error;
     }
 }
