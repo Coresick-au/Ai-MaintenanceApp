@@ -335,3 +335,64 @@ Example: Week 1 of 2026 (`2026-W01`) starts on **December 29, 2025**.
 - `src/apps/TimesheetApp/utils/calculator.ts` (calculateWeeklySummary function)
 - `src/apps/TimesheetApp/types/index.ts` (TimesheetEntry interface)
 
+---
+
+## 13. Firebase: Missing or Insufficient Permissions for Collection
+
+### Symptoms
+- Error: `FirebaseError: Missing or insufficient permissions`
+- Occurs when querying Firestore collections
+- Specific errors in console:
+  - `[ProductComposition] Error getting BOM: FirebaseError: Missing or insufficient permissions`
+  - `[CostingService] Error calculating product cost: FirebaseError: Missing or insufficient permissions`
+- Product costs show as $0.00 instead of calculated values
+
+### How to Reproduce
+1. Navigate to Inventory App → Product Catalog
+2. Open browser console (F12)
+3. Observe permission errors when the app tries to calculate product costs
+4. Product costs display as $0.00
+
+### Where to Look
+- `firestore.rules` - Check if all collections used in the codebase have security rules defined
+- Search codebase for `collection(db, 'collection_name')` to find all Firestore collections being accessed
+- Check browser console for specific collection names in error messages
+
+### Root Cause (Fixed 2026-01-12)
+**Three electrical-related collections** were being queried by the application but had no security rules defined in `firestore.rules`:
+
+1. `electrical_catalog` - queried by `costingService.js` (line 81)
+2. `product_electrical_composition` - queried by `ProductCompositionRepository.js` (line 58)
+3. `sub_assembly_electrical_composition` - queried by `SubAssemblyCompositionRepository.js` (line 41)
+
+When any of these services attempted to query these collections, Firestore rejected the request due to missing rules.
+
+### Fix
+Add the missing collections to `firestore.rules` with appropriate permissions:
+
+```javascript
+// In the "Inventory & Catalog" section (around line 54)
+match /electrical_catalog/{document=**} { allow read, write: if isSignedIn(); }
+
+// In the "Composition & BOM" section (around line 74)
+match /product_electrical_composition/{document=**} { allow read, write: if isSignedIn(); }
+
+// In the "Composition & BOM" section (around line 77)
+match /sub_assembly_electrical_composition/{document=**} { allow read, write: if isSignedIn(); }
+```
+
+Then deploy the updated rules:
+```bash
+firebase deploy --only firestore:rules
+```
+
+**Files modified:**
+- `firestore.rules` (added three electrical-related rules at lines 54, 74, and 77)
+
+### Prevention
+When adding new Firestore collections to the codebase:
+1. Always add corresponding security rules to `firestore.rules`
+2. Follow the existing pattern for similar collections
+3. Test in development before deploying to production
+4. Check browser console for permission errors during testing
+

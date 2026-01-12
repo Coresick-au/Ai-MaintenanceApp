@@ -51,6 +51,7 @@ service cloud.firestore {
     // Inventory & Catalog
     match /part_catalog/{document=**} { allow read, write: if isSignedIn(); }
     match /fastener_catalog/{document=**} { allow read, write: if isSignedIn(); }
+    match /electrical_catalog/{document=**} { allow read, write: if isSignedIn(); }
     match /products/{document=**} { allow read, write: if isSignedIn(); }
     match /sub_assemblies/{document=**} { allow read, write: if isSignedIn(); }
     match /categories/{document=**} { allow read, write: if isSignedIn(); }
@@ -70,8 +71,10 @@ service cloud.firestore {
     match /product_composition/{document=**} { allow read, write: if isSignedIn(); }
     match /product_fastener_composition/{document=**} { allow read, write: if isSignedIn(); }
     match /product_sub_assembly_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /product_electrical_composition/{document=**} { allow read, write: if isSignedIn(); }
     match /sub_assembly_composition/{document=**} { allow read, write: if isSignedIn(); }
     match /sub_assembly_fastener_composition/{document=**} { allow read, write: if isSignedIn(); }
+    match /sub_assembly_electrical_composition/{document=**} { allow read, write: if isSignedIn(); }
     
     // Specialized Components
     match /weigher_models/{document=**} { allow read, write: if isSignedIn(); }

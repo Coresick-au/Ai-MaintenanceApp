@@ -267,7 +267,12 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
 
         try {
             // Determine which collection this part belongs to based on ID prefix
-            const collection = part.id.startsWith('fastener-') ? 'fastener_catalog' : 'part_catalog';
+            let collection = 'part_catalog';
+            if (part.id.startsWith('fastener-')) {
+                collection = 'fastener_catalog';
+            } else if (part.id.startsWith('elec-')) {
+                collection = 'electrical_catalog';
+            }
 
             // Prepare update data
             const updateData = {
@@ -347,7 +352,12 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
 
     const handleTogglePreferredSupplier = async (supplierName) => {
         try {
-            const collection = part.id.startsWith('fastener-') ? 'fastener_catalog' : 'part_catalog';
+            let collection = 'part_catalog';
+            if (part.id.startsWith('fastener-')) {
+                collection = 'fastener_catalog';
+            } else if (part.id.startsWith('elec-')) {
+                collection = 'electrical_catalog';
+            }
             const currentPreferred = preferredSupplier || part.preferredSupplier;
             const newPreferred = currentPreferred === supplierName ? null : supplierName;
 
@@ -419,7 +429,12 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
     // Handle manual cost price change
     const handleManualCostBlur = async () => {
         try {
-            const collection = part.id.startsWith('fastener-') ? 'fastener_catalog' : 'part_catalog';
+            let collection = 'part_catalog';
+            if (part.id.startsWith('fastener-')) {
+                collection = 'fastener_catalog';
+            } else if (part.id.startsWith('elec-')) {
+                collection = 'electrical_catalog';
+            }
             const costPriceCents = Math.round(parseFloat(manualCostPrice || 0) * 100);
 
             await updateDoc(doc(db, collection, part.id), {
