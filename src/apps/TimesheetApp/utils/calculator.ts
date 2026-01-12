@@ -14,7 +14,6 @@ import {
     TimesheetEntry,
     EntryCalculations,
     WeeklySummary,
-    NON_CHARGEABLE_ACTIVITIES,
     ActivityType,
 } from '../types';
 
@@ -27,9 +26,6 @@ const PER_DIEM_OVERNIGHT = 85.0;
 
 /** Per diem for travel activities finishing before 18:00 */
 const PER_DIEM_TRAVEL = 42.5;
-
-/** Hour threshold for travel per diem (18:00 = 6PM) */
-const TRAVEL_PER_DIEM_CUTOFF_HOUR = 18;
 
 /** Base hours threshold before overtime kicks in */
 const BASE_HOURS_THRESHOLD = 7.5;
@@ -268,17 +264,20 @@ export function calculatePerDiem(entry: TimesheetEntry): number {
 // ============================================================================
 
 /**
- * Determines if an entry is chargeable.
+ * Determines if an entry is chargeable (billable to a customer).
  * 
  * Business Logic:
  * - Entry MUST have a job number (any activity with a job number is billable)
  * - EXCEPT: Leave-related activities are NEVER chargeable (Sick Leave, Annual Leave, Public Holiday, N/A)
- * - Day must NOT be Saturday or Sunday (weekends don't count toward utilization)
+ * 
+ * NOTE: Chargeable is separate from Utilization:
+ * - Chargeable = billable to a customer (includes weekends)
+ * - Utilization = percentage of 37.5h weekday target that is chargeable (weekdays only)
  * 
  * WHY these rules:
- * - Job number indicates billable work to a customer, regardless of activity type
+ * - Job number indicates billable work to a customer, regardless of activity type or day
  * - Leave activities are paid time off, not billable work
- * - Weekend work is optional/penalty rates, not part of standard utilization target
+ * - Weekend work IS chargeable (billed to customer) but doesn't count toward utilization
  * 
  * @param entry - The timesheet entry to check
  * @returns true if chargeable, false otherwise
@@ -292,11 +291,6 @@ export function isEntryChargeable(entry: TimesheetEntry): boolean {
 
     // Must have a job number to be chargeable
     if (!entry.jobNo || entry.jobNo.trim() === '') {
-        return false;
-    }
-
-    // Weekends don't count toward utilization
-    if (entry.day === 'Saturday' || entry.day === 'Sunday') {
         return false;
     }
 
