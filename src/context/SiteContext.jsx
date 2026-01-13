@@ -43,8 +43,17 @@ export const SiteProvider = ({ children }) => {
     const [isDataLoaded, setIsDataLoaded] = useState(false);
     const [todos, setTodos] = useState([]);
 
+    // SYNC LOCK: Prevents Firebase listener from overwriting optimistic updates during save
+    const [isSaving, setIsSaving] = useState(false);
+
     // --- GET SITES FROM CUSTOMER MANAGED SITES ---
     useEffect(() => {
+        // SYNC LOCK: Don't overwrite local state if we're in the middle of saving
+        if (isSaving) {
+            console.log('[SiteContext] Skipping site rebuild - save in progress');
+            return;
+        }
+
         console.log('[SiteContext] Loading sites from customer managed sites...');
 
         if (!loading && customers.length > 0) {
@@ -81,7 +90,7 @@ export const SiteProvider = ({ children }) => {
             setSites(aggregatedSites);
             setIsDataLoaded(true);
         }
-    }, [customers, loading]);
+    }, [customers, loading, isSaving]);
 
     // --- TODOS SYNC (Keep Firebase for now) ---
     useEffect(() => {
@@ -118,6 +127,9 @@ export const SiteProvider = ({ children }) => {
             return;
         }
 
+        // SYNC LOCK: Prevent Firebase listener from overwriting our update
+        setIsSaving(true);
+
         // Optimistic UI update
         setSites(prev => prev.map(s => s.id === siteId ? { ...s, ...updates } : s));
 
@@ -125,8 +137,15 @@ export const SiteProvider = ({ children }) => {
             // Update through GlobalDataContext's updateManagedSite
             await updateManagedSite(site.customerId, siteId, updates);
             console.log(`[SiteContext] Updated site ${siteId} via GlobalDataContext`);
+
+            // Delay unlocking to allow Firebase listener to receive the update
+            setTimeout(() => {
+                setIsSaving(false);
+                console.log('[SiteContext] Sync lock released');
+            }, 2000);
         } catch (e) {
             console.error(`Error updating site ${siteId}:`, e);
+            setIsSaving(false);
             // Revert optimistic update on error
             setSites(prev => prev.map(s => s.id === siteId ? { ...s, ...Object.fromEntries(Object.keys(updates).map(k => [k, s[k]])) } : s));
         }

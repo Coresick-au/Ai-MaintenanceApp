@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, SecureDeleteButton, UniversalDatePicker } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 
@@ -95,7 +95,27 @@ export const EditAssetModal = ({
     slotSize: ''
   });
 
-  if (!isOpen || !editingAsset) return null;
+  // LOCAL STATE: Use a local copy of editingAsset to prevent external updates 
+  // from overwriting user input during Firebase syncs (see ERROR_INDEX.md #11)
+  const [localAsset, setLocalAsset] = useState(null);
+  const isInitializedRef = useRef(false);
+
+  // Initialize local state when modal opens with a NEW asset
+  useEffect(() => {
+    if (isOpen && editingAsset) {
+      // Only initialize if we don't have local state or if the asset ID changed
+      if (!localAsset || localAsset.id !== editingAsset.id) {
+        setLocalAsset({ ...editingAsset });
+        isInitializedRef.current = true;
+      }
+    } else if (!isOpen) {
+      // Reset when modal closes
+      setLocalAsset(null);
+      isInitializedRef.current = false;
+    }
+  }, [isOpen, editingAsset?.id]); // Only depend on isOpen and asset ID, not the full object
+
+  if (!isOpen || !editingAsset || !localAsset) return null;
 
   return (
     <Modal title="Edit Asset & Specifications" onClose={onClose}>
@@ -109,8 +129,8 @@ export const EditAssetModal = ({
             <input
               className={inputClass}
               placeholder="Name"
-              value={editingAsset.name}
-              onChange={e => setEditingAsset({ ...editingAsset, name: e.target.value })}
+              value={localAsset.name || ''}
+              onChange={e => setLocalAsset({ ...localAsset, name: e.target.value })}
             />
           </div>
           <div className="grid grid-cols-2 gap-2">
@@ -119,8 +139,8 @@ export const EditAssetModal = ({
               <input
                 className={inputClass}
                 placeholder="Weigher"
-                value={editingAsset.weigher}
-                onChange={e => setEditingAsset({ ...editingAsset, weigher: e.target.value })}
+                value={localAsset.weigher || ''}
+                onChange={e => setLocalAsset({ ...localAsset, weigher: e.target.value })}
               />
             </div>
             <div>
@@ -128,8 +148,8 @@ export const EditAssetModal = ({
               <input
                 className={inputClass}
                 placeholder="Code"
-                value={editingAsset.code}
-                onChange={e => setEditingAsset({ ...editingAsset, code: e.target.value })}
+                value={localAsset.code || ''}
+                onChange={e => setLocalAsset({ ...localAsset, code: e.target.value })}
               />
             </div>
           </div>
@@ -139,11 +159,11 @@ export const EditAssetModal = ({
             <div>
               <div className="text-sm font-bold text-slate-300">Asset Status</div>
               <div className="text-xs text-slate-400">
-                {editingAsset.active !== false ? 'Currently Active' : 'Currently Archived'}
+                {localAsset.active !== false ? 'Currently Active' : 'Currently Archived'}
               </div>
             </div>
-            <div className={`px-3 py-1 text-xs font-bold rounded border ${editingAsset.active !== false ? 'bg-green-900/30 text-green-400 border-green-800' : 'bg-orange-900/30 text-orange-400 border-orange-900'}`}>
-              {editingAsset.active !== false ? '✓ Active' : '📦 Archived'}
+            <div className={`px-3 py-1 text-xs font-bold rounded border ${localAsset.active !== false ? 'bg-green-900/30 text-green-400 border-green-800' : 'bg-orange-900/30 text-orange-400 border-orange-900'}`}>
+              {localAsset.active !== false ? '✓ Active' : '📦 Archived'}
             </div>
           </div>
         </div>
@@ -383,12 +403,12 @@ export const EditAssetModal = ({
         {/* --- ACTION BUTTONS (COMPACT) --- */}
         <div className="flex gap-2 pt-2 border-t border-slate-700">
 
-          {/* 1. Primary Save Button */}
+          {/* 1. Save Button (Prominent) */}
           <button
             type="button"
             onClick={() => {
-              onSave(editingAsset, activeTab);
-              if (specs) onSaveSpecs(specs, editingAsset.id);
+              onSave(localAsset, activeTab);
+              if (specs) onSaveSpecs(specs, localAsset.id);
             }}
             className="flex-[3] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1"
           >
@@ -399,23 +419,23 @@ export const EditAssetModal = ({
           <button
             type="button"
             onClick={() => {
-              const isArchiving = editingAsset.active !== false;
+              const isArchiving = localAsset.active !== false;
               const message = isArchiving
                 ? 'Are you sure you want to archive this asset? It will be hidden from active lists but can be reactivated later.'
                 : 'Are you sure you want to reactivate this asset?';
 
               if (window.confirm(message)) {
-                const updatedAsset = { ...editingAsset, active: !isArchiving };
-                setEditingAsset(updatedAsset);
+                const updatedAsset = { ...localAsset, active: !isArchiving };
+                setLocalAsset(updatedAsset);
                 onSave(updatedAsset, activeTab);
               }
             }}
-            className={`flex-1 px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1 border ${editingAsset.active !== false
+            className={`flex-1 px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1 border ${localAsset.active !== false
               ? 'bg-amber-900/30 text-amber-400 border-amber-800/50 hover:bg-amber-900/50'
               : 'bg-green-900/30 text-green-400 border-green-800/50 hover:bg-green-900/50'}`}
           >
-            {editingAsset.active !== false ? '📦' : '✅'}
-            <span className="hidden sm:inline">{editingAsset.active !== false ? 'Archive' : 'Reactivate'}</span>
+            {localAsset.active !== false ? '📦' : '✅'}
+            <span className="hidden sm:inline">{localAsset.active !== false ? 'Archive' : 'Reactivate'}</span>
           </button>
 
           {/* 3. Delete Button (Subtle) */}
@@ -424,7 +444,7 @@ export const EditAssetModal = ({
             onClick={() => {
               if (window.confirm("Are you sure you want to delete this asset?")) {
                 if (window.confirm("Permanent Delete: This cannot be undone. Are you sure?")) {
-                  onDelete(editingAsset);
+                  onDelete(localAsset);
                 }
               }
             }}

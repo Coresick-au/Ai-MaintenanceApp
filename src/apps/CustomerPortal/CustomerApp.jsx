@@ -619,7 +619,7 @@ export const CustomerApp = ({ onBack }) => {
                                                         <div className="flex flex-wrap gap-1 mt-2">
                                                             <span className="text-slate-400">Manages:</span>
                                                             {contact.managedSites.map((siteId, idx) => {
-                                                                const site = sites.find(s => s.id === siteId);
+                                                                const site = customerManagedSites.find(s => s.id === siteId);
                                                                 return site ? (
                                                                     <span key={siteId || `site-${idx}`} className="bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded text-[10px] border border-emerald-800">
                                                                         {site.name}
