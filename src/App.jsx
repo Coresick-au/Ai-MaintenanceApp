@@ -1938,7 +1938,7 @@ export function App() {
                               <td className="px-3 py-2 text-center no-print">
                                 <button onClick={(e) => {
                                   e.stopPropagation();
-                                  setEditingAsset(item);
+                                  setEditingAsset({ ...item });
                                   // First try to match by assetId (new), then fall back to legacy matching
                                   const specs = currentSpecData.find(s => s.assetId === item.id)
                                     || currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
@@ -2388,7 +2388,7 @@ export function App() {
             // First try to match by assetId (new), then fall back to legacy matching
             const specs = (site.specData || []).find(s => s.assetId === asset.id)
               || (site.specData || []).find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
-            setEditingAsset(asset);
+            setEditingAsset({ ...asset });
             setEditingSpecs(specs || null);
             setIsAssetEditModalOpen(true);
           }
