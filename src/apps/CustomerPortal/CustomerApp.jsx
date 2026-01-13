@@ -1018,10 +1018,10 @@ export const CustomerApp = ({ onBack }) => {
                         <div className="space-y-2">
                             <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
                             <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                                {sites.length === 0 ? (
-                                    <div className="text-xs text-slate-500 italic">No sites available</div>
+                                {customerManagedSites.length === 0 ? (
+                                    <div className="text-xs text-slate-500 italic">No sites available for this customer</div>
                                 ) : (
-                                    sites.map(site => (
+                                    customerManagedSites.map(site => (
                                         <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
                                             <input
                                                 type="checkbox"
