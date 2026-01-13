@@ -83,7 +83,20 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
             // Trigger Download
             const link = document.createElement('a');
             link.href = url;
-            link.download = `JobSheet_${jobDetails.jobNo || 'Draft'}_${jobDetails.customer.replace(/\s+/g, '-')}.pdf`;
+            // Generate filename: YYYY.MM.DD-Customer-JobNumber-ManagedSite.pdf
+            const today = new Date();
+            const dateStr = `${today.getFullYear()}.${String(today.getMonth() + 1).padStart(2, '0')}.${String(today.getDate()).padStart(2, '0')}`;
+
+            // Parse customer/site - format is typically "Customer - Site" or just "Customer"
+            const customerParts = jobDetails.customer.split(' - ');
+            const customerName = (customerParts[0] || 'Unknown').replace(/\s+/g, '-');
+            const siteName = (customerParts[1] || '').replace(/\s+/g, '-');
+            const jobNumber = jobDetails.jobNo ? jobDetails.jobNo.replace(/\s+/g, '-') : 'NoJob';
+
+            // Build filename: YYYY.MM.DD-Customer-JobNumber-Site.pdf
+            const filenameParts = [dateStr, customerName, jobNumber];
+            if (siteName) filenameParts.push(siteName);
+            link.download = `${filenameParts.join('-')}.pdf`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
