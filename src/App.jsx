@@ -2089,7 +2089,7 @@ export function App() {
         }}
         newAsset={newAsset}
         setNewAsset={setNewAsset}
-        isRollerOnlyMode={isRollerOnlyMode}
+        activeTab={activeTab}
       />
 
       <EditAssetModal

@@ -38,7 +38,7 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
       importance: newIssueImportance,
       assetId: newIssueAssetId || null,
       assetName: newIssueAssetName,
-      dueDate: newIssueDueDate ? newIssueDueDate.toISOString().split('T')[0] : null,
+      dueDate: newIssueDueDate ? `${newIssueDueDate.getFullYear()}-${String(newIssueDueDate.getMonth() + 1).padStart(2, '0')}-${String(newIssueDueDate.getDate()).padStart(2, '0')}` : null,
     });
     setNewIssueDescription('');
     setNewIssueAssignedTo('');
@@ -60,7 +60,7 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
       importance: editIssueImportance,
       assetId: editIssueAssetId || null,
       assetName: editedIssueAssetName,
-      dueDate: editIssueDueDate ? editIssueDueDate.toISOString().split('T')[0] : null,
+      dueDate: editIssueDueDate ? `${editIssueDueDate.getFullYear()}-${String(editIssueDueDate.getMonth() + 1).padStart(2, '0')}-${String(editIssueDueDate.getDate()).padStart(2, '0')}` : null,
     });
     closeEditModal();
   };
@@ -303,12 +303,12 @@ export const SiteIssueTracker = ({ issues = [], siteId, assets, onAddIssue, onTo
               {/* NEW DELETE BUTTON */}
               <button
                 onClick={() => {
-                    if (window.confirm("Are you sure you want to delete this issue?")) {
-                        if (window.confirm("This cannot be undone. Delete issue permanently?")) {
-                            onDeleteIssue(siteId, editingIssue.id);
-                            closeEditModal();
-                        }
+                  if (window.confirm("Are you sure you want to delete this issue?")) {
+                    if (window.confirm("This cannot be undone. Delete issue permanently?")) {
+                      onDeleteIssue(siteId, editingIssue.id);
+                      closeEditModal();
                     }
+                  }
                 }}
                 className="flex-1 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-3 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-2"
               >

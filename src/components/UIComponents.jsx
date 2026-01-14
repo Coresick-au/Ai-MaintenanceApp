@@ -574,10 +574,20 @@ export const EditableCell = ({ value, type = "text", onSave, className = "" }) =
     if (type === 'date') {
       return (
         <UniversalDatePicker
-          selected={tempValue ? new Date(tempValue) : null}
+          selected={tempValue ? new Date(tempValue + 'T00:00:00') : null}
           onChange={(date) => {
-            setTempValue(date ? date.toISOString().split('T')[0] : '');
-            onSave(date ? date.toISOString().split('T')[0] : ''); // Save immediately on date selection
+            if (date) {
+              // Use local date to avoid timezone shift
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const dateStr = `${year}-${month}-${day}`;
+              setTempValue(dateStr);
+              onSave(dateStr);
+            } else {
+              setTempValue('');
+              onSave('');
+            }
             setIsEditing(false); // Close after selection
           }}
           onBlur={handleBlur}

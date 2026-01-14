@@ -370,20 +370,31 @@ export const SiteProvider = ({ children }) => {
             const baseId = Math.random().toString(36).substr(2, 9);
             const historyEntry = { date: new Date().toISOString(), action: 'Asset Created', user: 'User' };
 
+            // Shared properties for both items
+            const sharedProps = {
+                name: newAsset.name,
+                code: newAsset.code,
+                weigher: newAsset.weigher || '',
+                active: true,
+            };
+
+            // Service item: only gets dates if adding from service tab
             const serviceItem = recalculateRow({
                 id: `s-${baseId}`,
-                active: true,
-                ...newAsset,
+                ...sharedProps,
                 frequency: activeTab === 'service' && newAsset.frequency ? parseInt(newAsset.frequency) : 3,
+                lastCal: activeTab === 'service' ? (newAsset.lastCal || '') : '', // Only apply date if on service tab
                 dueDate: '',
                 remaining: 0,
                 history: [historyEntry]
             });
+
+            // Roller item: only gets dates if adding from roller tab
             const rollerItem = recalculateRow({
                 id: `r-${baseId}`,
-                active: true,
-                ...newAsset,
+                ...sharedProps,
                 frequency: activeTab === 'roller' && newAsset.frequency ? parseInt(newAsset.frequency) : 12,
+                lastCal: activeTab === 'roller' ? (newAsset.lastCal || '') : '', // Only apply date if on roller tab
                 dueDate: '',
                 remaining: 0,
                 history: [historyEntry]

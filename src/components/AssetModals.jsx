@@ -16,14 +16,19 @@ export const AddAssetModal = ({
 }) => {
   if (!isOpen) return null;
 
+  // Check if required fields are filled
+  const isValid = newAsset.name?.trim() && newAsset.code?.trim();
+
   return (
     <Modal title="Add New Asset" onClose={onClose}>
       <div className="space-y-3">
         <div>
-          <label className={labelClass}>Asset Name</label>
+          <label className={labelClass}>
+            Asset Name <span className="text-red-400">*</span>
+          </label>
           <input
-            className={inputClass}
-            placeholder="Name"
+            className={`${inputClass} ${!newAsset.name?.trim() ? 'border-red-500/50' : ''}`}
+            placeholder="Name (required)"
             value={newAsset.name}
             onChange={e => setNewAsset({ ...newAsset, name: e.target.value })}
           />
@@ -39,10 +44,12 @@ export const AddAssetModal = ({
             />
           </div>
           <div>
-            <label className={labelClass}>Code</label>
+            <label className={labelClass}>
+              Code <span className="text-red-400">*</span>
+            </label>
             <input
-              className={inputClass}
-              placeholder="Code"
+              className={`${inputClass} ${!newAsset.code?.trim() ? 'border-red-500/50' : ''}`}
+              placeholder="Code (required)"
               value={newAsset.code}
               onChange={e => setNewAsset({ ...newAsset, code: e.target.value })}
             />
@@ -62,12 +69,34 @@ export const AddAssetModal = ({
           <label className={labelClass}>Last Calibration</label>
           <UniversalDatePicker
             className={inputClass}
-            selected={newAsset.lastCal ? new Date(newAsset.lastCal) : null}
-            onChange={date => setNewAsset({ ...newAsset, lastCal: date ? date.toISOString().split('T')[0] : '' })}
+            selected={newAsset.lastCal ? new Date(newAsset.lastCal + 'T00:00:00') : null}
+            onChange={date => {
+              if (date) {
+                // Use local date to avoid timezone shift (toISOString converts to UTC)
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                setNewAsset({ ...newAsset, lastCal: `${year}-${month}-${day}` });
+              } else {
+                setNewAsset({ ...newAsset, lastCal: '' });
+              }
+            }}
             placeholderText="Select Date"
           />
         </div>
-        <Button onClick={() => onSave(newAsset, activeTab)} className="w-full justify-center">Save Asset</Button>
+
+        {/* Validation hint */}
+        {!isValid && (
+          <p className="text-xs text-red-400">* Please fill in all required fields</p>
+        )}
+
+        <Button
+          onClick={() => onSave(newAsset, activeTab)}
+          className={`w-full justify-center ${!isValid ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={!isValid}
+        >
+          Save Asset
+        </Button>
       </div>
     </Modal>
   );
@@ -99,18 +128,22 @@ export const EditAssetModal = ({
   // from overwriting user input during Firebase syncs (see ERROR_INDEX.md #11)
   const [localAsset, setLocalAsset] = useState(null);
   const isInitializedRef = useRef(false);
+  const originalIdRef = useRef(null); // Store original ID to prevent overwrites
 
   // Initialize local state when modal opens with a NEW asset
   useEffect(() => {
     if (isOpen && editingAsset) {
       // Only initialize if we don't have local state or if the asset ID changed
       if (!localAsset || localAsset.id !== editingAsset.id) {
+        console.log('[EditAssetModal] Initializing with asset:', editingAsset.id, editingAsset.name);
         setLocalAsset({ ...editingAsset });
+        originalIdRef.current = editingAsset.id; // Capture original ID
         isInitializedRef.current = true;
       }
     } else if (!isOpen) {
       // Reset when modal closes
       setLocalAsset(null);
+      originalIdRef.current = null;
       isInitializedRef.current = false;
     }
   }, [isOpen, editingAsset?.id]); // Only depend on isOpen and asset ID, not the full object
@@ -407,8 +440,14 @@ export const EditAssetModal = ({
           <button
             type="button"
             onClick={() => {
-              onSave(localAsset, activeTab);
-              if (specs) onSaveSpecs(specs, localAsset.id);
+              // DEFENSIVE: Ensure original ID is preserved
+              const assetToSave = {
+                ...localAsset,
+                id: originalIdRef.current || localAsset.id // Guarantee ID is never lost
+              };
+              console.log('[EditAssetModal] Saving asset:', assetToSave.id, assetToSave.name);
+              onSave(assetToSave, activeTab);
+              if (specs) onSaveSpecs(specs, assetToSave.id);
             }}
             className="flex-[3] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1"
           >
@@ -425,7 +464,11 @@ export const EditAssetModal = ({
                 : 'Are you sure you want to reactivate this asset?';
 
               if (window.confirm(message)) {
-                const updatedAsset = { ...localAsset, active: !isArchiving };
+                const updatedAsset = {
+                  ...localAsset,
+                  id: originalIdRef.current || localAsset.id, // Preserve ID
+                  active: !isArchiving
+                };
                 setLocalAsset(updatedAsset);
                 onSave(updatedAsset, activeTab);
               }

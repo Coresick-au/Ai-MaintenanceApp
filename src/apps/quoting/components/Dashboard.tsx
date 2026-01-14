@@ -1,11 +1,31 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Trash2, FolderOpen, Users, Download, Upload, Search } from 'lucide-react';
 import { calculateShiftBreakdown as calculateLogic } from '../logic';
 import type { Quote, Customer, Rates } from '../types';
 import CustomerDashboard from './CustomerDashboard';
 import TechnicianDashboard from './TechnicianDashboard';
 import QuoteValueChart from './QuoteValueChart';
+
+const STATUS_OPTIONS = ['draft', 'quoted', 'invoice', 'closed'] as const;
+type StatusType = typeof STATUS_OPTIONS[number];
+
+// Load saved filters from localStorage
+const loadSavedFilters = (): Set<StatusType> => {
+    try {
+        const saved = localStorage.getItem('quoteStatusFilters');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                return new Set(parsed as StatusType[]);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load saved filters:', e);
+    }
+    // Default: all statuses selected
+    return new Set(STATUS_OPTIONS);
+};
 
 interface DashboardProps {
     savedQuotes: Quote[];
@@ -32,10 +52,45 @@ export default function Dashboard({
     saveAsDefaults, resetToDefaults, savedDefaultRates, exportState, importState
 }: DashboardProps) {
     const [view, setView] = useState<'quotes' | 'customers' | 'technicians' | 'backup'>('quotes');
-    const [filterStatus, setFilterStatus] = useState<'all' | 'draft' | 'quoted' | 'invoice' | 'closed'>('all');
+    const [selectedStatuses, setSelectedStatuses] = useState<Set<StatusType>>(loadSavedFilters);
     const [searchQuery, setSearchQuery] = useState('');
     const [backupSuccess, setBackupSuccess] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    // Persist filter selection to localStorage
+    useEffect(() => {
+        localStorage.setItem('quoteStatusFilters', JSON.stringify([...selectedStatuses]));
+    }, [selectedStatuses]);
+
+    // Check if all statuses are selected
+    const allSelected = selectedStatuses.size === STATUS_OPTIONS.length;
+
+    // Toggle a single status
+    const toggleStatus = (status: StatusType) => {
+        setSelectedStatuses(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(status)) {
+                // Don't allow deselecting the last one - at least one must be selected
+                if (newSet.size > 1) {
+                    newSet.delete(status);
+                }
+            } else {
+                newSet.add(status);
+            }
+            return newSet;
+        });
+    };
+
+    // Toggle all statuses
+    const toggleAll = () => {
+        if (allSelected) {
+            // If all selected, select only 'draft' (or first option)
+            setSelectedStatuses(new Set([STATUS_OPTIONS[0]]));
+        } else {
+            // Select all
+            setSelectedStatuses(new Set(STATUS_OPTIONS));
+        }
+    };
 
     const handleBackup = () => {
         exportState();
@@ -227,13 +282,24 @@ export default function Dashboard({
                                     )}
                                 </div>
 
-                                {/* Status Filter Pills */}
+                                {/* Status Filter Pills - Multi-select */}
                                 <div className="flex gap-2 flex-wrap">
-                                    {(['all', 'draft', 'quoted', 'invoice', 'closed'] as const).map((status) => (
+                                    {/* All button */}
+                                    <button
+                                        onClick={toggleAll}
+                                        className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${allSelected
+                                            ? 'bg-primary-600 text-white'
+                                            : 'bg-gray-800 text-slate-400 border border-gray-700 hover:bg-gray-700'
+                                            }`}
+                                    >
+                                        All
+                                    </button>
+                                    {/* Individual status buttons */}
+                                    {STATUS_OPTIONS.map((status) => (
                                         <button
                                             key={status}
-                                            onClick={() => setFilterStatus(status)}
-                                            className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${filterStatus === status
+                                            onClick={() => toggleStatus(status)}
+                                            className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${selectedStatuses.has(status)
                                                 ? 'bg-primary-600 text-white'
                                                 : 'bg-gray-800 text-slate-400 border border-gray-700 hover:bg-gray-700'
                                                 }`}
@@ -260,8 +326,8 @@ export default function Dashboard({
                                 {/* Filtered Quotes */}
                                 {savedQuotes
                                     .filter(q => {
-                                        // Status filter
-                                        const matchesStatus = filterStatus === 'all' || q.status === filterStatus;
+                                        // Status filter - check if quote status is in selected set
+                                        const matchesStatus = selectedStatuses.has(q.status as StatusType);
 
                                         // Search filter (case-insensitive)
                                         if (!searchQuery.trim()) return matchesStatus;

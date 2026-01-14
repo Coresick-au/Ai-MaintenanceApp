@@ -168,6 +168,10 @@ export interface WeeklySummary {
     totalChargeableHours: number;
     /** Utilization percentage: (chargeableHours / 37.5) * 100 */
     utilizationPercent: number;
+    /** Number of unique weekend days (Saturday/Sunday) worked */
+    weekendDays: number;
+    /** Number of unique public holiday days worked */
+    publicHolidayDays: number;
 }
 
 /**

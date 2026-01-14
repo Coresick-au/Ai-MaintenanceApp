@@ -449,6 +449,10 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
     let totalChargeableHours = 0;
     let totalChargeableBaseHours = 0; // Only base hours from chargeable entries
 
+    // Track unique weekend days and public holiday days worked
+    let weekendDays = 0;
+    let publicHolidayDays = 0;
+
     // Group entries by day using a unique key (date or weekKey + day)
     const entriesByDay: Record<string, TimesheetEntry[]> = {};
     for (const entry of entries) {
@@ -500,6 +504,19 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
             }
         }
 
+        // Only count as worked if there are actual hours
+        if (dayNetHours > 0) {
+            // Count weekend days (Saturday or Sunday)
+            if (dayName === 'Saturday' || dayName === 'Sunday') {
+                weekendDays++;
+            }
+
+            // Count public holiday days (flag set AND actually working, not taking PH leave)
+            if (isPublicHoliday && !hasPublicHolidayActivity) {
+                publicHolidayDays++;
+            }
+        }
+
         // Only apply PH overtime if there's actual work on a public holiday
         // (not just someone taking the day off with activity = "Public Holiday")
         const isActualWorkOnPublicHoliday = isPublicHoliday && !hasPublicHolidayActivity;
@@ -543,6 +560,8 @@ export function calculateWeeklySummary(entries: TimesheetEntry[]): WeeklySummary
         totalPerDiem: roundToTwoDecimals(totalPerDiem),
         totalChargeableHours: roundToTwoDecimals(totalChargeableHours),
         utilizationPercent: roundToTwoDecimals(utilizationPercent),
+        weekendDays,
+        publicHolidayDays,
     };
 }
 

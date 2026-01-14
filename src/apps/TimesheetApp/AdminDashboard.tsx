@@ -161,6 +161,8 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
             totalOT20x: acc.totalOT20x + staff.summary.totalOT20x,
             totalPerDiem: acc.totalPerDiem + staff.summary.totalPerDiem,
             totalChargeableHours: acc.totalChargeableHours + staff.summary.totalChargeableHours,
+            weekendDays: acc.weekendDays + (staff.summary.weekendDays || 0),
+            publicHolidayDays: acc.publicHolidayDays + (staff.summary.publicHolidayDays || 0),
             staffCount: staffSummaries.length
         }), {
             totalNetHours: 0,
@@ -169,13 +171,15 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
             totalOT20x: 0,
             totalPerDiem: 0,
             totalChargeableHours: 0,
+            weekendDays: 0,
+            publicHolidayDays: 0,
             staffCount: 0
         });
     }, [staffSummaries]);
 
     // CSV Export
     const handleExportCSV = () => {
-        const headers = ['Staff Name', 'Email', 'Total Hours', 'Base Hours', 'OT 1.5x', 'OT 2x', 'Per Diem', 'Status'];
+        const headers = ['Staff Name', 'Email', 'Total Hours', 'Base Hours', 'OT 1.5x', 'OT 2x', 'Weekend Days', 'PH Days', 'Per Diem', 'Status'];
         const rows = filteredStaff.map(staff => [
             staff.userName,
             staff.userEmail,
@@ -183,6 +187,8 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
             staff.summary.totalBaseHours.toFixed(2),
             staff.summary.totalOT15x.toFixed(2),
             staff.summary.totalOT20x.toFixed(2),
+            (staff.summary.weekendDays || 0).toString(),
+            (staff.summary.publicHolidayDays || 0).toString(),
             staff.summary.totalPerDiem.toFixed(2),
             staff.isLocked ? 'LOCKED' : 'DRAFT'
         ]);
@@ -372,6 +378,8 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                                         <th className="px-4 py-3 text-right">Base</th>
                                         <th className="px-4 py-3 text-right">OT 1.5x</th>
                                         <th className="px-4 py-3 text-right">OT 2x</th>
+                                        <th className="px-4 py-3 text-center">Wknd</th>
+                                        <th className="px-4 py-3 text-center">PH</th>
                                         <th className="px-4 py-3 text-right">Per Diem</th>
                                         <th className="px-4 py-3 text-center">Status</th>
                                     </tr>
@@ -399,6 +407,12 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                                             </td>
                                             <td className="px-4 py-3 text-right text-red-400 font-mono">
                                                 {staff.summary.totalOT20x.toFixed(1)}
+                                            </td>
+                                            <td className="px-4 py-3 text-center text-cyan-400 font-mono">
+                                                {staff.summary.weekendDays || 0}
+                                            </td>
+                                            <td className="px-4 py-3 text-center text-purple-400 font-mono">
+                                                {staff.summary.publicHolidayDays || 0}
                                             </td>
                                             <td className="px-4 py-3 text-right text-green-400 font-mono">
                                                 ${staff.summary.totalPerDiem.toFixed(2)}
@@ -432,6 +446,12 @@ export function AdminDashboard({ onBack }: AdminDashboardProps) {
                                         </td>
                                         <td className="px-4 py-3 text-right text-red-400 font-mono">
                                             {grandTotals.totalOT20x.toFixed(1)}
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-cyan-400 font-mono">
+                                            {grandTotals.weekendDays}
+                                        </td>
+                                        <td className="px-4 py-3 text-center text-purple-400 font-mono">
+                                            {grandTotals.publicHolidayDays}
                                         </td>
                                         <td className="px-4 py-3 text-right text-green-400 font-mono">
                                             ${grandTotals.totalPerDiem.toFixed(2)}
