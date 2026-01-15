@@ -93,6 +93,9 @@ export const CustomerApp = ({ onBack }) => {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const sidebarWidth = isSidebarCollapsed ? 'w-20' : 'w-80';
 
+    // View mode: 'customers' or 'compliance'
+    const [viewMode, setViewMode] = useState('customers');
+
     // Calculate site count for each customer
     const getSiteCountForCustomer = (customerId) => {
         // First try managedSites (new system)
@@ -440,7 +443,19 @@ export const CustomerApp = ({ onBack }) => {
                         {isSidebarCollapsed ? <Icons.ChevronRight size={16} /> : <Icons.ChevronLeft size={16} />}
                     </button>
 
-                    <div className={`p-4 ${isSidebarCollapsed ? 'hidden' : ''}`}>
+                    <div className={`p-4 space-y-3 ${isSidebarCollapsed ? 'hidden' : ''}`}>
+                        {/* Compliance Overview Button */}
+                        <button
+                            onClick={() => { setViewMode('compliance'); setSelectedCustId(null); }}
+                            className={`w-full text-left p-3 rounded-lg flex items-center gap-2 transition-colors font-bold ${viewMode === 'compliance'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50 border border-purple-800'
+                                }`}
+                        >
+                            <Icons.AlertTriangle size={16} />
+                            {!isSidebarCollapsed && 'Compliance Overview'}
+                        </button>
+
                         <div className="relative">
                             <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                             <input
@@ -461,7 +476,7 @@ export const CustomerApp = ({ onBack }) => {
                         {filteredCustomers.map(cust => (
                             <button
                                 key={cust.id}
-                                onClick={() => setSelectedCustId(cust.id)}
+                                onClick={() => { setViewMode('customers'); setSelectedCustId(cust.id); }}
                                 className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${selectedCustId === cust.id ? 'bg-cyan-900/40 border border-cyan-500/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
                                 title={isSidebarCollapsed ? cust.name : ''}
                             >
@@ -696,6 +711,14 @@ export const CustomerApp = ({ onBack }) => {
                                                         <div className="text-xs text-slate-400 truncate">{site.location || "No Location"}</div>
                                                     </div>
                                                     <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        {/* Edit Site Button */}
+                                                        <button
+                                                            onClick={() => setEditingSite(site)}
+                                                            className="text-cyan-400 hover:text-cyan-300 transition p-1"
+                                                            title="Edit site details & compliance"
+                                                        >
+                                                            <Icons.Edit size={14} />
+                                                        </button>
                                                         {/* AIMM Profile Toggle */}
                                                         <button
                                                             onClick={async () => {
@@ -796,6 +819,213 @@ export const CustomerApp = ({ onBack }) => {
                                 </div>
 
                             </div>
+
+                            {/* Site Compliance Summary - Full Width */}
+                            <div className="bg-slate-900/50 border border-slate-800 rounded-xl">
+                                <div className="p-4 border-b border-slate-700 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                                        <Icons.ClipboardList className="text-purple-400" size={18} />
+                                        Site Compliance
+                                    </h3>
+                                </div>
+                                <div className="overflow-x-auto">
+                                    {(() => {
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+                                        // Collect all compliance items from this customer's managed sites
+                                        const allItems = [];
+                                        customerManagedSites.forEach(site => {
+                                            (site.compliance || []).forEach(item => {
+                                                const dueDate = item.dueDate ? new Date(item.dueDate) : null;
+                                                let status = 'active';
+                                                if (dueDate) {
+                                                    if (dueDate < today) status = 'expired';
+                                                    else if (dueDate <= thirtyDaysFromNow) status = 'warning';
+                                                }
+                                                allItems.push({
+                                                    ...item,
+                                                    siteName: site.name,
+                                                    status
+                                                });
+                                            });
+                                        });
+
+                                        // Sort by due date (soonest first)
+                                        allItems.sort((a, b) => {
+                                            if (!a.dueDate && !b.dueDate) return 0;
+                                            if (!a.dueDate) return 1;
+                                            if (!b.dueDate) return -1;
+                                            return new Date(a.dueDate) - new Date(b.dueDate);
+                                        });
+
+                                        return (
+                                            <table className="w-full text-sm text-left">
+                                                <thead className="text-xs text-slate-500 uppercase bg-slate-900/50">
+                                                    <tr>
+                                                        <th className="px-4 py-3">Site</th>
+                                                        <th className="px-4 py-3">Document</th>
+                                                        <th className="px-4 py-3">Due Date</th>
+                                                        <th className="px-4 py-3">Status</th>
+                                                        <th className="px-4 py-3 w-12">Link</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-slate-700">
+                                                    {allItems.map((item, idx) => (
+                                                        <tr key={`${item.id}-${idx}`} className="hover:bg-slate-800/50">
+                                                            <td className="px-4 py-3 font-medium text-slate-200">{item.siteName}</td>
+                                                            <td className="px-4 py-3 text-slate-300">{item.name}</td>
+                                                            <td className="px-4 py-3 text-slate-300">{item.dueDate ? formatDate(item.dueDate) : '-'}</td>
+                                                            <td className="px-4 py-3">
+                                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${item.status === 'expired' ? 'bg-red-900/30 text-red-400 border-red-800' :
+                                                                    item.status === 'warning' ? 'bg-amber-900/30 text-amber-400 border-amber-800' :
+                                                                        'bg-green-900/30 text-green-400 border-green-800'
+                                                                    }`}>
+                                                                    {item.status === 'expired' ? 'Expired' : item.status === 'warning' ? 'Due Soon' : 'Active'}
+                                                                </span>
+                                                            </td>
+                                                            <td className="px-4 py-3 text-center">
+                                                                {item.link ? (
+                                                                    <a
+                                                                        href={item.link}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                                        title="Open Document"
+                                                                    >
+                                                                        <Icons.ExternalLink size={14} />
+                                                                    </a>
+                                                                ) : (
+                                                                    <span className="text-slate-600">-</span>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                    {allItems.length === 0 && (
+                                                        <tr>
+                                                            <td colSpan="5" className="p-6 text-center text-slate-500 italic">
+                                                                No compliance documents added yet. Click the Edit button on a site to add compliance items.
+                                                            </td>
+                                                        </tr>
+                                                    )}
+                                                </tbody>
+                                            </table>
+                                        );
+                                    })()}
+                                </div>
+                            </div>
+
+                        </div>
+                    ) : viewMode === 'compliance' ? (
+                        /* COMPLIANCE DASHBOARD */
+                        <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                            <div className="flex items-center gap-3 mb-4">
+                                <div className="p-2 bg-purple-900/30 rounded-lg border border-purple-800">
+                                    <Icons.AlertTriangle size={24} className="text-purple-400" />
+                                </div>
+                                <div>
+                                    <h2 className="text-2xl font-bold text-white">Compliance Dashboard</h2>
+                                    <p className="text-sm text-slate-400">Overview of all site compliance documents requiring attention.</p>
+                                </div>
+                            </div>
+
+                            {/* Compliance Items Table */}
+                            {(() => {
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+                                // Collect all compliance items from all customers' managed sites
+                                const allItems = [];
+                                customers.forEach(customer => {
+                                    (customer.managedSites || []).forEach(site => {
+                                        (site.compliance || []).forEach(item => {
+                                            const dueDate = item.dueDate ? new Date(item.dueDate) : null;
+                                            if (dueDate && dueDate <= thirtyDaysFromNow) {
+                                                allItems.push({
+                                                    ...item,
+                                                    siteName: site.name,
+                                                    customerName: customer.name,
+                                                    status: dueDate < today ? 'expired' : 'warning'
+                                                });
+                                            }
+                                        });
+                                    });
+                                });
+
+                                // Sort by due date (oldest first)
+                                allItems.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+                                return (
+                                    <div className="bg-slate-900/50 border border-slate-800 rounded-xl overflow-hidden">
+                                        <div className="p-4 bg-slate-900 border-b border-slate-700">
+                                            <h3 className="font-bold text-slate-200">Attention Required ({allItems.length})</h3>
+                                        </div>
+                                        <table className="w-full text-sm text-left">
+                                            <thead className="text-xs text-slate-500 uppercase bg-slate-900/50">
+                                                <tr>
+                                                    <th className="px-4 py-3">Customer</th>
+                                                    <th className="px-4 py-3">Site</th>
+                                                    <th className="px-4 py-3">Document</th>
+                                                    <th className="px-4 py-3">Due Date</th>
+                                                    <th className="px-4 py-3">Status</th>
+                                                    <th className="px-4 py-3 w-12">Link</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="divide-y divide-slate-700">
+                                                {allItems.map((item, idx) => (
+                                                    <tr key={`${item.id}-${idx}`} className="hover:bg-slate-800/50">
+                                                        <td className="px-4 py-3 text-slate-300">{item.customerName}</td>
+                                                        <td className="px-4 py-3 text-slate-200 font-medium">{item.siteName}</td>
+                                                        <td className="px-4 py-3 text-slate-200">{item.name}</td>
+                                                        <td className="px-4 py-3 text-slate-300">{item.dueDate ? new Date(item.dueDate).toLocaleDateString() : '-'}</td>
+                                                        <td className="px-4 py-3">
+                                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${item.status === 'expired'
+                                                                ? 'bg-red-900/30 text-red-400 border-red-800'
+                                                                : 'bg-amber-900/30 text-amber-400 border-amber-800'
+                                                                }`}>
+                                                                {item.status === 'expired' ? 'Expired' : 'Due Soon'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-4 py-3 text-center">
+                                                            {item.link ? (
+                                                                <a
+                                                                    href={item.link}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="text-blue-400 hover:text-blue-300 transition-colors"
+                                                                    title="Open Document"
+                                                                >
+                                                                    <Icons.ExternalLink size={14} />
+                                                                </a>
+                                                            ) : (
+                                                                <span className="text-slate-600">-</span>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                                {allItems.length === 0 && (
+                                                    <tr>
+                                                        <td colSpan="6" className="p-8 text-center text-slate-500">
+                                                            <Icons.CheckCircle size={32} className="mx-auto mb-2 text-green-500/50" />
+                                                            <p className="font-medium">All compliance documents are up to date!</p>
+                                                            <p className="text-xs mt-1">No items require attention at this time.</p>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Status Guide */}
+                            <div className="flex items-center gap-4 text-xs text-slate-500 mt-4">
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-green-500"></span> Valid (60+ Days)</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500"></span> Due Soon (&lt; 30 Days)</span>
+                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500"></span> Expired</span>
+                            </div>
                         </div>
                     ) : (
                         <div className="h-full flex flex-col items-center justify-center text-slate-600">
@@ -805,714 +1035,997 @@ export const CustomerApp = ({ onBack }) => {
                         </div>
                     )}
                 </main>
-            </div>
+            </div >
 
             {/* --- MODALS --- */}
 
             {/* 1. Add Customer Modal */}
-            {isAddCustOpen && (
-                <Modal title="Create New Customer" onClose={() => setIsAddCustOpen(false)}>
-                    <div className="space-y-4">
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Company Name *"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Billing Address"
-                            value={formData.address || ''}
-                            onChange={e => setFormData({ ...formData, address: e.target.value })}
-                        />
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1">Logo</label>
+            {
+                isAddCustOpen && (
+                    <Modal title="Create New Customer" onClose={() => setIsAddCustOpen(false)}>
+                        <div className="space-y-4">
                             <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleLogoUpload}
-                                className="w-full text-slate-400 text-sm"
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Company Name *"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
                             />
-                            {formData.logo && (
-                                <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
-                                    <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
-                                </div>
-                            )}
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Billing Address"
+                                value={formData.address || ''}
+                                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                            />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Logo</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleLogoUpload}
+                                    className="w-full text-slate-400 text-sm"
+                                />
+                                {formData.logo && (
+                                    <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
+                                        <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={handleCreateCustomer}
+                                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Create Customer
+                            </button>
                         </div>
-                        <button
-                            onClick={handleCreateCustomer}
-                            className="w-full bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded font-bold transition"
-                        >
-                            Create Customer
-                        </button>
-                    </div>
-                </Modal>
-            )}
+                    </Modal>
+                )
+            }
 
             {/* 2. Edit Customer Modal */}
-            {isEditCustOpen && (
-                <Modal title={`Edit ${selectedCustomer?.name}`} onClose={() => setIsEditCustOpen(false)}>
-                    <div className="space-y-4">
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Company Name *"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Billing Address"
-                            value={formData.address || ''}
-                            onChange={e => setFormData({ ...formData, address: e.target.value })}
-                        />
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1">Logo</label>
+            {
+                isEditCustOpen && (
+                    <Modal title={`Edit ${selectedCustomer?.name}`} onClose={() => setIsEditCustOpen(false)}>
+                        <div className="space-y-4">
                             <input
-                                type="file"
-                                accept="image/*"
-                                onChange={handleLogoUpload}
-                                className="w-full text-slate-400 text-sm"
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Company Name *"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
                             />
-                            {formData.logo && (
-                                <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
-                                    <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
-                                </div>
-                            )}
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Billing Address"
+                                value={formData.address || ''}
+                                onChange={e => setFormData({ ...formData, address: e.target.value })}
+                            />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Logo</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleLogoUpload}
+                                    className="w-full text-slate-400 text-sm"
+                                />
+                                {formData.logo && (
+                                    <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
+                                        <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={handleUpdateCustomer}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Save Changes
+                            </button>
                         </div>
-                        <button
-                            onClick={handleUpdateCustomer}
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"
-                        >
-                            Save Changes
-                        </button>
-                    </div>
-                </Modal>
-            )}
+                    </Modal>
+                )
+            }
 
             {/* 3. Add Contact Modal */}
-            {isAddContactOpen && (
-                <Modal title={`Add Contact for ${selectedCustomer?.name}`} onClose={() => setIsAddContactOpen(false)}>
-                    <div className="space-y-4">
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Full Name *"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Job Title / Role"
-                            value={formData.role || ''}
-                            onChange={e => setFormData({ ...formData, role: e.target.value })}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
+            {
+                isAddContactOpen && (
+                    <Modal title={`Add Contact for ${selectedCustomer?.name}`} onClose={() => setIsAddContactOpen(false)}>
+                        <div className="space-y-4">
                             <input
                                 className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                                placeholder="Email"
-                                value={formData.email || ''}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                placeholder="Full Name *"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
                             />
                             <input
                                 className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                                placeholder="Phone"
-                                value={formData.phone || ''}
-                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                placeholder="Job Title / Role"
+                                value={formData.role || ''}
+                                onChange={e => setFormData({ ...formData, role: e.target.value })}
                             />
-                        </div>
-                        <label className="flex items-center gap-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
-                            <input
-                                type="checkbox"
-                                checked={formData.sendReports || false}
-                                onChange={(e) => setFormData({ ...formData, sendReports: e.target.checked })}
-                                className="w-4 h-4 rounded border-slate-600 text-green-600 focus:ring-green-500 focus:ring-offset-slate-900"
-                            />
-                            <div className="flex-1">
-                                <div className="text-sm font-bold text-slate-200">Send reports to this contact</div>
-                                <div className="text-xs text-slate-400">Enable to include in site reporting lists</div>
-                            </div>
-                        </label>
-
-                        {/* NEW: Managed Sites Multi-Select */}
-                        <div className="space-y-2">
-                            <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
-                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                                {customerManagedSites.length === 0 ? (
-                                    <div className="text-xs text-slate-500 italic">No sites available for this customer</div>
-                                ) : (
-                                    customerManagedSites.map(site => (
-                                        <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
-                                            <input
-                                                type="checkbox"
-                                                checked={(formData.managedSites || []).includes(site.id)}
-                                                onChange={(e) => {
-                                                    const current = formData.managedSites || [];
-                                                    const updated = e.target.checked
-                                                        ? [...current, site.id]
-                                                        : current.filter(id => id !== site.id);
-                                                    setFormData({ ...formData, managedSites: updated });
-                                                }}
-                                                className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500"
-                                            />
-                                            <span className="text-sm text-slate-300">{site.name}</span>
-                                        </label>
-                                    ))
-                                )}
-                            </div>
-                            <div className="text-xs text-slate-400">Select which sites this contact manages</div>
-                        </div>
-
-                        <button
-                            onClick={handleCreateContact}
-                            className="w-full bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold transition"
-                        >
-                            Save Contact
-                        </button>
-                    </div>
-                </Modal>
-            )}
-
-            {/* 4. Edit Contact Modal */}
-            {isEditContactOpen && (
-                <Modal title={`Edit Contact`} onClose={() => { setIsEditContactOpen(false); setEditingContact(null); }}>
-                    <div className="space-y-4">
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Full Name *"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Job Title / Role"
-                            value={formData.role || ''}
-                            onChange={e => setFormData({ ...formData, role: e.target.value })}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                            <input
-                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                                placeholder="Email"
-                                value={formData.email || ''}
-                                onChange={e => setFormData({ ...formData, email: e.target.value })}
-                            />
-                            <input
-                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                                placeholder="Phone"
-                                value={formData.phone || ''}
-                                onChange={e => setFormData({ ...formData, phone: e.target.value })}
-                            />
-                        </div>
-                        <label className="flex items-center gap-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
-                            <input
-                                type="checkbox"
-                                checked={formData.sendReports || false}
-                                onChange={(e) => setFormData({ ...formData, sendReports: e.target.checked })}
-                                className="w-4 h-4 rounded border-slate-600 text-green-600 focus:ring-green-500 focus:ring-offset-slate-900"
-                            />
-                            <div className="flex-1">
-                                <div className="text-sm font-bold text-slate-200">Send reports to this contact</div>
-                                <div className="text-xs text-slate-400">Enable to include in site reporting lists</div>
-                            </div>
-                        </label>
-
-                        {/* NEW: Managed Sites Multi-Select */}
-                        <div className="space-y-2">
-                            <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
-                            <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
-                                {customerManagedSites.length === 0 ? (
-                                    <div className="text-xs text-slate-500 italic">No sites available for this customer</div>
-                                ) : (
-                                    customerManagedSites.map(site => (
-                                        <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
-                                            <input
-                                                type="checkbox"
-                                                checked={(formData.managedSites || []).includes(site.id)}
-                                                onChange={(e) => {
-                                                    const current = formData.managedSites || [];
-                                                    const updated = e.target.checked
-                                                        ? [...current, site.id]
-                                                        : current.filter(id => id !== site.id);
-                                                    setFormData({ ...formData, managedSites: updated });
-                                                }}
-                                                className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500"
-                                            />
-                                            <span className="text-sm text-slate-300">{site.name}</span>
-                                        </label>
-                                    ))
-                                )}
-                            </div>
-                            <div className="text-xs text-slate-400">Select which sites this contact manages</div>
-                        </div>
-
-                        <button
-                            onClick={handleUpdateContact}
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"
-                        >
-                            Save Changes
-                        </button>
-                    </div>
-                </Modal>
-            )}
-
-            {/* 5. Add Site Modal */}
-            {isAddSiteOpen && (
-                <Modal title={`Add Site for ${selectedCustomer?.name}`} onClose={() => setIsAddSiteOpen(false)}>
-                    <div className="space-y-4">
-                        <div className="bg-yellow-900/20 border border-yellow-700/50 p-3 rounded text-xs text-yellow-200">
-                            <strong>📝 Important Information:</strong><br />
-                            • This creates a managed site for this customer<br />
-                            • <strong>The site will NOT be added to the Maintenance App (AIMM)</strong><br />
-                            • Use the activity icon (📊) to add site to Maintenance App when needed<br />
-                            • Sites appear in quotes regardless of Maintenance App status<br />
-                            • Maintenance App provides enhanced monitoring and analytics
-                        </div>
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Site Name (e.g. Newman Hub) *"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Location / Region"
-                            value={formData.location || ''}
-                            onChange={e => setFormData({ ...formData, location: e.target.value })}
-                        />
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1">Site Logo (Optional - inherits from customer)</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleLogoUpload(e, true)}
-                                className="w-full text-slate-400 text-sm"
-                            />
-                            {formData.logo && (
-                                <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
-                                    <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
-                                </div>
-                            )}
-                            {!formData.logo && selectedCustomer?.logo && (
-                                <div className="mt-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
-                                    <p className="text-xs text-slate-400 mb-1 text-center">Will inherit customer logo:</p>
-                                    <img src={selectedCustomer.logo} alt="Customer Logo" className="h-12 object-contain mx-auto opacity-50" />
-                                </div>
-                            )}
-                        </div>
-
-                        <button
-                            onClick={handleCreateSite}
-                            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded font-bold transition"
-                        >
-                            Create Site
-                        </button>
-                    </div>
-                </Modal>
-            )}
-
-            {/* 6. Edit Site Modal */}
-            {isEditSiteOpen && editingSite && (
-                <Modal title={`Edit Site: ${editingSite.name}`} onClose={() => { setIsEditSiteOpen(false); setEditingSite(null); }}>
-                    <div className="space-y-4">
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Site Name *"
-                            value={formData.name || ''}
-                            onChange={e => setFormData({ ...formData, name: e.target.value })}
-                        />
-                        <input
-                            className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
-                            placeholder="Location / Region"
-                            value={formData.location || ''}
-                            onChange={e => setFormData({ ...formData, location: e.target.value })}
-                        />
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1">Site Logo</label>
-                            <input
-                                type="file"
-                                accept="image/*"
-                                onChange={(e) => handleLogoUpload(e, true)}
-                                className="w-full text-slate-400 text-sm"
-                            />
-                            {formData.logo && (
-                                <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
-                                    <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
-                                </div>
-                            )}
-                        </div>
-                        <button
-                            onClick={handleUpdateSite}
-                            className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"
-                        >
-                            Save Changes
-                        </button>
-                    </div>
-                </Modal>
-            )}
-
-            {/* 7. View Site Contacts Modal */}
-            {isViewContactsOpen && selectedSiteForContacts && (
-                <Modal
-                    title={`Reporting Contacts: ${selectedSiteForContacts.name}`}
-                    onClose={() => { setIsViewContactsOpen(false); setSelectedSiteForContacts(null); }}
-                >
-                    <div className="space-y-4">
-                        {reportingContacts.length === 0 ? (
-                            <div className="text-center py-8 text-slate-400">
-                                <Icons.Users size={32} className="mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No contacts enabled for reporting</p>
-                                <p className="text-xs mt-1">Enable "Send reports" toggle on contacts to include them here</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="bg-cyan-900/20 border border-cyan-700/50 p-3 rounded text-xs text-cyan-200">
-                                    <strong>{reportingContacts.length}</strong> contact{reportingContacts.length !== 1 ? 's' : ''} will receive reports for this site
-                                </div>
-                                <div className="space-y-2">
-                                    {reportingContacts.map(contact => (
-                                        <div key={contact.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700">
-                                            <div className="flex items-start justify-between">
-                                                <div className="flex-1">
-                                                    <div className="font-bold text-sm text-slate-200">{contact.name}</div>
-                                                    {contact.role && <div className="text-xs text-slate-400">{contact.role}</div>}
-                                                </div>
-                                                <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-1 rounded border border-green-800">📧 Enabled</span>
-                                            </div>
-                                            <div className="mt-2 text-xs text-slate-300 space-y-1">
-                                                {contact.email && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Icons.Mail size={12} className="text-slate-500" />
-                                                        <a href={`mailto:${contact.email}`} className="hover:text-cyan-400 transition">{contact.email}</a>
-                                                    </div>
-                                                )}
-                                                {contact.phone && (
-                                                    <div className="flex items-center gap-2">
-                                                        <Icons.Phone size={12} className="text-slate-500" />
-                                                        <span>{contact.phone}</span>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        )}
-                    </div>
-                </Modal>
-            )}
-
-            {/* 8. Customer Notes Modal */}
-            {isNotesOpen && selectedCustomer && (
-                <Modal title={`Notes: ${selectedCustomer.name}`} onClose={() => setIsNotesOpen(false)} size="lg">
-                    <div className="space-y-4">
-                        {/* Stats Bar */}
-                        <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700">
-                            <div className="flex items-center gap-4">
-                                <div className="text-center">
-                                    <div className="text-lg font-bold text-cyan-400">{activeNotesCount}</div>
-                                    <div className="text-[10px] text-slate-400 uppercase">Active</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-lg font-bold text-slate-500">{archivedNotesCount}</div>
-                                    <div className="text-[10px] text-slate-400 uppercase">Archived</div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-2">
-                                <button
-                                    onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
-                                    className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
-                                    title={sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
-                                >
-                                    {sortOrder === 'desc' ? <Icons.SortDesc size={16} /> : <Icons.SortAsc size={16} />}
-                                </button>
-                                <button
-                                    onClick={() => setShowArchived(!showArchived)}
-                                    className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${showArchived
-                                        ? 'bg-slate-700 text-white border-slate-600'
-                                        : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
-                                        }`}
-                                >
-                                    {showArchived ? 'Hide Archived' : 'Show Archived'}
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Add New Note */}
-                        <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                            <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
-                                <Icons.Plus size={14} /> Add New Note
-                            </div>
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-4">
                                 <input
-                                    type="text"
-                                    placeholder="Author name..."
-                                    value={newNoteAuthor}
-                                    onChange={(e) => setNewNoteAuthor(e.target.value)}
-                                    className="w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white focus:outline-none focus:border-cyan-500"
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                    placeholder="Email"
+                                    value={formData.email || ''}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
                                 />
-                                <textarea
-                                    placeholder="Write your note here..."
-                                    value={newNoteContent}
-                                    onChange={(e) => setNewNoteContent(e.target.value)}
-                                    rows={3}
-                                    className="w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white focus:outline-none focus:border-cyan-500 resize-none"
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                    placeholder="Phone"
+                                    value={formData.phone || ''}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
                                 />
-                                <button
-                                    onClick={handleAddNote}
-                                    disabled={!newNoteContent.trim()}
-                                    className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded font-bold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-                                >
-                                    <Icons.Plus size={16} /> Add Note
-                                </button>
                             </div>
-                        </div>
+                            <label className="flex items-center gap-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.sendReports || false}
+                                    onChange={(e) => setFormData({ ...formData, sendReports: e.target.checked })}
+                                    className="w-4 h-4 rounded border-slate-600 text-green-600 focus:ring-green-500 focus:ring-offset-slate-900"
+                                />
+                                <div className="flex-1">
+                                    <div className="text-sm font-bold text-slate-200">Send reports to this contact</div>
+                                    <div className="text-xs text-slate-400">Enable to include in site reporting lists</div>
+                                </div>
+                            </label>
 
-                        {/* Notes List */}
-                        <div className="max-h-[400px] overflow-y-auto space-y-2">
-                            {filteredNotes.length === 0 ? (
-                                <div className="text-center py-8 text-slate-400">
-                                    <Icons.FileText size={32} className="mx-auto mb-2 opacity-50" />
-                                    <p className="text-sm">No notes found</p>
-                                    {!showArchived && archivedNotesCount > 0 && (
-                                        <p className="text-xs mt-1">({archivedNotesCount} archived notes hidden)</p>
+                            {/* NEW: Managed Sites Multi-Select */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                                    {customerManagedSites.length === 0 ? (
+                                        <div className="text-xs text-slate-500 italic">No sites available for this customer</div>
+                                    ) : (
+                                        customerManagedSites.map(site => (
+                                            <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(formData.managedSites || []).includes(site.id)}
+                                                    onChange={(e) => {
+                                                        const current = formData.managedSites || [];
+                                                        const updated = e.target.checked
+                                                            ? [...current, site.id]
+                                                            : current.filter(id => id !== site.id);
+                                                        setFormData({ ...formData, managedSites: updated });
+                                                    }}
+                                                    className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500"
+                                                />
+                                                <span className="text-sm text-slate-300">{site.name}</span>
+                                            </label>
+                                        ))
                                     )}
                                 </div>
-                            ) : (
-                                filteredNotes.map((note) => (
-                                    <div
-                                        key={note.id}
-                                        className={`group rounded-lg border transition-all ${note.archived
-                                            ? 'bg-slate-900/30 border-slate-800 opacity-60'
-                                            : 'bg-slate-700/50 border-slate-600 hover:border-cyan-500/50'
-                                            } p-3`}
-                                    >
-                                        {editingNoteId === note.id ? (
-                                            // EDITING STATE
-                                            <div className="space-y-2">
-                                                <div className="flex justify-between items-center mb-1">
-                                                    <span className="font-bold text-cyan-400 text-xs uppercase tracking-wide">Editing Note...</span>
-                                                </div>
+                                <div className="text-xs text-slate-400">Select which sites this contact manages</div>
+                            </div>
+
+                            <button
+                                onClick={handleCreateContact}
+                                className="w-full bg-purple-600 hover:bg-purple-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Save Contact
+                            </button>
+                        </div>
+                    </Modal>
+                )
+            }
+
+            {/* 4. Edit Contact Modal */}
+            {
+                isEditContactOpen && (
+                    <Modal title={`Edit Contact`} onClose={() => { setIsEditContactOpen(false); setEditingContact(null); }}>
+                        <div className="space-y-4">
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Full Name *"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            />
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Job Title / Role"
+                                value={formData.role || ''}
+                                onChange={e => setFormData({ ...formData, role: e.target.value })}
+                            />
+                            <div className="grid grid-cols-2 gap-4">
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                    placeholder="Email"
+                                    value={formData.email || ''}
+                                    onChange={e => setFormData({ ...formData, email: e.target.value })}
+                                />
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                    placeholder="Phone"
+                                    value={formData.phone || ''}
+                                    onChange={e => setFormData({ ...formData, phone: e.target.value })}
+                                />
+                            </div>
+                            <label className="flex items-center gap-2 p-3 bg-slate-800/50 rounded-lg border border-slate-700 cursor-pointer hover:bg-slate-800 transition">
+                                <input
+                                    type="checkbox"
+                                    checked={formData.sendReports || false}
+                                    onChange={(e) => setFormData({ ...formData, sendReports: e.target.checked })}
+                                    className="w-4 h-4 rounded border-slate-600 text-green-600 focus:ring-green-500 focus:ring-offset-slate-900"
+                                />
+                                <div className="flex-1">
+                                    <div className="text-sm font-bold text-slate-200">Send reports to this contact</div>
+                                    <div className="text-xs text-slate-400">Enable to include in site reporting lists</div>
+                                </div>
+                            </label>
+
+                            {/* NEW: Managed Sites Multi-Select */}
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-slate-300">Managed Sites (Optional)</label>
+                                <div className="bg-slate-800/50 border border-slate-700 rounded-lg p-3 max-h-48 overflow-y-auto space-y-2">
+                                    {customerManagedSites.length === 0 ? (
+                                        <div className="text-xs text-slate-500 italic">No sites available for this customer</div>
+                                    ) : (
+                                        customerManagedSites.map(site => (
+                                            <label key={site.id} className="flex items-center gap-2 cursor-pointer hover:bg-slate-800/50 p-2 rounded transition">
                                                 <input
-                                                    className="w-full border border-slate-600 rounded p-2 text-sm mb-1 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                                                    value={editNoteContent.author}
-                                                    onChange={(e) => setEditNoteContent({ ...editNoteContent, author: e.target.value })}
-                                                    placeholder="Author Name"
+                                                    type="checkbox"
+                                                    checked={(formData.managedSites || []).includes(site.id)}
+                                                    onChange={(e) => {
+                                                        const current = formData.managedSites || [];
+                                                        const updated = e.target.checked
+                                                            ? [...current, site.id]
+                                                            : current.filter(id => id !== site.id);
+                                                        setFormData({ ...formData, managedSites: updated });
+                                                    }}
+                                                    className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500"
                                                 />
-                                                <textarea
-                                                    className="w-full border border-slate-600 rounded p-2 text-sm bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 resize-none"
-                                                    rows="3"
-                                                    value={editNoteContent.content}
-                                                    onChange={(e) => setEditNoteContent({ ...editNoteContent, content: e.target.value })}
-                                                />
-                                                <div className="flex gap-2 justify-end pt-2 border-t border-slate-600 items-center">
-                                                    <button
-                                                        onClick={() => handleArchiveNote(note.id, note.archived)}
-                                                        className={`p-1.5 rounded hover:bg-slate-600 transition-colors ${note.archived ? 'text-green-400' : 'text-amber-400'}`}
-                                                        title={note.archived ? "Restore Note" : "Archive Note"}
-                                                    >
-                                                        {note.archived ? <Icons.RotateCcw size={16} /> : <Icons.Archive size={16} />}
-                                                    </button>
-                                                    <button
-                                                        onClick={() => handleDeleteNote(note.id)}
-                                                        className="p-1.5 rounded text-red-400 hover:bg-slate-600 hover:text-red-300 transition-colors"
-                                                        title="Delete Note"
-                                                    >
-                                                        <Icons.Trash size={16} />
-                                                    </button>
+                                                <span className="text-sm text-slate-300">{site.name}</span>
+                                            </label>
+                                        ))
+                                    )}
+                                </div>
+                                <div className="text-xs text-slate-400">Select which sites this contact manages</div>
+                            </div>
 
-                                                    <div className="w-px h-4 bg-slate-600 mx-1"></div>
+                            <button
+                                onClick={handleUpdateContact}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </Modal>
+                )
+            }
 
-                                                    <button onClick={handleCancelEdit} className="bg-slate-600 text-white px-3 py-1 rounded text-xs hover:bg-slate-500 font-bold transition-colors flex items-center gap-1">
-                                                        <Icons.X size={14} /> Cancel
-                                                    </button>
-                                                    <button onClick={handleSaveEdit} className="bg-cyan-600 text-white px-3 py-1 rounded text-xs hover:bg-cyan-500 font-bold transition-colors flex items-center gap-1">
-                                                        <Icons.Check size={14} /> Save
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        ) : (
-                                            // DISPLAY STATE
-                                            <div
-                                                role="button"
-                                                tabIndex={0}
-                                                onClick={() => handleStartEdit(note)}
-                                                onKeyDown={(e) => {
-                                                    if (e.key === 'Enter' || e.key === ' ') {
-                                                        e.preventDefault();
-                                                        handleStartEdit(note);
-                                                    }
-                                                }}
-                                                className="w-full text-left space-y-2 p-0 relative focus:outline-none rounded-lg group-hover:scale-[1.005] transition-transform duration-200 cursor-pointer"
-                                                title="Click to edit note"
-                                            >
-                                                <div className="flex justify-between items-start mb-1 relative pr-16">
-                                                    <div className="flex items-center gap-2">
-                                                        <span className="font-bold text-slate-300 bg-slate-800/80 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-slate-700/50">👤 {note.author || 'UNKNOWN'}</span>
-                                                        <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                                            {formatDate(note.timestamp, true)}
-                                                        </span>
-                                                        {note.archived && (
-                                                            <span className="px-1.5 py-0.5 text-[10px] bg-slate-800 text-orange-400 rounded border border-orange-900/30">Archived</span>
-                                                        )}
-                                                    </div>
-
-                                                    {/* Floating Icon-Only Action Buttons */}
-                                                    <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 bg-slate-800 rounded-lg shadow-lg border border-slate-600 p-1 scale-90 group-hover:scale-100">
-                                                        <span className="p-1.5 rounded text-cyan-400 hover:bg-slate-700" title="Edit Note">
-                                                            <Icons.Edit size={14} />
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <p className="text-slate-300 whitespace-pre-wrap leading-relaxed pl-1">{note.content}</p>
-                                            </div>
-                                        )}
+            {/* 5. Add Site Modal */}
+            {
+                isAddSiteOpen && (
+                    <Modal title={`Add Site for ${selectedCustomer?.name}`} onClose={() => setIsAddSiteOpen(false)}>
+                        <div className="space-y-4">
+                            <div className="bg-yellow-900/20 border border-yellow-700/50 p-3 rounded text-xs text-yellow-200">
+                                <strong>📝 Important Information:</strong><br />
+                                • This creates a managed site for this customer<br />
+                                • <strong>The site will NOT be added to the Maintenance App (AIMM)</strong><br />
+                                • Use the activity icon (📊) to add site to Maintenance App when needed<br />
+                                • Sites appear in quotes regardless of Maintenance App status<br />
+                                • Maintenance App provides enhanced monitoring and analytics
+                            </div>
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Site Name (e.g. Newman Hub) *"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            />
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Location / Region"
+                                value={formData.location || ''}
+                                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                            />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Site Logo (Optional - inherits from customer)</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleLogoUpload(e, true)}
+                                    className="w-full text-slate-400 text-sm"
+                                />
+                                {formData.logo && (
+                                    <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
+                                        <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
                                     </div>
-                                ))
-                            )}
-                        </div>
-                    </div>
-                </Modal>
-            )}
-
-            {/* Orphaned Sites Management Modal - Admin Only */}
-            {isOrphanedSitesOpen && userRole !== 'tech' && (
-                <Modal title="Site Management" onClose={() => { setIsOrphanedSitesOpen(false); setShowAllMaintenanceSites(false); setShowLegacyCleanup(false); }}>
-                    <div className="space-y-4">
-                        <div className="bg-orange-900/20 border border-orange-700/50 p-3 rounded text-xs text-orange-200">
-                            <strong>⚠️ Admin Only:</strong> Manage customer sites and clean up legacy data.
-                        </div>
-
-                        {/* Toggle between different views */}
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() => { setShowAllMaintenanceSites(false); setShowLegacyCleanup(false); }}
-                                className={`px-3 py-1 rounded text-xs font-bold transition ${!showAllMaintenanceSites && !showLegacyCleanup
-                                    ? 'bg-orange-600 text-white'
-                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                    }`}
-                            >
-                                Issues Only ({getOrphanedSites().length})
-                            </button>
-                            <button
-                                onClick={() => { setShowAllMaintenanceSites(true); setShowLegacyCleanup(false); }}
-                                className={`px-3 py-1 rounded text-xs font-bold transition ${showAllMaintenanceSites && !showLegacyCleanup
-                                    ? 'bg-blue-600 text-white'
-                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                    }`}
-                            >
-                                All Sites ({getAllMaintenanceAppSites().length})
-                            </button>
-                            <button
-                                onClick={() => { setShowAllMaintenanceSites(false); setShowLegacyCleanup(true); }}
-                                className={`px-3 py-1 rounded text-xs font-bold transition ${showLegacyCleanup
-                                    ? 'bg-red-600 text-white'
-                                    : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
-                                    }`}
-                            >
-                                Legacy Cleanup ({getLegacyGlobalSites().length})
-                            </button>
-                        </div>
-
-                        <div className="space-y-2 max-h-64 overflow-y-auto">
-                            {showLegacyCleanup ? (
-                                // Legacy global sites view
-                                getLegacyGlobalSites().length === 0 ? (
-                                    <div className="text-center py-4 text-slate-500 text-sm">
-                                        No legacy sites found in global collection.
+                                )}
+                                {!formData.logo && selectedCustomer?.logo && (
+                                    <div className="mt-2 p-2 bg-slate-800/50 rounded border border-slate-700/50">
+                                        <p className="text-xs text-slate-400 mb-1 text-center">Will inherit customer logo:</p>
+                                        <img src={selectedCustomer.logo} alt="Customer Logo" className="h-12 object-contain mx-auto opacity-50" />
                                     </div>
-                                ) : (
-                                    getLegacyGlobalSites().map(site => (
-                                        <div key={site.id} className="bg-red-950/20 border border-red-700/50 p-3 rounded-lg">
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="font-bold text-sm text-slate-200">{site.name}</div>
-                                                        <span className="text-[10px] bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded border border-red-800">LEGACY</span>
-                                                    </div>
-                                                    <div className="text-xs text-slate-400">ID: {site.id}</div>
-                                                    <div className="text-xs text-slate-400">Customer: {site.customerName || 'Unknown'}</div>
-                                                    <div className="text-xs text-slate-400">Location: {site.location || 'Not specified'}</div>
-                                                    <div className="text-xs text-slate-400 mt-1">
-                                                        AIMM: {site.hasAIMMProfile ?
-                                                            <span className="text-blue-400">Enabled</span> :
-                                                            <span className="text-slate-500">Disabled</span>
-                                                        }
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={() => deleteLegacySite(site.id)}
-                                                    className="text-red-400 hover:text-red-300 transition p-1"
-                                                    title="Delete legacy site"
-                                                >
-                                                    <Icons.Trash size={14} />
-                                                </button>
-                                            </div>
-                                        </div>
-                                    ))
-                                )
+                                )}
+                            </div>
+
+                            <button
+                                onClick={handleCreateSite}
+                                className="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Create Site
+                            </button>
+                        </div>
+                    </Modal>
+                )
+            }
+
+            {/* 6. Edit Site Modal */}
+            {
+                isEditSiteOpen && editingSite && (
+                    <Modal title={`Edit Site: ${editingSite.name}`} onClose={() => { setIsEditSiteOpen(false); setEditingSite(null); }}>
+                        <div className="space-y-4">
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Site Name *"
+                                value={formData.name || ''}
+                                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                            />
+                            <input
+                                className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                placeholder="Location / Region"
+                                value={formData.location || ''}
+                                onChange={e => setFormData({ ...formData, location: e.target.value })}
+                            />
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Site Logo</label>
+                                <input
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={(e) => handleLogoUpload(e, true)}
+                                    className="w-full text-slate-400 text-sm"
+                                />
+                                {formData.logo && (
+                                    <div className="mt-2 p-2 bg-slate-800 rounded border border-slate-700">
+                                        <img src={formData.logo} alt="Preview" className="h-16 object-contain mx-auto" />
+                                    </div>
+                                )}
+                            </div>
+                            <button
+                                onClick={handleUpdateSite}
+                                className="w-full bg-blue-600 hover:bg-blue-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Save Changes
+                            </button>
+                        </div>
+                    </Modal>
+                )
+            }
+
+            {/* 7. View Site Contacts Modal */}
+            {
+                isViewContactsOpen && selectedSiteForContacts && (
+                    <Modal
+                        title={`Reporting Contacts: ${selectedSiteForContacts.name}`}
+                        onClose={() => { setIsViewContactsOpen(false); setSelectedSiteForContacts(null); }}
+                    >
+                        <div className="space-y-4">
+                            {reportingContacts.length === 0 ? (
+                                <div className="text-center py-8 text-slate-400">
+                                    <Icons.Users size={32} className="mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm">No contacts enabled for reporting</p>
+                                    <p className="text-xs mt-1">Enable "Send reports" toggle on contacts to include them here</p>
+                                </div>
                             ) : (
-                                // Customer managed sites view
-                                (!showAllMaintenanceSites ? getOrphanedSites() : getAllMaintenanceAppSites()).length === 0 ? (
-                                    <div className="text-center py-4 text-slate-500 text-sm">
-                                        {!showAllMaintenanceSites
-                                            ? "No site issues found. All customer sites are properly configured."
-                                            : "No sites found."
-                                        }
+                                <>
+                                    <div className="bg-cyan-900/20 border border-cyan-700/50 p-3 rounded text-xs text-cyan-200">
+                                        <strong>{reportingContacts.length}</strong> contact{reportingContacts.length !== 1 ? 's' : ''} will receive reports for this site
                                     </div>
-                                ) : (
-                                    (!showAllMaintenanceSites ? getOrphanedSites() : getAllMaintenanceAppSites()).map(site => (
-                                        <div key={site.id} className={`bg-slate-800 p-3 rounded-lg border ${site.isOrphaned ? 'border-orange-700/50' : 'border-slate-700'
-                                            }`}>
-                                            <div className="flex justify-between items-start">
-                                                <div className="flex-1">
-                                                    <div className="flex items-center gap-2">
-                                                        <div className="font-bold text-sm text-slate-200">{site.name}</div>
-                                                        {site.isOrphaned && (
-                                                            <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">ISSUE</span>
-                                                        )}
-                                                        {!site.isOrphaned && (
-                                                            <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800">OK</span>
-                                                        )}
+                                    <div className="space-y-2">
+                                        {reportingContacts.map(contact => (
+                                            <div key={contact.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700">
+                                                <div className="flex items-start justify-between">
+                                                    <div className="flex-1">
+                                                        <div className="font-bold text-sm text-slate-200">{contact.name}</div>
+                                                        {contact.role && <div className="text-xs text-slate-400">{contact.role}</div>}
                                                     </div>
-                                                    <div className="text-xs text-slate-400">ID: {site.id}</div>
-                                                    <div className="text-xs text-slate-400">Customer: {site.customerName || 'Unknown'}</div>
-                                                    <div className="text-xs text-slate-400">Status: {site.customerStatus || 'Unknown'}</div>
-                                                    <div className="text-xs text-slate-400">Location: {site.location || 'Not specified'}</div>
-                                                    <div className="text-xs text-slate-400 mt-1">
-                                                        AIMM: {site.hasAIMMProfile ?
-                                                            <span className="text-blue-400">Enabled</span> :
-                                                            <span className="text-slate-500">Disabled</span>
-                                                        }
-                                                    </div>
-                                                    {site.customerId && (
-                                                        <div className="text-xs text-slate-400">
-                                                            Customer ID: {site.customerId}
+                                                    <span className="text-[10px] bg-green-900/30 text-green-400 px-2 py-1 rounded border border-green-800">📧 Enabled</span>
+                                                </div>
+                                                <div className="mt-2 text-xs text-slate-300 space-y-1">
+                                                    {contact.email && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.Mail size={12} className="text-slate-500" />
+                                                            <a href={`mailto:${contact.email}`} className="hover:text-cyan-400 transition">{contact.email}</a>
+                                                        </div>
+                                                    )}
+                                                    {contact.phone && (
+                                                        <div className="flex items-center gap-2">
+                                                            <Icons.Phone size={12} className="text-slate-500" />
+                                                            <span>{contact.phone}</span>
                                                         </div>
                                                     )}
                                                 </div>
-                                                <button
-                                                    onClick={() => deleteOrphanedSite(site.id)}
-                                                    className="text-red-400 hover:text-red-300 transition p-1"
-                                                    title="Delete site"
-                                                >
-                                                    <Icons.Trash size={14} />
-                                                </button>
                                             </div>
+                                        ))}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </Modal>
+                )
+            }
+
+            {/* 8. Customer Notes Modal */}
+            {
+                isNotesOpen && selectedCustomer && (
+                    <Modal title={`Notes: ${selectedCustomer.name}`} onClose={() => setIsNotesOpen(false)} size="lg">
+                        <div className="space-y-4">
+                            {/* Stats Bar */}
+                            <div className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700">
+                                <div className="flex items-center gap-4">
+                                    <div className="text-center">
+                                        <div className="text-lg font-bold text-cyan-400">{activeNotesCount}</div>
+                                        <div className="text-[10px] text-slate-400 uppercase">Active</div>
+                                    </div>
+                                    <div className="text-center">
+                                        <div className="text-lg font-bold text-slate-500">{archivedNotesCount}</div>
+                                        <div className="text-[10px] text-slate-400 uppercase">Archived</div>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setSortOrder(sortOrder === 'desc' ? 'asc' : 'desc')}
+                                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
+                                        title={sortOrder === 'desc' ? 'Newest First' : 'Oldest First'}
+                                    >
+                                        {sortOrder === 'desc' ? <Icons.SortDesc size={16} /> : <Icons.SortAsc size={16} />}
+                                    </button>
+                                    <button
+                                        onClick={() => setShowArchived(!showArchived)}
+                                        className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${showArchived
+                                            ? 'bg-slate-700 text-white border-slate-600'
+                                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-white'
+                                            }`}
+                                    >
+                                        {showArchived ? 'Hide Archived' : 'Show Archived'}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Add New Note */}
+                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                <div className="text-xs font-bold text-slate-400 uppercase mb-2 flex items-center gap-1">
+                                    <Icons.Plus size={14} /> Add New Note
+                                </div>
+                                <div className="space-y-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Author name..."
+                                        value={newNoteAuthor}
+                                        onChange={(e) => setNewNoteAuthor(e.target.value)}
+                                        className="w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white focus:outline-none focus:border-cyan-500"
+                                    />
+                                    <textarea
+                                        placeholder="Write your note here..."
+                                        value={newNoteContent}
+                                        onChange={(e) => setNewNoteContent(e.target.value)}
+                                        rows={3}
+                                        className="w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white focus:outline-none focus:border-cyan-500 resize-none"
+                                    />
+                                    <button
+                                        onClick={handleAddNote}
+                                        disabled={!newNoteContent.trim()}
+                                        className="w-full bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded font-bold text-sm transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                                    >
+                                        <Icons.Plus size={16} /> Add Note
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* Notes List */}
+                            <div className="max-h-[400px] overflow-y-auto space-y-2">
+                                {filteredNotes.length === 0 ? (
+                                    <div className="text-center py-8 text-slate-400">
+                                        <Icons.FileText size={32} className="mx-auto mb-2 opacity-50" />
+                                        <p className="text-sm">No notes found</p>
+                                        {!showArchived && archivedNotesCount > 0 && (
+                                            <p className="text-xs mt-1">({archivedNotesCount} archived notes hidden)</p>
+                                        )}
+                                    </div>
+                                ) : (
+                                    filteredNotes.map((note) => (
+                                        <div
+                                            key={note.id}
+                                            className={`group rounded-lg border transition-all ${note.archived
+                                                ? 'bg-slate-900/30 border-slate-800 opacity-60'
+                                                : 'bg-slate-700/50 border-slate-600 hover:border-cyan-500/50'
+                                                } p-3`}
+                                        >
+                                            {editingNoteId === note.id ? (
+                                                // EDITING STATE
+                                                <div className="space-y-2">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="font-bold text-cyan-400 text-xs uppercase tracking-wide">Editing Note...</span>
+                                                    </div>
+                                                    <input
+                                                        className="w-full border border-slate-600 rounded p-2 text-sm mb-1 bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                                                        value={editNoteContent.author}
+                                                        onChange={(e) => setEditNoteContent({ ...editNoteContent, author: e.target.value })}
+                                                        placeholder="Author Name"
+                                                    />
+                                                    <textarea
+                                                        className="w-full border border-slate-600 rounded p-2 text-sm bg-slate-800 text-white focus:outline-none focus:ring-1 focus:ring-cyan-500 resize-none"
+                                                        rows="3"
+                                                        value={editNoteContent.content}
+                                                        onChange={(e) => setEditNoteContent({ ...editNoteContent, content: e.target.value })}
+                                                    />
+                                                    <div className="flex gap-2 justify-end pt-2 border-t border-slate-600 items-center">
+                                                        <button
+                                                            onClick={() => handleArchiveNote(note.id, note.archived)}
+                                                            className={`p-1.5 rounded hover:bg-slate-600 transition-colors ${note.archived ? 'text-green-400' : 'text-amber-400'}`}
+                                                            title={note.archived ? "Restore Note" : "Archive Note"}
+                                                        >
+                                                            {note.archived ? <Icons.RotateCcw size={16} /> : <Icons.Archive size={16} />}
+                                                        </button>
+                                                        <button
+                                                            onClick={() => handleDeleteNote(note.id)}
+                                                            className="p-1.5 rounded text-red-400 hover:bg-slate-600 hover:text-red-300 transition-colors"
+                                                            title="Delete Note"
+                                                        >
+                                                            <Icons.Trash size={16} />
+                                                        </button>
+
+                                                        <div className="w-px h-4 bg-slate-600 mx-1"></div>
+
+                                                        <button onClick={handleCancelEdit} className="bg-slate-600 text-white px-3 py-1 rounded text-xs hover:bg-slate-500 font-bold transition-colors flex items-center gap-1">
+                                                            <Icons.X size={14} /> Cancel
+                                                        </button>
+                                                        <button onClick={handleSaveEdit} className="bg-cyan-600 text-white px-3 py-1 rounded text-xs hover:bg-cyan-500 font-bold transition-colors flex items-center gap-1">
+                                                            <Icons.Check size={14} /> Save
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                // DISPLAY STATE
+                                                <div
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={() => handleStartEdit(note)}
+                                                    onKeyDown={(e) => {
+                                                        if (e.key === 'Enter' || e.key === ' ') {
+                                                            e.preventDefault();
+                                                            handleStartEdit(note);
+                                                        }
+                                                    }}
+                                                    className="w-full text-left space-y-2 p-0 relative focus:outline-none rounded-lg group-hover:scale-[1.005] transition-transform duration-200 cursor-pointer"
+                                                    title="Click to edit note"
+                                                >
+                                                    <div className="flex justify-between items-start mb-1 relative pr-16">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="font-bold text-slate-300 bg-slate-800/80 px-1.5 py-0.5 rounded text-[10px] uppercase tracking-wide border border-slate-700/50">👤 {note.author || 'UNKNOWN'}</span>
+                                                            <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                                                                {formatDate(note.timestamp, true)}
+                                                            </span>
+                                                            {note.archived && (
+                                                                <span className="px-1.5 py-0.5 text-[10px] bg-slate-800 text-orange-400 rounded border border-orange-900/30">Archived</span>
+                                                            )}
+                                                        </div>
+
+                                                        {/* Floating Icon-Only Action Buttons */}
+                                                        <div className="absolute -top-1 -right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 z-10 bg-slate-800 rounded-lg shadow-lg border border-slate-600 p-1 scale-90 group-hover:scale-100">
+                                                            <span className="p-1.5 rounded text-cyan-400 hover:bg-slate-700" title="Edit Note">
+                                                                <Icons.Edit size={14} />
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <p className="text-slate-300 whitespace-pre-wrap leading-relaxed pl-1">{note.content}</p>
+                                                </div>
+                                            )}
                                         </div>
                                     ))
-                                )
-                            )}
+                                )}
+                            </div>
                         </div>
+                    </Modal>
+                )
+            }
 
-                        <div className="text-xs text-slate-400 border-t border-slate-700 pt-2">
-                            {showLegacyCleanup ? (
-                                <><strong>Legacy Cleanup:</strong> These are sites in the old global collection. They should be deleted as sites are now managed within customer documents.</>
-                            ) : (
-                                <><strong>Info:</strong> This shows all customer managed sites. Sites from archived customers or with issues can be cleaned up here.</>
-                            )}
+            {/* Orphaned Sites Management Modal - Admin Only */}
+            {
+                isOrphanedSitesOpen && userRole !== 'tech' && (
+                    <Modal title="Site Management" onClose={() => { setIsOrphanedSitesOpen(false); setShowAllMaintenanceSites(false); setShowLegacyCleanup(false); }}>
+                        <div className="space-y-4">
+                            <div className="bg-orange-900/20 border border-orange-700/50 p-3 rounded text-xs text-orange-200">
+                                <strong>⚠️ Admin Only:</strong> Manage customer sites and clean up legacy data.
+                            </div>
+
+                            {/* Toggle between different views */}
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => { setShowAllMaintenanceSites(false); setShowLegacyCleanup(false); }}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition ${!showAllMaintenanceSites && !showLegacyCleanup
+                                        ? 'bg-orange-600 text-white'
+                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                        }`}
+                                >
+                                    Issues Only ({getOrphanedSites().length})
+                                </button>
+                                <button
+                                    onClick={() => { setShowAllMaintenanceSites(true); setShowLegacyCleanup(false); }}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition ${showAllMaintenanceSites && !showLegacyCleanup
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                        }`}
+                                >
+                                    All Sites ({getAllMaintenanceAppSites().length})
+                                </button>
+                                <button
+                                    onClick={() => { setShowAllMaintenanceSites(false); setShowLegacyCleanup(true); }}
+                                    className={`px-3 py-1 rounded text-xs font-bold transition ${showLegacyCleanup
+                                        ? 'bg-red-600 text-white'
+                                        : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                                        }`}
+                                >
+                                    Legacy Cleanup ({getLegacyGlobalSites().length})
+                                </button>
+                            </div>
+
+                            <div className="space-y-2 max-h-64 overflow-y-auto">
+                                {showLegacyCleanup ? (
+                                    // Legacy global sites view
+                                    getLegacyGlobalSites().length === 0 ? (
+                                        <div className="text-center py-4 text-slate-500 text-sm">
+                                            No legacy sites found in global collection.
+                                        </div>
+                                    ) : (
+                                        getLegacyGlobalSites().map(site => (
+                                            <div key={site.id} className="bg-red-950/20 border border-red-700/50 p-3 rounded-lg">
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-bold text-sm text-slate-200">{site.name}</div>
+                                                            <span className="text-[10px] bg-red-900/30 text-red-400 px-1.5 py-0.5 rounded border border-red-800">LEGACY</span>
+                                                        </div>
+                                                        <div className="text-xs text-slate-400">ID: {site.id}</div>
+                                                        <div className="text-xs text-slate-400">Customer: {site.customerName || 'Unknown'}</div>
+                                                        <div className="text-xs text-slate-400">Location: {site.location || 'Not specified'}</div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            AIMM: {site.hasAIMMProfile ?
+                                                                <span className="text-blue-400">Enabled</span> :
+                                                                <span className="text-slate-500">Disabled</span>
+                                                            }
+                                                        </div>
+                                                    </div>
+                                                    <button
+                                                        onClick={() => deleteLegacySite(site.id)}
+                                                        className="text-red-400 hover:text-red-300 transition p-1"
+                                                        title="Delete legacy site"
+                                                    >
+                                                        <Icons.Trash size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )
+                                ) : (
+                                    // Customer managed sites view
+                                    (!showAllMaintenanceSites ? getOrphanedSites() : getAllMaintenanceAppSites()).length === 0 ? (
+                                        <div className="text-center py-4 text-slate-500 text-sm">
+                                            {!showAllMaintenanceSites
+                                                ? "No site issues found. All customer sites are properly configured."
+                                                : "No sites found."
+                                            }
+                                        </div>
+                                    ) : (
+                                        (!showAllMaintenanceSites ? getOrphanedSites() : getAllMaintenanceAppSites()).map(site => (
+                                            <div key={site.id} className={`bg-slate-800 p-3 rounded-lg border ${site.isOrphaned ? 'border-orange-700/50' : 'border-slate-700'
+                                                }`}>
+                                                <div className="flex justify-between items-start">
+                                                    <div className="flex-1">
+                                                        <div className="flex items-center gap-2">
+                                                            <div className="font-bold text-sm text-slate-200">{site.name}</div>
+                                                            {site.isOrphaned && (
+                                                                <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">ISSUE</span>
+                                                            )}
+                                                            {!site.isOrphaned && (
+                                                                <span className="text-[10px] bg-emerald-900/30 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-800">OK</span>
+                                                            )}
+                                                        </div>
+                                                        <div className="text-xs text-slate-400">ID: {site.id}</div>
+                                                        <div className="text-xs text-slate-400">Customer: {site.customerName || 'Unknown'}</div>
+                                                        <div className="text-xs text-slate-400">Status: {site.customerStatus || 'Unknown'}</div>
+                                                        <div className="text-xs text-slate-400">Location: {site.location || 'Not specified'}</div>
+                                                        <div className="text-xs text-slate-400 mt-1">
+                                                            AIMM: {site.hasAIMMProfile ?
+                                                                <span className="text-blue-400">Enabled</span> :
+                                                                <span className="text-slate-500">Disabled</span>
+                                                            }
+                                                        </div>
+                                                        {site.customerId && (
+                                                            <div className="text-xs text-slate-400">
+                                                                Customer ID: {site.customerId}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                    <button
+                                                        onClick={() => deleteOrphanedSite(site.id)}
+                                                        className="text-red-400 hover:text-red-300 transition p-1"
+                                                        title="Delete site"
+                                                    >
+                                                        <Icons.Trash size={14} />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))
+                                    )
+                                )}
+                            </div>
+
+                            <div className="text-xs text-slate-400 border-t border-slate-700 pt-2">
+                                {showLegacyCleanup ? (
+                                    <><strong>Legacy Cleanup:</strong> These are sites in the old global collection. They should be deleted as sites are now managed within customer documents.</>
+                                ) : (
+                                    <><strong>Info:</strong> This shows all customer managed sites. Sites from archived customers or with issues can be cleaned up here.</>
+                                )}
+                            </div>
                         </div>
-                    </div>
-                </Modal>
-            )}
-        </div>
+                    </Modal>
+                )
+            }
+
+            {/* Edit Site Modal with Compliance Tracker */}
+            {
+                editingSite && (
+                    <Modal title={`Edit Site: ${editingSite.name}`} onClose={() => setEditingSite(null)} size="lg">
+                        <div className="space-y-4 max-h-[70vh] overflow-y-auto">
+                            {/* Basic Info */}
+                            <div className="grid grid-cols-2 gap-4">
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                    placeholder="Site Name"
+                                    value={editingSite.name || ''}
+                                    onChange={e => setEditingSite({ ...editingSite, name: e.target.value })}
+                                />
+                                <input
+                                    className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white"
+                                    placeholder="Location"
+                                    value={editingSite.location || ''}
+                                    onChange={e => setEditingSite({ ...editingSite, location: e.target.value })}
+                                />
+                            </div>
+
+                            {/* Site Compliance Tracker */}
+                            <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+                                <div className="p-3 bg-slate-900/50 border-b border-slate-700 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-200 flex items-center gap-2">
+                                        <Icons.ClipboardList size={16} className="text-purple-400" />
+                                        Site Compliance Tracker
+                                    </h3>
+                                </div>
+
+                                {/* Add Compliance Form */}
+                                <div className="p-3 bg-slate-800/50 border-b border-slate-700">
+                                    <div className="grid grid-cols-5 gap-2">
+                                        <input
+                                            placeholder="Document Name"
+                                            className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={editingSite._newCompName || ''}
+                                            onChange={e => setEditingSite({ ...editingSite, _newCompName: e.target.value })}
+                                        />
+                                        <input
+                                            type="date"
+                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={editingSite._newCompDueDate || ''}
+                                            onChange={e => setEditingSite({ ...editingSite, _newCompDueDate: e.target.value })}
+                                            title="Due Date"
+                                        />
+                                        <input
+                                            placeholder="Link (URL)"
+                                            className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                                            value={editingSite._newCompLink || ''}
+                                            onChange={e => setEditingSite({ ...editingSite, _newCompLink: e.target.value })}
+                                        />
+                                        <button
+                                            onClick={() => {
+                                                if (!editingSite._newCompName) return;
+                                                const newItem = {
+                                                    id: `comp-${Date.now()}`,
+                                                    name: editingSite._newCompName,
+                                                    dueDate: editingSite._newCompDueDate || '',
+                                                    link: editingSite._newCompLink || '',
+                                                    status: 'active',
+                                                    lastUpdated: new Date().toISOString()
+                                                };
+                                                setEditingSite({
+                                                    ...editingSite,
+                                                    compliance: [...(editingSite.compliance || []), newItem],
+                                                    _newCompName: '',
+                                                    _newCompDueDate: '',
+                                                    _newCompLink: ''
+                                                });
+                                            }}
+                                            className="bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-medium transition-colors"
+                                        >
+                                            + Add
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <table className="w-full text-sm text-left">
+                                    <thead className="text-xs text-slate-500 uppercase bg-slate-900">
+                                        <tr>
+                                            <th className="px-3 py-2">Document</th>
+                                            <th className="px-3 py-2">Due Date</th>
+                                            <th className="px-3 py-2">Status</th>
+                                            <th className="px-3 py-2 w-10">Link</th>
+                                            <th className="px-3 py-2 w-16">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700">
+                                        {(editingSite.compliance || [])
+                                            .sort((a, b) => {
+                                                if (!a.dueDate && !b.dueDate) return 0;
+                                                if (!a.dueDate) return 1;
+                                                if (!b.dueDate) return -1;
+                                                return new Date(a.dueDate) - new Date(b.dueDate);
+                                            })
+                                            .map(item => {
+                                                const today = new Date();
+                                                today.setHours(0, 0, 0, 0);
+                                                const dueDate = item.dueDate ? new Date(item.dueDate) : null;
+                                                let status = 'active';
+                                                if (dueDate) {
+                                                    if (dueDate < today) status = 'expired';
+                                                    else if (dueDate <= new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)) status = 'warning';
+                                                }
+                                                const isEditing = editingSite._editingCompId === item.id;
+
+                                                return (
+                                                    <tr key={item.id} className="hover:bg-slate-700/50">
+                                                        {isEditing ? (
+                                                            <>
+                                                                <td className="px-3 py-2">
+                                                                    <input
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editingSite._editCompName || ''}
+                                                                        onChange={e => setEditingSite({ ...editingSite, _editCompName: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <input
+                                                                        type="date"
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editingSite._editCompDueDate || ''}
+                                                                        onChange={e => setEditingSite({ ...editingSite, _editCompDueDate: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2"></td>
+                                                                <td className="px-3 py-2">
+                                                                    <input
+                                                                        placeholder="URL"
+                                                                        className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                                                                        value={editingSite._editCompLink || ''}
+                                                                        onChange={e => setEditingSite({ ...editingSite, _editCompLink: e.target.value })}
+                                                                    />
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                const updated = editingSite.compliance.map(c =>
+                                                                                    c.id === item.id ? {
+                                                                                        ...c,
+                                                                                        name: editingSite._editCompName,
+                                                                                        dueDate: editingSite._editCompDueDate,
+                                                                                        link: editingSite._editCompLink,
+                                                                                        lastUpdated: new Date().toISOString()
+                                                                                    } : c
+                                                                                );
+                                                                                setEditingSite({
+                                                                                    ...editingSite,
+                                                                                    compliance: updated,
+                                                                                    _editingCompId: null,
+                                                                                    _editCompName: '',
+                                                                                    _editCompDueDate: '',
+                                                                                    _editCompLink: ''
+                                                                                });
+                                                                            }}
+                                                                            className="text-green-400 hover:text-green-300"
+                                                                            title="Save"
+                                                                        >
+                                                                            <Icons.Check size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setEditingSite({ ...editingSite, _editingCompId: null })}
+                                                                            className="text-slate-400 hover:text-slate-300"
+                                                                            title="Cancel"
+                                                                        >
+                                                                            <Icons.X size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <td className="px-3 py-2 font-medium text-slate-200">{item.name}</td>
+                                                                <td className="px-3 py-2 text-slate-300">{item.dueDate ? formatDate(item.dueDate) : '-'}</td>
+                                                                <td className="px-3 py-2">
+                                                                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${status === 'expired' ? 'bg-red-900/30 text-red-400 border-red-800' :
+                                                                        status === 'warning' ? 'bg-amber-900/30 text-amber-400 border-amber-800' :
+                                                                            'bg-green-900/30 text-green-400 border-green-800'
+                                                                        }`}>
+                                                                        {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-2 text-center">
+                                                                    {item.link ? (
+                                                                        <a
+                                                                            href={item.link}
+                                                                            target="_blank"
+                                                                            rel="noopener noreferrer"
+                                                                            className="text-blue-400 hover:text-blue-300 transition-colors inline-block"
+                                                                            title="Open Document"
+                                                                        >
+                                                                            <Icons.ExternalLink size={14} />
+                                                                        </a>
+                                                                    ) : (
+                                                                        <span className="text-slate-600">-</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-2">
+                                                                    <div className="flex gap-1">
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                setEditingSite({
+                                                                                    ...editingSite,
+                                                                                    _editingCompId: item.id,
+                                                                                    _editCompName: item.name,
+                                                                                    _editCompDueDate: item.dueDate || '',
+                                                                                    _editCompLink: item.link || ''
+                                                                                });
+                                                                            }}
+                                                                            className="text-blue-400 hover:text-blue-300"
+                                                                            title="Edit"
+                                                                        >
+                                                                            <Icons.Edit size={14} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => {
+                                                                                if (!window.confirm(`Delete "${item.name}"?`)) return;
+                                                                                setEditingSite({
+                                                                                    ...editingSite,
+                                                                                    compliance: editingSite.compliance.filter(c => c.id !== item.id)
+                                                                                });
+                                                                            }}
+                                                                            className="text-red-400 hover:text-red-300"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Icons.Trash size={14} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </>
+                                                        )}
+                                                    </tr>
+                                                );
+                                            })}
+                                        {(!editingSite.compliance || editingSite.compliance.length === 0) && (
+                                            <tr><td colSpan="5" className="p-4 text-center text-slate-500 italic">No compliance documents yet. Add one above.</td></tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            {/* Save Button */}
+                            <button
+                                onClick={async () => {
+                                    try {
+                                        // Remove temp fields before saving
+                                        const { _newCompName, _newCompDueDate, _newCompLink, _editingCompId, _editCompName, _editCompDueDate, _editCompLink, ...siteData } = editingSite;
+                                        await updateManagedSite(selectedCustId, editingSite.id, siteData);
+                                        setEditingSite(null);
+                                    } catch (error) {
+                                        console.error('Failed to update site:', error);
+                                        alert('Failed to save site. Please try again.');
+                                    }
+                                }}
+                                className="w-full bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded font-bold transition"
+                            >
+                                Save Site Changes
+                            </button>
+                        </div>
+                    </Modal>
+                )
+            }
+        </div >
     );
 };

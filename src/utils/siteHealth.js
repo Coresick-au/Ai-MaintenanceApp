@@ -32,12 +32,35 @@ export const getOverallSiteHealth = (siteData) => {
 
   if (hasCritical) return 'critical';
 
+  // Check compliance items for critical issues (overdue)
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+  const complianceItems = siteData.compliance || [];
+  const hasComplianceCritical = complianceItems.some(item => {
+    if (!item.dueDate) return false;
+    const dueDate = new Date(item.dueDate);
+    return dueDate < today;
+  });
+
+  if (hasComplianceCritical) return 'critical';
+
   // Check for warning issues (medium priority)
   const hasWarning = allAssets.some(a =>
     (a.remaining >= 0 && a.remaining < 30) || a.opStatus === 'Warning'
   );
 
   if (hasWarning) return 'warning';
+
+  // Check compliance items for warning issues (due within 30 days)
+  const hasComplianceWarning = complianceItems.some(item => {
+    if (!item.dueDate) return false;
+    const dueDate = new Date(item.dueDate);
+    return dueDate >= today && dueDate <= thirtyDaysFromNow;
+  });
+
+  if (hasComplianceWarning) return 'warning';
 
   // If no issues, site is healthy
   return 'healthy';

@@ -309,6 +309,228 @@ export const EditSiteModal = ({
           </div>
         </div>
 
+        {/* SITE COMPLIANCE TRACKER */}
+        <div className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden">
+          <div className="p-4 bg-slate-900/50 border-b border-slate-700 flex justify-between items-center">
+            <h3 className="font-bold text-slate-200 flex items-center gap-2">
+              <Icons.ClipboardList size={16} className="text-purple-400" />
+              Site Compliance Tracker
+            </h3>
+          </div>
+
+          {/* Add Compliance Form (Inline) */}
+          <div className="p-4 bg-slate-800/50 border-b border-slate-700">
+            <div className="grid grid-cols-5 gap-2">
+              <input
+                placeholder="Document Name"
+                className="col-span-2 bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                value={siteForm._newCompName || ''}
+                onChange={e => setSiteForm({ ...siteForm, _newCompName: e.target.value })}
+              />
+              <input
+                type="date"
+                className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                value={siteForm._newCompDueDate || ''}
+                onChange={e => setSiteForm({ ...siteForm, _newCompDueDate: e.target.value })}
+                title="Due Date"
+              />
+              <input
+                placeholder="Link (URL)"
+                className="bg-slate-900 border border-slate-600 rounded p-2 text-xs text-white focus:border-cyan-500 outline-none"
+                value={siteForm._newCompLink || ''}
+                onChange={e => setSiteForm({ ...siteForm, _newCompLink: e.target.value })}
+              />
+              <button
+                onClick={() => {
+                  if (!siteForm._newCompName) return;
+                  const newItem = {
+                    id: `comp-${Date.now()}`,
+                    name: siteForm._newCompName,
+                    dueDate: siteForm._newCompDueDate || '',
+                    link: siteForm._newCompLink || '',
+                    status: 'active',
+                    lastUpdated: new Date().toISOString()
+                  };
+                  setSiteForm({
+                    ...siteForm,
+                    compliance: [...(siteForm.compliance || []), newItem],
+                    _newCompName: '',
+                    _newCompDueDate: '',
+                    _newCompLink: ''
+                  });
+                }}
+                className="bg-purple-600 hover:bg-purple-500 text-white rounded text-xs font-medium transition-colors"
+              >
+                + Add
+              </button>
+            </div>
+          </div>
+
+          <table className="w-full text-sm text-left">
+            <thead className="text-xs text-slate-500 uppercase bg-slate-900">
+              <tr>
+                <th className="px-4 py-2">Document</th>
+                <th className="px-4 py-2">Due Date</th>
+                <th className="px-4 py-2">Status</th>
+                <th className="px-4 py-2 w-12">Link</th>
+                <th className="px-4 py-2 w-20">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-700">
+              {(siteForm.compliance || [])
+                .sort((a, b) => {
+                  if (!a.dueDate && !b.dueDate) return 0;
+                  if (!a.dueDate) return 1;
+                  if (!b.dueDate) return -1;
+                  return new Date(a.dueDate) - new Date(b.dueDate);
+                })
+                .map(item => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const dueDate = item.dueDate ? new Date(item.dueDate) : null;
+                  let status = 'active';
+                  if (dueDate) {
+                    if (dueDate < today) status = 'expired';
+                    else if (dueDate <= new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000)) status = 'warning';
+                  }
+                  const isEditing = siteForm._editingCompId === item.id;
+
+                  return (
+                    <tr key={item.id} className="hover:bg-slate-700/50">
+                      {isEditing ? (
+                        <>
+                          <td className="px-4 py-2">
+                            <input
+                              className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                              value={siteForm._editCompName || ''}
+                              onChange={e => setSiteForm({ ...siteForm, _editCompName: e.target.value })}
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <input
+                              type="date"
+                              className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                              value={siteForm._editCompDueDate || ''}
+                              onChange={e => setSiteForm({ ...siteForm, _editCompDueDate: e.target.value })}
+                            />
+                          </td>
+                          <td className="px-4 py-2"></td>
+                          <td className="px-4 py-2">
+                            <input
+                              placeholder="URL"
+                              className="w-full bg-slate-900 border border-slate-600 rounded p-1 text-xs text-white"
+                              value={siteForm._editCompLink || ''}
+                              onChange={e => setSiteForm({ ...siteForm, _editCompLink: e.target.value })}
+                            />
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  const updated = siteForm.compliance.map(c =>
+                                    c.id === item.id ? {
+                                      ...c,
+                                      name: siteForm._editCompName,
+                                      dueDate: siteForm._editCompDueDate,
+                                      link: siteForm._editCompLink,
+                                      lastUpdated: new Date().toISOString()
+                                    } : c
+                                  );
+                                  setSiteForm({
+                                    ...siteForm,
+                                    compliance: updated,
+                                    _editingCompId: null,
+                                    _editCompName: '',
+                                    _editCompDueDate: '',
+                                    _editCompLink: ''
+                                  });
+                                }}
+                                className="text-green-400 hover:text-green-300"
+                                title="Save"
+                              >
+                                <Icons.Check size={14} />
+                              </button>
+                              <button
+                                onClick={() => setSiteForm({ ...siteForm, _editingCompId: null })}
+                                className="text-slate-400 hover:text-slate-300"
+                                title="Cancel"
+                              >
+                                <Icons.X size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      ) : (
+                        <>
+                          <td className="px-4 py-2 font-medium text-slate-200">{item.name}</td>
+                          <td className="px-4 py-2 text-slate-300">{item.dueDate ? formatDate(item.dueDate) : '-'}</td>
+                          <td className="px-4 py-2">
+                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap uppercase ${status === 'expired' ? 'bg-red-900/30 text-red-400 border-red-800' :
+                              status === 'warning' ? 'bg-amber-900/30 text-amber-400 border-amber-800' :
+                                'bg-green-900/30 text-green-400 border-green-800'
+                              }`}>
+                              {status === 'expired' ? 'Expired' : status === 'warning' ? 'Due Soon' : 'Active'}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2 text-center">
+                            {item.link ? (
+                              <a
+                                href={item.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-400 hover:text-blue-300 transition-colors inline-block"
+                                title="Open Document"
+                              >
+                                <Icons.ExternalLink size={14} />
+                              </a>
+                            ) : (
+                              <span className="text-slate-600">-</span>
+                            )}
+                          </td>
+                          <td className="px-4 py-2">
+                            <div className="flex gap-1">
+                              <button
+                                onClick={() => {
+                                  setSiteForm({
+                                    ...siteForm,
+                                    _editingCompId: item.id,
+                                    _editCompName: item.name,
+                                    _editCompDueDate: item.dueDate || '',
+                                    _editCompLink: item.link || ''
+                                  });
+                                }}
+                                className="text-blue-400 hover:text-blue-300"
+                                title="Edit"
+                              >
+                                <Icons.Edit size={14} />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  if (!window.confirm(`Delete "${item.name}"?`)) return;
+                                  setSiteForm({
+                                    ...siteForm,
+                                    compliance: siteForm.compliance.filter(c => c.id !== item.id)
+                                  });
+                                }}
+                                className="text-red-400 hover:text-red-300"
+                                title="Delete"
+                              >
+                                <Icons.Trash size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </>
+                      )}
+                    </tr>
+                  );
+                })}
+              {(!siteForm.compliance || siteForm.compliance.length === 0) && (
+                <tr><td colSpan="5" className="p-4 text-center text-slate-500 italic">No compliance documents yet. Add one above.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
         <Button onClick={() => onSave(siteForm)} className="w-full justify-center">Save Changes</Button>
       </div>
     </Modal>

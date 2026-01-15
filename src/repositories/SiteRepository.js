@@ -69,4 +69,60 @@ export class SiteRepository extends BaseRepository {
     subscribeToSites(callback, errorCallback) {
         return this.subscribe([], callback, errorCallback);
     }
+
+    /**
+     * Add a compliance item to a site
+     * @param {string} siteId - Site ID
+     * @param {Object} complianceItem - Compliance item data
+     * @returns {Promise<string>} New compliance item ID
+     */
+    async addComplianceItem(siteId, complianceItem) {
+        const site = await this.getById(siteId);
+        if (!site) throw new Error('Site not found');
+
+        const newItem = {
+            id: `comp-${Date.now()}`,
+            ...complianceItem,
+            lastUpdated: new Date().toISOString()
+        };
+
+        const compliance = [...(site.compliance || []), newItem];
+        await this.update(siteId, { compliance });
+        return newItem.id;
+    }
+
+    /**
+     * Update a compliance item
+     * @param {string} siteId - Site ID
+     * @param {string} complianceId - Compliance item ID
+     * @param {Object} updates - Fields to update
+     * @returns {Promise<boolean>} Success status
+     */
+    async updateComplianceItem(siteId, complianceId, updates) {
+        const site = await this.getById(siteId);
+        if (!site) throw new Error('Site not found');
+
+        const compliance = (site.compliance || []).map(item =>
+            item.id === complianceId
+                ? { ...item, ...updates, lastUpdated: new Date().toISOString() }
+                : item
+        );
+        await this.update(siteId, { compliance });
+        return true;
+    }
+
+    /**
+     * Delete a compliance item
+     * @param {string} siteId - Site ID
+     * @param {string} complianceId - Compliance item ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteComplianceItem(siteId, complianceId) {
+        const site = await this.getById(siteId);
+        if (!site) throw new Error('Site not found');
+
+        const compliance = (site.compliance || []).filter(item => item.id !== complianceId);
+        await this.update(siteId, { compliance });
+        return true;
+    }
 }
