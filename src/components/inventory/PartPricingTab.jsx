@@ -25,7 +25,8 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
         costPrice: '',
         quantity: '',
         ignoreForTrend: false,
-        notes: ''
+        notes: '',
+        isImported: false
     });
 
     // Forcasting state
@@ -95,6 +96,7 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                     costPrice: costPriceCents,
                     quantity: quantity,
                     ignoreForTrend: formData.ignoreForTrend,
+                    isImported: formData.isImported,
                     notes: formData.notes
                 });
             } else {
@@ -107,7 +109,8 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                     new Date(formData.effectiveDate),
                     formData.notes,
                     quantity,
-                    formData.ignoreForTrend
+                    formData.ignoreForTrend,
+                    formData.isImported
                 );
             }
 
@@ -134,6 +137,7 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
             costPrice: (pricing.costPrice / 100).toFixed(2),
             quantity: (pricing.quantity || 1).toString(),
             ignoreForTrend: pricing.ignoreForTrend || false,
+            isImported: pricing.isImported || false,
             notes: pricing.notes || ''
         });
         setError('');
@@ -158,10 +162,33 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
             costPrice: '',
             quantity: '',
             ignoreForTrend: false,
-            notes: ''
+            notes: '',
+            isImported: false
         });
         setEditingId(null);
         setError('');
+    };
+    const handleImportedChange = (checked) => {
+        const currentPrice = parseFloat(formData.costPrice || 0);
+        if (currentPrice === 0) {
+            setFormData(prev => ({ ...prev, isImported: checked }));
+            return;
+        }
+
+        let newPrice;
+        if (checked) {
+            // Add 10%
+            newPrice = currentPrice * 1.1;
+        } else {
+            // Remove 10% (divide by 1.1)
+            newPrice = currentPrice / 1.1;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            isImported: checked,
+            costPrice: newPrice.toFixed(2)
+        }));
     };
 
 
@@ -629,6 +656,20 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                                     Total: ${(parseFloat(formData.costPrice) * parseInt(formData.quantity)).toFixed(2)}
                                 </p>
                             )}
+
+                            {/* Imported Helper Checkbox */}
+                            <div className="flex items-center gap-2 mt-2">
+                                <input
+                                    type="checkbox"
+                                    id="isImported"
+                                    checked={formData.isImported}
+                                    onChange={(e) => handleImportedChange(e.target.checked)}
+                                    className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                />
+                                <label htmlFor="isImported" className="text-xs text-slate-400 cursor-pointer select-none">
+                                    Imported (Add 10% GST)
+                                </label>
+                            </div>
                         </div>
 
                         {/* Quantity */}
@@ -774,6 +815,12 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                                                     <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded border bg-amber-500/20 text-amber-300 border-amber-500/30">
                                                         <Icons.EyeOff size={12} className="mr-1" />
                                                         Ignored
+                                                    </span>
+                                                )}
+                                                {entry.isImported && (
+                                                    <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                                                        <Icons.Package size={12} className="mr-1" />
+                                                        Imported
                                                     </span>
                                                 )}
                                                 {entry.notes && (

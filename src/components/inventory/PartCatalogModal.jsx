@@ -167,8 +167,13 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
         if (!editingPart?.id) return;
 
         try {
-            const collection = editingPart.id.startsWith('fastener-') ? 'fastener_catalog' : 'part_catalog';
-            const partDoc = await getDoc(doc(db, collection, editingPart.id));
+            let collectionName = 'part_catalog';
+            if (editingPart.id.startsWith('fastener-')) {
+                collectionName = 'fastener_catalog';
+            } else if (editingPart.id.startsWith('elec-')) {
+                collectionName = 'electrical_catalog';
+            }
+            const partDoc = await getDoc(doc(db, collectionName, editingPart.id));
 
             if (partDoc.exists()) {
                 const refreshedPart = partDoc.data();
@@ -640,7 +645,12 @@ export const PartCatalogModal = ({ isOpen, onClose, editingPart = null }) => {
                                 <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30 space-y-2">
                                     <div className="flex items-center justify-between text-sm">
                                         <span className="text-slate-300">
-                                            Cost Price ({formData.costPriceSource === 'SUPPLIER_LOWEST' ? 'Supplier Lowest' : formData.costPriceSource === 'PREFERRED_SUPPLIER' ? 'Preferred Supplier' : 'Manual'}):
+                                            Cost Price ({
+                                                formData.costPriceSource === 'SUPPLIER_LOWEST' ? 'Supplier Lowest' :
+                                                    formData.costPriceSource === 'PREFERRED_SUPPLIER' ? 'Preferred Supplier' :
+                                                        formData.costPriceSource === 'SELECTED_ENTRY' ? 'Selected Price' :
+                                                            'Manual'
+                                            }):
                                         </span>
                                         <span className="font-mono text-white">
                                             ${(() => {

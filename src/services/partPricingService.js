@@ -13,7 +13,7 @@ import { db } from '../firebase';
  * @param {boolean} ignoreForTrend - Exclude from trend calculations (default false)
  * @returns {Promise<string>} The new pricing entry ID
  */
-export async function addPricing(partId, partSku, supplierName, costPrice, effectiveDate, notes = '', quantity = 1, ignoreForTrend = false) {
+export async function addPricing(partId, partSku, supplierName, costPrice, effectiveDate, notes = '', quantity = 1, ignoreForTrend = false, isImported = false) {
     try {
         // Convert date to midnight timestamp
         const dateOnly = new Date(effectiveDate);
@@ -26,6 +26,7 @@ export async function addPricing(partId, partSku, supplierName, costPrice, effec
             costPrice: Math.round(costPrice), // per unit price in cents
             quantity: parseInt(quantity) || 1, // number of units
             ignoreForTrend: !!ignoreForTrend, // exclude from trend analysis
+            isImported: !!isImported, // includes 10% GST/import markup
             effectiveDate: Timestamp.fromDate(dateOnly),
             notes: notes || '',
             createdAt: Timestamp.now(),
@@ -71,6 +72,10 @@ export async function updatePricing(pricingId, updates) {
         // Ensure ignoreForTrend is boolean if provided
         if (updates.ignoreForTrend !== undefined) {
             updateData.ignoreForTrend = !!updates.ignoreForTrend;
+        }
+
+        if (updates.isImported !== undefined) {
+            updateData.isImported = !!updates.isImported;
         }
 
         await updateDoc(doc(db, 'part_supplier_pricing', pricingId), updateData);
