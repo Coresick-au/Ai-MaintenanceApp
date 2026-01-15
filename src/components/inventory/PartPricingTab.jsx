@@ -25,7 +25,8 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
         costPrice: '',
         quantity: '',
         ignoreForTrend: false,
-        notes: ''
+        notes: '',
+        isImported: false
     });
 
     // Forcasting state
@@ -95,6 +96,7 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                     costPrice: costPriceCents,
                     quantity: quantity,
                     ignoreForTrend: formData.ignoreForTrend,
+                    isImported: formData.isImported,
                     notes: formData.notes
                 });
             } else {
@@ -107,7 +109,8 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                     new Date(formData.effectiveDate),
                     formData.notes,
                     quantity,
-                    formData.ignoreForTrend
+                    formData.ignoreForTrend,
+                    formData.isImported
                 );
             }
 
@@ -134,6 +137,7 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
             costPrice: (pricing.costPrice / 100).toFixed(2),
             quantity: (pricing.quantity || 1).toString(),
             ignoreForTrend: pricing.ignoreForTrend || false,
+            isImported: pricing.isImported || false,
             notes: pricing.notes || ''
         });
         setError('');
@@ -158,10 +162,33 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
             costPrice: '',
             quantity: '',
             ignoreForTrend: false,
-            notes: ''
+            notes: '',
+            isImported: false
         });
         setEditingId(null);
         setError('');
+    };
+    const handleImportedChange = (checked) => {
+        const currentPrice = parseFloat(formData.costPrice || 0);
+        if (currentPrice === 0) {
+            setFormData(prev => ({ ...prev, isImported: checked }));
+            return;
+        }
+
+        let newPrice;
+        if (checked) {
+            // Add 10%
+            newPrice = currentPrice * 1.1;
+        } else {
+            // Remove 10% (divide by 1.1)
+            newPrice = currentPrice / 1.1;
+        }
+
+        setFormData(prev => ({
+            ...prev,
+            isImported: checked,
+            costPrice: newPrice.toFixed(2)
+        }));
     };
 
 
@@ -294,10 +321,19 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
 
             if (newSource === 'SUPPLIER_LOWEST') {
                 if (effectivePricing.length > 0) {
-                    // Find the lowest cost price
-                    const lowestPrice = Math.min(...effectivePricing.map(entry => entry.costPrice));
-                    updateData.costPrice = lowestPrice;
-                    console.log('[PartPricingTab] Setting lowest supplier price:', lowestPrice);
+                    // Find the LATEST supplier price (formerly lowest)
+                    // effectivePricing is already filtered <= today. 
+                    // Sort descending by date to find the most recent one.
+                    const sortedByDate = [...effectivePricing].sort((a, b) => {
+                        const dateA = new Date(a.effectiveDate);
+                        const dateB = new Date(b.effectiveDate);
+                        return dateB - dateA;
+                    });
+
+                    // Set price to the latest entry
+                    const latestPrice = sortedByDate[0].costPrice;
+                    updateData.costPrice = latestPrice;
+                    console.log('[PartPricingTab] Setting latest supplier price:', latestPrice);
                 } else {
                     setError('No current supplier pricing available. Please add pricing data first or use Manual Entry.');
                     setCostPriceSource(part.costPriceSource || 'MANUAL'); // Revert
@@ -321,6 +357,22 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                 } else {
                     setError(`No current pricing available for preferred supplier. Please add pricing or check selected supplier.`);
                     setCostPriceSource(part.costPriceSource || 'MANUAL'); // Revert
+                    return;
+                }
+            } else if (newSource === 'SELECTED_ENTRY') {
+                // When switching to SELECTED_ENTRY via radio button, check if we have a valid selection
+                if (part.selectedPricingId) {
+                    const selectedEntry = pricingEntries.find(p => p.id === part.selectedPricingId);
+                    if (selectedEntry) {
+                        updateData.costPrice = selectedEntry.costPrice;
+                    } else {
+                        setError('Previously selected pricing entry not found. Please select a price from history.');
+                        setCostPriceSource(part.costPriceSource || 'MANUAL');
+                        return;
+                    }
+                } else {
+                    setError('Please select a specific price from the history list below.');
+                    setCostPriceSource(part.costPriceSource || 'MANUAL');
                     return;
                 }
             }
@@ -347,6 +399,46 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
         } catch (err) {
             console.error(`Error updating cost source:`, err);
             setError('Failed to update cost source');
+        }
+    };
+
+    const handleSelectPricingEntry = async (entry) => {
+        try {
+            let collection = 'part_catalog';
+            if (part.id.startsWith('fastener-')) {
+                collection = 'fastener_catalog';
+            } else if (part.id.startsWith('elec-')) {
+                collection = 'electrical_catalog';
+            }
+
+            const updateData = {
+                costPriceSource: 'SELECTED_ENTRY',
+                selectedPricingId: entry.id,
+                costPrice: entry.costPrice
+            };
+
+            // If the part is saleable with calculated list price, update list price too
+            if (part.isSaleable && part.listPriceSource === 'CALCULATED') {
+                const newCostPrice = updateData.costPrice; // in cents
+                const marginPercent = parseFloat(part.targetMarginPercent || 0) / 100;
+
+                if (marginPercent < 1 && newCostPrice > 0) {
+                    const calculatedListPrice = Math.round(newCostPrice / (1 - marginPercent));
+                    updateData.listPrice = calculatedListPrice;
+                }
+            }
+
+            // Optimistic update
+            setCostPriceSource('SELECTED_ENTRY');
+
+            await updateDoc(doc(db, collection, part.id), updateData);
+
+            if (onPartUpdate) {
+                await onPartUpdate();
+            }
+        } catch (err) {
+            console.error('Error selecting pricing entry:', err);
+            setError('Failed to select pricing entry');
         }
     };
 
@@ -396,7 +488,8 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                     }
                 }
             } else if (newPreferred && costPriceSource === 'SUPPLIER_LOWEST') {
-                // If we switch preference but are on lowest, we stay on lowest. logic remains same.
+                // If switching preference while on "Latest" (formerly Lowest), 
+                // we don't need to do anything as "Latest" is independent of preference.
             }
 
             // If the part is saleable with calculated list price and we're updating cost price, update list price too
@@ -563,6 +656,20 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                                     Total: ${(parseFloat(formData.costPrice) * parseInt(formData.quantity)).toFixed(2)}
                                 </p>
                             )}
+
+                            {/* Imported Helper Checkbox */}
+                            <div className="flex items-center gap-2 mt-2">
+                                <input
+                                    type="checkbox"
+                                    id="isImported"
+                                    checked={formData.isImported}
+                                    onChange={(e) => handleImportedChange(e.target.checked)}
+                                    className="w-4 h-4 rounded border-slate-600 text-cyan-600 focus:ring-cyan-500 focus:ring-offset-slate-900"
+                                />
+                                <label htmlFor="isImported" className="text-xs text-slate-400 cursor-pointer select-none">
+                                    Imported (Add 10% GST)
+                                </label>
+                            </div>
                         </div>
 
                         {/* Quantity */}
@@ -710,6 +817,12 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                                                         Ignored
                                                     </span>
                                                 )}
+                                                {entry.isImported && (
+                                                    <span className="inline-flex px-2 py-0.5 text-xs font-medium rounded border bg-cyan-500/20 text-cyan-300 border-cyan-500/30">
+                                                        <Icons.Package size={12} className="mr-1" />
+                                                        Imported
+                                                    </span>
+                                                )}
                                                 {entry.notes && (
                                                     <div className="text-sm text-slate-400 flex-1">
                                                         {entry.notes}
@@ -717,6 +830,19 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                                                 )}
                                             </div>
                                             <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => handleSelectPricingEntry(entry)}
+                                                    className={`p-1.5 rounded transition-colors ${costPriceSource === 'SELECTED_ENTRY' && part.selectedPricingId === entry.id
+                                                        ? 'bg-cyan-500 text-white'
+                                                        : 'text-cyan-400 hover:bg-cyan-500/20'
+                                                        }`}
+                                                    title="Select as Cost Price"
+                                                >
+                                                    {costPriceSource === 'SELECTED_ENTRY' && part.selectedPricingId === entry.id
+                                                        ? <Icons.CheckCircle size={16} />
+                                                        : <Icons.Circle size={16} />
+                                                    }
+                                                </button>
                                                 <button
                                                     onClick={() => handleEdit(entry)}
                                                     className="p-1.5 hover:bg-blue-500/20 rounded text-blue-400 transition-colors"
@@ -796,8 +922,8 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                             className="w-4 h-4 text-cyan-600"
                         />
                         <div>
-                            <span className="text-white font-medium">Supplier (Lowest Price)</span>
-                            <p className="text-xs text-slate-400">Automatically use lowest supplier price from history below</p>
+                            <span className="text-white font-medium">Supplier (Latest Price)</span>
+                            <p className="text-xs text-slate-400">Automatically use latest supplier price from history below</p>
                         </div>
                     </label>
                     <label className="flex items-center gap-3 cursor-pointer">
@@ -810,13 +936,32 @@ export const PartPricingTab = ({ part, suppliers, onPartUpdate }) => {
                             className="w-4 h-4 text-cyan-600"
                         />
                         <div>
-                            <span className="text-white font-medium">Preferred Supplier</span>
+                            <span className="text-white font-medium">Preferred Supplier (Latest Price)</span>
                             <p className="text-xs text-slate-400">
-                                Use price from preferred supplier
+                                Use latest price from preferred supplier
                                 {preferredSupplier ? ` (${preferredSupplier})` : ''}
                             </p>
                             {!preferredSupplier && costPriceSource === 'PREFERRED_SUPPLIER' && (
                                 <p className="text-xs text-red-400 mt-1">Select a preferred supplier in History above</p>
+                            )}
+                        </div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer">
+                        <input
+                            type="radio"
+                            name="costPriceSource"
+                            value="SELECTED_ENTRY"
+                            checked={costPriceSource === 'SELECTED_ENTRY'}
+                            onChange={handleCostSourceChange}
+                            className="w-4 h-4 text-cyan-600"
+                        />
+                        <div>
+                            <span className="text-white font-medium">Selected Price</span>
+                            <p className="text-xs text-slate-400">
+                                Use a specific price selected from history
+                            </p>
+                            {costPriceSource === 'SELECTED_ENTRY' && !part.selectedPricingId && (
+                                <p className="text-xs text-amber-400 mt-1">Please select a price from the history list above using the Select button</p>
                             )}
                         </div>
                     </label>

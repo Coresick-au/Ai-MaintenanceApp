@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
 import { addFastenerToCatalog, updateFastener, filterSuppliersByCategories } from '../../services/inventoryService';
@@ -173,6 +173,31 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
             loadLowestPrice();
         }
     }, [editingFastener?.id, isOpen, formData.suppliers]);
+
+    // Refresh fastener data from Firebase after updates in PartPricingTab
+    const handleFastenerUpdate = async () => {
+        if (!editingFastener?.id) return;
+
+        try {
+            const fastenerDoc = await getDoc(doc(db, 'fastener_catalog', editingFastener.id));
+
+            if (fastenerDoc.exists()) {
+                const refreshedFastener = fastenerDoc.data();
+
+                // Update formData to reflect changes immediately (e.g. cost price change -> list price recalc)
+                // We selectively update pricing-related fields to avoid blowing away other edits if possible,
+                // though currently we just sync the cost/list price fields that PartPricingTab modifies.
+                setFormData(prev => ({
+                    ...prev,
+                    costPrice: (refreshedFastener.costPrice / 100).toFixed(2),
+                    costPriceSource: refreshedFastener.costPriceSource || 'MANUAL',
+                    listPrice: (refreshedFastener.listPrice / 100).toFixed(2)
+                }));
+            }
+        } catch (err) {
+            console.error('Error refreshing fastener data:', err);
+        }
+    };
 
     const handleAddCategory = async () => {
         if (!newCategoryName.trim()) return;
@@ -785,6 +810,7 @@ export const FastenerCatalogModal = ({ isOpen, onClose, editingFastener = null }
                         <PartPricingTab
                             part={editingFastener}
                             suppliers={formData.suppliers || []}
+                            onPartUpdate={handleFastenerUpdate}
                         />
                     )}
 

@@ -485,6 +485,14 @@ export const FastenerCatalogTable = ({ onAddFastener, onEditFastener }) => {
                                                     <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30" title="Using lowest supplier price">
                                                         Auto
                                                     </span>
+                                                ) : fastener.costPriceSource === 'PREFERRED_SUPPLIER' ? (
+                                                    <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-purple-500/20 text-purple-300 border border-purple-500/30" title="Using preferred supplier price">
+                                                        Preferred
+                                                    </span>
+                                                ) : fastener.costPriceSource === 'SELECTED_ENTRY' ? (
+                                                    <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30" title="Using specific selected price">
+                                                        Selected
+                                                    </span>
                                                 ) : (
                                                     <span className="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-amber-500/20 text-amber-300 border border-amber-500/30" title="Manual cost entry">
                                                         Manual
