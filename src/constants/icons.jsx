@@ -96,7 +96,9 @@ import {
     Triangle,
     Pyramid,
     Layers,
-    Star
+    Star,
+    Tag,
+    Link
 } from 'lucide-react';
 
 // Custom Idler Frame Icon (triangle with circle on top)
@@ -221,6 +223,8 @@ export const Icons = {
     Pyramid,
     Layers,
     IdlerFrame,
-    Star
+    Star,
+    Tag,
+    Link
 };
 

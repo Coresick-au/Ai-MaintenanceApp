@@ -97,6 +97,7 @@ service cloud.firestore {
     
     // Cost History (Additional)
     match /part_cost_history/{document=**} { allow read, write: if isSignedIn(); }
+    match /site_part_numbers/{document=**} { allow read, write: if isSignedIn(); }
 
     // Default Fallback: DENY EVERYTHING else
     match /{document=**} {

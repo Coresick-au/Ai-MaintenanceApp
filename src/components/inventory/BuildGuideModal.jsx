@@ -35,7 +35,7 @@ export function BuildGuideModal({ isOpen, onClose, product, itemType = 'product'
     }, [existingGuide]);
 
     // Calculate available items based on what's been allocated to steps
-    const calculateAvailableItems = () => {
+    const calculateAvailableItems = React.useCallback(() => {
         if (!bom) {
             setAvailableItems({ parts: [], fasteners: [] });
             return;
@@ -68,7 +68,7 @@ export function BuildGuideModal({ isOpen, onClose, product, itemType = 'product'
         }));
 
         setAvailableItems({ parts: availableParts, fasteners: availableFasteners });
-    };
+    }, [bom, steps]);
 
     const handleAddItemToStep = (stepIndex, itemKey) => {
         console.log('[DEBUG] handleAddItemToStep called:', { stepIndex, itemKey, availableItems });

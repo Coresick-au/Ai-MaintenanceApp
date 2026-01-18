@@ -23,6 +23,7 @@ import { ManufacturedPartCalculator } from '../components/inventory/Manufactured
 import { SpecializedComponentsView } from '../components/inventory/SpecializedComponentsView';
 
 import { BuildGuideManager } from '../components/inventory/BuildGuideManager';
+import { SitePartManager } from '../components/inventory/SitePartManager';
 import { Icons } from '../constants/icons';
 import BackButton from '../components/ui/BackButton';
 
@@ -157,6 +158,7 @@ export function InventoryApp({ onBack }) {
         { id: 'products', label: 'Product Catalog', icon: Icons.Box },
         { id: 'serialized', label: 'Serialized Assets', icon: Icons.Barcode },
         { id: 'specialized', label: 'Specialized', icon: Icons.Scale },
+        { id: 'siteparts', label: 'Site Parts', icon: Icons.Tag },
         { id: 'buildguides', label: 'Build Guides', icon: Icons.BookOpen },
         { id: 'stock', label: 'Stock Levels', icon: Icons.Database },
         { id: 'categories', label: 'Categories', icon: Icons.FolderTree },
@@ -268,6 +270,8 @@ export function InventoryApp({ onBack }) {
                         {activeTab === 'serialized' && <SerializedAssetsView />}
 
                         {activeTab === 'specialized' && <SpecializedComponentsView />}
+
+                        {activeTab === 'siteparts' && <SitePartManager />}
 
 
 

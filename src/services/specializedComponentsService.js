@@ -66,7 +66,7 @@ for (let i = 700; i <= 2000; i += 100) {
     IDLER_SPACING_OPTIONS.push(i);
 }
 
-export const STANDARD_ROLLER_DIAMETERS = [102, 114, 127, 152, 177, 193];
+export const STANDARD_ROLLER_DIAMETERS = [102, 114, 127, 152, 178, 194];
 
 // ==========================================
 // WEIGHER MODEL CONFIGURATION
