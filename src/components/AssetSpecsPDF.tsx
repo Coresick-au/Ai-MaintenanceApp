@@ -46,6 +46,11 @@ interface AssetWithSpecs {
 interface AssetSpecsPDFProps {
   assets: AssetWithSpecs[];
   generatedDate: string;
+  site?: {
+    customerName?: string;
+    name?: string;
+    location?: string;
+  };
 }
 
 const styles = StyleSheet.create({
@@ -77,8 +82,15 @@ const styles = StyleSheet.create({
     color: '#1F2937',
     textAlign: 'center',
   },
+  siteInfo: {
+    fontSize: 12,
+    color: '#374151',
+    marginTop: 4,
+    textAlign: 'center',
+  },
   subtitle: {
     fontSize: 14,
+    marginTop: 8,
     marginBottom: 15,
     fontWeight: 'bold',
     color: '#374151',
@@ -251,7 +263,8 @@ const formatDate = (dateString: string) => {
 
 export const AssetSpecsPDF: React.FC<AssetSpecsPDFProps> = ({
   assets,
-  generatedDate
+  generatedDate,
+  site
 }) => {
   return (
     <Document>
@@ -266,6 +279,11 @@ export const AssetSpecsPDF: React.FC<AssetSpecsPDFProps> = ({
             <View style={styles.titleContainer}>
               <Text style={styles.title}>Accurate Industries</Text>
               <Text style={styles.subtitle}>Asset Specifications ({index + 1} of {assets.length})</Text>
+              {site && (site.customerName || site.name || site.location) && (
+                <Text style={styles.siteInfo}>
+                  {[site.customerName, site.name, site.location].filter(Boolean).join(' - ')}
+                </Text>
+              )}
             </View>
           </View>
 

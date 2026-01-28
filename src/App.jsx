@@ -1107,22 +1107,11 @@ export function App() {
                       <span className="text-sm font-medium text-slate-300 group-hover:text-white">Full Dashboard</span>
                     </button>
 
-                    {/* Schedule & Chart */}
-                    <button
-                      onClick={() => { setIsExportMenuOpen(false); handlePrint('schedule'); }}
-                      className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 border-b border-slate-700 group"
-                    >
-                      <div className="text-slate-400 group-hover:text-white transition-colors">
-                        <Icons.Calendar size={16} />
-                      </div>
-                      <span className="text-sm font-medium text-slate-300 group-hover:text-white">Schedule & Chart</span>
-                    </button>
-
                     {/* Asset Specs */}
                     <button
                       onClick={() => { setIsExportMenuOpen(false); handlePrint('specs'); }}
                       disabled={selectedRowIds.size === 0}
-                      className={`w-full p-3 text-left flex items-center gap-3 border-b border-slate-700 group ${selectedRowIds.size === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700'}`}
+                      className={`w-full p-3 text-left flex items-center gap-3 group ${selectedRowIds.size === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-slate-700'}`}
                     >
                       <div className="text-slate-400 group-hover:text-white transition-colors">
                         <Icons.FileText size={16} />
@@ -1131,17 +1120,6 @@ export function App() {
                         <div className="text-sm font-medium text-slate-300 group-hover:text-white">Asset Specs</div>
                         {selectedRowIds.size === 0 && <div className="text-[10px] text-slate-500">(Select assets)</div>}
                       </div>
-                    </button>
-
-                    {/* Customer Report */}
-                    <button
-                      onClick={() => { setIsExportMenuOpen(false); setIsReportModalOpen(true); }}
-                      className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 group"
-                    >
-                      <div className="text-slate-400 group-hover:text-white transition-colors">
-                        <Icons.FileText size={16} />
-                      </div>
-                      <span className="text-sm font-medium text-slate-300 group-hover:text-white">Customer Report</span>
                     </button>
 
                   </div>
@@ -1513,13 +1491,10 @@ export function App() {
                       )}
 
                       <div>
-                        {site.customer && (
-                          <div className="text-xs text-cyan-400 font-bold uppercase tracking-wider mb-0.5">
-                            {site.customer}
-                          </div>
-                        )}
                         <div className="flex items-center gap-2">
-                          <h3 className="font-bold text-xl text-white group-hover:text-cyan-400 transition-colors">{site.name}</h3>
+                          <h3 className="font-bold text-xl text-white group-hover:text-cyan-400 transition-colors">
+                            {site.customerName ? `${site.customerName} - ${site.name}` : site.name}
+                          </h3>
                           {site.active === false && (
                             <span className="px-2 py-0.5 text-[10px] bg-orange-900/30 text-orange-400 rounded border border-orange-900/50 flex items-center gap-1">
                               <Icons.Archive size={10} />
@@ -1697,12 +1672,6 @@ export function App() {
                       <span>🖨️</span> Full Dashboard
                     </button>
                     <button
-                      onClick={() => handlePrint('schedule')}
-                      className="w-full px-6 py-3 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"
-                    >
-                      <span>📅</span> Schedule & Chart
-                    </button>
-                    <button
                       onClick={() => handlePrint('specs')}
                       disabled={selectedRowIds.size === 0}
                       className={`w-full px-6 py-3 text-sm text-left flex items-center gap-2 ${selectedRowIds.size === 0
@@ -1711,12 +1680,6 @@ export function App() {
                         }`}
                     >
                       <span>📋</span> Asset Specs {selectedRowIds.size === 0 && '(Select assets)'}
-                    </button>
-                    <button
-                      onClick={() => { setIsPrintMenuOpen(false); setIsReportModalOpen(true); }}
-                      className="w-full px-6 py-3 text-sm text-left hover:bg-slate-600 text-slate-300 flex items-center gap-2"
-                    >
-                      <span>📄</span> Customer Report
                     </button>
                   </div>
                 )}
@@ -2272,6 +2235,7 @@ export function App() {
           }).filter(item => item.specs);
         })()}
         generatedDate={formatDate(new Date().toISOString())}
+        site={selectedSite}
       />
 
       {/* MASTER LIST PREVIEW MODAL */}

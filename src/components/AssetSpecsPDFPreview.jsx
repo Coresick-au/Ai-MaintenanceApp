@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useState } from 'react';
 import { Modal } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
@@ -10,43 +10,37 @@ export const AssetSpecsPDFPreview = ({
   isOpen,
   onClose,
   assets,
-  generatedDate
+  generatedDate,
+  site
 }) => {
-  const modalContainerRef = useRef(null);
-  const reportContentRef = useRef(null);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   if (!isOpen || !assets || assets.length === 0) return null;
 
-  const handlePrint = async (event) => {
-    let originalHTML;
+  const handlePrint = async () => {
+    setIsGenerating(true);
     try {
-      // Show loading state
-      const button = event.currentTarget;
-      originalHTML = button.innerHTML;
-      button.innerHTML = '<Icons.Loader className="animate-spin" size={18} /> Generating PDF...';
-      button.disabled = true;
-
       // Create PDF using react-pdf
       const blob = await pdf((
         <AssetSpecsPDF
           assets={assets}
           generatedDate={generatedDate}
+          site={site}
         />
       )).toBlob();
 
-      // Generate filename and download
-      const fileName = `asset-specs-${assets.length}-assets-${new Date().toISOString().split('T')[0]}.pdf`;
+      // Generate filename: YYYY-MM-DD-SiteName-AssetSpecs.pdf
+      const datePart = new Date().toISOString().split('T')[0];
+      const siteName = site?.name ? site.name.replace(/[^a-zA-Z0-9]/g, '') : 'Site';
+      const fileName = `${datePart}-${siteName}-AssetSpecs.pdf`;
       saveAs(blob, fileName);
 
+      // Reset after a short delay to let the download start
+      setTimeout(() => setIsGenerating(false), 2000);
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('Failed to generate PDF. Please try again.');
-    } finally {
-      // Reset button
-      if (event && event.currentTarget && originalHTML) {
-        event.currentTarget.innerHTML = originalHTML;
-        event.currentTarget.disabled = false;
-      }
+      setIsGenerating(false);
     }
   };
 
@@ -69,7 +63,7 @@ export const AssetSpecsPDFPreview = ({
   };
 
   return (
-    <div ref={modalContainerRef} className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
+    <div className="print-content fixed inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 print:p-0 print:bg-white print:absolute print:inset-0 print:z-[9999]">
       {/* --- PREVIEW CONTAINER (Screen Mode) --- */}
       <div className="print-content-inner bg-slate-800 w-full max-w-5xl h-[90vh] rounded-xl shadow-2xl overflow-auto flex flex-col print:h-auto print:shadow-none print:rounded-none print:w-full print:max-w-none print:bg-white">
 
@@ -80,8 +74,16 @@ export const AssetSpecsPDFPreview = ({
             <p className="text-sm text-slate-400 print:text-black">Review the layout before printing.</p>
           </div>
           <div className="flex gap-2">
-            <button onClick={handlePrint} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors">
-              <Icons.Printer size={18} /> Print to PDF
+            <button
+              onClick={handlePrint}
+              disabled={isGenerating}
+              className={`${isGenerating ? 'bg-blue-500 cursor-wait' : 'bg-blue-600 hover:bg-blue-700'} text-white px-4 py-2 rounded-lg font-bold flex items-center gap-2 transition-colors`}
+            >
+              {isGenerating ? (
+                <><Icons.Loader size={18} className="animate-spin" /> Generating PDF...</>
+              ) : (
+                <><Icons.Printer size={18} /> Print to PDF</>
+              )}
             </button>
             <button onClick={onClose} className="bg-slate-700 hover:bg-slate-600 text-slate-300 print:text-black px-4 py-2 rounded-lg font-bold transition-colors">
               Close
@@ -90,7 +92,7 @@ export const AssetSpecsPDFPreview = ({
         </div>
 
         {/* --- DOCUMENT CONTENT FOR PDF GENERATION --- */}
-        <div ref={reportContentRef} className="bg-white text-black flex-1 overflow-auto">
+        <div className="bg-white text-black flex-1 overflow-auto">
           <div className="p-8">
             <div className="max-w-4xl mx-auto">
 
@@ -100,6 +102,11 @@ export const AssetSpecsPDFPreview = ({
                 <div className="text-black font-medium text-lg">
                   {assets.length} Asset{assets.length > 1 ? 's' : ''} Selected
                 </div>
+                {site && (site.customerName || site.name || site.location) && (
+                  <div className="text-lg font-semibold text-gray-700 mt-2">
+                    {[site.customerName, site.name, site.location].filter(Boolean).join(' - ')}
+                  </div>
+                )}
                 <div className="text-sm text-black mt-2">
                   Generated: {formatDate(new Date().toISOString())}
                 </div>
