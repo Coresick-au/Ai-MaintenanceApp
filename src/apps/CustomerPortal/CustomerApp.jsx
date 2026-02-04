@@ -137,9 +137,22 @@ export const CustomerApp = ({ onBack }) => {
     const selectedCustomer = customers.find(c => c.id === selectedCustId);
     const customerManagedSites = selectedCustomer?.managedSites || [];
 
-    // Filter customers by search query and sort alphabetically
+    // Filter customers by search query (also searches managed sites) and sort alphabetically
+    const searchLower = searchQuery.toLowerCase();
     const filteredCustomers = customers
-        .filter(c => c.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+        .map(c => {
+            const customerMatches = c.name?.toLowerCase().includes(searchLower);
+            const matchingSites = (c.managedSites || []).filter(site =>
+                site.name?.toLowerCase().includes(searchLower) ||
+                site.location?.toLowerCase().includes(searchLower)
+            );
+            // Include customer if name matches OR any site matches
+            if (customerMatches || matchingSites.length > 0) {
+                return { ...c, matchingSites, customerMatches };
+            }
+            return null;
+        })
+        .filter(Boolean)
         .sort((a, b) => a.name.localeCompare(b.name));
 
     // Get contacts with reporting enabled
@@ -460,7 +473,7 @@ export const CustomerApp = ({ onBack }) => {
                             <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
                             <input
                                 type="text"
-                                placeholder="Search customers..."
+                                placeholder="Search customers & sites..."
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-3 py-2 text-sm focus:ring-1 focus:ring-cyan-500 outline-none"
@@ -474,30 +487,50 @@ export const CustomerApp = ({ onBack }) => {
                             </div>
                         )}
                         {filteredCustomers.map(cust => (
-                            <button
-                                key={cust.id}
-                                onClick={() => { setViewMode('customers'); setSelectedCustId(cust.id); }}
-                                className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${selectedCustId === cust.id ? 'bg-cyan-900/40 border border-cyan-500/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
-                                title={isSidebarCollapsed ? cust.name : ''}
-                            >
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                    {isSidebarCollapsed ? (
-                                        <span className="font-bold text-lg">{cust.name.charAt(0)}</span>
-                                    ) : (
-                                        <>
-                                            <span className="font-bold truncate">{cust.name}</span>
-                                            {cust.active === false && (
-                                                <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">Archived</span>
-                                            )}
-                                        </>
+                            <div key={cust.id} className="space-y-1">
+                                <button
+                                    onClick={() => { setViewMode('customers'); setSelectedCustId(cust.id); }}
+                                    className={`w-full text-left p-3 rounded-lg flex items-center justify-between transition-colors ${selectedCustId === cust.id ? 'bg-cyan-900/40 border border-cyan-500/50 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'}`}
+                                    title={isSidebarCollapsed ? cust.name : ''}
+                                >
+                                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        {isSidebarCollapsed ? (
+                                            <span className="font-bold text-lg">{cust.name.charAt(0)}</span>
+                                        ) : (
+                                            <>
+                                                <span className="font-bold truncate">{cust.name}</span>
+                                                {cust.active === false && (
+                                                    <span className="text-[10px] bg-orange-900/30 text-orange-400 px-1.5 py-0.5 rounded border border-orange-800">Archived</span>
+                                                )}
+                                            </>
+                                        )}
+                                    </div>
+                                    {!isSidebarCollapsed && (
+                                        <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
+                                            {getSiteCountForCustomer(cust.id)}
+                                        </span>
                                     )}
-                                </div>
-                                {!isSidebarCollapsed && (
-                                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded-full text-slate-500">
-                                        {getSiteCountForCustomer(cust.id)}
-                                    </span>
+                                </button>
+                                {/* Show matching sites when searching */}
+                                {!isSidebarCollapsed && searchQuery && cust.matchingSites?.length > 0 && !cust.customerMatches && (
+                                    <div className="ml-4 pl-3 border-l-2 border-emerald-500/30 space-y-1">
+                                        {cust.matchingSites.slice(0, 3).map(site => (
+                                            <div
+                                                key={site.id}
+                                                className="text-xs text-emerald-400 flex items-center gap-1.5 py-0.5"
+                                            >
+                                                <Icons.MapPin size={10} />
+                                                <span className="truncate">{site.name}</span>
+                                            </div>
+                                        ))}
+                                        {cust.matchingSites.length > 3 && (
+                                            <div className="text-[10px] text-slate-500 pl-4">
+                                                +{cust.matchingSites.length - 3} more sites
+                                            </div>
+                                        )}
+                                    </div>
                                 )}
-                            </button>
+                            </div>
                         ))}
                     </div>
                 </aside>

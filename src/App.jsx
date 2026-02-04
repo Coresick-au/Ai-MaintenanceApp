@@ -1828,9 +1828,9 @@ export function App() {
                             <th className="px-4 py-2 text-right cursor-pointer hover:bg-slate-700 min-w-[80px]" onClick={() => { handleSort('remaining'); setSelectedRowIds(new Set()); }}>Days {getSortIcon('remaining')}</th>
                             <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
                             <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[100px]" onClick={() => { handleSort('opStatus'); setSelectedRowIds(new Set()); }}>Op Status {getSortIcon('opStatus')}</th>
-                            <th className="px-3 py-2 text-center no-print text-xs">Analytics / Reports</th>
-                            <th className="px-3 py-2 text-center no-print text-xs">Archive</th>
-                            <th className="px-3 py-2 text-center no-print text-xs">Edit</th>
+                            {activeTab === 'service' && <th className="px-3 py-2 text-center no-print text-xs">Analytics / Reports</th>}
+                            {activeTab === 'service' && <th className="px-3 py-2 text-center no-print text-xs">Archive</th>}
+                            {activeTab === 'service' && <th className="px-3 py-2 text-center no-print text-xs">Edit</th>}
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700">
@@ -1858,45 +1858,51 @@ export function App() {
                                   }}
                                 />
                               </td>
-                              <td className="px-3 py-2 text-center no-print">
-                                <div className="flex justify-center gap-2">
-                                  <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
-                                  <button onClick={(e) => { e.stopPropagation(); setSelectedAssetId(item.id); setIsServiceReportOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-green-400" title="New Report"><Icons.FileText size={14} /></button>
-                                </div>
-                              </td>
-                              <td className="px-3 py-2 text-center no-print">
-                                <button
-                                  onClick={(e) => {
+                              {activeTab === 'service' && (
+                                <td className="px-3 py-2 text-center no-print">
+                                  <div className="flex justify-center gap-2">
+                                    <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
+                                    <button onClick={(e) => { e.stopPropagation(); setSelectedAssetId(item.id); setIsServiceReportOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-green-400" title="New Report"><Icons.FileText size={14} /></button>
+                                  </div>
+                                </td>
+                              )}
+                              {activeTab === 'service' && (
+                                <td className="px-3 py-2 text-center no-print">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      const isArchiving = item.active !== false;
+                                      const message = isArchiving
+                                        ? `Are you sure you want to archive "${item.name}"? It will be hidden from active lists but can be reactivated later.`
+                                        : `Are you sure you want to reactivate "${item.name}"?`;
+                                      if (window.confirm(message)) {
+                                        toggleAssetStatus(item, e);
+                                      }
+                                    }}
+                                    className={`p-1.5 rounded transition-colors ${item.active === false ? 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600' : 'hover:bg-slate-600 text-slate-400 hover:text-red-400'}`}
+                                    title={item.active === false ? "Restore" : "Archive"}
+                                  >
+                                    {item.active === false ? <Icons.Redo size={14} /> : <Icons.Archive size={14} />}
+                                  </button>
+                                </td>
+                              )}
+                              {activeTab === 'service' && (
+                                <td className="px-3 py-2 text-center no-print">
+                                  <button onClick={(e) => {
                                     e.stopPropagation();
-                                    const isArchiving = item.active !== false;
-                                    const message = isArchiving
-                                      ? `Are you sure you want to archive "${item.name}"? It will be hidden from active lists but can be reactivated later.`
-                                      : `Are you sure you want to reactivate "${item.name}"?`;
-                                    if (window.confirm(message)) {
-                                      toggleAssetStatus(item, e);
-                                    }
-                                  }}
-                                  className={`p-1.5 rounded transition-colors ${item.active === false ? 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600' : 'hover:bg-slate-600 text-slate-400 hover:text-red-400'}`}
-                                  title={item.active === false ? "Restore" : "Archive"}
-                                >
-                                  {item.active === false ? <Icons.Redo size={14} /> : <Icons.Archive size={14} />}
-                                </button>
-                              </td>
-                              <td className="px-3 py-2 text-center no-print">
-                                <button onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingAsset({ ...item });
-                                  // First try to match by assetId (new), then fall back to legacy matching
-                                  // Also check counterpart ID for roller assets (r- → s-)
-                                  const counterpartId = item.id.startsWith('r-') ? item.id.replace('r-', 's-') : item.id;
-                                  const specs = currentSpecData.find(s => s.assetId === item.id || s.assetId === counterpartId)
-                                    || currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
-                                  setEditingSpecs(specs || null);
-                                  setIsAssetEditModalOpen(true);
-                                }} className="p-1.5 rounded hover:bg-slate-600 text-blue-400" title="Edit Asset Details & Specs">
-                                  <Icons.Edit />
-                                </button>
-                              </td>
+                                    setEditingAsset({ ...item });
+                                    // First try to match by assetId (new), then fall back to legacy matching
+                                    // Also check counterpart ID for roller assets (r- → s-)
+                                    const counterpartId = item.id.startsWith('r-') ? item.id.replace('r-', 's-') : item.id;
+                                    const specs = currentSpecData.find(s => s.assetId === item.id || s.assetId === counterpartId)
+                                      || currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
+                                    setEditingSpecs(specs || null);
+                                    setIsAssetEditModalOpen(true);
+                                  }} className="p-1.5 rounded hover:bg-slate-600 text-blue-400" title="Edit Asset Details & Specs">
+                                    <Icons.Edit />
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>

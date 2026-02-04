@@ -2,8 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Button, SecureDeleteButton, UniversalDatePicker } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 
-// Dark Mode Styles
-const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-900 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors";
+// Dark Mode Styles - Use bg-slate-800 consistently across all inputs
+const inputClass = "w-full p-2 border border-slate-600 rounded text-sm bg-slate-800 text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors";
 const labelClass = "block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider";
 
 export const AddAssetModal = ({
@@ -115,6 +115,7 @@ export const EditAssetModal = ({
   onSaveSpecs
 }) => {
   const [showRollerHelper, setShowRollerHelper] = useState(false);
+  const [isLocked, setIsLocked] = useState(true); // Lock fields by default to prevent accidental edits
   const [rollerHelperData, setRollerHelperData] = useState({
     diameter: '',
     face: '',
@@ -139,12 +140,14 @@ export const EditAssetModal = ({
         setLocalAsset({ ...editingAsset });
         originalIdRef.current = editingAsset.id; // Capture original ID
         isInitializedRef.current = true;
+        setIsLocked(true); // Always lock fields when opening a new asset
       }
     } else if (!isOpen) {
       // Reset when modal closes
       setLocalAsset(null);
       originalIdRef.current = null;
       isInitializedRef.current = false;
+      setIsLocked(true); // Reset lock state for next open
     }
   }, [isOpen, editingAsset?.id]); // Only depend on isOpen and asset ID, not the full object
 
@@ -167,8 +170,30 @@ export const EditAssetModal = ({
         </div>
       )}
 
-      {/* Merged Asset Details & Specifications - DISABLED for roller schedule */}
-      <fieldset disabled={isRollerSchedule} className={`space-y-4 ${isRollerSchedule ? 'opacity-75' : ''}`}>
+      {/* Lock Toggle for Service Schedule */}
+      {!isRollerSchedule && (
+        <div className="mb-4 flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+          <div className="flex items-center gap-2">
+            {isLocked ? <Icons.Lock size={16} className="text-amber-400" /> : <Icons.Unlock size={16} className="text-green-400" />}
+            <span className={`text-sm font-medium ${isLocked ? 'text-amber-400' : 'text-green-400'}`}>
+              {isLocked ? 'Fields Locked' : 'Fields Unlocked - Ready to Edit'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsLocked(!isLocked)}
+            className={`px-3 py-1.5 text-xs font-bold rounded-lg border transition-all flex items-center gap-1.5 ${isLocked
+              ? 'bg-green-900/30 text-green-400 border-green-800 hover:bg-green-900/50'
+              : 'bg-amber-900/30 text-amber-400 border-amber-800 hover:bg-amber-900/50'
+              }`}
+          >
+            {isLocked ? <><Icons.Unlock size={12} /> Unlock to Edit</> : <><Icons.Lock size={12} /> Lock Fields</>}
+          </button>
+        </div>
+      )}
+
+      {/* Merged Asset Details & Specifications - DISABLED for roller schedule OR when locked */}
+      <fieldset disabled={isRollerSchedule || isLocked} className={`space-y-4 ${isRollerSchedule || isLocked ? 'opacity-75' : ''}`}>
         {/* === ASSET DETAILS (RENAMED LABELS) === */}
         <div className="space-y-3">
           <div>
@@ -475,12 +500,13 @@ export const EditAssetModal = ({
               onSave(assetToSave, activeTab);
               if (specs) onSaveSpecs(specs, assetToSave.id);
             }}
-            className="flex-[3] bg-blue-600 hover:bg-blue-500 text-white px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1"
+            className="flex-1 bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 text-sm rounded font-medium transition-all flex items-center justify-center gap-2"
           >
+            <Icons.Save size={16} />
             Save All Changes
           </button>
 
-          {/* 2. Archive/Reactivate Button (Subtle) */}
+          {/* 2. Archive/Reactivate Button (Smaller, icon-focused) */}
           <button
             type="button"
             onClick={() => {
@@ -499,15 +525,15 @@ export const EditAssetModal = ({
                 onSave(updatedAsset, activeTab);
               }
             }}
-            className={`flex-1 px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1 border ${localAsset.active !== false
+            className={`px-3 py-2 text-sm rounded font-medium transition-all flex items-center justify-center gap-1 border ${localAsset.active !== false
               ? 'bg-amber-900/30 text-amber-400 border-amber-800/50 hover:bg-amber-900/50'
               : 'bg-green-900/30 text-green-400 border-green-800/50 hover:bg-green-900/50'}`}
+            title={localAsset.active !== false ? 'Archive Asset' : 'Reactivate Asset'}
           >
-            {localAsset.active !== false ? '📦' : '✅'}
-            <span className="hidden sm:inline">{localAsset.active !== false ? 'Archive' : 'Reactivate'}</span>
+            {localAsset.active !== false ? <Icons.Archive size={16} /> : <Icons.Redo size={16} />}
           </button>
 
-          {/* 3. Delete Button (Subtle) */}
+          {/* 3. Delete Button (Smaller, icon-focused) */}
           <button
             type="button"
             onClick={() => {
@@ -517,10 +543,10 @@ export const EditAssetModal = ({
                 }
               }
             }}
-            className="flex-1 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 px-3 py-1.5 text-sm rounded font-medium transition-all flex items-center justify-center gap-1"
+            className="px-3 py-2 bg-red-900/20 text-red-400 border border-red-900/50 hover:bg-red-900/30 rounded font-medium transition-all flex items-center justify-center"
+            title="Delete Asset"
           >
-            <Icons.Trash size={14} />
-            <span className="hidden sm:inline">Delete</span>
+            <Icons.Trash size={16} />
           </button>
         </div>
       </fieldset>
