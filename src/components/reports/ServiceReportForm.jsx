@@ -22,7 +22,7 @@ const DEFAULT_TEMPLATES = [
     }
 ];
 
-export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave, initialData = null, readOnly = false }) => {
+export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave, initialData = null, readOnly = false, scheduleType = 'service' }) => {
     const [activeTab, setActiveTab] = useState('general');
     const [draftSaved, setDraftSaved] = useState(false);
 
@@ -472,6 +472,7 @@ export const ServiceReportForm = ({ site, asset, employees = [], onClose, onSave
                             employees={employees}
                             readOnly={readOnly}
                             validationErrors={validationErrors}
+                            scheduleType={scheduleType}
                         />
                     )}
 

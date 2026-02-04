@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 
-export const GeneralTab = ({ formData, onChange, site, asset, employees = [], readOnly = false, validationErrors = {} }) => {
+export const GeneralTab = ({ formData, onChange, site, asset, employees = [], readOnly = false, validationErrors = {}, scheduleType = 'service' }) => {
+    // Determine if this is a roller schedule (read-only asset fields)
+    const isRollerSchedule = scheduleType === 'roller';
+
     // Parse technicians from formData into array
     const [technicianList, setTechnicianList] = useState(() => {
         if (!formData.technicians) return [''];
@@ -163,19 +166,35 @@ export const GeneralTab = ({ formData, onChange, site, asset, employees = [], re
                 <h3 className="text-cyan-400 font-bold mb-4 uppercase text-xs">Equipment Info</h3>
                 <div>
                     <label className="text-xs text-slate-400 block mb-1">Asset Name</label>
-                    <input
-                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
-                        value={formData.assetName}
-                        onChange={e => handleChange('assetName', e.target.value)}
-                    />
+                    {isRollerSchedule ? (
+                        // READ ONLY VIEW for Roller Schedule
+                        <div className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
+                            {formData.assetName || 'N/A'}
+                        </div>
+                    ) : (
+                        // INPUT VIEW for Service Schedule
+                        <input
+                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                            value={formData.assetName}
+                            onChange={e => handleChange('assetName', e.target.value)}
+                        />
+                    )}
                 </div>
                 <div>
                     <label className="text-xs text-slate-400 block mb-1">Conveyor Number</label>
-                    <input
-                        className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
-                        value={formData.conveyorNumber}
-                        onChange={e => handleChange('conveyorNumber', e.target.value)}
-                    />
+                    {isRollerSchedule ? (
+                        // READ ONLY VIEW for Roller Schedule
+                        <div className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-sm text-slate-300">
+                            {formData.conveyorNumber || 'N/A'}
+                        </div>
+                    ) : (
+                        // INPUT VIEW for Service Schedule
+                        <input
+                            className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-sm text-white"
+                            value={formData.conveyorNumber}
+                            onChange={e => handleChange('conveyorNumber', e.target.value)}
+                        />
+                    )}
                 </div>
             </div>
 

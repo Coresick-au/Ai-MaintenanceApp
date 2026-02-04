@@ -1887,7 +1887,9 @@ export function App() {
                                   e.stopPropagation();
                                   setEditingAsset({ ...item });
                                   // First try to match by assetId (new), then fall back to legacy matching
-                                  const specs = currentSpecData.find(s => s.assetId === item.id)
+                                  // Also check counterpart ID for roller assets (r- → s-)
+                                  const counterpartId = item.id.startsWith('r-') ? item.id.replace('r-', 's-') : item.id;
+                                  const specs = currentSpecData.find(s => s.assetId === item.id || s.assetId === counterpartId)
                                     || currentSpecData.find(s => s.weigher === item.weigher || s.altCode === item.code || s.weigher === item.code);
                                   setEditingSpecs(specs || null);
                                   setIsAssetEditModalOpen(true);
@@ -1954,7 +1956,9 @@ export function App() {
                               closeFullscreen();
                               setEditingAsset({ ...selectedAsset });
                               // First try to match by assetId (new), then fall back to legacy matching
-                              const specs = currentSpecData.find(s => s.assetId === selectedAsset.id)
+                              // Also check counterpart ID for roller assets (r- → s-)
+                              const counterpartId = selectedAsset.id.startsWith('r-') ? selectedAsset.id.replace('r-', 's-') : selectedAsset.id;
+                              const specs = currentSpecData.find(s => s.assetId === selectedAsset.id || s.assetId === counterpartId)
                                 || currentSpecData.find(s => s.weigher === selectedAsset.weigher || s.altCode === selectedAsset.code || s.weigher === selectedAsset.code);
                               setEditingSpecs(specs || null);
                               setIsAssetEditModalOpen(true);
@@ -2256,6 +2260,7 @@ export function App() {
             site={selectedSite}
             asset={selectedAsset}
             employees={employees}
+            scheduleType={activeTab}
             onClose={() => {
               setIsServiceReportOpen(false);
               setEditingReportId(null);
@@ -2334,7 +2339,9 @@ export function App() {
           } else if (wizardAction === 'specs') {
             setSelectedAssetId(asset.id);
             // First try to match by assetId (new), then fall back to legacy matching
-            const specs = (site.specData || []).find(s => s.assetId === asset.id)
+            // Also check counterpart ID for roller assets (r- → s-)
+            const counterpartId = asset.id.startsWith('r-') ? asset.id.replace('r-', 's-') : asset.id;
+            const specs = (site.specData || []).find(s => s.assetId === asset.id || s.assetId === counterpartId)
               || (site.specData || []).find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
             setEditingAsset({ ...asset });
             setEditingSpecs(specs || null);
@@ -2349,6 +2356,7 @@ export function App() {
           <ServiceReportForm
             site={reportFormState.site}
             asset={reportFormState.asset}
+            scheduleType={activeTab}
             onClose={() => setReportFormState(null)}
             onSave={async (data) => {
               await handleGenerateReport(data, reportFormState.asset);

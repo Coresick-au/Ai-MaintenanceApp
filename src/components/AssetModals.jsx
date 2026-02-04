@@ -150,40 +150,66 @@ export const EditAssetModal = ({
 
   if (!isOpen || !editingAsset || !localAsset) return null;
 
-  return (
-    <Modal title="Edit Asset & Specifications" onClose={onClose}>
+  // Determine if this is a roller schedule (read-only asset fields)
+  const isRollerSchedule = activeTab === 'roller';
 
-      {/* Merged Asset Details & Specifications */}
-      <div className="space-y-4">
+  // Read-only display class for roller schedule
+  const readOnlyClass = "w-full p-2 border border-slate-700 rounded text-sm bg-slate-900 text-slate-400";
+
+  return (
+    <Modal title={isRollerSchedule ? "View Asset & Specifications" : "Edit Asset & Specifications"} onClose={onClose}>
+
+      {/* Read-only notice for roller schedule */}
+      {isRollerSchedule && (
+        <div className="mb-4 p-3 bg-amber-900/30 border border-amber-800/50 rounded-lg text-amber-400 text-sm flex items-center gap-2">
+          <span>🔒</span>
+          <span>Viewing roller schedule asset - fields are read-only. Switch to Service tab to edit.</span>
+        </div>
+      )}
+
+      {/* Merged Asset Details & Specifications - DISABLED for roller schedule */}
+      <fieldset disabled={isRollerSchedule} className={`space-y-4 ${isRollerSchedule ? 'opacity-75' : ''}`}>
         {/* === ASSET DETAILS (RENAMED LABELS) === */}
         <div className="space-y-3">
           <div>
             <label className={labelClass}>Asset Name</label>
-            <input
-              className={inputClass}
-              placeholder="Name"
-              value={localAsset.name || ''}
-              onChange={e => setLocalAsset({ ...localAsset, name: e.target.value })}
-            />
+            {isRollerSchedule ? (
+              <div className={readOnlyClass}>{localAsset.name || 'N/A'}</div>
+            ) : (
+              <input
+                className={inputClass}
+                placeholder="Name"
+                value={localAsset.name || ''}
+                onChange={e => setLocalAsset({ ...localAsset, name: e.target.value })}
+              />
+            )}
           </div>
           <div className="grid grid-cols-2 gap-2">
             <div>
               <label className={labelClass}>Weigher</label>
-              <input
-                className={inputClass}
-                placeholder="Weigher"
-                value={localAsset.weigher || ''}
-                onChange={e => setLocalAsset({ ...localAsset, weigher: e.target.value })}
-              />
+              {isRollerSchedule ? (
+                <div className={readOnlyClass}>{localAsset.weigher || 'N/A'}</div>
+              ) : (
+                <input
+                  className={inputClass}
+                  placeholder="Weigher"
+                  value={localAsset.weigher || ''}
+                  onChange={e => setLocalAsset({ ...localAsset, weigher: e.target.value })}
+                />
+              )}
             </div>
             <div>
               <label className={labelClass}>Asset Code</label>
-              <input
-                className={inputClass}
-                placeholder="Code"
-                value={localAsset.code || ''}
-                onChange={e => setLocalAsset({ ...localAsset, code: e.target.value })}
-              />
+              {isRollerSchedule ? (
+                <div className={readOnlyClass}>{localAsset.code || 'N/A'}</div>
+              ) : (
+                <input
+                  className={inputClass}
+                  placeholder="Code"
+                  value={localAsset.code || ''}
+                  onChange={e => setLocalAsset({ ...localAsset, code: e.target.value })}
+                />
+              )}
             </div>
           </div>
 
@@ -497,7 +523,7 @@ export const EditAssetModal = ({
             <span className="hidden sm:inline">Delete</span>
           </button>
         </div>
-      </div>
+      </fieldset>
 
       {/* Roller Size Entry Helper Modal */}
       {showRollerHelper && (
