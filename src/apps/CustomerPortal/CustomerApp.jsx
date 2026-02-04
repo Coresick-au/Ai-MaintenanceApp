@@ -137,10 +137,10 @@ export const CustomerApp = ({ onBack }) => {
     const selectedCustomer = customers.find(c => c.id === selectedCustId);
     const customerManagedSites = selectedCustomer?.managedSites || [];
 
-    // Filter customers by search query
-    const filteredCustomers = customers.filter(c =>
-        c.name?.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    // Filter customers by search query and sort alphabetically
+    const filteredCustomers = customers
+        .filter(c => c.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name));
 
     // Get contacts with reporting enabled
     const reportingContacts = (selectedCustomer?.contacts || []).filter(c => c.sendReports === true);

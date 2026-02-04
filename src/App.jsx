@@ -1281,22 +1281,6 @@ export function App() {
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-slate-700">
-          <div className="px-3 mb-2">
-            {showLightModeMessage && (
-              <div className="mb-2 p-2 bg-slate-700 text-white text-xs rounded-lg border border-slate-600">
-                {lightModeMessage}
-              </div>
-            )}
-            <button
-              type="button"
-              onClick={handleLightModeClick}
-              className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} text-slate-400 hover:text-white hover:bg-slate-700 relative group`}
-              title={isSidebarCollapsed ? "Light Mode" : ""}
-            >
-              <span className="text-lg">☀️</span>
-              {!isSidebarCollapsed && <span>Light Mode</span>}
-            </button>
-          </div>
 
           <div className="px-3 mb-2">
             <button

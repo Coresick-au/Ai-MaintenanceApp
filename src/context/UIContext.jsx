@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect } from 'react';
-import { LIGHT_MODE_MESSAGES, DEFAULT_SITE_FORM, DEFAULT_NOTE_INPUT, DEFAULT_NEW_ASSET, DEFAULT_SPEC_NOTE_INPUT } from '../constants/uiConstants';
+import { DEFAULT_SITE_FORM, DEFAULT_NOTE_INPUT, DEFAULT_NEW_ASSET, DEFAULT_SPEC_NOTE_INPUT } from '../constants/uiConstants';
 
 const UIContext = createContext();
 
@@ -37,37 +37,8 @@ export const UIProvider = ({ children }) => {
 
     // --- EASTER EGG ---
     const [isCooked, setIsCooked] = useState(false);
-    const [lightModeMessage, setLightModeMessage] = useState(LIGHT_MODE_MESSAGES[0]);
-    const [showLightModeMessage, setShowLightModeMessage] = useState(false);
-    const messageTimeoutRef = React.useRef(null);
 
-    const handleLightModeClick = () => {
-        // 1. Toggle Message Logic
-        if (showLightModeMessage) {
-            // If already showing, clear timeout and hide immediately
-            if (messageTimeoutRef.current) {
-                clearTimeout(messageTimeoutRef.current);
-                messageTimeoutRef.current = null;
-            }
-            setShowLightModeMessage(false);
-            return;
-        }
 
-        // 2. Cycle Messages
-        setLightModeMessage(prevMsg => {
-            let currentIndex = LIGHT_MODE_MESSAGES.indexOf(prevMsg);
-            if (currentIndex === -1) currentIndex = 0;
-            const nextIndex = (currentIndex + 1) % LIGHT_MODE_MESSAGES.length;
-            return LIGHT_MODE_MESSAGES[nextIndex];
-        });
-
-        // 3. Show Message with 2s Timer
-        setShowLightModeMessage(true);
-        messageTimeoutRef.current = setTimeout(() => {
-            setShowLightModeMessage(false);
-            messageTimeoutRef.current = null;
-        }, 2000);
-    };
 
     const closeFullscreen = () => setExpandedSection(null);
 
@@ -105,8 +76,8 @@ export const UIProvider = ({ children }) => {
             isPrintMenuOpen, setIsPrintMenuOpen,
             expandedSection, setExpandedSection,
             closeFullscreen,
-            handleLightModeClick, isCooked, setIsCooked,
-            lightModeMessage, showLightModeMessage
+            handleLightModeClick: () => { }, isCooked, setIsCooked,
+
         }}>
             {children}
         </UIContext.Provider>

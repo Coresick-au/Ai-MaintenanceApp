@@ -1,5 +1,5 @@
-import { useRef, useEffect } from 'react';
-import { MapPin, Users, Briefcase, Plus, X, FileText } from 'lucide-react';
+import { useRef, useEffect, useState, useMemo } from 'react';
+import { MapPin, Users, Briefcase, Plus, X, FileText, Search, ChevronDown } from 'lucide-react';
 import type { JobDetails as JobDetailsType, Customer, Rates } from '../../types';
 
 interface JobDetailsProps {
@@ -21,6 +21,32 @@ export default function JobDetails({
     // Auto-expanding textarea ref
     const descriptionRef = useRef<HTMLTextAreaElement>(null);
 
+    // Customer search state
+    const [customerSearch, setCustomerSearch] = useState('');
+    const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
+    const customerDropdownRef = useRef<HTMLDivElement>(null);
+
+    // Filter customers based on search query and sort alphabetically
+    const filteredCustomers = useMemo(() => {
+        let result = savedCustomers;
+        if (customerSearch.trim()) {
+            const query = customerSearch.toLowerCase();
+            result = savedCustomers.filter(c => c.name.toLowerCase().includes(query));
+        }
+        return result.sort((a, b) => a.name.localeCompare(b.name));
+    }, [savedCustomers, customerSearch]);
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (customerDropdownRef.current && !customerDropdownRef.current.contains(event.target as Node)) {
+                setIsCustomerDropdownOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
     // Auto-resize description textarea based on content
     useEffect(() => {
         const textarea = descriptionRef.current;
@@ -33,22 +59,21 @@ export default function JobDetails({
         }
     }, [jobDetails.description]);
 
-    const handleCustomerChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        const value = e.target.value;
-
-        // Check if it matches a saved customer (which could be a managed site)
-        const customer = savedCustomers.find(c => c.name === value);
+    const handleCustomerSelect = (customerName: string) => {
+        const customer = savedCustomers.find(c => c.name === customerName);
         if (customer) {
             // Auto-populate location if this is a managed site
             const location = customer.managedSites && customer.managedSites.length > 0
                 ? customer.managedSites[0].location
                 : jobDetails.location;
 
-            setJobDetails({ ...jobDetails, customer: value, location });
+            setJobDetails({ ...jobDetails, customer: customerName, location });
             setRates(customer.rates);
         } else {
-            setJobDetails({ ...jobDetails, customer: value });
+            setJobDetails({ ...jobDetails, customer: customerName });
         }
+        setIsCustomerDropdownOpen(false);
+        setCustomerSearch('');
     };
 
     const addTechnician = () => {
@@ -76,22 +101,54 @@ export default function JobDetails({
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-                {/* Customer Dropdown */}
-                <div>
+                {/* Customer Searchable Dropdown */}
+                <div className="relative" ref={customerDropdownRef}>
                     <label className="block text-sm font-medium text-slate-300 mb-1 flex items-center gap-2">
                         <Briefcase size={16} /> Customer
                     </label>
-                    <select
-                        disabled={isLocked}
-                        value={jobDetails.customer}
-                        onChange={handleCustomerChange}
-                        className={`w-full p-2 border rounded-lg bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''} ${highlightMissingFields && !jobDetails.customer ? 'border-danger ring-1 ring-danger' : 'border-slate-700 hover:border-accent-primary'}`}
-                    >
-                        <option value="">Select a customer...</option>
-                        {savedCustomers.map(c => (
-                            <option key={c.id} value={c.name}>{c.name}</option>
-                        ))}
-                    </select>
+                    <div className="relative">
+                        <input
+                            type="text"
+                            disabled={isLocked}
+                            value={isCustomerDropdownOpen ? customerSearch : (jobDetails.customer || '')}
+                            onChange={(e) => {
+                                setCustomerSearch(e.target.value);
+                                if (!isCustomerDropdownOpen) setIsCustomerDropdownOpen(true);
+                            }}
+                            onFocus={() => !isLocked && setIsCustomerDropdownOpen(true)}
+                            onKeyDown={(e) => {
+                                if (e.key === 'Escape') {
+                                    setIsCustomerDropdownOpen(false);
+                                    setCustomerSearch('');
+                                } else if (e.key === 'Enter' && filteredCustomers.length === 1) {
+                                    handleCustomerSelect(filteredCustomers[0].name);
+                                }
+                            }}
+                            placeholder="Search customers..."
+                            className={`w-full p-2 pr-8 border rounded-lg bg-bg-tertiary text-slate-200 focus:ring-2 focus:ring-accent-primary outline-none transition-all ${isLocked ? 'bg-bg-tertiary/50 opacity-50 text-slate-400' : ''} ${highlightMissingFields && !jobDetails.customer ? 'border-danger ring-1 ring-danger' : 'border-slate-700 hover:border-accent-primary'}`}
+                        />
+                        <div className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                            {isCustomerDropdownOpen ? <Search size={16} /> : <ChevronDown size={16} />}
+                        </div>
+                    </div>
+                    {isCustomerDropdownOpen && !isLocked && (
+                        <div className="absolute z-50 w-full mt-1 max-h-60 overflow-y-auto bg-bg-tertiary border border-slate-700 rounded-lg shadow-lg">
+                            {filteredCustomers.length === 0 ? (
+                                <div className="p-3 text-slate-400 text-sm text-center">No customers found</div>
+                            ) : (
+                                filteredCustomers.map(c => (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => handleCustomerSelect(c.name)}
+                                        className={`w-full text-left px-3 py-2 hover:bg-accent-primary/20 text-slate-200 transition-colors ${jobDetails.customer === c.name ? 'bg-accent-primary/30 font-medium' : ''}`}
+                                    >
+                                        {c.name}
+                                    </button>
+                                ))
+                            )}
+                        </div>
+                    )}
                     {/* Customer Notes Display */}
                     {selectedCustomer?.customerNotes && (
                         <div className="mt-2 text-xs text-cyan-400">
@@ -249,6 +306,6 @@ export default function JobDetails({
                     />
                 </div>
             </div>
-        </div>
+        </div >
     );
 }

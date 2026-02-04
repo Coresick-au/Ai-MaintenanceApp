@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, User, UserPlus, Save, Check, MapPin, Building2, Layout, Plus } from 'lucide-react';
+import { Trash2, User, UserPlus, Save, Check, MapPin, Building2, Layout, Plus, Search, X } from 'lucide-react';
 import RatesConfig from './RatesConfig';
 import type { Customer, Rates, Contact, ManagedSite } from '../types';
 // @ts-ignore
@@ -88,6 +88,7 @@ export default function CustomerDashboard({
     } = useGlobalData();
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [editName, setEditName] = useState('');
     const [editRates, setEditRates] = useState<Rates>(DEFAULT_RATES);
     const [editContacts, setEditContacts] = useState<Contact[]>([]);
@@ -166,25 +167,52 @@ export default function CustomerDashboard({
 
     const selectedCustomer = customers.find((c: Customer) => c.id === selectedId);
 
+    const filteredCustomers = (customers as Customer[])
+        .filter(c => c.name.toLowerCase().includes(searchQuery.toLowerCase()))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
     return (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
             {/* Sidebar List */}
             <div className="bg-gray-800 rounded-lg shadow-sm border border-gray-700 flex flex-col">
-                <div className="p-4 border-b border-gray-600 flex justify-between items-center">
-                    <h2 className="font-semibold text-slate-200">Customers</h2>
-                    <button
-                        onClick={handleAddCustomer}
-                        className="bg-primary-600 hover:bg-primary-500 text-white p-2 rounded transition-colors"
-                        title="Add New Customer"
-                    >
-                        <UserPlus size={16} />
-                    </button>
+                <div className="p-4 border-b border-gray-600 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                        <h2 className="font-semibold text-slate-200">Customers</h2>
+                        <button
+                            onClick={handleAddCustomer}
+                            className="bg-primary-600 hover:bg-primary-500 text-white p-2 rounded transition-colors"
+                            title="Add New Customer"
+                        >
+                            <UserPlus size={16} />
+                        </button>
+                    </div>
+                    {/* Search Bar */}
+                    <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={14} />
+                        <input
+                            type="text"
+                            placeholder="Search customers..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-gray-900/50 border border-gray-600 rounded-md pl-9 pr-8 py-1.5 text-sm text-slate-200 focus:ring-1 focus:ring-primary-500 outline-none placeholder:text-slate-500"
+                        />
+                        {searchQuery && (
+                            <button
+                                onClick={() => setSearchQuery('')}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300"
+                            >
+                                <X size={14} />
+                            </button>
+                        )}
+                    </div>
                 </div>
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                    {customers.length === 0 && (
-                        <p className="text-center text-slate-400 py-4 text-sm">No customers yet.</p>
+                    {filteredCustomers.length === 0 && (
+                        <p className="text-center text-slate-400 py-4 text-sm">
+                            {searchQuery ? 'No customers found' : 'No customers yet.'}
+                        </p>
                     )}
-                    {(customers as Customer[]).map(c => (
+                    {filteredCustomers.map(c => (
                         <div
                             key={c.id}
                             onClick={() => handleSelect(c)}

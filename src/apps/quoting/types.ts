@@ -1,4 +1,4 @@
-export type Status = 'draft' | 'quoted' | 'invoice' | 'closed';
+export type Status = 'draft' | 'quoted' | 'invoice' | 'closed' | 'archived';
 
 export interface Rates {
     siteNormal: number;

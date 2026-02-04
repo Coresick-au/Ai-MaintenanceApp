@@ -1,4 +1,4 @@
-import { Copy, Eye, ExternalLink, X, Plus, TrendingUp } from 'lucide-react';
+import { Copy, Eye, ExternalLink, X, Plus, TrendingUp, Archive } from 'lucide-react';
 import { useState } from 'react';
 import { useQuote } from '../hooks/useQuote';
 import ProfitabilityChart from './ProfitabilityChart';
@@ -347,6 +347,38 @@ export default function Summary({ quote }: SummaryProps) {
                         className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-amber-700 font-medium"
                     >
                         Unlock to Edit
+                    </button>
+                </div>
+            )}
+            {status === 'archived' && (
+                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-slate-600 flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-slate-400">
+                        <Archive size={16} />
+                        <span className="text-sm font-medium">This quote has been archived</span>
+                    </div>
+                    <button
+                        onClick={() => quote.setStatus('draft')}
+                        className="bg-slate-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-slate-500 font-medium"
+                    >
+                        Restore to Draft
+                    </button>
+                </div>
+            )}
+            {(status === 'draft' || status === 'quoted') && (
+                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700 flex justify-between items-center">
+                    <div className="flex items-center gap-2 text-slate-400">
+                        <span className="text-sm">Job not proceeding?</span>
+                    </div>
+                    <button
+                        onClick={() => {
+                            if (confirm('Archive this quote? Archived quotes can be restored later.')) {
+                                quote.setStatus('archived');
+                            }
+                        }}
+                        className="bg-slate-700 text-slate-300 px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-slate-600 font-medium border border-slate-600"
+                    >
+                        <Archive size={14} />
+                        Archive Quote
                     </button>
                 </div>
             )}

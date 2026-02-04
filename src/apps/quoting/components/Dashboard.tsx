@@ -7,7 +7,7 @@ import CustomerDashboard from './CustomerDashboard';
 import TechnicianDashboard from './TechnicianDashboard';
 import QuoteValueChart from './QuoteValueChart';
 
-const STATUS_OPTIONS = ['draft', 'quoted', 'invoice', 'closed'] as const;
+const STATUS_OPTIONS = ['draft', 'quoted', 'invoice', 'closed', 'archived'] as const;
 type StatusType = typeof STATUS_OPTIONS[number];
 
 // Load saved filters from localStorage
@@ -363,7 +363,8 @@ export default function Dashboard({
                                                         <div className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${quote.status === 'draft' ? 'bg-slate-700 text-slate-300' :
                                                             quote.status === 'quoted' ? 'bg-amber-600 text-amber-50' :
                                                                 quote.status === 'invoice' ? 'bg-purple-600 text-purple-50' :
-                                                                    'bg-emerald-600 text-emerald-50'
+                                                                    quote.status === 'archived' ? 'bg-slate-800 text-slate-500' :
+                                                                        'bg-emerald-600 text-emerald-50'
                                                             }`}>
                                                             {quote.status}
                                                         </div>
@@ -377,7 +378,7 @@ export default function Dashboard({
                                                 </div>
 
                                                 {/* Job Number */}
-                                                <h3 className="text-lg font-bold text-slate-200 mb-1">
+                                                <h3 className={`text-lg font-bold mb-1 ${quote.status === 'archived' ? 'text-slate-500 line-through' : 'text-slate-200'}`}>
                                                     {quote.jobDetails.jobNo ? `JOB-${quote.jobDetails.jobNo}` : 'JOB-PENDING'}
                                                 </h3>
 
@@ -404,9 +405,10 @@ export default function Dashboard({
                                                     </div>
                                                     <div className="text-right">
                                                         <div className="text-xs text-slate-500 uppercase tracking-wider">Value</div>
-                                                        <div className={`text-sm font-bold ${quote.status === 'quoted' ? 'text-amber-400' :
-                                                            quote.status === 'invoice' || quote.status === 'closed' ? 'text-emerald-400' :
-                                                                'text-slate-400'
+                                                        <div className={`text-sm font-bold ${quote.status === 'archived' ? 'text-slate-500' :
+                                                            quote.status === 'quoted' ? 'text-amber-400' :
+                                                                quote.status === 'invoice' || quote.status === 'closed' ? 'text-emerald-400' :
+                                                                    'text-slate-400'
                                                             }`}>
                                                             {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0 }).format(quoteTotal)}
                                                         </div>

@@ -21,6 +21,7 @@ export default function Layout({ children, activeTab, setActiveTab, status, tota
             case 'quoted': return <span className="bg-success/20 text-success text-xs px-2 py-1 rounded-full font-bold">QUOTE IN SYSTEM</span>;
             case 'invoice': return <span className="bg-purple-900/20 text-purple-300 text-xs px-2 py-1 rounded-full font-bold">DRAFT INVOICE</span>;
             case 'closed': return <span className="bg-emerald-900/20 text-emerald-300 text-xs px-2 py-1 rounded-full font-bold">INVOICE CLOSED</span>;
+            case 'archived': return <span className="bg-slate-700/50 text-slate-400 text-xs px-2 py-1 rounded-full font-bold">ARCHIVED</span>;
             default: return null;
         }
     };
@@ -31,6 +32,7 @@ export default function Layout({ children, activeTab, setActiveTab, status, tota
             case 'quoted': return 'Submitted Quote';
             case 'invoice': return 'Invoice';
             case 'closed': return 'Closed Invoice';
+            case 'archived': return 'Archived Quote';
             default: return 'Quote Builder';
         }
     };
@@ -41,6 +43,7 @@ export default function Layout({ children, activeTab, setActiveTab, status, tota
             case 'quoted': return 'Quoted';
             case 'invoice': return 'Draft Invoice';
             case 'closed': return 'Closed Invoice';
+            case 'archived': return 'Archived';
             default: return 'Quote Manager';
         }
     };
