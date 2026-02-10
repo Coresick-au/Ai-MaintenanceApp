@@ -76,16 +76,30 @@ const DEFAULT_RATES: Rates = {
 };
 
 export default function CustomerDashboard({
-    saveAsDefaults, resetToDefaults, savedDefaultRates
+    savedCustomers: propSavedCustomers,
+    saveCustomer: propSaveCustomer,
+    deleteCustomer: propDeleteCustomer,
+    saveAsDefaults,
+    resetToDefaults,
+    savedDefaultRates
 }: CustomerDashboardProps) {
     const {
-        customers,
+        customers: globalCustomers,
         addCustomer,
-        updateCustomer,
+        updateCustomer: globalUpdateCustomer,
         // deleteCustomer removed - customers managed in Customer Portal app
         addManagedSite,
         deleteManagedSite
     } = useGlobalData();
+
+    // Use props if provided (for managed site support), otherwise fall back to global context
+    const customers = propSavedCustomers || globalCustomers;
+    const updateCustomer = propSaveCustomer ? async (id: string, data: any) => {
+        const customer = customers.find((c: Customer) => c.id === id);
+        if (customer) {
+            await propSaveCustomer({ ...customer, ...data });
+        }
+    } : globalUpdateCustomer;
 
     const [selectedId, setSelectedId] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -93,6 +107,7 @@ export default function CustomerDashboard({
     const [editRates, setEditRates] = useState<Rates>(DEFAULT_RATES);
     const [editContacts, setEditContacts] = useState<Contact[]>([]);
     const [editIsLocked, setEditIsLocked] = useState(false);
+    const [editLockedAt, setEditLockedAt] = useState<string | undefined>(undefined);
     const [showDefaultRates, setShowDefaultRates] = useState(false);
     const [saveSuccess, setSaveSuccess] = useState(false);
 
@@ -110,18 +125,20 @@ export default function CustomerDashboard({
 
     // Unsaved changes tracking
     const originalRatesRef = useRef<Rates | null>(null);
+    const originalIsLockedRef = useRef<boolean>(false);
     const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-    // Detect if rates have been modified
+    // Detect if rates or lock state have been modified
     useEffect(() => {
         if (!originalRatesRef.current || !selectedId) {
             setHasUnsavedChanges(false);
             return;
         }
 
-        const hasChanges = JSON.stringify(editRates) !== JSON.stringify(originalRatesRef.current);
-        setHasUnsavedChanges(hasChanges);
-    }, [editRates, selectedId]);
+        const ratesChanged = JSON.stringify(editRates) !== JSON.stringify(originalRatesRef.current);
+        const lockChanged = editIsLocked !== originalIsLockedRef.current;
+        setHasUnsavedChanges(ratesChanged || lockChanged);
+    }, [editRates, editIsLocked, selectedId]);
 
     // Warn before leaving page with unsaved changes
     useEffect(() => {
@@ -148,8 +165,10 @@ export default function CustomerDashboard({
         const customerRates = customer.rates || savedDefaultRates;
         setEditRates(customerRates);
         originalRatesRef.current = JSON.parse(JSON.stringify(customerRates)); // Deep copy
+        originalIsLockedRef.current = customer.isLocked || false; // Track original lock state
         setEditContacts(customer.contacts || []);
         setEditIsLocked(customer.isLocked || false);
+        setEditLockedAt(customer.lockedAt);
         setSaveSuccess(false);
         setActiveTab('details'); // Reset to details on select
         setIsAddingSite(false);
@@ -177,13 +196,21 @@ export default function CustomerDashboard({
         const customer = customers.find((c: Customer) => c.id === selectedId);
         if (!customer) return;
 
+        // Update lockedAt timestamp if rates are being locked
+        const newLockedAt = editIsLocked ? (editLockedAt || new Date().toISOString()) : undefined;
+
         await updateCustomer(selectedId, {
             rates: editRates,
-            isLocked: editIsLocked
+            isLocked: editIsLocked,
+            lockedAt: newLockedAt
         });
+
+        // Update local state with new timestamp
+        setEditLockedAt(newLockedAt);
 
         // Reset unsaved changes tracking
         originalRatesRef.current = JSON.parse(JSON.stringify(editRates));
+        originalIsLockedRef.current = editIsLocked;
         setHasUnsavedChanges(false);
 
         setSaveSuccess(true);
@@ -212,6 +239,30 @@ export default function CustomerDashboard({
             if (!confirmLeave) return;
         }
         setActiveTab(newTab);
+    };
+
+    const handleLockChange = async (isLocked: boolean) => {
+        const newLockedAt = isLocked ? new Date().toISOString() : undefined;
+
+        setEditIsLocked(isLocked);
+        setEditLockedAt(newLockedAt);
+
+        // Auto-save when lock state changes
+        if (selectedId) {
+            await updateCustomer(selectedId, {
+                rates: editRates,
+                isLocked: isLocked,
+                lockedAt: newLockedAt
+            });
+
+            // Update tracking refs after auto-save
+            originalIsLockedRef.current = isLocked;
+            setHasUnsavedChanges(false);
+
+            // Show success feedback
+            setSaveSuccess(true);
+            setTimeout(() => setSaveSuccess(false), 2000);
+        }
     };
 
     const selectedCustomer = customers.find((c: Customer) => c.id === selectedId);
@@ -343,7 +394,7 @@ export default function CustomerDashboard({
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
                                         {/* Contacts */}
                                         <div>
-                                            <label className="block text-sm font-medium text-slate-300 mb-2 flex items-center gap-2">
+                                            <label className="flex items-center gap-2 text-sm font-medium text-slate-300 mb-2">
                                                 <UserPlus size={16} /> Main Contacts
                                             </label>
                                             <div className="bg-gray-700/30 p-4 rounded border border-gray-600 min-h-[100px]">
@@ -389,10 +440,13 @@ export default function CustomerDashboard({
                                             saveAsDefaults={saveAsDefaults}
                                             resetToDefaults={() => setEditRates(savedDefaultRates)}
                                             isLocked={editIsLocked}
-                                            onLockChange={setEditIsLocked}
-                                            onSaveCustomer={handleSaveRates}
+                                            lockedAt={editLockedAt}
+                                            onLockChange={handleLockChange}
+                                            onSaveCustomer={hasUnsavedChanges ? handleSaveRates : undefined}
                                             hasUnsavedChanges={hasUnsavedChanges}
                                             saveSuccess={saveSuccess}
+                                            title="Customer Default Rates"
+                                            description={`Default rates for ${editName}. These rates will be used for new quotes. ${selectedCustomer?.managedSites && selectedCustomer.managedSites.length > 0 ? 'Individual sites may have their own custom rates.' : ''}`}
                                         />
                                     </div>
                                 </div>

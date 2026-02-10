@@ -1,7 +1,7 @@
 
 import type { Rates } from '../types';
 import { Lock, Unlock, Calculator, PlusCircle, Save, RotateCcw, TrendingUp, Check } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface RatesConfigProps {
     rates: Rates;
@@ -9,6 +9,7 @@ interface RatesConfigProps {
     saveAsDefaults?: (rates: Rates) => void;
     resetToDefaults?: () => void;
     isLocked?: boolean;
+    lockedAt?: string; // ISO timestamp of when rates were locked
     onLockChange?: (isLocked: boolean) => void;
     /** Compact mode hides the main header - use when nested inside another panel */
     compact?: boolean;
@@ -16,9 +17,13 @@ interface RatesConfigProps {
     onSaveCustomer?: () => void;
     hasUnsavedChanges?: boolean;
     saveSuccess?: boolean;
+    /** Custom title for the rates section */
+    title?: string;
+    /** Custom description for the rates section */
+    description?: string;
 }
 
-export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false, onLockChange, compact = false, onSaveCustomer, hasUnsavedChanges = false, saveSuccess = false }: RatesConfigProps) {
+export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false, lockedAt, onLockChange, compact = false, onSaveCustomer, hasUnsavedChanges = false, saveSuccess = false, title, description }: RatesConfigProps) {
     const [isLocked, setIsLocked] = useState(propIsLocked);
     const [calcKm, setCalcKm] = useState<number>(0);
     const [calcHours, setCalcHours] = useState<number>(0);
@@ -26,6 +31,11 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
 
     // Profit Target State
     const [targetMargin, setTargetMargin] = useState<number>(0);
+
+    // Sync local lock state with prop when it changes (e.g., after page refresh)
+    useEffect(() => {
+        setIsLocked(propIsLocked);
+    }, [propIsLocked]);
 
     const handleUnlock = () => {
         // Only show confirmation if this was manually locked before (not initial state)
@@ -82,68 +92,89 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
         <div className={compact ? '' : 'bg-gray-800 p-6 rounded-lg shadow-sm border border-gray-700'}>
             {/* Header - hidden in compact mode */}
             {!compact && (
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                    <div>
-                        <h2 className="text-xl font-bold uppercase text-slate-100 tracking-wider">Current Quote Rates Configuration</h2>
-                        <p className="text-sm text-slate-400 mt-1">Rates configured here apply exclusively to the current active quote and will not modify customer default profiles.</p>
+                <div className="mb-6">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                        <div>
+                            <h2 className="text-xl font-bold uppercase text-slate-100 tracking-wider">
+                                {title || 'Current Quote Rates Configuration'}
+                            </h2>
+                            <p className="text-sm text-slate-400 mt-1">
+                                {description || 'Rates configured here apply exclusively to the current active quote and will not modify customer default profiles.'}
+                            </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            {/* Default Management Buttons */}
+                            {!isLocked && (saveAsDefaults || resetToDefaults) && (
+                                <div className="flex items-center gap-2 mr-4 border-r pr-4 border-gray-600">
+                                    {resetToDefaults && (
+                                        <button
+                                            onClick={handleResetDefaults}
+                                            className="text-slate-400 hover:text-primary-400 px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 hover:bg-gray-700"
+                                            title="Load system default rates"
+                                        >
+                                            <RotateCcw size={16} /> Load Defaults
+                                        </button>
+                                    )}
+                                    {saveAsDefaults && (
+                                        <button
+                                            onClick={handleSaveDefaults}
+                                            className="text-slate-400 hover:text-primary-400 px-3 py-1.5 rounded text-sm font-medium flex items-center gap-1.5 hover:bg-gray-700"
+                                            title="Save current rates as system defaults"
+                                        >
+                                            <Save size={16} /> Set as Defaults
+                                        </button>
+                                    )}
+                                </div>
+                            )}
+
+                            {onSaveCustomer && (
+                                <button
+                                    onClick={onSaveCustomer}
+                                    className={`px-4 py-2 rounded flex items-center gap-1.5 font-medium text-sm text-white transition-all min-w-[100px] justify-center ${
+                                        saveSuccess ? 'bg-green-600 hover:bg-green-700' :
+                                        hasUnsavedChanges ? 'bg-amber-600 hover:bg-amber-500 animate-pulse' :
+                                        'bg-primary-600 hover:bg-primary-500'
+                                    }`}
+                                >
+                                    {saveSuccess ? <><Check size={16} /> Saved!</> :
+                                     hasUnsavedChanges ? <><Save size={16} /> Save</> :
+                                     <><Save size={16} /> Save</>}
+                                </button>
+                            )}
+
+                            {isLocked ? (
+                                <button
+                                    onClick={handleUnlock}
+                                    className="bg-amber-600 text-white px-4 py-2 rounded flex items-center gap-1.5 hover:bg-amber-700 font-medium text-sm min-w-[100px] justify-center"
+                                >
+                                    <Unlock size={16} /> Unlock
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={handleLock}
+                                    className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1.5 hover:bg-green-700 font-medium text-sm min-w-[100px] justify-center"
+                                >
+                                    <Lock size={16} /> Lock
+                                </button>
+                            )}
+                        </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        {/* Default Management Buttons */}
-                        {!isLocked && (saveAsDefaults || resetToDefaults) && (
-                            <div className="flex items-center gap-2 mr-4 border-r pr-4 border-gray-600">
-                                {resetToDefaults && (
-                                    <button
-                                        onClick={handleResetDefaults}
-                                        className="text-slate-400 hover:text-primary-400 px-2 py-1.5 rounded text-xs font-medium flex items-center gap-1 hover:bg-gray-700"
-                                        title="Load system default rates"
-                                    >
-                                        <RotateCcw size={14} /> Load Defaults
-                                    </button>
-                                )}
-                                {saveAsDefaults && (
-                                    <button
-                                        onClick={handleSaveDefaults}
-                                        className="text-slate-400 hover:text-primary-400 px-2 py-1.5 rounded text-xs font-medium flex items-center gap-1 hover:bg-gray-700"
-                                        title="Save current rates as system defaults"
-                                    >
-                                        <Save size={14} /> Set as Defaults
-                                    </button>
-                                )}
-                            </div>
-                        )}
-
-                        {onSaveCustomer && (
-                            <button
-                                onClick={onSaveCustomer}
-                                className={`px-3 py-1.5 rounded flex items-center gap-1.5 font-medium text-sm text-white transition-all ${
-                                    saveSuccess ? 'bg-green-600 hover:bg-green-700' :
-                                    hasUnsavedChanges ? 'bg-amber-600 hover:bg-amber-500 animate-pulse' :
-                                    'bg-primary-600 hover:bg-primary-500'
-                                }`}
-                            >
-                                {saveSuccess ? <><Check size={16} /> Saved!</> :
-                                 hasUnsavedChanges ? <><Save size={16} /> Save Changes</> :
-                                 <><Save size={16} /> Save</>}
-                            </button>
-                        )}
-
-                        {isLocked ? (
-                            <button
-                                onClick={handleUnlock}
-                                className="bg-amber-600 text-white px-3 py-1.5 rounded flex items-center gap-1.5 hover:bg-amber-700 font-medium text-sm"
-                            >
-                                <Unlock size={16} /> Unlock
-                            </button>
-                        ) : (
-                            <button
-                                onClick={handleLock}
-                                className="bg-green-600 text-white px-3 py-1.5 rounded flex items-center gap-1.5 hover:bg-green-700 font-medium text-sm"
-                            >
-                                <Lock size={16} /> Lock Rates
-                            </button>
-                        )}
-                    </div>
+                    {/* Locked timestamp - below buttons */}
+                    {isLocked && lockedAt && (
+                        <div className="flex justify-end">
+                            <span className="text-xs text-slate-400 bg-slate-800/50 px-2 py-1 rounded">
+                                🔒 Locked: {new Date(lockedAt).toLocaleString('en-AU', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    year: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                })}
+                            </span>
+                        </div>
+                    )}
                 </div>
             )}
 

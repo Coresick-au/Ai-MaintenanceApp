@@ -832,7 +832,16 @@ export const CustomerApp = ({ onBack }) => {
                                                                     alert("Please ask a manager to delete this site.");
                                                                     return;
                                                                 }
-                                                                await deleteSite(site.id);
+
+                                                                if (window.confirm(`Are you sure you want to delete "${site.name}"?\n\n⚠️ This action cannot be undone.\n\nThe site will be permanently removed from this customer.`)) {
+                                                                    try {
+                                                                        await deleteManagedSite(selectedCustId, site.id);
+                                                                        alert(`✅ Site "${site.name}" has been deleted successfully.`);
+                                                                    } catch (error) {
+                                                                        console.error('Failed to delete site:', error);
+                                                                        alert(`❌ Failed to delete site "${site.name}". Please try again.\n\nError: ${error.message}`);
+                                                                    }
+                                                                }
                                                             }}
                                                             className="text-red-400 hover:text-red-300 transition p-1"
                                                             title="Delete site"
