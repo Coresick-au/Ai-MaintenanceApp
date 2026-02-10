@@ -1,4 +1,4 @@
-import { Copy, Eye, ExternalLink, X, Plus, TrendingUp, Archive } from 'lucide-react';
+import { Copy, Eye, ExternalLink, X, Plus, TrendingUp, Archive, Save, FileCheck, Lock, Unlock } from 'lucide-react';
 import { useState } from 'react';
 import { useQuote } from '../hooks/useQuote';
 import ProfitabilityChart from './ProfitabilityChart';
@@ -324,30 +324,60 @@ export default function Summary({ quote }: SummaryProps) {
         <div className="space-y-6">
             {/* Header with Finalize Buttons */}
             {status === 'invoice' && (
-                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700 flex justify-between items-center">
-                    <div className="flex items-center gap-2 bg-purple-900/20 px-3 py-1.5 rounded border border-purple-700 text-purple-300">
-                        <span className="text-sm font-medium">Invoice Mode - Ready to Finalize</span>
+                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700">
+                    <div className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-2 bg-purple-900/20 px-3 py-1.5 rounded border border-purple-700 text-purple-300">
+                            <Unlock size={14} />
+                            <span className="text-sm font-medium">Invoice Mode - Ready to Finalize</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (confirm("Are you sure you want to edit this invoice? This will unlock it for modifications.")) {
+                                        quote.setStatus('draft');
+                                    }
+                                }}
+                                className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-amber-700 font-medium"
+                            >
+                                <Unlock size={16} /> Edit Invoice
+                            </button>
+                            <button
+                                onClick={() => quote.setStatus('closed')}
+                                disabled={isLocked}
+                                className="bg-emerald-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-emerald-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                <FileCheck size={18} /> Finalize & Close
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => quote.setStatus('closed')}
-                        disabled={isLocked}
-                        className="bg-emerald-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-emerald-700 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        Finalize & Close
-                    </button>
                 </div>
             )}
             {status === 'closed' && (
-                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-emerald-400">
-                        <span className="text-sm font-medium">✓ Invoice Closed</span>
+                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700">
+                    <div className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Lock size={14} className="text-emerald-400" />
+                            <span className="text-sm font-medium text-emerald-400">✓ Invoice Closed</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (confirm("Are you sure you want to edit this closed invoice? This will revert it to draft status.")) {
+                                        quote.setStatus('draft');
+                                    }
+                                }}
+                                className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-amber-700 font-medium"
+                            >
+                                <Unlock size={16} /> Edit Invoice
+                            </button>
+                            <button
+                                onClick={() => quote.setStatus('invoice')}
+                                className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-amber-700 font-medium"
+                            >
+                                <Unlock size={16} /> Unlock to Edit
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => quote.setStatus('invoice')}
-                        className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-amber-700 font-medium"
-                    >
-                        Unlock to Edit
-                    </button>
                 </div>
             )}
             {status === 'archived' && (
@@ -364,22 +394,78 @@ export default function Summary({ quote }: SummaryProps) {
                     </button>
                 </div>
             )}
-            {(status === 'draft' || status === 'quoted') && (
-                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700 flex justify-between items-center">
-                    <div className="flex items-center gap-2 text-slate-400">
-                        <span className="text-sm">Job not proceeding?</span>
+            {status === 'draft' && (
+                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700">
+                    <div className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-2 text-slate-400">
+                            <span className="text-sm">Ready to save this quote?</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (!quote.jobDetails.customer) {
+                                        alert("Please enter Customer Name before saving.");
+                                        return;
+                                    }
+                                    quote.setStatus('quoted');
+                                    alert("Quote saved to system! It is now locked. Convert to Invoice to edit actuals.");
+                                }}
+                                className="bg-green-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-green-700 font-medium"
+                            >
+                                <Save size={18} /> Add Quote to System
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (confirm('Archive this quote? Archived quotes can be restored later.')) {
+                                        quote.setStatus('archived');
+                                    }
+                                }}
+                                className="bg-slate-700 text-slate-300 px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-slate-600 font-medium border border-slate-600"
+                            >
+                                <Archive size={14} />
+                                Archive
+                            </button>
+                        </div>
                     </div>
-                    <button
-                        onClick={() => {
-                            if (confirm('Archive this quote? Archived quotes can be restored later.')) {
-                                quote.setStatus('archived');
-                            }
-                        }}
-                        className="bg-slate-700 text-slate-300 px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-slate-600 font-medium border border-slate-600"
-                    >
-                        <Archive size={14} />
-                        Archive Quote
-                    </button>
+                </div>
+            )}
+            {status === 'quoted' && (
+                <div className="bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-700">
+                    <div className="flex justify-between items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <Lock size={14} className="text-slate-400" />
+                            <span className="text-sm text-slate-400">Quote is Locked</span>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => {
+                                    if (confirm("Are you sure you want to unlock this quote? It will revert to draft status.")) {
+                                        quote.setStatus('draft');
+                                    }
+                                }}
+                                className="bg-amber-600 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-amber-700 font-medium"
+                            >
+                                <Unlock size={16} /> Unlock to Edit
+                            </button>
+                            <button
+                                onClick={() => quote.setStatus('invoice')}
+                                className="bg-purple-600 text-white px-4 py-2 rounded shadow flex items-center gap-2 hover:bg-purple-700 font-medium"
+                            >
+                                <FileCheck size={18} /> Convert to Draft Invoice
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (confirm('Archive this quote? Archived quotes can be restored later.')) {
+                                        quote.setStatus('archived');
+                                    }
+                                }}
+                                className="bg-slate-700 text-slate-300 px-3 py-1.5 rounded text-sm flex items-center gap-2 hover:bg-slate-600 font-medium border border-slate-600"
+                            >
+                                <Archive size={14} />
+                                Archive
+                            </button>
+                        </div>
+                    </div>
                 </div>
             )}
 
@@ -700,15 +786,56 @@ export default function Summary({ quote }: SummaryProps) {
                                 <label className="block text-sm font-medium text-slate-300 mb-1">
                                     PO Amount
                                 </label>
-                                <div className="relative">
-                                    <span className="absolute left-3 top-2.5 text-slate-400">$</span>
-                                    <input
-                                        type="number"
-                                        value={jobDetails.poAmount || ''}
-                                        onChange={(e) => quote.setJobDetails({ ...jobDetails, poAmount: parseFloat(e.target.value) || undefined })}
-                                        className="w-full pl-7 p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
-                                        placeholder="0.00"
-                                    />
+                                <div className="flex gap-2">
+                                    <div className="relative flex-1">
+                                        <span className="absolute left-3 top-2.5 text-slate-400">$</span>
+                                        <input
+                                            type="number"
+                                            value={jobDetails.poAmount || ''}
+                                            onChange={(e) => quote.setJobDetails({ ...jobDetails, poAmount: parseFloat(e.target.value) || undefined })}
+                                            className="w-full pl-7 p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
+                                            placeholder="0.00"
+                                        />
+                                    </div>
+                                    {(() => {
+                                        const existingAdjustment = extras.find(e => e.description === 'PO Adjustment');
+                                        const hasVariance = jobDetails.poAmount && Math.abs(totalCost - jobDetails.poAmount) > 0.01;
+
+                                        if (existingAdjustment) {
+                                            // Show remove button if PO Adjustment exists
+                                            return (
+                                                <button
+                                                    onClick={() => {
+                                                        quote.removeExtra(existingAdjustment.id);
+                                                    }}
+                                                    className="px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700 whitespace-nowrap font-medium"
+                                                    title="Remove PO adjustment"
+                                                >
+                                                    Remove Adjustment
+                                                </button>
+                                            );
+                                        } else if (hasVariance) {
+                                            // Show charge at PO button if there's a variance and no adjustment
+                                            return (
+                                                <button
+                                                    onClick={() => {
+                                                        const adjustment = jobDetails.poAmount! - totalCost;
+                                                        const newExtra = {
+                                                            id: Date.now(),
+                                                            description: 'PO Adjustment',
+                                                            cost: adjustment
+                                                        };
+                                                        quote.setExtras([...extras, newExtra]);
+                                                    }}
+                                                    className="px-3 py-2 bg-primary-600 text-white rounded text-sm hover:bg-primary-700 whitespace-nowrap font-medium"
+                                                    title="Add adjustment to match PO amount"
+                                                >
+                                                    Charge at PO
+                                                </button>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                                 <p className="text-xs text-slate-500 mt-1">Enter the customer's PO value</p>
                             </div>

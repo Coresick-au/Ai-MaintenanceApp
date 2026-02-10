@@ -58,3 +58,9 @@ firebase-debug.*.log
 # Temporary scripts
 scripts/browser-cleanup.js
 
+# Claude Code
+.claude/
+
+# Windows null device files
+nul
+

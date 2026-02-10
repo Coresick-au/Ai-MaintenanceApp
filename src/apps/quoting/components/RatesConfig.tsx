@@ -1,6 +1,6 @@
 
 import type { Rates } from '../types';
-import { Lock, Unlock, Calculator, PlusCircle, Save, RotateCcw, TrendingUp } from 'lucide-react';
+import { Lock, Unlock, Calculator, PlusCircle, Save, RotateCcw, TrendingUp, Check } from 'lucide-react';
 import { useState } from 'react';
 
 interface RatesConfigProps {
@@ -12,9 +12,13 @@ interface RatesConfigProps {
     onLockChange?: (isLocked: boolean) => void;
     /** Compact mode hides the main header - use when nested inside another panel */
     compact?: boolean;
+    /** Customer-specific save button props */
+    onSaveCustomer?: () => void;
+    hasUnsavedChanges?: boolean;
+    saveSuccess?: boolean;
 }
 
-export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false, onLockChange, compact = false }: RatesConfigProps) {
+export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false, onLockChange, compact = false, onSaveCustomer, hasUnsavedChanges = false, saveSuccess = false }: RatesConfigProps) {
     const [isLocked, setIsLocked] = useState(propIsLocked);
     const [calcKm, setCalcKm] = useState<number>(0);
     const [calcHours, setCalcHours] = useState<number>(0);
@@ -107,6 +111,21 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                                     </button>
                                 )}
                             </div>
+                        )}
+
+                        {onSaveCustomer && (
+                            <button
+                                onClick={onSaveCustomer}
+                                className={`px-3 py-1.5 rounded flex items-center gap-1.5 font-medium text-sm text-white transition-all ${
+                                    saveSuccess ? 'bg-green-600 hover:bg-green-700' :
+                                    hasUnsavedChanges ? 'bg-amber-600 hover:bg-amber-500 animate-pulse' :
+                                    'bg-primary-600 hover:bg-primary-500'
+                                }`}
+                            >
+                                {saveSuccess ? <><Check size={16} /> Saved!</> :
+                                 hasUnsavedChanges ? <><Save size={16} /> Save Changes</> :
+                                 <><Save size={16} /> Save</>}
+                            </button>
                         )}
 
                         {isLocked ? (
@@ -255,19 +274,32 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                         {/* Moved Travel Rate and Travel Charge to Calculator section below */}
 
                         <div>
-                            <label className="block text-sm text-slate-300 mb-1">Travel Charge ex Brisbane</label>
-                            <div className="flex items-center gap-2">
-                                <span className="text-slate-400">$</span>
-                                <input
-                                    disabled={isLocked}
-                                    type="number"
-                                    step="0.01"
-                                    value={rates.travelChargeExBrisbane}
-                                    onChange={(e) => setRates({ ...rates, travelChargeExBrisbane: parseFloat(e.target.value) || 0 })}
-                                    className={`border border-gray-600 rounded p-2 w-full bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50 text-slate-400' : ''}`}
-                                    placeholder="Input Value"
-                                />
-                                <span className="text-slate-400">/tech</span>
+                            <label className="block text-sm text-slate-300 mb-1">Travel Charge Location & Amount</label>
+                            <div className="flex flex-col gap-2">
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400 text-sm whitespace-nowrap">ex</span>
+                                    <input
+                                        disabled={isLocked}
+                                        type="text"
+                                        value={rates.travelChargeLocation || 'Brisbane'}
+                                        onChange={(e) => setRates({ ...rates, travelChargeLocation: e.target.value })}
+                                        className={`border border-gray-600 rounded p-2 flex-1 bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50 text-slate-400' : ''}`}
+                                        placeholder="e.g. Brisbane, Mackay, Rockhampton"
+                                    />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className="text-slate-400">$</span>
+                                    <input
+                                        disabled={isLocked}
+                                        type="number"
+                                        step="0.01"
+                                        value={rates.travelChargeExBrisbane}
+                                        onChange={(e) => setRates({ ...rates, travelChargeExBrisbane: parseFloat(e.target.value) || 0 })}
+                                        className={`border border-gray-600 rounded p-2 w-full bg-gray-700 text-slate-100 ${isLocked ? 'bg-gray-600 opacity-50 text-slate-400' : ''}`}
+                                        placeholder="Input Value"
+                                    />
+                                    <span className="text-slate-400">/tech</span>
+                                </div>
                             </div>
                         </div>
 
@@ -435,11 +467,11 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                             disabled={isLocked || (calcKm <= 0 && calcHours <= 0)}
                             className="mb-0.5 bg-primary-600 text-white px-4 py-2 rounded shadow-sm hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm font-medium"
                         >
-                            <PlusCircle size={16} /> Add to Ex-Brisbane
+                            <PlusCircle size={16} /> Add to Travel Charge
                         </button>
                     </div>
                     <p className="text-xs text-slate-400 mt-2">
-                        Calculates (Hours × Travel Rate) + (Distance × Travel Charge) and adds it to the "Travel Charge ex Brisbane" field.
+                        Calculates (Hours × Travel Rate) + (Distance × Travel Charge) and adds it to the "Travel Charge ex {rates.travelChargeLocation || 'Brisbane'}" field.
                     </p>
                 </div>
 

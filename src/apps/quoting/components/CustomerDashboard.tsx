@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Trash2, User, UserPlus, Save, Check, MapPin, Building2, Layout, Plus, Search, X } from 'lucide-react';
 import RatesConfig from './RatesConfig';
 import type { Customer, Rates, Contact, ManagedSite } from '../types';
@@ -108,15 +108,52 @@ export default function CustomerDashboard({
     const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
     const [editingSiteRates, setEditingSiteRates] = useState<Rates | null>(null);
 
+    // Unsaved changes tracking
+    const originalRatesRef = useRef<Rates | null>(null);
+    const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+
+    // Detect if rates have been modified
+    useEffect(() => {
+        if (!originalRatesRef.current || !selectedId) {
+            setHasUnsavedChanges(false);
+            return;
+        }
+
+        const hasChanges = JSON.stringify(editRates) !== JSON.stringify(originalRatesRef.current);
+        setHasUnsavedChanges(hasChanges);
+    }, [editRates, selectedId]);
+
+    // Warn before leaving page with unsaved changes
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (hasUnsavedChanges) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [hasUnsavedChanges]);
+
     const handleSelect = (customer: Customer) => {
+        // Warn if there are unsaved changes
+        if (hasUnsavedChanges) {
+            const confirmLeave = confirm('You have unsaved changes to the rates. Do you want to discard them?');
+            if (!confirmLeave) return;
+        }
+
         setSelectedId(customer.id);
         setEditName(customer.name);
-        setEditRates(customer.rates || savedDefaultRates);
+        const customerRates = customer.rates || savedDefaultRates;
+        setEditRates(customerRates);
+        originalRatesRef.current = JSON.parse(JSON.stringify(customerRates)); // Deep copy
         setEditContacts(customer.contacts || []);
         setEditIsLocked(customer.isLocked || false);
         setSaveSuccess(false);
         setActiveTab('details'); // Reset to details on select
         setIsAddingSite(false);
+        setHasUnsavedChanges(false);
     };
 
     // Note: Customer deletion removed - manage customers in Customer Portal app
@@ -145,6 +182,10 @@ export default function CustomerDashboard({
             isLocked: editIsLocked
         });
 
+        // Reset unsaved changes tracking
+        originalRatesRef.current = JSON.parse(JSON.stringify(editRates));
+        setHasUnsavedChanges(false);
+
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
     };
@@ -163,6 +204,14 @@ export default function CustomerDashboard({
         setNewSiteName('');
         setNewSiteLocation('');
         setIsAddingSite(false);
+    };
+
+    const handleTabChange = (newTab: 'details' | 'sites') => {
+        if (hasUnsavedChanges && activeTab === 'details') {
+            const confirmLeave = confirm('You have unsaved changes to the rates. Do you want to discard them?');
+            if (!confirmLeave) return;
+        }
+        setActiveTab(newTab);
     };
 
     const selectedCustomer = customers.find((c: Customer) => c.id === selectedId);
@@ -249,13 +298,16 @@ export default function CustomerDashboard({
                                 {/* Tabs */}
                                 <div className="flex bg-gray-700 p-1 rounded-lg">
                                     <button
-                                        onClick={() => setActiveTab('details')}
-                                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'details' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-300 hover:bg-gray-600'}`}
+                                        onClick={() => handleTabChange('details')}
+                                        className={`px-4 py-2 rounded-md font-medium text-sm transition-colors relative ${activeTab === 'details' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-300 hover:bg-gray-600'}`}
                                     >
                                         Customer Details
+                                        {hasUnsavedChanges && activeTab === 'details' && (
+                                            <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-500 rounded-full animate-pulse" title="Unsaved changes"></span>
+                                        )}
                                     </button>
                                     <button
-                                        onClick={() => setActiveTab('sites')}
+                                        onClick={() => handleTabChange('sites')}
                                         className={`px-4 py-2 rounded-md font-medium text-sm transition-colors ${activeTab === 'sites' ? 'bg-primary-600 text-white shadow-sm' : 'text-slate-300 hover:bg-gray-600'}`}
                                     >
                                         Managed Sites
@@ -325,6 +377,12 @@ export default function CustomerDashboard({
                                     {/* Rates Config */}
                                     <div className="border-t border-gray-600 pt-6">
                                         <h3 className="text-lg font-semibold text-slate-200 mb-4">Customer Specific Rates</h3>
+                                        {hasUnsavedChanges && (
+                                            <div className="mb-4 px-4 py-2 bg-amber-900/30 border border-amber-700 rounded-lg text-amber-300 text-sm flex items-center gap-2">
+                                                <span className="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+                                                You have unsaved changes to the rates
+                                            </div>
+                                        )}
                                         <RatesConfig
                                             rates={editRates}
                                             setRates={setEditRates}
@@ -332,15 +390,10 @@ export default function CustomerDashboard({
                                             resetToDefaults={() => setEditRates(savedDefaultRates)}
                                             isLocked={editIsLocked}
                                             onLockChange={setEditIsLocked}
+                                            onSaveCustomer={handleSaveRates}
+                                            hasUnsavedChanges={hasUnsavedChanges}
+                                            saveSuccess={saveSuccess}
                                         />
-                                        <div className="mt-6">
-                                            <button
-                                                onClick={handleSaveRates}
-                                                className={`w-full py-3 rounded-lg font-bold text-white transition-colors flex items-center justify-center gap-2 ${saveSuccess ? 'bg-green-600' : 'bg-primary-600 hover:bg-primary-500'}`}
-                                            >
-                                                {saveSuccess ? <><Check size={18} /> Saved!</> : <><Save size={18} /> Save Customer Details</>}
-                                            </button>
-                                        </div>
                                     </div>
                                 </div>
                             )}

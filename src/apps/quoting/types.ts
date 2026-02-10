@@ -10,6 +10,7 @@ export interface Rates {
     travelOvertime: number;
     travelCharge: number; // per km
     travelChargeExBrisbane: number; // per km
+    travelChargeLocation?: string; // editable location name (e.g., "ex Brisbane", "ex Mackay", "ex Rockhampton")
     vehicle: number; // per day
     perDiem: number; // per night
     standardDayRate: number; // 12hrs
