@@ -311,8 +311,6 @@ export const ProductCatalogModal = ({ isOpen, onClose, onSuccess, editingProduct
                 category: formData.category.trim(), // Legacy field
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
-                categoryId: formData.categoryId,
-                subcategoryId: formData.subcategoryId,
                 componentCategory: formData.componentCategory,
                 functionalCategory: formData.functionalCategory,
                 description: formData.description.trim(),
