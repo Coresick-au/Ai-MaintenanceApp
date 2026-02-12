@@ -165,6 +165,28 @@ export const CostEstimator = () => {
         return () => unsubscribe();
     }, []);
 
+    // Load products from Firestore
+    const [products, setProducts] = useState([]);
+    useEffect(() => {
+        const unsubscribe = onSnapshot(
+            collection(db, 'products'),
+            (snapshot) => {
+                const productData = snapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                // Filter products that differ from sub-assemblies if needed, 
+                // but we will filter by componentCategory later anyway.
+                setProducts(productData);
+            },
+            (error) => {
+                console.error('Error loading products:', error);
+            }
+        );
+
+        return () => unsubscribe();
+    }, []);
+
     // Load weigher models
     useEffect(() => {
         const unsubscribe = onSnapshot(
@@ -262,9 +284,12 @@ export const CostEstimator = () => {
         );
     };
 
-    // Helper function to get sub-assemblies for a specific component type
+    // Helper function to get sub-assemblies and products for a specific component type
     const getSubAssembliesForComponent = (componentCategory) => {
-        return subAssemblies.filter(sa => sa.componentCategory === componentCategory);
+        const allItems = [...subAssemblies, ...products];
+        return allItems.filter(item =>
+            item.componentCategory === componentCategory
+        );
     };
 
     // Helper function to render sub-assembly selector

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { Icons } from '../../constants/icons';
@@ -276,6 +276,39 @@ export const BOMEditor = ({
     // Filter out electrical items already in BOM
     const availableElectrical = electricalItems.filter(e => !bomElectricalEntries.some(be => be.electricalId === e.id));
 
+    // Sort BOM entries by SKU
+    const sortedBomEntries = useMemo(() => {
+        return [...bomEntries].sort((a, b) => {
+            const itemA = parts.find(p => p.id === a.partId);
+            const itemB = parts.find(p => p.id === b.partId);
+            return (itemA?.sku || '').localeCompare(itemB?.sku || '');
+        });
+    }, [bomEntries, parts]);
+
+    const sortedBomFastenerEntries = useMemo(() => {
+        return [...bomFastenerEntries].sort((a, b) => {
+            const itemA = fasteners.find(f => f.id === a.fastenerId);
+            const itemB = fasteners.find(f => f.id === b.fastenerId);
+            return (itemA?.sku || '').localeCompare(itemB?.sku || '');
+        });
+    }, [bomFastenerEntries, fasteners]);
+
+    const sortedBomSubAssemblyEntries = useMemo(() => {
+        return [...bomSubAssemblyEntries].sort((a, b) => {
+            const itemA = subAssemblies.find(s => s.id === a.subAssemblyId);
+            const itemB = subAssemblies.find(s => s.id === b.subAssemblyId);
+            return (itemA?.sku || '').localeCompare(itemB?.sku || '');
+        });
+    }, [bomSubAssemblyEntries, subAssemblies]);
+
+    const sortedBomElectricalEntries = useMemo(() => {
+        return [...bomElectricalEntries].sort((a, b) => {
+            const itemA = electricalItems.find(e => e.id === a.electricalId);
+            const itemB = electricalItems.find(e => e.id === b.electricalId);
+            return (itemA?.sku || '').localeCompare(itemB?.sku || '');
+        });
+    }, [bomElectricalEntries, electricalItems]);
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -333,7 +366,7 @@ export const BOMEditor = ({
                 {/* Parts List */}
                 {bomEntries.length > 0 ? (
                     <div className="space-y-2">
-                        {bomEntries.map(entry => {
+                        {sortedBomEntries.map(entry => {
                             const part = parts.find(p => p.id === entry.partId);
                             const partCost = partCosts[entry.partId] || 0;
                             const subtotal = partCost * entry.quantityUsed;
@@ -436,7 +469,7 @@ export const BOMEditor = ({
                 {/* Fasteners List */}
                 {bomFastenerEntries.length > 0 ? (
                     <div className="space-y-2">
-                        {bomFastenerEntries.map(entry => {
+                        {sortedBomFastenerEntries.map(entry => {
                             const fastener = fasteners.find(f => f.id === entry.fastenerId);
                             const fastenerCost = fastenerCosts[entry.fastenerId] || 0;
                             const subtotal = fastenerCost * entry.quantityUsed;
@@ -539,7 +572,7 @@ export const BOMEditor = ({
                 {/* Sub Assemblies List */}
                 {bomSubAssemblyEntries.length > 0 ? (
                     <div className="space-y-2">
-                        {bomSubAssemblyEntries.map(entry => {
+                        {sortedBomSubAssemblyEntries.map(entry => {
                             const subAssembly = subAssemblies.find(sa => sa.id === entry.subAssemblyId);
                             const subAssemblyCost = subAssemblyCosts[entry.subAssemblyId] || 0;
                             const subtotal = subAssemblyCost * entry.quantityUsed;
@@ -642,7 +675,7 @@ export const BOMEditor = ({
                 {/* Electrical List */}
                 {bomElectricalEntries.length > 0 ? (
                     <div className="space-y-2">
-                        {bomElectricalEntries.map(entry => {
+                        {sortedBomElectricalEntries.map(entry => {
                             const item = electricalItems.find(i => i.id === entry.electricalId);
                             const itemCost = electricalCosts[entry.electricalId] || 0;
                             const subtotal = itemCost * entry.quantityUsed;

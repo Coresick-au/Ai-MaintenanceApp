@@ -150,7 +150,21 @@ export async function getSubAssemblyCostAtDate(subAssemblyId, date) {
         const subAssemblySnap = await getDoc(subAssemblyRef);
 
         if (!subAssemblySnap.exists()) {
-            console.warn(`[CostingService] Sub assembly ${subAssemblyId} not found`);
+            // Try product catalog if not found in sub-assemblies
+            const productRef = doc(db, 'products', subAssemblyId);
+            const productSnap = await getDoc(productRef);
+
+            if (productSnap.exists()) {
+                const productData = productSnap.data();
+                if (productData.costType === 'MANUAL') {
+                    return productData.manualCost || 0;
+                }
+                // Calculate from BOM
+                const result = await calculateProductCost(subAssemblyId, date);
+                return result.totalCost;
+            }
+
+            console.warn(`[CostingService] Sub assembly or Product ${subAssemblyId} not found`);
             return 0;
         }
 

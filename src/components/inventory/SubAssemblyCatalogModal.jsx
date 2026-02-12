@@ -30,6 +30,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
         categoryId: null,
         subcategoryId: null,
         componentCategory: null, // NEW: For specialized components (Weigh Module, Billet Weight, etc.)
+        functionalCategory: null, // NEW: For sorting/identification
         description: '',
         costType: 'MANUAL',
         manualCost: '',
@@ -39,8 +40,12 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
         reorderLevel: 10,
         labourHours: 0,
         labourMinutes: 0,
-        locationId: null
+        locationId: null,
+        isSaleable: false
     });
+    // Preserve list price and margin when toggling saleable
+    const [preservedListPrice, setPreservedListPrice] = useState('');
+    const [preservedTargetMargin, setPreservedTargetMargin] = useState(30);
     const [bomEntries, setBomEntries] = useState([]);
     const [bomFastenerEntries, setBomFastenerEntries] = useState([]);
     const [bomElectricalEntries, setBomElectricalEntries] = useState([]);
@@ -63,6 +68,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     categoryId: editingSubAssembly.categoryId || null,
                     subcategoryId: editingSubAssembly.subcategoryId || null,
                     componentCategory: editingSubAssembly.componentCategory || null,
+                    functionalCategory: editingSubAssembly.functionalCategory || null,
                     description: editingSubAssembly.description || '',
                     targetMarginPercent: editingSubAssembly.targetMarginPercent || 30,
                     listPrice: editingSubAssembly.listPrice ? (editingSubAssembly.listPrice / 100).toFixed(2) : '',
@@ -71,7 +77,8 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     reorderLevel: editingSubAssembly.reorderLevel || 10,
                     labourHours: editingSubAssembly.labourHours || 0,
                     labourMinutes: editingSubAssembly.labourMinutes || 0,
-                    locationId: editingSubAssembly.locationId || null
+                    locationId: editingSubAssembly.locationId || null,
+                    isSaleable: editingSubAssembly.isSaleable || false
                 });
                 setCostType(editingSubAssembly.costType || 'CALCULATED');
                 setListPriceSource(editingSubAssembly.listPriceSource || 'MANUAL');
@@ -98,6 +105,7 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     categoryId: null,
                     subcategoryId: null,
                     componentCategory: null,
+                    functionalCategory: null,
                     description: '',
                     targetMarginPercent: 30,
                     listPrice: '',
@@ -106,7 +114,8 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                     reorderLevel: 10,
                     labourHours: 0,
                     labourMinutes: 0,
-                    locationId: null
+                    locationId: null,
+                    isSaleable: false
                 });
                 setBomEntries([]);
                 setBomFastenerEntries([]);
@@ -176,6 +185,8 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
 
     // Calculate list price when in CALCULATED mode
     const calculatedListPrice = React.useMemo(() => {
+        if (!formData.isSaleable) return 0;
+
         if (listPriceSource === 'CALCULATED' && bomCost > 0) {
             const marginPercent = parseFloat(formData.targetMarginPercent || 0) / 100;
             // Margin formula: List Price = Cost / (1 - margin%)
@@ -272,17 +283,19 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                 categoryId: formData.categoryId,
                 subcategoryId: formData.subcategoryId,
                 componentCategory: formData.componentCategory,
+                functionalCategory: formData.functionalCategory,
                 description: formData.description.trim(),
                 targetMarginPercent: parseFloat(formData.targetMarginPercent || '0'),
                 listPrice: listPriceCents,
-                listPriceSource: listPriceSource,
+                listPriceSource: formData.isSaleable ? listPriceSource : 'MANUAL',
                 locationId: formData.locationId,
                 manualCost: costType === 'MANUAL' ? manualCostCents : 0,
                 costType: costType,
                 trackStock: formData.trackStock,
                 reorderLevel: parseInt(formData.reorderLevel || '0'),
                 labourHours: parseInt(formData.labourHours) || 0,
-                labourMinutes: parseInt(formData.labourMinutes) || 0
+                labourMinutes: parseInt(formData.labourMinutes) || 0,
+                isSaleable: formData.isSaleable
             };
 
             let subAssemblyId;
@@ -518,17 +531,37 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                                     />
                                 </div>
 
-                                {/* Component Category - For Cost Estimator filtering */}
+                                {/* Component Type - For sorting/identification */}
                                 <div>
                                     <label className="block text-sm font-medium text-slate-300 mb-1">
-                                        Component Category
+                                        Component Type
+                                    </label>
+                                    <select
+                                        value={formData.functionalCategory || ''}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, functionalCategory: e.target.value || null }))}
+                                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                    >
+                                        <option value="">None</option>
+                                        <option value="Integrator">Integrator</option>
+                                        <option value="Load Cell">Load Cell</option>
+                                        <option value="Weigh Module">Weigh Module</option>
+                                        <option value="Billet Weight">Billet Weight</option>
+                                        <option value="Speed Sensor">Speed Sensor</option>
+                                        <option value="TMD Frame">TMD Frame</option>
+                                    </select>
+                                </div>
+
+                                {/* Cost Estimator Category */}
+                                <div>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">
+                                        Cost Estimator Category
                                     </label>
                                     <select
                                         value={formData.componentCategory || ''}
                                         onChange={(e) => setFormData(prev => ({ ...prev, componentCategory: e.target.value || null }))}
                                         className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
                                     >
-                                        <option value="">None (General Sub-Assembly)</option>
+                                        <option value="">None (Not for Cost Estimator)</option>
                                         <option value="Weigh Module">Weigh Module</option>
                                         <option value="Billet Weight">Billet Weight</option>
                                         <option value="Speed Sensor">Speed Sensor</option>
@@ -536,121 +569,167 @@ export const SubAssemblyCatalogModal = ({ isOpen, onClose, onSuccess, editingSub
                                     </select>
                                     <p className="text-xs text-slate-400 mt-1">
                                         <Icons.Info size={12} className="inline mr-1" />
-                                        Select a component type to make this sub-assembly available in the Cost Estimator
+                                        Links this sub-assembly to specific Cost Estimator logic
                                     </p>
                                 </div>
 
+
+
+                                {formData.isSaleable && (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                    Target Margin (%)
+                                                </label>
+                                                <div className="relative">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        step="1"
+                                                        value={formData.targetMarginPercent}
+                                                        onChange={(e) => setFormData(prev => ({ ...prev, targetMarginPercent: e.target.value }))}
+                                                        className="w-full pr-7 pl-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
+                                                    />
+                                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-sm font-medium text-slate-300 mb-1">
+                                                    List Price ($)
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    step="0.01"
+                                                    value={formData.listPrice}
+                                                    onChange={(e) => setFormData(prev => ({ ...prev, listPrice: e.target.value }))}
+                                                    disabled={listPriceSource === 'CALCULATED'}
+                                                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    placeholder="0.00"
+                                                />
+                                            </div>
+                                        </div>
+
+                                        {/* Calculated Margin Display - Show when manually entering list price */}
+                                        {listPriceSource === 'MANUAL' && formData.listPrice && parseFloat(formData.listPrice) > 0 && (
+                                            <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-sm text-slate-400">Calculated Margin:</span>
+                                                    <span className={`text-lg font-bold ${(() => {
+                                                        const activeCost = costType === 'CALCULATED' ? bomCost / 100 : parseFloat(formData.manualCost || 0);
+                                                        const list = parseFloat(formData.listPrice) || 0;
+                                                        const margin = list === 0 ? 0 : ((list - activeCost) / list * 100);
+                                                        return margin >= formData.targetMarginPercent ? 'text-emerald-400' : 'text-amber-400';
+                                                    })()}`}>
+                                                        {(() => {
+                                                            const activeCost = costType === 'CALCULATED' ? bomCost / 100 : parseFloat(formData.manualCost || 0);
+                                                            const list = parseFloat(formData.listPrice) || 0;
+                                                            if (list === 0) return '0.0%';
+                                                            return ((list - activeCost) / list * 100).toFixed(1) + '%';
+                                                        })()}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-1">
+                                                    Based on {costType === 'CALCULATED' ? `BOM cost $${(bomCost / 100).toFixed(2)}` : `manual cost $${parseFloat(formData.manualCost || 0).toFixed(2)}`}
+                                                </p>
+                                            </div>
+                                        )}
+
+                                        {/* List Price Source Toggle */}
+                                        <ListPriceToggle
+                                            listPriceSource={listPriceSource}
+                                            onChange={setListPriceSource}
+                                            itemType="sub assembly"
+                                        />
+
+                                        {/* Calculated List Price Display */}
+                                        {listPriceSource === 'CALCULATED' && (
+                                            <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30 space-y-2">
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-slate-300">BOM Cost:</span>
+                                                    <span className="font-mono text-white">${(bomCost / 100).toFixed(2)}</span>
+                                                </div>
+                                                <div className="flex items-center justify-between text-sm">
+                                                    <span className="text-slate-300">Target Margin:</span>
+                                                    <span className="font-mono text-white">{formData.targetMarginPercent}%</span>
+                                                </div>
+                                                <div className="h-px bg-cyan-500/30"></div>
+                                                <div className="flex items-center justify-between">
+                                                    <span className="font-semibold text-white">Calculated List Price:</span>
+                                                    <span className="text-xl font-bold text-cyan-400">
+                                                        ${(calculatedListPrice / 100).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                                <p className="text-xs text-slate-400 mt-2">
+                                                    <Icons.Info size={12} className="inline mr-1" />
+                                                    This price will update automatically when part costs change
+                                                </p>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
+
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            Target Margin (%)
-                                        </label>
+                                    {/* Saleable Toggle */}
+                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
                                         <input
-                                            type="number"
-                                            min="0"
-                                            step="1"
-                                            value={formData.targetMarginPercent}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, targetMarginPercent: e.target.value }))}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500"
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-300 mb-1">
-                                            List Price ($)
-                                        </label>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            step="0.01"
-                                            value={formData.listPrice}
-                                            onChange={(e) => setFormData(prev => ({ ...prev, listPrice: e.target.value }))}
-                                            disabled={listPriceSource === 'CALCULATED'}
-                                            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                                            placeholder="0.00"
-                                        />
-                                    </div>
-                                </div>
-
-                                {/* Calculated Margin Display - Show when manually entering list price */}
-                                {listPriceSource === 'MANUAL' && formData.listPrice && parseFloat(formData.listPrice) > 0 && (
-                                    <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                        <div className="flex items-center justify-between">
-                                            <span className="text-sm text-slate-400">Calculated Margin:</span>
-                                            <span className={`text-lg font-bold ${(() => {
-                                                const activeCost = costType === 'CALCULATED' ? bomCost / 100 : parseFloat(formData.manualCost || 0);
-                                                const list = parseFloat(formData.listPrice) || 0;
-                                                const margin = list === 0 ? 0 : ((list - activeCost) / list * 100);
-                                                return margin >= formData.targetMarginPercent ? 'text-emerald-400' : 'text-amber-400';
-                                            })()}`}>
-                                                {(() => {
-                                                    const activeCost = costType === 'CALCULATED' ? bomCost / 100 : parseFloat(formData.manualCost || 0);
-                                                    const list = parseFloat(formData.listPrice) || 0;
-                                                    if (list === 0) return '0.0%';
-                                                    return ((list - activeCost) / list * 100).toFixed(1) + '%';
-                                                })()}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-slate-400 mt-1">
-                                            Based on {costType === 'CALCULATED' ? `BOM cost $${(bomCost / 100).toFixed(2)}` : `manual cost $${parseFloat(formData.manualCost || 0).toFixed(2)}`}
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* List Price Source Toggle */}
-                                <ListPriceToggle
-                                    listPriceSource={listPriceSource}
-                                    onChange={setListPriceSource}
-                                    itemType="sub assembly"
-                                />
-
-                                {/* Calculated List Price Display */}
-                                {listPriceSource === 'CALCULATED' && (
-                                    <div className="p-4 bg-cyan-500/10 rounded-lg border border-cyan-500/30 space-y-2">
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-300">BOM Cost:</span>
-                                            <span className="font-mono text-white">${(bomCost / 100).toFixed(2)}</span>
-                                        </div>
-                                        <div className="flex items-center justify-between text-sm">
-                                            <span className="text-slate-300">Target Margin:</span>
-                                            <span className="font-mono text-white">{formData.targetMarginPercent}%</span>
-                                        </div>
-                                        <div className="h-px bg-cyan-500/30"></div>
-                                        <div className="flex items-center justify-between">
-                                            <span className="font-semibold text-white">Calculated List Price:</span>
-                                            <span className="text-xl font-bold text-cyan-400">
-                                                ${(calculatedListPrice / 100).toFixed(2)}
-                                            </span>
-                                        </div>
-                                        <p className="text-xs text-slate-400 mt-2">
-                                            <Icons.Info size={12} className="inline mr-1" />
-                                            This price will update automatically when part costs change
-                                        </p>
-                                    </div>
-                                )}
-
-                                {/* Track Stock Toggle */}
-                                <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
-                                    <input
-                                        type="checkbox"
-                                        id="trackStock"
-                                        checked={formData.trackStock}
-                                        onChange={(e) => {
-                                            const checked = e.target.checked;
-                                            // Confirm when unchecking
-                                            if (!checked) {
-                                                if (confirm('Are you sure you want to stop tracking stock for this sub assembly? This will remove it from stock take and stock overview.')) {
-                                                    setFormData(prev => ({ ...prev, trackStock: false }));
+                                            type="checkbox"
+                                            id="isSaleable"
+                                            checked={formData.isSaleable}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                if (!checked) {
+                                                    // Unchecking: Preserve values then clear
+                                                    setPreservedListPrice(formData.listPrice);
+                                                    setPreservedTargetMargin(formData.targetMarginPercent);
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        isSaleable: false,
+                                                        listPrice: '',
+                                                        targetMarginPercent: 30
+                                                    }));
+                                                } else {
+                                                    // Checking: Restore preserved values
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        isSaleable: true,
+                                                        listPrice: preservedListPrice,
+                                                        targetMarginPercent: preservedTargetMargin
+                                                    }));
                                                 }
-                                            } else {
-                                                setFormData(prev => ({ ...prev, trackStock: true }));
-                                            }
-                                        }}
-                                        className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900"
-                                    />
-                                    <label htmlFor="trackStock" className="text-sm text-slate-300 cursor-pointer">
-                                        Track Stock
-                                    </label>
+                                            }}
+                                            className="w-4 h-4 rounded border-slate-600 text-emerald-600 focus:ring-emerald-500 focus:ring-offset-slate-900"
+                                        />
+                                        <label htmlFor="isSaleable" className="text-sm text-slate-300 cursor-pointer">
+                                            Saleable to Customers
+                                        </label>
+                                    </div>
+
+                                    {/* Track Stock Toggle */}
+                                    <div className="flex items-center gap-3 p-3 bg-slate-800/50 rounded-lg border border-slate-700">
+                                        <input
+                                            type="checkbox"
+                                            id="trackStock"
+                                            checked={formData.trackStock}
+                                            onChange={(e) => {
+                                                const checked = e.target.checked;
+                                                // Confirm when unchecking
+                                                if (!checked) {
+                                                    if (confirm('Are you sure you want to stop tracking stock for this sub assembly? This will remove it from stock take and stock overview.')) {
+                                                        setFormData(prev => ({ ...prev, trackStock: false }));
+                                                    }
+                                                } else {
+                                                    setFormData(prev => ({ ...prev, trackStock: true }));
+                                                }
+                                            }}
+                                            className="w-4 h-4 rounded border-slate-600 text-blue-600 focus:ring-blue-500 focus:ring-offset-slate-900"
+                                        />
+                                        <label htmlFor="trackStock" className="text-sm text-slate-300 cursor-pointer">
+                                            Track Stock
+                                        </label>
+                                    </div>
                                 </div>
 
                                 {/* Reorder Level - Only show if tracking stock */}
