@@ -80,6 +80,8 @@ const calculateDuration = (dateString) => {
 
 // --- NEW COMPONENT: Compliance Overview Dashboard ---
 const ComplianceDashboard = ({ employees, onSelectEmp }) => {
+    const [showSilenced, setShowSilenced] = useState(false);
+
     const expiringItems = useMemo(() => {
         const items = [];
         employees.forEach(emp => {
@@ -98,6 +100,13 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
         return items.sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
     }, [employees]);
 
+    // Filter by silenced status
+    const filteredItems = useMemo(() => {
+        return showSilenced ? expiringItems : expiringItems.filter(item => !item.silenced);
+    }, [expiringItems, showSilenced]);
+
+    const silencedCount = expiringItems.filter(item => item.silenced).length;
+
     return (
         <div className="h-full flex flex-col animate-in fade-in duration-300">
             <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-6">
@@ -112,49 +121,69 @@ const ComplianceDashboard = ({ employees, onSelectEmp }) => {
 
             <div className="flex-1 bg-slate-800 rounded-xl border border-slate-700 overflow-hidden flex flex-col">
                 <div className="p-4 border-b border-slate-700 bg-slate-900/30 flex justify-between items-center">
-                    <span className="font-bold text-slate-200">Attention Required ({expiringItems.length})</span>
+                    <span className="font-bold text-slate-200">Attention Required ({filteredItems.length})</span>
+                    <button
+                        onClick={() => setShowSilenced(!showSilenced)}
+                        className={`px-3 py-1 text-xs font-bold rounded border transition-colors ${showSilenced
+                            ? 'bg-slate-700 text-slate-200 border-slate-600 hover:bg-slate-600'
+                            : 'bg-slate-800 text-slate-400 border-slate-700 hover:bg-slate-700'
+                            }`}
+                        title={showSilenced ? 'Hide silenced items' : 'Show silenced items'}
+                    >
+                        {showSilenced ? 'Hide Silenced' : 'Show Silenced'}
+                    </button>
                 </div>
 
                 <div className="overflow-y-auto flex-1">
-                    {expiringItems.length === 0 ? (
+                    {filteredItems.length === 0 ? (
                         <div className="h-full flex flex-col items-center justify-center text-slate-500 italic">
                             <Icons.CheckCircle size={48} className="mb-4 text-green-500/20" />
-                            <p>All technicians are fully compliant!</p>
+                            <p>{!showSilenced && silencedCount > 0 ? `All items silenced (${silencedCount} hidden)` : 'All technicians are fully compliant!'}</p>
                         </div>
                     ) : (
-                        <table className="w-full text-sm text-left">
-                            <thead className="text-xs text-slate-500 uppercase bg-slate-900 sticky top-0">
-                                <tr>
-                                    <th className="px-4 py-2">Team Member</th>
-                                    <th className="px-4 py-2">Type</th>
-                                    <th className="px-4 py-2">Item</th>
-                                    <th className="px-4 py-2">Expiry</th>
-                                    <th className="px-4 py-2">Status</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-slate-700">
-                                {expiringItems.map((item, idx) => (
-                                    <tr
-                                        key={idx}
-                                        className="hover:bg-slate-700/50 cursor-pointer transition-colors"
-                                        onClick={() => onSelectEmp({ ...item.emp })}
-                                    >
-                                        <td className="px-4 py-2 font-medium text-slate-200">{item.empName}</td>
-                                        <td className="px-4 py-2 text-slate-400">{item.type}</td>
-                                        <td className="px-4 py-2 text-slate-300">{item.name}</td>
-                                        <td className="px-4 py-2 text-slate-400 font-mono text-xs">{formatDate(item.expiry)}</td>
-                                        <td className="px-4 py-2">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${item.status === 'expired'
-                                                ? 'text-red-400 bg-red-900/20 border-red-900/50'
-                                                : 'text-amber-400 bg-amber-900/20 border-amber-900/50'
-                                                }`}>
-                                                {item.status === 'expired' ? 'Expired' : item.status === 'warning' ? 'Due Soon' : 'Active'}
-                                            </span>
-                                        </td>
+                        <>
+                            <table className="w-full text-sm text-left">
+                                <thead className="text-xs text-slate-500 uppercase bg-slate-900 sticky top-0">
+                                    <tr>
+                                        <th className="px-4 py-2">Team Member</th>
+                                        <th className="px-4 py-2">Type</th>
+                                        <th className="px-4 py-2">Item</th>
+                                        <th className="px-4 py-2">Expiry</th>
+                                        <th className="px-4 py-2">Status</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody className="divide-y divide-slate-700">
+                                    {filteredItems.map((item, idx) => (
+                                        <tr
+                                            key={idx}
+                                            className={`hover:bg-slate-700/50 cursor-pointer transition-colors ${item.silenced ? 'opacity-60' : ''}`}
+                                            onClick={() => onSelectEmp({ ...item.emp })}
+                                        >
+                                            <td className="px-4 py-2 font-medium text-slate-200 flex items-center gap-2">
+                                                {item.silenced && <Icons.EyeOff size={14} className="text-slate-500" title="Silenced" />}
+                                                {item.empName}
+                                            </td>
+                                            <td className="px-4 py-2 text-slate-400">{item.type}</td>
+                                            <td className="px-4 py-2 text-slate-300">{item.name}</td>
+                                            <td className="px-4 py-2 text-slate-400 font-mono text-xs">{formatDate(item.expiry)}</td>
+                                            <td className="px-4 py-2">
+                                                <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${item.status === 'expired'
+                                                    ? 'text-red-400 bg-red-900/20 border-red-900/50'
+                                                    : 'text-amber-400 bg-amber-900/20 border-amber-900/50'
+                                                    }`}>
+                                                    {item.status === 'expired' ? 'Expired' : item.status === 'warning' ? 'Due Soon' : 'Active'}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                            {!showSilenced && silencedCount > 0 && (
+                                <div className="p-3 bg-slate-900/50 text-center">
+                                    <p className="text-xs text-slate-400">({silencedCount} silenced {silencedCount === 1 ? 'item' : 'items'} hidden)</p>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
@@ -282,8 +311,12 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
 
                         <div className="space-y-2 overflow-y-auto flex-1">
                             {employees.filter(emp => emp.status !== 'archived').map(emp => {
-                                const hasCertIssues = emp.certifications?.some(cert => ['expired', 'warning'].includes(getExpiryStatus(cert.expiry)));
-                                const hasInductionIssues = emp.inductions?.some(ind => ['expired', 'warning'].includes(getExpiryStatus(ind.expiry)));
+                                const hasCertIssues = emp.certifications?.some(cert =>
+                                    !cert.silenced && ['expired', 'warning'].includes(getExpiryStatus(cert.expiry))
+                                );
+                                const hasInductionIssues = emp.inductions?.some(ind =>
+                                    !ind.silenced && ['expired', 'warning'].includes(getExpiryStatus(ind.expiry))
+                                );
                                 const hasIssues = hasCertIssues || hasInductionIssues;
 
                                 return (
@@ -989,6 +1022,22 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                                             >
                                                                                 <Icons.Edit size={14} />
                                                                             </button>
+                                                                            {(status === 'expired' || status === 'warning') && (
+                                                                                <button
+                                                                                    onClick={(e) => {
+                                                                                        e.stopPropagation();
+                                                                                        const updatedCerts = selectedEmp.certifications.map(c =>
+                                                                                            c.id === cert.id ? { ...c, silenced: !c.silenced } : c
+                                                                                        );
+                                                                                        onUpdateEmployee(selectedEmp.id, { certifications: updatedCerts });
+                                                                                        setSelectedEmp({ ...selectedEmp, certifications: updatedCerts });
+                                                                                    }}
+                                                                                    className={cert.silenced ? "text-slate-500 hover:text-slate-400" : "text-slate-400 hover:text-slate-300"}
+                                                                                    title={cert.silenced ? "Unsilence - show in compliance dashboard" : "Silence - hide from compliance dashboard"}
+                                                                                >
+                                                                                    {cert.silenced ? <Icons.Eye size={14} /> : <Icons.EyeOff size={14} />}
+                                                                                </button>
+                                                                            )}
                                                                             <button
                                                                                 onClick={() => {
                                                                                     if (!window.confirm(`Are you sure you want to delete the certification "${cert.name}"?`)) return;
@@ -1216,6 +1265,22 @@ export const EmployeeManager = ({ isOpen, onClose, employees, sites, customers, 
                                                                         >
                                                                             <Icons.Edit size={14} />
                                                                         </button>
+                                                                        {(status === 'expired' || status === 'warning') && (
+                                                                            <button
+                                                                                onClick={(e) => {
+                                                                                    e.stopPropagation();
+                                                                                    const updatedInductions = selectedEmp.inductions.map(i =>
+                                                                                        i.id === ind.id ? { ...i, silenced: !i.silenced } : i
+                                                                                    );
+                                                                                    onUpdateEmployee(selectedEmp.id, { inductions: updatedInductions });
+                                                                                    setSelectedEmp({ ...selectedEmp, inductions: updatedInductions });
+                                                                                }}
+                                                                                className={ind.silenced ? "text-slate-500 hover:text-slate-400" : "text-slate-400 hover:text-slate-300"}
+                                                                                title={ind.silenced ? "Unsilence - show in compliance dashboard" : "Silence - hide from compliance dashboard"}
+                                                                            >
+                                                                                {ind.silenced ? <Icons.Eye size={14} /> : <Icons.EyeOff size={14} />}
+                                                                            </button>
+                                                                        )}
                                                                         <button
                                                                             className="text-red-400 hover:text-red-300"
                                                                             onClick={(e) => {

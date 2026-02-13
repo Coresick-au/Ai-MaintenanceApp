@@ -1027,18 +1027,30 @@ export function App() {
               </button>
 
               {/* 4. Issue Tracker */}
-              <button
-                type="button"
-                onClick={() => { setActiveTab('issues'); setLocalViewMode('list'); }}
-                className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} ${activeTab === 'issues'
-                  ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/40 ring-1 ring-cyan-400/50'
-                  : 'text-slate-300 hover:text-white hover:bg-slate-700'
-                  }`}
-                title="Issue Tracker"
-              >
-                <Icons.AlertCircle size={20} />
-                {!isSidebarCollapsed && <span>Issue Tracker</span>}
-              </button>
+              {(() => {
+                const openIssues = (selectedSite?.issues || []).filter(i => i.status !== 'Closed').length;
+                return (
+                  <button
+                    type="button"
+                    onClick={() => { setActiveTab('issues'); setLocalViewMode('list'); }}
+                    className={`w-full px-3 py-2.5 rounded-lg text-sm font-medium transition-all flex items-center ${isSidebarCollapsed ? 'justify-center' : 'gap-3'} ${activeTab === 'issues'
+                      ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-900/40 ring-1 ring-cyan-400/50'
+                      : 'text-slate-300 hover:text-white hover:bg-slate-700'
+                      }`}
+                    title={`Issue Tracker${openIssues > 0 ? ` (${openIssues} open)` : ''}`}
+                  >
+                    <div className="relative">
+                      <Icons.AlertCircle size={20} />
+                      {openIssues > 0 && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
+                          {openIssues}
+                        </span>
+                      )}
+                    </div>
+                    {!isSidebarCollapsed && <span>Issue Tracker</span>}
+                  </button>
+                );
+              })()}
 
               {/* Customer Notes - MOVED TO CUSTOMER PORTAL */}
               {/* Removed: Customer notes functionality has been moved to the Customer Portal app */}

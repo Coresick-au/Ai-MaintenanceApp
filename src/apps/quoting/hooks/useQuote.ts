@@ -111,6 +111,7 @@ export function useQuote() {
                         })),
                         customerNotes: customer.customerNotes,
                         isLocked: site.isLocked !== undefined ? site.isLocked : customer.isLocked, // Prioritize site-specific lock state
+                        lockedAt: site.lockedAt !== undefined ? site.lockedAt : customer.lockedAt, // Prioritize site-specific lock timestamp
                         hasAIMMProfile: site.hasAIMMProfile || false, // Include AIMM status for Maintenance App filtering
                         managedSites: [{
                             id: site.id,
@@ -119,7 +120,8 @@ export function useQuote() {
                             logo: site.logo,
                             contacts: siteContacts,
                             rates: site.rates, // Preserve site-specific rates
-                            isLocked: site.isLocked // Preserve site-specific lock state
+                            isLocked: site.isLocked, // Preserve site-specific lock state
+                            lockedAt: site.lockedAt // Preserve site-specific lock timestamp
                         }]
                     });
                 });
@@ -314,7 +316,8 @@ export function useQuote() {
         // Never rebuild the managedSites array with cherry-picked fields as this causes data loss.
         if (siteId && exists) {
             const siteUpdates: any = {
-                isLocked: customer.isLocked
+                isLocked: customer.isLocked,
+                lockedAt: customer.lockedAt
             };
             if (customer.rates) {
                 siteUpdates.rates = { ...DEFAULT_RATES, ...customer.rates };
@@ -331,7 +334,8 @@ export function useQuote() {
                 rates: { ...DEFAULT_RATES, ...(customer.rates || {}) }, // Update customer-level rates with defaults
                 contacts: customer.contacts || [],
                 customerNotes: customer.customerNotes || '',
-                isLocked: customer.isLocked || false
+                isLocked: customer.isLocked || false,
+                lockedAt: customer.lockedAt
             });
 
             if (exists) {

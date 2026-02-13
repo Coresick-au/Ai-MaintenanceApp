@@ -41,6 +41,7 @@ export interface ManagedSite {
     contacts: Contact[];
     rates?: Rates; // Site-specific rates (optional, falls back to customer rates)
     isLocked?: boolean; // Site-specific lock state (optional, falls back to customer lock state)
+    lockedAt?: string; // ISO timestamp of when rates were locked
 }
 
 export interface Customer {
@@ -51,6 +52,7 @@ export interface Customer {
     contacts: Contact[]; // List of main contacts with name, phone, email
     customerNotes?: string; // Notes about the customer (e.g., special requirements, billing info)
     isLocked?: boolean; // Lock state for customer editing
+    lockedAt?: string; // ISO timestamp of when rates were locked
     managedSites?: ManagedSite[]; // Managed sites for this customer
     hasAIMMProfile?: boolean; // AIMM monitoring status (for reference only)
 }

@@ -1,7 +1,81 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useMemo, useRef, useEffect } from 'react';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { UIContext } from '../context/UIContext';
+
+// Column filter dropdown component
+const ColumnFilter = ({ columnKey, uniqueValues, activeFilters, onFilterChange, isDarkMode }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
+
+  const currentFilters = activeFilters[columnKey];
+  const hasActiveFilter = currentFilters && currentFilters.length < uniqueValues.length;
+
+  return (
+    <div className="relative inline-block" ref={dropdownRef}>
+      <button
+        onClick={(e) => { e.stopPropagation(); setIsOpen(!isOpen); }}
+        className={`ml-1 p-0.5 rounded transition-colors ${hasActiveFilter ? 'text-cyan-400' : isDarkMode ? 'text-slate-500 hover:text-slate-300' : 'text-gray-400 hover:text-gray-600'}`}
+        title="Filter column"
+      >
+        <Icons.Filter size={12} />
+      </button>
+      {isOpen && (
+        <div className={`absolute top-full right-0 mt-1 z-50 rounded-lg shadow-xl border min-w-[180px] max-h-[300px] overflow-auto ${isDarkMode ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-300'}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className={`sticky top-0 p-2 border-b flex justify-between items-center ${isDarkMode ? 'bg-slate-800 border-slate-600' : 'bg-white border-gray-200'}`}>
+            <button
+              onClick={() => onFilterChange(columnKey, uniqueValues)}
+              className="text-[10px] text-cyan-400 hover:text-cyan-300"
+            >
+              Select All
+            </button>
+            <button
+              onClick={() => onFilterChange(columnKey, [])}
+              className="text-[10px] text-red-400 hover:text-red-300"
+            >
+              Clear All
+            </button>
+          </div>
+          {uniqueValues.map(val => {
+            const isChecked = !currentFilters || currentFilters.includes(val);
+            return (
+              <label
+                key={val}
+                className={`flex items-center gap-2 px-3 py-1.5 cursor-pointer text-xs transition-colors ${isDarkMode ? 'hover:bg-slate-700 text-slate-300' : 'hover:bg-gray-100 text-gray-700'}`}
+              >
+                <input
+                  type="checkbox"
+                  checked={isChecked}
+                  onChange={() => {
+                    const current = currentFilters || [...uniqueValues];
+                    const updated = isChecked
+                      ? current.filter(v => v !== val)
+                      : [...current, val];
+                    onFilterChange(columnKey, updated);
+                  }}
+                  className="w-3 h-3 rounded"
+                />
+                <span className="truncate">{val || '(empty)'}</span>
+              </label>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+};
 
 export const MasterListModal = ({
   isOpen,
@@ -16,15 +90,20 @@ export const MasterListModal = ({
   location
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: null, direction: 'ascending' });
+  const [sortConfig, setSortConfig] = useState({ key: 'name', direction: 'ascending' });
+  const [columnFilters, setColumnFilters] = useState({});
   const { theme } = useContext(UIContext);
   const isDarkMode = theme === 'dark';
 
   if (!isOpen) return null;
 
   const getSortIcon = (columnKey) => {
-    if (sortConfig.key !== columnKey) return null;
-    return sortConfig.direction === 'ascending' ? <Icons.SortAsc /> : <Icons.SortDesc />;
+    if (sortConfig.key !== columnKey) {
+      return <Icons.ChevronsUpDown size={14} className="opacity-30" />;
+    }
+    return sortConfig.direction === 'ascending'
+      ? <Icons.ChevronUp size={14} className="text-cyan-400" />
+      : <Icons.ChevronDown size={14} className="text-cyan-400" />;
   };
 
   const handleSort = (key) => {
@@ -35,36 +114,99 @@ export const MasterListModal = ({
     setSortConfig({ key, direction });
   };
 
-  const processedData = [...serviceData, ...rollerData]
-    .filter(asset => {
+  const handleFilterChange = (columnKey, selectedValues) => {
+    setColumnFilters(prev => ({ ...prev, [columnKey]: selectedValues }));
+  };
+
+  // Get asset value for a given column key
+  const getAssetValue = (asset, spec, key) => {
+    switch (key) {
+      case 'name': return asset.name || '';
+      case 'code': return asset.code || '';
+      case 'type': return asset.id.startsWith('s-') ? 'Service' : 'Roller';
+      case 'lastCal': return asset.lastCal || '';
+      case 'dueDate': return asset.dueDate || '';
+      case 'scaleType': return spec?.scaleType || '-';
+      case 'integrator': return spec?.integratorController || '-';
+      case 'speedSensor': return spec?.speedSensorType || '-';
+      case 'loadCell': return spec?.loadCellBrand || '-';
+      case 'billetInfo': return spec?.billetWeightType || '-';
+      case 'rollDims': return spec?.rollDims || '-';
+      case 'adjustmentType': return spec?.adjustmentType || '-';
+      default: return '';
+    }
+  };
+
+  // Build enriched data with spec lookup
+  const enrichedData = useMemo(() => {
+    return [...serviceData, ...rollerData]
+      .filter(asset => {
+        if (!showArchived && asset.active === false) return false;
+        return true;
+      })
+      .map(asset => {
+        const spec = specData.find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
+        return { asset, spec };
+      });
+  }, [serviceData, rollerData, specData, showArchived]);
+
+  // Build unique values for each filterable column
+  const uniqueColumnValues = useMemo(() => {
+    const columns = ['name', 'type', 'scaleType', 'integrator', 'speedSensor', 'loadCell', 'adjustmentType'];
+    const result = {};
+    columns.forEach(col => {
+      const vals = [...new Set(enrichedData.map(({ asset, spec }) => getAssetValue(asset, spec, col)))].sort();
+      result[col] = vals;
+    });
+    return result;
+  }, [enrichedData]);
+
+  const processedData = enrichedData
+    .filter(({ asset, spec }) => {
+      // Text search
       const searchLower = searchTerm.toLowerCase();
-      const spec = specData.find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
+      const matchesSearch = !searchTerm || [
+        asset.name, asset.code,
+        spec?.scaleType, spec?.integratorController
+      ].some(v => (v || '').toLowerCase().includes(searchLower));
 
-      if (!showArchived && asset.active === false) return false;
+      if (!matchesSearch) return false;
 
-      return (
-        (asset.name || '').toLowerCase().includes(searchLower) ||
-        (asset.code || '').toLowerCase().includes(searchLower) ||
-        (spec?.scaleType || '').toLowerCase().includes(searchLower) ||
-        (spec?.integratorController || '').toLowerCase().includes(searchLower)
-      );
+      // Column filters
+      for (const [key, selectedValues] of Object.entries(columnFilters)) {
+        if (selectedValues && selectedValues.length < (uniqueColumnValues[key]?.length || 0)) {
+          const val = getAssetValue(asset, spec, key);
+          if (!selectedValues.includes(val)) return false;
+        }
+      }
+
+      return true;
     })
     .sort((a, b) => {
       if (sortConfig.key) {
-        let aVal = a[sortConfig.key];
-        let bVal = b[sortConfig.key];
+        let aVal = getAssetValue(a.asset, a.spec, sortConfig.key);
+        let bVal = getAssetValue(b.asset, b.spec, sortConfig.key);
 
         if (sortConfig.key === 'dueDate' || sortConfig.key === 'lastCal') {
-          aVal = new Date(aVal).getTime();
-          bVal = new Date(bVal).getTime();
+          aVal = aVal ? new Date(aVal).getTime() : 0;
+          bVal = bVal ? new Date(bVal).getTime() : 0;
+        } else {
+          aVal = (aVal || '').toString().toLowerCase();
+          bVal = (bVal || '').toString().toLowerCase();
         }
 
         if (aVal < bVal) return sortConfig.direction === 'ascending' ? -1 : 1;
         if (aVal > bVal) return sortConfig.direction === 'ascending' ? 1 : -1;
-        return 0;
       }
-      return a.name.localeCompare(b.name);
+      return 0;
     });
+
+  const activeFilterCount = Object.entries(columnFilters).filter(
+    ([key, vals]) => vals && vals.length < (uniqueColumnValues[key]?.length || 0)
+  ).length;
+
+  const headerClass = (clickable = true) =>
+    `p-2 border-b whitespace-nowrap ${clickable ? 'cursor-pointer select-none' : ''} ${isDarkMode ? 'border-slate-700' : 'border-slate-700'} ${clickable ? (isDarkMode ? 'hover:bg-slate-700' : 'hover:bg-gray-100') : ''}`;
 
   return (
     <div id="master-list-modal" className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4 backdrop-blur-sm">
@@ -82,6 +224,17 @@ export const MasterListModal = ({
             </div>
           </div>
           <div className="flex gap-2 items-center">
+            {activeFilterCount > 0 && (
+              <button
+                onClick={() => setColumnFilters({})}
+                className="text-xs text-amber-400 hover:text-amber-300 border border-amber-600 px-2 py-1 rounded"
+              >
+                Clear {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''}
+              </button>
+            )}
+            <span className={`text-xs ${isDarkMode ? 'text-slate-500' : 'text-gray-400'}`}>
+              {processedData.length} of {enrichedData.length} assets
+            </span>
             <button type="button" onClick={() => onPrint('master')} className={`${isDarkMode ? 'text-slate-400 hover:text-blue-400' : 'text-gray-500 hover:text-blue-600'} mr-2`} title="Print Master List"><span className="text-xl"><Icons.Printer /></span></button>
             <div className="relative">
               <span className={`absolute left-2 top-1/2 -translate-y-1/2 ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}><Icons.Search /></span>
@@ -102,23 +255,60 @@ export const MasterListModal = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead className={`${isDarkMode ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-600'} sticky top-0 z-10 shadow-sm`}>
               <tr>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('name')}>Asset Name {getSortIcon('name')}</th>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('code')}>Code {getSortIcon('code')}</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700' : 'border-slate-700'}`}>Type</th>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('lastCal')}>Last Cal {getSortIcon('lastCal')}</th>
-                <th className={`p-2 border-b cursor-pointer ${isDarkMode ? 'border-slate-700 hover:bg-slate-700' : 'border-slate-700 hover:bg-gray-100'}`} onClick={() => handleSort('dueDate')}>Cal Due {getSortIcon('dueDate')}</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Scale Type</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Integrator</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Speed Sensor</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Load Cell</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-blue-900/20' : 'border-slate-700 bg-blue-50'}`}>Billet Info</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Roller Dimensions (Dia x Face x B2B x Total x Shaft x Slot (#) Adjustment Type)</th>
-                <th className={`p-2 border-b ${isDarkMode ? 'border-slate-700 bg-orange-900/20' : 'border-slate-700 bg-orange-50'}`}>Adjustment Type</th>
+                <th className={headerClass()} onClick={() => handleSort('name')}>
+                  <div className="flex items-center gap-1">Asset Name {getSortIcon('name')}
+                    <ColumnFilter columnKey="name" uniqueValues={uniqueColumnValues.name || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
+                <th className={headerClass()} onClick={() => handleSort('code')}>
+                  <div className="flex items-center gap-1">Code {getSortIcon('code')}</div>
+                </th>
+                <th className={headerClass()} onClick={() => handleSort('type')}>
+                  <div className="flex items-center gap-1">Type {getSortIcon('type')}
+                    <ColumnFilter columnKey="type" uniqueValues={uniqueColumnValues.type || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
+                <th className={headerClass()} onClick={() => handleSort('lastCal')}>
+                  <div className="flex items-center gap-1">Last Cal {getSortIcon('lastCal')}</div>
+                </th>
+                <th className={headerClass()} onClick={() => handleSort('dueDate')}>
+                  <div className="flex items-center gap-1">Cal Due {getSortIcon('dueDate')}</div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`} onClick={() => handleSort('scaleType')}>
+                  <div className="flex items-center gap-1">Scale Type {getSortIcon('scaleType')}
+                    <ColumnFilter columnKey="scaleType" uniqueValues={uniqueColumnValues.scaleType || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`} onClick={() => handleSort('integrator')}>
+                  <div className="flex items-center gap-1">Integrator {getSortIcon('integrator')}
+                    <ColumnFilter columnKey="integrator" uniqueValues={uniqueColumnValues.integrator || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`} onClick={() => handleSort('speedSensor')}>
+                  <div className="flex items-center gap-1">Speed Sensor {getSortIcon('speedSensor')}
+                    <ColumnFilter columnKey="speedSensor" uniqueValues={uniqueColumnValues.speedSensor || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`} onClick={() => handleSort('loadCell')}>
+                  <div className="flex items-center gap-1">Load Cell {getSortIcon('loadCell')}
+                    <ColumnFilter columnKey="loadCell" uniqueValues={uniqueColumnValues.loadCell || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-blue-900/20' : 'bg-blue-50'}`} onClick={() => handleSort('billetInfo')}>
+                  <div className="flex items-center gap-1">Billet Info {getSortIcon('billetInfo')}</div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-orange-900/20' : 'bg-orange-50'}`} onClick={() => handleSort('rollDims')}>
+                  <div className="flex items-center gap-1">Roller Dimensions {getSortIcon('rollDims')}</div>
+                </th>
+                <th className={`${headerClass()} ${isDarkMode ? 'bg-orange-900/20' : 'bg-orange-50'}`} onClick={() => handleSort('adjustmentType')}>
+                  <div className="flex items-center gap-1">Adj. Type {getSortIcon('adjustmentType')}
+                    <ColumnFilter columnKey="adjustmentType" uniqueValues={uniqueColumnValues.adjustmentType || []} activeFilters={columnFilters} onFilterChange={handleFilterChange} isDarkMode={isDarkMode} />
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody className={`divide-y ${isDarkMode ? 'divide-slate-700' : 'divide-gray-200'}`}>
-              {processedData.map(asset => {
-                const spec = specData.find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
+              {processedData.map(({ asset, spec }) => {
                 const typeLabel = asset.id.startsWith('s-') ? 'Service' : 'Roller';
                 const typeColor = asset.id.startsWith('s-')
                   ? (isDarkMode ? 'bg-blue-900/30 text-blue-300' : 'bg-blue-100 text-blue-800')
