@@ -95,6 +95,9 @@ service cloud.firestore {
     match /todos/{document=**} { allow read, write: if isSignedIn(); }
     match /part_categories/{document=**} { allow read, write: if isSignedIn(); }
     
+    // Reporting
+    match /reportDrafts/{document=**} { allow read, write: if isSignedIn(); }
+
     // Cost History (Additional)
     match /part_cost_history/{document=**} { allow read, write: if isSignedIn(); }
     match /site_part_numbers/{document=**} { allow read, write: if isSignedIn(); }
