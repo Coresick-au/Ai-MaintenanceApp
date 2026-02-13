@@ -51,6 +51,7 @@ export const ReportingProvider = ({ children }) => {
 
   // === DRAFT MANAGEMENT ===
   const [currentDraftId, setCurrentDraftId] = useState(null);
+  const draftIdRef = useRef(null);
   const [drafts, setDrafts] = useState([]);
   const [draftsLoaded, setDraftsLoaded] = useState(false);
   const autoSaveTimer = useRef(null);
@@ -73,10 +74,11 @@ export const ReportingProvider = ({ children }) => {
     return () => { cancelled = true; };
   }, []);
 
-  // Save draft
+  // Save draft (uses ref to prevent duplicate creation from concurrent saves)
   const saveDraft = useCallback(async (markCompleted = false) => {
+    const activeId = draftIdRef.current;
     const draftData = {
-      ...(currentDraftId ? { id: currentDraftId } : {}),
+      ...(activeId ? { id: activeId } : {}),
       status: markCompleted ? "completed" : "draft",
       createdBy: currentUser?.uid || "unknown",
       customerId: selectedCustomerId,
@@ -91,6 +93,7 @@ export const ReportingProvider = ({ children }) => {
     };
 
     const saved = await reportDraftRepository.save(draftData);
+    draftIdRef.current = saved.id;
     setCurrentDraftId(saved.id);
 
     // Update local drafts list
@@ -105,10 +108,11 @@ export const ReportingProvider = ({ children }) => {
     });
 
     return saved;
-  }, [currentDraftId, currentUser, selectedCustomerId, selectedSiteId, selectedAssetId, cust, svc, cal, comments, ast, intD, selTpl, step]);
+  }, [currentUser, selectedCustomerId, selectedSiteId, selectedAssetId, cust, svc, cal, comments, ast, intD, selTpl, step]);
 
   // Load draft into form
   const loadDraft = useCallback((draft) => {
+    draftIdRef.current = draft.id;
     setCurrentDraftId(draft.id);
     setCust(draft.cust || INIT_CUST);
     // Migrate old tech1/tech2 format to techs array
@@ -138,7 +142,7 @@ export const ReportingProvider = ({ children }) => {
   const deleteDraft = useCallback(async (draftId) => {
     await reportDraftRepository.delete(draftId);
     setDrafts(prev => prev.filter(d => d.id !== draftId));
-    if (currentDraftId === draftId) setCurrentDraftId(null);
+    if (currentDraftId === draftId) { draftIdRef.current = null; setCurrentDraftId(null); }
   }, [currentDraftId]);
 
   // Auto-save draft (5s debounce, only when customer is selected)
@@ -182,6 +186,7 @@ export const ReportingProvider = ({ children }) => {
     setSelectedCustomerId("");
     setSelectedSiteId("");
     setSelectedAssetId("");
+    draftIdRef.current = null;
     setCurrentDraftId(null);
   };
 
@@ -211,6 +216,7 @@ export const ReportingProvider = ({ children }) => {
   // Load a completed report into the editor (read-only view of data)
   const loadCompletedReport = useCallback((report, customerId, siteId, assetId) => {
     const mapped = mapFromFirestoreFormat(report);
+    draftIdRef.current = null;
     setCurrentDraftId(null); // Not a draft — prevent auto-save overwriting
     setCust(mapped.cust);
     // Restore the original date for completed reports (unlike Copy which blanks it)
