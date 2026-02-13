@@ -274,11 +274,6 @@ export const GlobalDataProvider = ({ children }) => {
     };
 
     const deleteManagedSite = async (customerId, siteId) => {
-        const customer = customers.find(c => c.id === customerId);
-        const site = customer?.managedSites?.find(s => s.id === siteId);
-        const siteName = site ? site.name : 'this site';
-        if (!window.confirm(`Are you sure you want to delete "${siteName}"? This action cannot be undone.`)) return;
-
         try {
             await customerRepository.deleteManagedSite(customerId, siteId);
             console.log('[GlobalDataContext] Managed site deleted:', siteId);

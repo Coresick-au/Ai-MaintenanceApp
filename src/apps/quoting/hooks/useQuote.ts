@@ -73,6 +73,7 @@ export function useQuote() {
         addCustomer: addGlobalCustomer,
         updateCustomer: updateGlobalCustomer,
         deleteCustomer: deleteGlobal,
+        updateManagedSite: updateGlobalManagedSite,
     } = useGlobalData(); // Use Global Data Context
 
     // Transform customers to include managed sites as separate entries
@@ -307,47 +308,20 @@ export function useQuote() {
         // Don't save the expanded name (which includes site names) back to the base customer
         const originalCustomerName = exists ? exists.name : customer.name;
 
-        // If saving for a specific site, update that site's rates and lock state
+        // If saving for a specific site, update ONLY that site's rates and lock state.
+        // IMPORTANT: Use updateManagedSite to preserve all existing site fields
+        // (hasAIMMProfile, serviceData, rollerData, specData, issues, notes, etc.).
+        // Never rebuild the managedSites array with cherry-picked fields as this causes data loss.
         if (siteId && exists) {
-            const updatedManagedSites = (exists.managedSites || []).map((site: any) => {
-                if (site.id === siteId) {
-                    return {
-                        ...site,
-                        rates: customer.rates, // Update site-specific rates
-                        isLocked: customer.isLocked // Update site-specific lock state
-                    };
-                }
-                return site;
-            });
+            const siteUpdates: any = {
+                isLocked: customer.isLocked
+            };
+            if (customer.rates) {
+                siteUpdates.rates = { ...DEFAULT_RATES, ...customer.rates };
+            }
 
-            const customerData = removeUndefined({
-                name: originalCustomerName,
-                rates: { ...DEFAULT_RATES, ...(exists.rates || {}) }, // Keep customer-level rates unchanged, with defaults
-                contacts: customer.contacts || [],
-                customerNotes: customer.customerNotes || '',
-                isLocked: exists.isLocked || false, // Keep customer-level lock state unchanged
-                managedSites: updatedManagedSites.map((site: any) => {
-                    const siteData: any = {
-                        id: site.id,
-                        name: site.name,
-                        location: site.location || '',
-                        contacts: site.contacts || [],
-                        isLocked: site.isLocked
-                    };
-                    // Only include rates if they exist
-                    if (site.rates) {
-                        siteData.rates = { ...DEFAULT_RATES, ...site.rates };
-                    }
-                    // Only include logo if it exists
-                    if (site.logo) {
-                        siteData.logo = site.logo;
-                    }
-                    return siteData;
-                })
-            });
-
-            console.log('[useQuote] Calling updateGlobalCustomer with', { baseCustomerId, managedSitesCount: updatedManagedSites.length });
-            await updateGlobalCustomer(baseCustomerId, customerData);
+            console.log('[useQuote] Updating managed site via updateManagedSite', { baseCustomerId, siteId });
+            await updateGlobalManagedSite(baseCustomerId, siteId, siteUpdates);
             console.log('[useQuote] Site rates update complete');
         } else {
             console.log('[useQuote] Updating customer-level rates');

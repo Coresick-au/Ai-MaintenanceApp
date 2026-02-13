@@ -89,7 +89,8 @@ export default function CustomerDashboard({
         updateCustomer: globalUpdateCustomer,
         // deleteCustomer removed - customers managed in Customer Portal app
         addManagedSite,
-        deleteManagedSite
+        deleteManagedSite,
+        updateManagedSite: globalUpdateManagedSite
     } = useGlobalData();
 
     // Use props if provided (for managed site support), otherwise fall back to global context
@@ -545,7 +546,11 @@ export default function CustomerDashboard({
                                                                 {editingSiteId === site.id ? 'Close' : 'Edit Rates'}
                                                             </button>
                                                             <button
-                                                                onClick={() => deleteManagedSite(selectedId!, site.id)}
+                                                                onClick={async () => {
+                                                                    if (!window.confirm(`Are you sure you want to delete "${site.name}"? This action cannot be undone.`)) return;
+                                                                    const baseId = selectedId?.includes('__') ? selectedId.split('__')[0] : selectedId;
+                                                                    if (baseId) await deleteManagedSite(baseId, site.id);
+                                                                }}
                                                                 className="p-2 text-slate-500 hover:text-red-400 hover:bg-gray-600 rounded transition-colors"
                                                                 title="Delete Site"
                                                             >
@@ -576,11 +581,11 @@ export default function CustomerDashboard({
                                                             <div className="mt-4 flex gap-2">
                                                                 <button
                                                                     onClick={async () => {
-                                                                        // Update the managed site with new rates
-                                                                        const updatedSites = (selectedCustomer?.managedSites || []).map((s: ManagedSite) =>
-                                                                            s.id === site.id ? { ...s, rates: editingSiteRates } : s
-                                                                        );
-                                                                        await updateCustomer(selectedId!, { managedSites: updatedSites });
+                                                                        // Update ONLY this site's rates via updateManagedSite to preserve all other fields
+                                                                        const baseId = selectedId?.includes('__') ? selectedId.split('__')[0] : selectedId;
+                                                                        if (baseId) {
+                                                                            await globalUpdateManagedSite(baseId, site.id, { rates: editingSiteRates });
+                                                                        }
                                                                         setEditingSiteId(null);
                                                                         setEditingSiteRates(null);
                                                                     }}
@@ -590,11 +595,11 @@ export default function CustomerDashboard({
                                                                 </button>
                                                                 <button
                                                                     onClick={async () => {
-                                                                        // Remove site-specific rates (revert to customer rates)
-                                                                        const updatedSites = (selectedCustomer?.managedSites || []).map((s: ManagedSite) =>
-                                                                            s.id === site.id ? { ...s, rates: undefined } : s
-                                                                        );
-                                                                        await updateCustomer(selectedId!, { managedSites: updatedSites });
+                                                                        // Remove site-specific rates via updateManagedSite to preserve all other fields
+                                                                        const baseId = selectedId?.includes('__') ? selectedId.split('__')[0] : selectedId;
+                                                                        if (baseId) {
+                                                                            await globalUpdateManagedSite(baseId, site.id, { rates: null });
+                                                                        }
                                                                         setEditingSiteId(null);
                                                                         setEditingSiteRates(null);
                                                                     }}
