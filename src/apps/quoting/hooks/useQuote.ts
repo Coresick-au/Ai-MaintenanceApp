@@ -316,15 +316,15 @@ export function useQuote() {
         // Never rebuild the managedSites array with cherry-picked fields as this causes data loss.
         if (siteId && exists) {
             const siteUpdates: any = {
-                isLocked: customer.isLocked,
-                lockedAt: customer.lockedAt
+                isLocked: customer.isLocked ?? false,
+                lockedAt: customer.lockedAt ?? null
             };
             if (customer.rates) {
                 siteUpdates.rates = { ...DEFAULT_RATES, ...customer.rates };
             }
 
             console.log('[useQuote] Updating managed site via updateManagedSite', { baseCustomerId, siteId });
-            await updateGlobalManagedSite(baseCustomerId, siteId, siteUpdates);
+            await updateGlobalManagedSite(baseCustomerId, siteId, removeUndefined(siteUpdates));
             console.log('[useQuote] Site rates update complete');
         } else {
             console.log('[useQuote] Updating customer-level rates');

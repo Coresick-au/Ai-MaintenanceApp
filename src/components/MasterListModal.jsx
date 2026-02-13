@@ -95,6 +95,63 @@ export const MasterListModal = ({
   const { theme } = useContext(UIContext);
   const isDarkMode = theme === 'dark';
 
+  // Safely format rollDims which can be an object, string, or null
+  const formatRollDims = (rollDims) => {
+    if (!rollDims) return '-';
+    if (typeof rollDims === 'object' && rollDims !== null) {
+      return rollDims.value || '-';
+    }
+    if (typeof rollDims === 'string') {
+      const cleaned = rollDims.replace(/<[^>]*>/g, '').replace(/\s+/g, ' ').trim();
+      if (cleaned.includes('{') || cleaned.includes('Editable')) return '-';
+      return cleaned || '-';
+    }
+    return String(rollDims);
+  };
+
+  // Get asset value for a given column key
+  const getAssetValue = (asset, spec, key) => {
+    switch (key) {
+      case 'name': return asset.name || '';
+      case 'code': return asset.code || '';
+      case 'type': return asset.id?.startsWith('s-') ? 'Service' : 'Roller';
+      case 'lastCal': return asset.lastCal || '';
+      case 'dueDate': return asset.dueDate || '';
+      case 'scaleType': return spec?.scaleType || '-';
+      case 'integrator': return spec?.integratorController || '-';
+      case 'speedSensor': return spec?.speedSensorType || '-';
+      case 'loadCell': return spec?.loadCellBrand || '-';
+      case 'billetInfo': return spec?.billetWeightType || '-';
+      case 'rollDims': return formatRollDims(spec?.rollDims);
+      case 'adjustmentType': return spec?.adjustmentType || '-';
+      default: return '';
+    }
+  };
+
+  // All hooks must be called before any early return
+  const enrichedData = useMemo(() => {
+    if (!serviceData || !rollerData) return [];
+    return [...serviceData, ...rollerData]
+      .filter(asset => {
+        if (!showArchived && asset.active === false) return false;
+        return true;
+      })
+      .map(asset => {
+        const spec = (specData || []).find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
+        return { asset, spec };
+      });
+  }, [serviceData, rollerData, specData, showArchived]);
+
+  const uniqueColumnValues = useMemo(() => {
+    const columns = ['name', 'type', 'scaleType', 'integrator', 'speedSensor', 'loadCell', 'adjustmentType'];
+    const result = {};
+    columns.forEach(col => {
+      const vals = [...new Set(enrichedData.map(({ asset, spec }) => getAssetValue(asset, spec, col)))].sort();
+      result[col] = vals;
+    });
+    return result;
+  }, [enrichedData]);
+
   if (!isOpen) return null;
 
   const getSortIcon = (columnKey) => {
@@ -117,49 +174,6 @@ export const MasterListModal = ({
   const handleFilterChange = (columnKey, selectedValues) => {
     setColumnFilters(prev => ({ ...prev, [columnKey]: selectedValues }));
   };
-
-  // Get asset value for a given column key
-  const getAssetValue = (asset, spec, key) => {
-    switch (key) {
-      case 'name': return asset.name || '';
-      case 'code': return asset.code || '';
-      case 'type': return asset.id.startsWith('s-') ? 'Service' : 'Roller';
-      case 'lastCal': return asset.lastCal || '';
-      case 'dueDate': return asset.dueDate || '';
-      case 'scaleType': return spec?.scaleType || '-';
-      case 'integrator': return spec?.integratorController || '-';
-      case 'speedSensor': return spec?.speedSensorType || '-';
-      case 'loadCell': return spec?.loadCellBrand || '-';
-      case 'billetInfo': return spec?.billetWeightType || '-';
-      case 'rollDims': return spec?.rollDims || '-';
-      case 'adjustmentType': return spec?.adjustmentType || '-';
-      default: return '';
-    }
-  };
-
-  // Build enriched data with spec lookup
-  const enrichedData = useMemo(() => {
-    return [...serviceData, ...rollerData]
-      .filter(asset => {
-        if (!showArchived && asset.active === false) return false;
-        return true;
-      })
-      .map(asset => {
-        const spec = specData.find(s => s.weigher === asset.weigher || s.altCode === asset.code || s.weigher === asset.code);
-        return { asset, spec };
-      });
-  }, [serviceData, rollerData, specData, showArchived]);
-
-  // Build unique values for each filterable column
-  const uniqueColumnValues = useMemo(() => {
-    const columns = ['name', 'type', 'scaleType', 'integrator', 'speedSensor', 'loadCell', 'adjustmentType'];
-    const result = {};
-    columns.forEach(col => {
-      const vals = [...new Set(enrichedData.map(({ asset, spec }) => getAssetValue(asset, spec, col)))].sort();
-      result[col] = vals;
-    });
-    return result;
-  }, [enrichedData]);
 
   const processedData = enrichedData
     .filter(({ asset, spec }) => {
@@ -337,7 +351,7 @@ export const MasterListModal = ({
                       {spec?.billetWeightSize && <div className={`text-[10px] ${isDarkMode ? 'text-slate-400' : 'text-gray-400'}`}>{spec.billetWeightSize}</div>}
                       {!spec?.billetWeightType && !spec?.billetWeightSize && '-'}
                     </td>
-                    <td className={`p-2 font-mono ${textClass} border-l ${isDarkMode ? 'border-slate-700 bg-orange-900/10' : 'border-slate-700 bg-orange-50'}`}>{spec?.rollDims || '-'}</td>
+                    <td className={`p-2 font-mono ${textClass} border-l ${isDarkMode ? 'border-slate-700 bg-orange-900/10' : 'border-slate-700 bg-orange-50'}`}>{formatRollDims(spec?.rollDims)}</td>
                     <td className={`p-2 ${textClass} ${isDarkMode ? 'bg-orange-900/10' : 'bg-orange-50'}`}>{spec?.adjustmentType || '-'}</td>
                   </tr>
                 );
