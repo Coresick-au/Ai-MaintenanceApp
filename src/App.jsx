@@ -1,9 +1,6 @@
 import React, { useEffect, useRef, useMemo, useState } from 'react';
 // IMPORT DATA & HELPER
 import { recalculateRow } from './data/mockData';
-// IMPORT FIREBASE STORAGE
-import { storage } from './firebase';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 // IMPORT CONTEXTS
 import { useSiteContext } from './hooks/useSiteContext';
 import { useUIContext } from './hooks/useUIContext';
@@ -47,17 +44,11 @@ import { MasterListPDFPreview } from './components/MasterListPDFPreview';
 import { FullDashboardPDF } from './components/FullDashboardPDF';
 import { ScheduleChartPDF } from './components/ScheduleChartPDF';
 import { AssetSpecsPDF } from './components/AssetSpecsPDF';
-import { ServiceReportForm } from './components/reports/ServiceReportForm';
-import { ServiceReportDocument } from './components/reports/ServiceReportDocument';
-import { ReportHistoryModal } from './components/reports/ReportHistoryModal';
-import { ReportWizardModal } from './components/ReportWizardModal';
 import { ToDoWidget } from './components/ToDoWidget';
 import { ContextWizardModal } from './components/ContextWizardModal';
 import { EmployeeManager } from './components/EmployeeManager';
 import DevPDFViewer from './components/DevPDFViewer';
 
-import { pdf } from '@react-pdf/renderer';
-import { saveAs } from 'file-saver';
 
 // Helper function to get display location
 const getDisplayLocation = (site) => {
@@ -122,8 +113,6 @@ export function App() {
 
   // Local state for view mode if not in context (assuming it's not in context based on previous read)
   const [localViewMode, setLocalViewMode] = useState('list');
-  const [isReportWizardOpen, setIsReportWizardOpen] = useState(false);
-  const [reportFormState, setReportFormState] = useState(null); // { site, asset }
   const [commentsExpanded, setCommentsExpanded] = useState(true); // Comments section starts expanded
 
   // NEW: Sidebar Collapse State
@@ -135,7 +124,7 @@ export function App() {
   const [logoBackgrounds, setLogoBackgrounds] = useState({}); // Track logo bg per site card
 
   // Universal Action Wizard State
-  const [wizardAction, setWizardAction] = useState(null); // 'analytics', 'report', 'specs'
+  const [wizardAction, setWizardAction] = useState(null); // 'analytics', 'specs', 'timeline'
   const [isActionMenuOpen, setIsActionMenuOpen] = useState(false);
   // Unused but kept for future employee manager feature
   const [_isEmployeeManagerOpen, _setIsEmployeeManagerOpen] = useState(false);
@@ -312,12 +301,6 @@ export function App() {
   const [opStatusAsset, setOpStatusAsset] = useState(null);
   const [isOpStatusModalOpen, setIsOpStatusModalOpen] = useState(false);
 
-  // --- SERVICE REPORT MODAL STATE ---
-  const [isServiceReportOpen, setIsServiceReportOpen] = useState(false);
-  const [isReportHistoryOpen, setIsReportHistoryOpen] = useState(false);
-  const [editingReportId, setEditingReportId] = useState(null);
-  const [serviceReportInitialData, setServiceReportInitialData] = useState(null);
-  const [serviceReportReadOnly, setServiceReportReadOnly] = useState(false);
 
   // Keyboard shortcuts for Undo (Ctrl+Z) and Redo (Ctrl+Y or Ctrl+Shift+Z)
   useEffect(() => {
@@ -412,120 +395,6 @@ export function App() {
     setOpStatusAsset(null);
   };
 
-  const handleGenerateReport = async (reportData, assetOverride = null) => {
-    console.log('[handleGenerateReport] Starting...', { reportData, assetOverride });
-    const targetAsset = assetOverride || selectedAsset;
-    if (!targetAsset) {
-      console.error('[handleGenerateReport] No target asset found!');
-      return;
-    }
-    const targetAssetId = targetAsset.id;
-    console.log('[handleGenerateReport] Target asset:', targetAsset.name, targetAssetId);
-
-    try {
-      console.log('[handleGenerateReport] Generating PDF blob...');
-      // 1. Generate PDF Blob
-      const blob = await pdf(<ServiceReportDocument data={reportData} />).toBlob();
-      console.log('[handleGenerateReport] PDF blob generated:', blob.size, 'bytes');
-
-      // 2. Create filename: YYYY.MM.DD-CALR-[jobNumber]-[AssetName]
-      const date = new Date(reportData.general.serviceDate);
-      const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, '0')}.${String(date.getDate()).padStart(2, '0')}`;
-      const jobNumber = reportData.general.jobNumber.trim();
-      const assetName = (reportData.general.assetName || targetAsset.name).replace(/[^a-zA-Z0-9]/g, '_');
-      const fileName = `${dateStr}-CALR${jobNumber}-${assetName}.pdf`;
-
-      // 3. Save File Locally (Always offer download)
-      const shouldDownload = reportData.download !== false;
-      if (shouldDownload) {
-        saveAs(blob, fileName);
-      }
-
-      // 4. Upload to Firebase Storage (non-blocking - continue even if it fails)
-      let downloadURL = null;
-      try {
-        const storageRef = ref(storage, `reports/${targetAssetId}/${fileName}`);
-        const snapshot = await uploadBytes(storageRef, blob);
-        downloadURL = await getDownloadURL(snapshot.ref);
-        console.log('[handleGenerateReport] Uploaded report to:', downloadURL);
-      } catch (uploadError) {
-        console.warn('[handleGenerateReport] Firebase upload failed (expected in localhost):', uploadError.message);
-        // Don't throw - CORS errors are expected in localhost
-        // Report will still save locally and to database
-      }
-
-      console.log('[handleGenerateReport] Continuing with local save...');
-
-      // 5. Save to App History (using existing context method)
-      // If editing, delete old record first to ensure clean update (simulated update)
-      if (editingReportId) {
-        deleteServiceReport(targetAssetId, editingReportId);
-      }
-
-      handleSaveReport(targetAssetId, {
-        id: editingReportId || Date.now(),
-        date: new Date().toISOString(),
-        type: 'Full Service',
-        fileName: fileName,
-        storageUrl: downloadURL, // Save the cloud URL
-        jobNumber: jobNumber,
-        data: reportData
-      });
-
-      // 6. Clear draft from localStorage
-      const draftKey = `serviceReportDraft_${targetAssetId}`;
-      localStorage.removeItem(draftKey);
-
-      // 7. Close form modals FIRST
-      setIsServiceReportOpen(false);
-      setReportFormState(null);
-
-      // Reset Edit State
-      setEditingReportId(null);
-      setServiceReportInitialData(null);
-      setServiceReportReadOnly(false);
-
-      // 8. Open Report History after a brief delay to ensure form closes first
-      setTimeout(() => {
-        setIsReportHistoryOpen(true);
-      }, 100);
-    } catch (error) {
-      console.error('Error generating service report:', error);
-      alert('Failed to generate service report. Please try again.');
-      throw error; // Re-throw to prevent window from closing
-    }
-  };
-
-  const handleRegeneratePDF = async (report) => {
-    try {
-      // 1. Generate PDF Blob from saved data
-      const blob = await pdf(<ServiceReportDocument data={report.data} />).toBlob();
-
-      // 2. Save File with original filename
-      saveAs(blob, report.fileName);
-    } catch (error) {
-      console.error('Error regenerating PDF:', error);
-      alert('Failed to regenerate PDF. Please try again.');
-    }
-  };
-
-  const handleViewReport = (report) => {
-    setEditingReportId(report.id);
-    setServiceReportInitialData(report.data);
-    setServiceReportReadOnly(true);
-    setIsServiceReportOpen(true);
-    setIsReportHistoryOpen(false);
-  };
-
-  const handleEditReport = (report) => {
-    if (window.confirm("WARNING: You are about to edit a finalized service report.\n\nChanges will overwrite the existing record history.\n\nAre you sure you want to proceed?")) {
-      setEditingReportId(report.id);
-      setServiceReportInitialData(report.data);
-      setServiceReportReadOnly(false);
-      setIsServiceReportOpen(true);
-      setIsReportHistoryOpen(false);
-    }
-  };
 
   const handleDownloadData = () => {
     const now = new Date();
@@ -1224,21 +1093,7 @@ export function App() {
                       </div>
                     </button>
 
-                    {/* 2. NEW REPORT */}
-                    <button
-                      onClick={() => { setIsActionMenuOpen(false); setWizardAction('report'); }}
-                      className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 border-b border-slate-700 group"
-                    >
-                      <div className="bg-green-500/20 text-green-400 p-2 rounded-lg group-hover:bg-green-500 group-hover:text-white transition-colors">
-                        <Icons.FileText size={18} />
-                      </div>
-                      <div>
-                        <div className="font-bold text-slate-200">New Service Report</div>
-                        <div className="text-[10px] text-slate-400">Create Digital Report</div>
-                      </div>
-                    </button>
-
-                    {/* 3. MANAGE SPECS */}
+                    {/* 2. MANAGE SPECS */}
                     <button
                       onClick={() => { setIsActionMenuOpen(false); setWizardAction('specs'); }}
                       className="w-full p-3 text-left hover:bg-slate-700 flex items-center gap-3 border-b border-slate-700 group"
@@ -1874,7 +1729,6 @@ export function App() {
                                 <td className="px-3 py-2 text-center no-print">
                                   <div className="flex justify-center gap-2">
                                     <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); setSelectedAssetId(item.id); setIsServiceReportOpen(true); }} className="p-1.5 rounded hover:bg-slate-600 text-green-400" title="New Report"><Icons.FileText size={14} /></button>
                                   </div>
                                 </td>
                               )}
@@ -1945,28 +1799,6 @@ export function App() {
                       <h2 className="font-semibold text-lg flex items-center gap-2 text-slate-200"><Icons.Database /> Equipment Details</h2>
                       {selectedAsset && (
                         <div className="no-print flex gap-2">
-                          <Button
-                            variant="secondary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              closeFullscreen();
-                              setIsReportHistoryOpen(true);
-                              setSelectedRowIds(new Set());
-                            }}
-                          >
-                            <Icons.History size={16} /> View Reports
-                          </Button>
-                          <Button
-                            variant="primary"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              closeFullscreen();
-                              setIsServiceReportOpen(true);
-                              setSelectedRowIds(new Set());
-                            }}
-                          >
-                            <Icons.FileText size={16} /> New Service Report
-                          </Button>
                           <Button
                             variant={activeTab === 'service' ? 'secondary' : 'orange'}
                             onClick={(e) => {
@@ -2271,61 +2103,7 @@ export function App() {
         asset={opStatusAsset}
       />
 
-      {/* SERVICE REPORT MODAL */}
-      {
-        isServiceReportOpen && (
-          <ServiceReportForm
-            site={selectedSite}
-            asset={selectedAsset}
-            employees={employees}
-            scheduleType={activeTab}
-            onClose={() => {
-              setIsServiceReportOpen(false);
-              setEditingReportId(null);
-              setServiceReportInitialData(null);
-              setServiceReportReadOnly(false);
-            }}
-            onSave={async (data) => {
-              await handleGenerateReport(data);
-              // Window closing and state reset now handled in handleGenerateReport
-            }}
-            initialData={serviceReportInitialData}
-            readOnly={serviceReportReadOnly}
-          />
-        )
-      }
-
-      {/* REPORT HISTORY MODAL */}
-      {
-        isReportHistoryOpen && selectedAsset && (
-          <ReportHistoryModal
-            asset={selectedAsset}
-            onClose={() => setIsReportHistoryOpen(false)}
-            onRegeneratePDF={handleRegeneratePDF}
-            onViewReport={handleViewReport}
-            onEditReport={handleEditReport}
-            onDeleteReport={(report) => {
-              deleteServiceReport(selectedAsset.id, report.id);
-            }}
-            onNewReport={() => {
-              setIsReportHistoryOpen(false);
-              setReportFormState({ site: selectedSite, asset: selectedAsset });
-            }}
-          />
-        )
-      }
-
       {/* EASTER EGG OVERLAY */}
-
-      <ReportWizardModal
-        isOpen={isReportWizardOpen}
-        onClose={() => setIsReportWizardOpen(false)}
-        sites={sites}
-        onSelectAsset={(site, asset) => {
-          setIsReportWizardOpen(false);
-          setReportFormState({ site, asset }); // Open the actual form
-        }}
-      />
 
       {/* UNIVERSAL CONTEXT WIZARD */}
       <ContextWizardModal
@@ -2334,7 +2112,6 @@ export function App() {
         sites={sites}
         actionTitle={
           wizardAction === 'analytics' ? 'View Analytics For...' :
-            wizardAction === 'report' ? 'Create Report For...' :
               wizardAction === 'specs' ? 'Edit Specs For...' :
                 wizardAction === 'timeline' ? 'View Timeline For...' : 'Select Asset'
         }
@@ -2347,9 +2124,6 @@ export function App() {
           if (wizardAction === 'analytics') {
             setSelectedAssetId(asset.id);
             setViewAnalyticsAsset(asset);
-          } else if (wizardAction === 'report') {
-            setSelectedAssetId(asset.id);
-            setReportFormState({ site, asset });
           } else if (wizardAction === 'timeline') {
             // Open timeline in fullscreen for the selected site
             setLocalViewMode('timeline');
@@ -2367,22 +2141,6 @@ export function App() {
           }
         }}
       />
-
-      {/* The actual Report Form (Full Screen Overlay) */}
-      {
-        reportFormState && (
-          <ServiceReportForm
-            site={reportFormState.site}
-            asset={reportFormState.asset}
-            scheduleType={activeTab}
-            onClose={() => setReportFormState(null)}
-            onSave={async (data) => {
-              await handleGenerateReport(data, reportFormState.asset);
-              // Window closing and state reset now handled in handleGenerateReport
-            }}
-          />
-        )
-      }
 
       {
         isCooked && (

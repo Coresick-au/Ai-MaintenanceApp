@@ -11,6 +11,7 @@ import { EmployeeApp } from './apps/employees/EmployeeApp';
 import { TimesheetApp } from './apps/TimesheetApp/TimesheetApp';
 import { AdminDashboard } from './apps/TimesheetApp/AdminDashboard';
 import JobSheetPage from './pages/JobSheetPage';
+import { ReportingWrapper } from './apps/reporting/ReportingWrapper';
 
 const Portal = () => {
     const { currentUser, userRole, userData, logout } = useAuth();
@@ -40,6 +41,17 @@ const Portal = () => {
             icon: '🛠️',
             color: 'cyan',
             component: <MaintenanceWrapper onBack={() => setActiveApp(null)} />,
+            // PERMISSION: Everyone can access
+            restricted: false
+        },
+        {
+            id: 'reporting',
+            name: 'Service Reporting',
+            fullName: 'Calibration Report Generator',
+            description: 'Generate, preview, and manage calibration service reports with PDF output.',
+            icon: '📝',
+            color: 'teal',
+            component: <ReportingWrapper onBack={() => setActiveApp(null)} />,
             // PERMISSION: Everyone can access
             restricted: false
         },

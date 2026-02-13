@@ -12,6 +12,8 @@ import { TimesheetRepository } from './TimesheetRepository';
 import { SubAssemblyRepository } from './SubAssemblyRepository';
 import { SubAssemblyCompositionRepository } from './SubAssemblyCompositionRepository';
 import { JobsheetRepository } from './JobsheetRepository';
+import { ReportingSettingsRepository } from './ReportingSettingsRepository';
+import { ReportDraftRepository } from './ReportDraftRepository';
 
 // Singleton instances - use these throughout the app
 export const productCompositionRepository = new ProductCompositionRepository();
@@ -27,6 +29,8 @@ export const timesheetRepository = new TimesheetRepository();
 export const subAssemblyRepository = new SubAssemblyRepository();
 export const subAssemblyCompositionRepository = new SubAssemblyCompositionRepository();
 export const jobsheetRepository = new JobsheetRepository();
+export const reportingSettingsRepository = new ReportingSettingsRepository();
+export const reportDraftRepository = new ReportDraftRepository();
 
 // Export classes for testing or custom instances
 export {
@@ -43,5 +47,7 @@ export {
     TimesheetRepository,
     SubAssemblyRepository,
     SubAssemblyCompositionRepository,
-    JobsheetRepository
+    JobsheetRepository,
+    ReportingSettingsRepository,
+    ReportDraftRepository
 };

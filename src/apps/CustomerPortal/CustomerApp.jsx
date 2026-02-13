@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
-import { useAuth } from '../../context/AuthContext'; // Import useAuth
+import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../constants/icons';
 import BackButton from '../../components/ui/BackButton';
 
@@ -13,6 +13,52 @@ const formatDate = (dateString, includeTime = false) => {
     }
     return date.toLocaleDateString();
 };
+
+// Toast notification component
+const TOAST_CONFIG = {
+    success: { icon: Icons.CheckCircle, color: 'text-green-400', border: 'border-green-500/30', bg: 'bg-green-500/10' },
+    error: { icon: Icons.Cancel, color: 'text-red-400', border: 'border-red-500/30', bg: 'bg-red-500/10' },
+    info: { icon: Icons.Info, color: 'text-cyan-400', border: 'border-cyan-500/30', bg: 'bg-cyan-500/10' },
+    warning: { icon: Icons.AlertTriangle, color: 'text-amber-400', border: 'border-amber-500/30', bg: 'bg-amber-500/10' },
+};
+
+const AppToast = ({ message, type = 'success', onDismiss }) => {
+    useEffect(() => {
+        const timer = setTimeout(onDismiss, 3500);
+        return () => clearTimeout(timer);
+    }, [onDismiss]);
+
+    const cfg = TOAST_CONFIG[type] || TOAST_CONFIG.success;
+    const ToastIcon = cfg.icon;
+
+    return (
+        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-900 border ${cfg.border} shadow-xl animate-slide-up`}>
+            <ToastIcon size={18} className={cfg.color} />
+            <span className="text-sm font-medium text-slate-200">{message}</span>
+            <style>{`@keyframes slide-up { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } } .animate-slide-up { animation: slide-up 0.25s ease-out; }`}</style>
+        </div>
+    );
+};
+
+// Confirm dialog component
+const ConfirmDialog = ({ title, message, confirmLabel = 'Confirm', confirmColor = 'bg-red-600 hover:bg-red-500', onConfirm, onCancel }) => (
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9998] p-4" onClick={onCancel}>
+        <div className="bg-slate-900 border border-slate-700 rounded-xl max-w-sm w-full shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="p-5">
+                <div className="font-bold text-base text-white mb-2">{title}</div>
+                <div className="text-sm text-slate-400 leading-relaxed whitespace-pre-line">{message}</div>
+            </div>
+            <div className="px-5 pb-4 flex gap-3 justify-end">
+                <button onClick={onCancel} className="px-4 py-2 text-sm font-medium text-slate-400 border border-slate-600 rounded-lg hover:bg-slate-800 transition">
+                    Cancel
+                </button>
+                <button onClick={onConfirm} className={`px-4 py-2 text-sm font-bold text-white rounded-lg transition ${confirmColor}`}>
+                    {confirmLabel}
+                </button>
+            </div>
+        </div>
+    </div>
+);
 
 // Simple modal component for internal use
 const Modal = ({ title, onClose, children, size = 'md' }) => (
@@ -56,7 +102,13 @@ export const CustomerApp = ({ onBack }) => {
         getSitesByCustomer
     } = useGlobalData();
 
-    const { userRole } = useAuth(); // Get user role
+    const { userRole } = useAuth();
+
+    // Toast + confirm dialog state
+    const [toast, setToast] = useState(null);
+    const showToast = useCallback((message, type = 'success') => setToast({ message, type }), []);
+    const dismissToast = useCallback(() => setToast(null), []);
+    const [confirmDialog, setConfirmDialog] = useState(null);
 
     const [selectedCustId, setSelectedCustId] = useState(null);
     const [searchQuery, setSearchQuery] = useState('');
@@ -109,7 +161,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleGenerateSample = async () => {
         if (!selectedCustId) {
-            alert('Please select a customer first.');
+            showToast('Please select a customer first', 'info');
             return;
         }
 
@@ -126,11 +178,11 @@ export const CustomerApp = ({ onBack }) => {
         try {
             const siteId = await addManagedSite(selectedCustId, demoSiteData);
             if (siteId) {
-                alert('Demo site created successfully!');
+                showToast('Demo site created successfully', 'success');
             }
         } catch (error) {
             console.error('Failed to create demo site:', error);
-            alert('Failed to create demo site. Please try again.');
+            showToast('Failed to create demo site', 'error');
         }
     };
 
@@ -182,7 +234,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleCreateCustomer = async () => {
         if (!formData.name) {
-            alert('Customer name is required');
+            showToast('Customer name is required', 'error');
             return;
         }
         const newId = await addCustomer(formData);
@@ -205,7 +257,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleUpdateCustomer = async () => {
         if (!formData.name) {
-            alert('Customer name is required');
+            showToast('Customer name is required', 'error');
             return;
         }
         await updateCustomer(selectedCustId, formData);
@@ -217,49 +269,59 @@ export const CustomerApp = ({ onBack }) => {
         if (!selectedCustomer) return;
 
         if (userRole === 'tech') {
-            alert("Please ask a manager to delete this customer.");
+            showToast('Manager permission required to delete customers', 'info');
             return;
         }
 
         const linkedSites = getSitesByCustomer(selectedCustId);
         if (linkedSites.length > 0) {
-            alert(`Cannot delete customer. They have ${linkedSites.length} active sites. Please delete or reassign sites first.`);
+            showToast(`Cannot delete: customer has ${linkedSites.length} active sites`, 'error');
             return;
         }
 
-        if (window.confirm(`⚠️ WARNING: You are about to delete "${selectedCustomer.name}".\n\nAre you sure?`)) {
-            if (window.confirm(`This action cannot be undone.\n\nPress OK to permanently delete this customer.`)) {
+        setConfirmDialog({
+            title: 'Delete Customer',
+            message: `Are you sure you want to permanently delete "${selectedCustomer.name}"?\n\nThis action cannot be undone.`,
+            confirmLabel: 'Delete',
+            confirmColor: 'bg-red-600 hover:bg-red-500',
+            onConfirm: async () => {
                 await deleteCustomer(selectedCustId);
                 setSelectedCustId(null);
-            }
-        }
+                showToast(`Customer "${selectedCustomer.name}" deleted`, 'success');
+            },
+        });
     };
 
     const handleArchiveCustomer = async () => {
         if (!selectedCustomer) return;
 
         if (userRole === 'tech') {
-            alert("Please ask a manager to archive/restore this customer.");
+            showToast('Manager permission required to archive/restore customers', 'info');
             return;
         }
 
         const isArchiving = selectedCustomer.active !== false;
-        const message = isArchiving
-            ? `Are you sure you want to archive "${selectedCustomer.name}"?\n\nArchived customers are hidden by default but can be restored.`
-            : `Are you sure you want to restore "${selectedCustomer.name}"?`;
-
-        if (window.confirm(message)) {
-            await updateCustomer(selectedCustId, {
-                active: !isArchiving,
-                archivedAt: isArchiving ? new Date().toISOString() : null
-            });
-        }
+        setConfirmDialog({
+            title: isArchiving ? 'Archive Customer' : 'Restore Customer',
+            message: isArchiving
+                ? `Archive "${selectedCustomer.name}"?\n\nArchived customers are hidden by default but can be restored.`
+                : `Restore "${selectedCustomer.name}"?`,
+            confirmLabel: isArchiving ? 'Archive' : 'Restore',
+            confirmColor: isArchiving ? 'bg-amber-600 hover:bg-amber-500' : 'bg-green-600 hover:bg-green-500',
+            onConfirm: async () => {
+                await updateCustomer(selectedCustId, {
+                    active: !isArchiving,
+                    archivedAt: isArchiving ? new Date().toISOString() : null
+                });
+                showToast(`Customer "${selectedCustomer.name}" ${isArchiving ? 'archived' : 'restored'}`, 'success');
+            },
+        });
     };
 
     const handleCreateContact = async () => {
         if (!selectedCustId) return;
         if (!formData.name) {
-            alert('Contact name is required');
+            showToast('Contact name is required', 'error');
             return;
         }
         await addContactToCustomer(selectedCustId, { ...formData, sendReports: formData.sendReports || false });
@@ -282,7 +344,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleUpdateContact = async () => {
         if (!formData.name) {
-            alert('Contact name is required');
+            showToast('Contact name is required', 'error');
             return;
         }
         await updateCustomerContact(selectedCustId, editingContact.id, formData);
@@ -295,19 +357,26 @@ export const CustomerApp = ({ onBack }) => {
         if (!selectedCustId) return;
 
         if (userRole === 'tech') {
-            alert("Please ask a manager to delete this contact.");
+            showToast('Manager permission required to delete contacts', 'info');
             return;
         }
 
-        if (window.confirm(`Are you sure you want to delete "${contactName}"?`)) {
-            await deleteCustomerContact(selectedCustId, contactId);
-        }
+        setConfirmDialog({
+            title: 'Delete Contact',
+            message: `Delete "${contactName}"?`,
+            confirmLabel: 'Delete',
+            confirmColor: 'bg-red-600 hover:bg-red-500',
+            onConfirm: async () => {
+                await deleteCustomerContact(selectedCustId, contactId);
+                showToast(`Contact "${contactName}" deleted`, 'success');
+            },
+        });
     };
 
     const handleCreateSite = async () => {
         if (!selectedCustId) return;
         if (!formData.name) {
-            alert('Site name is required');
+            showToast('Site name is required', 'error');
             return;
         }
 
@@ -324,11 +393,11 @@ export const CustomerApp = ({ onBack }) => {
                 setFormData({});
 
                 // Provide clear guidance about AIMM
-                alert(`✅ Managed site "${formData.name}" created successfully!\n\n📝 IMPORTANT: This site is managed by the customer and ready for quoting.\n\nMaintenance App (AIMM):\n• This site is NOT in the Maintenance App yet\n• Use the activity icon (📊) to add to Maintenance App when needed\n• Maintenance App provides enhanced monitoring and analytics\n\nThe site will appear in quotes regardless of Maintenance App status.`);
+                showToast(`Managed site "${formData.name}" created successfully`, 'success');
             }
         } catch (error) {
             console.error('Failed to create managed site:', error);
-            alert('❌ Failed to create managed site. Please try again.');
+            showToast('Failed to create managed site', 'error');
         }
     };
 
@@ -344,7 +413,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleUpdateSite = async () => {
         if (!formData.name) {
-            alert('Site name is required');
+            showToast('Site name is required', 'error');
             return;
         }
         await updateSite(editingSite.id, formData);
@@ -385,7 +454,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleDeleteNote = async (noteId) => {
         if (userRole === 'tech') {
-            alert("Please ask a manager to delete this note.");
+            showToast('Manager permission required to delete notes', 'info');
             return;
         }
         await deleteCustomerNote(selectedCustId, noteId);
@@ -393,7 +462,7 @@ export const CustomerApp = ({ onBack }) => {
 
     const handleArchiveNote = async (noteId, isArchived) => {
         if (userRole === 'tech') {
-            alert("Please ask a manager to archive/restore this note.");
+            showToast('Manager permission required to archive/restore notes', 'info');
             return;
         }
         await archiveCustomerNote(selectedCustId, noteId, isArchived);
@@ -756,37 +825,27 @@ export const CustomerApp = ({ onBack }) => {
                                                         <button
                                                             onClick={async () => {
                                                                 if (userRole === 'tech') {
-                                                                    alert("Please ask a manager to change AIMM profile settings.");
+                                                                    showToast('Manager permission required to change AIMM settings', 'info');
                                                                     return;
                                                                 }
 
                                                                 const isCurrentlyEnabled = site.hasAIMMProfile || false;
                                                                 const action = isCurrentlyEnabled ? 'disable' : 'enable';
-                                                                const warning = isCurrentlyEnabled
-                                                                    ? '\n\n⚠️ WARNING: Disabling AIMM tracking will:\n• Remove this site from Maintenance App monitoring\n• Stop automatic data collection and updates\n• Any existing Maintenance App data will remain but will no longer be updated\n\nThe site will still appear in quotes.'
-                                                                    : '\n\nEnabling AIMM tracking will:\n• Add this site to the Maintenance App (AIMM)\n• Enable automatic data collection and updates\n• Provide enhanced maintenance analytics\n\nThe site is already visible in quotes.';
-
-                                                                if (window.confirm(`Are you sure you want to ${action} Maintenance App tracking for "${site.name}"?${warning}\n\nThis change will affect how this site is monitored in the Maintenance App.`)) {
-                                                                    try {
-                                                                        // Just update the hasAIMMProfile flag, don't move sites
-                                                                        await updateManagedSite(selectedCustId, site.id, { hasAIMMProfile: !isCurrentlyEnabled });
-
-                                                                        // Provide immediate feedback
-                                                                        const statusMessage = !isCurrentlyEnabled
-                                                                            ? `✅ Maintenance App tracking enabled for "${site.name}". Enhanced monitoring and analytics are now active.`
-                                                                            : `✅ Maintenance App tracking disabled for "${site.name}". Monitoring has been stopped, but the site remains visible in quotes.`;
-
-                                                                        // Show success message
-                                                                        alert(statusMessage);
-
-                                                                        // Optional: Force a brief delay to ensure Firebase sync
-                                                                        await new Promise(resolve => setTimeout(resolve, 500));
-
-                                                                    } catch (error) {
-                                                                        console.error('Failed to update Maintenance App profile:', error);
-                                                                        alert(`❌ Failed to ${action} Maintenance App tracking for "${site.name}". Please try again.\n\nError: ${error.message}`);
-                                                                    }
-                                                                }
+                                                                setConfirmDialog({
+                                                                    title: `${isCurrentlyEnabled ? 'Disable' : 'Enable'} AIMM Tracking`,
+                                                                    message: `${action === 'enable' ? 'Enable' : 'Disable'} Maintenance App tracking for "${site.name}"?`,
+                                                                    confirmLabel: isCurrentlyEnabled ? 'Disable' : 'Enable',
+                                                                    confirmColor: isCurrentlyEnabled ? 'bg-amber-600 hover:bg-amber-500' : 'bg-blue-600 hover:bg-blue-500',
+                                                                    onConfirm: async () => {
+                                                                        try {
+                                                                            await updateManagedSite(selectedCustId, site.id, { hasAIMMProfile: !isCurrentlyEnabled });
+                                                                            showToast(`AIMM tracking ${!isCurrentlyEnabled ? 'enabled' : 'disabled'} for "${site.name}"`, 'success');
+                                                                        } catch (error) {
+                                                                            console.error('Failed to update Maintenance App profile:', error);
+                                                                            showToast(`Failed to ${action} AIMM tracking for "${site.name}"`, 'error');
+                                                                        }
+                                                                    },
+                                                                });
                                                             }}
                                                             className={`transition p-1 ${site.hasAIMMProfile ? 'text-blue-400 hover:text-blue-300' : 'text-slate-500 hover:text-slate-400'}`}
                                                             title={site.hasAIMMProfile ? "Maintenance App tracking enabled - Click to disable" : "Maintenance App tracking disabled - Click to enable"}
@@ -796,30 +855,27 @@ export const CustomerApp = ({ onBack }) => {
                                                         <button
                                                             onClick={async () => {
                                                                 if (userRole === 'tech') {
-                                                                    alert("Please ask a manager to archive/restore this site.");
+                                                                    showToast('Manager permission required to archive/restore sites', 'info');
                                                                     return;
                                                                 }
 
                                                                 const isCurrentlyActive = site.active !== false;
                                                                 const action = isCurrentlyActive ? 'archive' : 'restore';
-                                                                const warning = isCurrentlyActive
-                                                                    ? '\n\n⚠️ Archiving this site will:\n• Remove it from active site lists\n• Stop monitoring and data collection\n• The site will remain accessible in the Customer Portal'
-                                                                    : '\n\n⚠️ Restoring this site will:\n• Add it back to active site lists\n• Resume monitoring and data collection\n• The site will be visible in the Maintenance App if AIMM is enabled';
-
-                                                                if (window.confirm(`Are you sure you want to ${action} "${site.name}"?${warning}\n\nThis action can be reversed later.`)) {
-                                                                    try {
-                                                                        await updateManagedSite(selectedCustId, site.id, { active: !isCurrentlyActive });
-
-                                                                        const statusMessage = isCurrentlyActive
-                                                                            ? `✅ Site "${site.name}" has been archived.`
-                                                                            : `✅ Site "${site.name}" has been restored and is now active.`;
-
-                                                                        alert(statusMessage);
-                                                                    } catch (error) {
-                                                                        console.error('Failed to toggle site status:', error);
-                                                                        alert(`❌ Failed to ${action} site "${site.name}". Please try again.\n\nError: ${error.message}`);
-                                                                    }
-                                                                }
+                                                                setConfirmDialog({
+                                                                    title: `${isCurrentlyActive ? 'Archive' : 'Restore'} Site`,
+                                                                    message: `${isCurrentlyActive ? 'Archive' : 'Restore'} "${site.name}"?\n\nThis action can be reversed later.`,
+                                                                    confirmLabel: isCurrentlyActive ? 'Archive' : 'Restore',
+                                                                    confirmColor: isCurrentlyActive ? 'bg-amber-600 hover:bg-amber-500' : 'bg-green-600 hover:bg-green-500',
+                                                                    onConfirm: async () => {
+                                                                        try {
+                                                                            await updateManagedSite(selectedCustId, site.id, { active: !isCurrentlyActive });
+                                                                            showToast(`Site "${site.name}" ${isCurrentlyActive ? 'archived' : 'restored'}`, 'success');
+                                                                        } catch (error) {
+                                                                            console.error('Failed to toggle site status:', error);
+                                                                            showToast(`Failed to ${action} site "${site.name}"`, 'error');
+                                                                        }
+                                                                    },
+                                                                });
                                                             }}
                                                             className={`transition p-1 ${site.active === false ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'}`}
                                                             title={site.active === false ? "Restore site" : "Archive site"}
@@ -829,19 +885,25 @@ export const CustomerApp = ({ onBack }) => {
                                                         <button
                                                             onClick={async () => {
                                                                 if (userRole === 'tech') {
-                                                                    alert("Please ask a manager to delete this site.");
+                                                                    showToast('Manager permission required to delete sites', 'info');
                                                                     return;
                                                                 }
 
-                                                                if (window.confirm(`Are you sure you want to delete "${site.name}"?\n\n⚠️ This action cannot be undone.\n\nThe site will be permanently removed from this customer.`)) {
-                                                                    try {
-                                                                        await deleteManagedSite(selectedCustId, site.id);
-                                                                        alert(`✅ Site "${site.name}" has been deleted successfully.`);
-                                                                    } catch (error) {
-                                                                        console.error('Failed to delete site:', error);
-                                                                        alert(`❌ Failed to delete site "${site.name}". Please try again.\n\nError: ${error.message}`);
-                                                                    }
-                                                                }
+                                                                setConfirmDialog({
+                                                                    title: 'Delete Site',
+                                                                    message: `Permanently delete "${site.name}"?\n\nThis action cannot be undone.`,
+                                                                    confirmLabel: 'Delete',
+                                                                    confirmColor: 'bg-red-600 hover:bg-red-500',
+                                                                    onConfirm: async () => {
+                                                                        try {
+                                                                            await deleteManagedSite(selectedCustId, site.id);
+                                                                            showToast(`Site "${site.name}" deleted`, 'success');
+                                                                        } catch (error) {
+                                                                            console.error('Failed to delete site:', error);
+                                                                            showToast(`Failed to delete site "${site.name}"`, 'error');
+                                                                        }
+                                                                    },
+                                                                });
                                                             }}
                                                             className="text-red-400 hover:text-red-300 transition p-1"
                                                             title="Delete site"
@@ -2022,10 +2084,17 @@ export const CustomerApp = ({ onBack }) => {
                                                                         </button>
                                                                         <button
                                                                             onClick={() => {
-                                                                                if (!window.confirm(`Delete "${item.name}"?`)) return;
-                                                                                setEditingSite({
-                                                                                    ...editingSite,
-                                                                                    compliance: editingSite.compliance.filter(c => c.id !== item.id)
+                                                                                setConfirmDialog({
+                                                                                    title: 'Remove Compliance Item',
+                                                                                    message: `Remove "${item.name}"?`,
+                                                                                    confirmLabel: 'Remove',
+                                                                                    confirmColor: 'bg-red-600 hover:bg-red-500',
+                                                                                    onConfirm: () => {
+                                                                                        setEditingSite({
+                                                                                            ...editingSite,
+                                                                                            compliance: editingSite.compliance.filter(c => c.id !== item.id)
+                                                                                        });
+                                                                                    },
                                                                                 });
                                                                             }}
                                                                             className="text-red-400 hover:text-red-300"
@@ -2057,7 +2126,7 @@ export const CustomerApp = ({ onBack }) => {
                                         setEditingSite(null);
                                     } catch (error) {
                                         console.error('Failed to update site:', error);
-                                        alert('Failed to save site. Please try again.');
+                                        showToast('Failed to save site', 'error');
                                     }
                                 }}
                                 className="w-full bg-cyan-600 hover:bg-cyan-500 text-white p-2 rounded font-bold transition"
@@ -2068,6 +2137,17 @@ export const CustomerApp = ({ onBack }) => {
                     </Modal>
                 )
             }
+            {toast && <AppToast message={toast.message} type={toast.type} onDismiss={dismissToast} />}
+            {confirmDialog && (
+                <ConfirmDialog
+                    title={confirmDialog.title}
+                    message={confirmDialog.message}
+                    confirmLabel={confirmDialog.confirmLabel}
+                    confirmColor={confirmDialog.confirmColor}
+                    onConfirm={() => { confirmDialog.onConfirm(); setConfirmDialog(null); }}
+                    onCancel={() => setConfirmDialog(null)}
+                />
+            )}
         </div >
     );
 };
