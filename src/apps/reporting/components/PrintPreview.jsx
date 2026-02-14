@@ -4,6 +4,7 @@ import { useReportingSettings } from "../context/ReportingSettingsContext";
 import { useTheme } from "../context/ReportingThemeContext";
 import { Ic, ICONS } from "./shared";
 import ReportPdfDocument from "../pdf/ReportPdfDocument";
+import { generateReportCode } from "../utils/dataMapper";
 
 export const PrintPreview = () => {
   const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, showPrint, setShowPrint } = useReporting();
@@ -24,7 +25,7 @@ export const PrintPreview = () => {
   const handleDownload = (url) => {
     const a = document.createElement("a");
     a.href = url;
-    a.download = `Report-${svc.date || "draft"}-${svc.cv || "CV00"}.pdf`;
+    a.download = `${generateReportCode(svc)}.pdf`;
     a.click();
   };
 

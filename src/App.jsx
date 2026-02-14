@@ -536,50 +536,6 @@ export function App() {
     document.body.removeChild(link);
   };
 
-  const toggleAssetStatus = (asset, e) => {
-    if (e) e.stopPropagation();
-    const isActivating = asset.active === false;
-
-    // Helper to find an asset by ID (or its mirror ID) and update its status
-    const updateListStatus = (list, targetId, mirrorId) => list.map(item => {
-      // Check if this item is the target OR the mirror representation
-      if (item.id === targetId || item.id === mirrorId) {
-        const updated = { ...item, active: isActivating };
-        updated.history = [...(item.history || []), { date: new Date().toISOString(), action: isActivating ? 'Asset Re-activated' : 'Asset Decommissioned', user: 'User' }];
-        return updated;
-      }
-      return item;
-    });
-
-    // Calculate IDs
-    const idParts = asset.id.split('-');
-    const baseId = idParts.length > 1 ? idParts.slice(1).join('-') : null;
-
-    // Determine the ID of the asset in the OTHER list
-    // If current is s-123, match r-123. If r-123, match s-123.
-    let mirrorId = null;
-    if (baseId) {
-      mirrorId = asset.id.startsWith('s-') ? `r-${baseId}` : `s-${baseId}`;
-    }
-
-    // Update BOTH lists looking for the asset ID or its mirror
-    const newServiceData = updateListStatus(currentServiceData, asset.id, mirrorId);
-    const newRollerData = updateListStatus(currentRollerData, asset.id, mirrorId);
-
-    // Save changes
-    updateSiteData(selectedSiteId, {
-      serviceData: newServiceData,
-      rollerData: newRollerData
-    }, isActivating ? 'Asset Reactivated' : 'Asset Decommissioned');
-
-    // UI Cleanup
-    if (!isActivating && isAssetEditModalOpen) {
-      setIsAssetEditModalOpen(false);
-      setEditingAsset(null);
-    } else if (isActivating && editingAsset) {
-      setEditingAsset({ ...editingAsset, active: true });
-    }
-  };
 
   const getSortIcon = (columnKey) => {
     if (sortConfig.key !== columnKey) return null;
@@ -1696,7 +1652,7 @@ export function App() {
                             <th className="px-4 py-2 text-center min-w-[100px]">Cal Status</th>
                             <th className="px-4 py-2 text-center cursor-pointer hover:bg-slate-700 min-w-[100px]" onClick={() => { handleSort('opStatus'); setSelectedRowIds(new Set()); }}>Op Status {getSortIcon('opStatus')}</th>
                             {activeTab === 'service' && <th className="px-3 py-2 text-center no-print text-xs">Analytics / Reports</th>}
-                            {activeTab === 'service' && <th className="px-3 py-2 text-center no-print text-xs">Archive</th>}
+
                             {activeTab === 'service' && <th className="px-3 py-2 text-center no-print text-xs">Edit</th>}
                           </tr>
                         </thead>
@@ -1730,26 +1686,6 @@ export function App() {
                                   <div className="flex justify-center gap-2">
                                     <button onClick={(e) => { e.stopPropagation(); setViewAnalyticsAsset(item); }} className="p-1.5 rounded hover:bg-slate-600 text-purple-400" title="Analytics"><Icons.Activity size={14} /></button>
                                   </div>
-                                </td>
-                              )}
-                              {activeTab === 'service' && (
-                                <td className="px-3 py-2 text-center no-print">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      const isArchiving = item.active !== false;
-                                      const message = isArchiving
-                                        ? `Are you sure you want to archive "${item.name}"? It will be hidden from active lists but can be reactivated later.`
-                                        : `Are you sure you want to reactivate "${item.name}"?`;
-                                      if (window.confirm(message)) {
-                                        toggleAssetStatus(item, e);
-                                      }
-                                    }}
-                                    className={`p-1.5 rounded transition-colors ${item.active === false ? 'bg-slate-700 text-slate-400 hover:text-white hover:bg-slate-600' : 'hover:bg-slate-600 text-slate-400 hover:text-red-400'}`}
-                                    title={item.active === false ? "Restore" : "Archive"}
-                                  >
-                                    {item.active === false ? <Icons.Redo size={14} /> : <Icons.Archive size={14} />}
-                                  </button>
                                 </td>
                               )}
                               {activeTab === 'service' && (

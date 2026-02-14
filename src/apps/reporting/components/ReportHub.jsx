@@ -4,6 +4,7 @@ import { useTheme } from "../context/ReportingThemeContext";
 import { useGlobalData } from "../../../context/GlobalDataContext";
 import { useAuth } from "../../../context/AuthContext";
 import { Ic, ICONS } from "./shared";
+import { generateReportCode } from "../utils/dataMapper";
 
 export const ReportHub = () => {
   const { drafts, draftsLoaded, loadDraft, deleteDraft, setPage, resetForm, showToast, loadCompletedReport } = useReporting();
@@ -30,6 +31,8 @@ export const ReportHub = () => {
               customerName: customer.name,
               siteName: site.name || site.location || "",
               assetName: report.data?.general?.assetName || asset.name || "",
+              reportCode: report.data?.general?.reportId || "",
+              conveyorNumber: report.data?.general?.conveyorNumber || "",
               date: report.date || "",
               storageUrl: report.storageUrl,
               fileName: report.fileName,
@@ -58,6 +61,8 @@ export const ReportHub = () => {
         customerName: d.customerName || "Untitled",
         siteName: d.siteName || "",
         assetName: d.assetName || "",
+        reportCode: d.svc ? generateReportCode(d.svc) : "",
+        conveyorNumber: d.svc?.cv || "",
         date: d.updatedAt || d.createdAt || "",
         step: d.step || 0,
         source: "draft",
@@ -79,7 +84,7 @@ export const ReportHub = () => {
         if (customerFilter && item.customerName !== customerFilter) return false;
         if (searchQuery) {
           const q = searchQuery.toLowerCase();
-          const searchable = `${item.customerName} ${item.siteName} ${item.assetName}`.toLowerCase();
+          const searchable = `${item.customerName} ${item.siteName} ${item.assetName} ${item.conveyorNumber} ${item.reportCode}`.toLowerCase();
           if (!searchable.includes(q)) return false;
         }
         return true;
@@ -117,10 +122,15 @@ export const ReportHub = () => {
     }
   };
 
-  const handleDeleteDraft = async (e, draftId) => {
+  const handleDeleteDraft = (e, draftId) => {
     e.stopPropagation();
+    setConfirmDeleteId(draftId);
+  };
+
+  const confirmDeleteDraft = async (draftId) => {
     await deleteDraft(draftId);
     showToast("Draft deleted", "info");
+    setConfirmDeleteId(null);
   };
 
   const handleDeleteReport = (e, item) => {
@@ -273,6 +283,7 @@ export const ReportHub = () => {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                   <div style={{ fontWeight: 600, color: t.text, fontSize: 13, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "70%" }}>
                     {item.assetName || "Untitled Report"}
+                    {item.conveyorNumber && <span style={{ fontWeight: 400, color: t.textMuted, marginLeft: 6 }}>({item.conveyorNumber})</span>}
                   </div>
                   <span style={{
                     fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.04em",
@@ -284,14 +295,31 @@ export const ReportHub = () => {
                 </div>
                 {/* Details */}
                 <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 4 }}>{item.customerName}</div>
-                <div style={{ fontSize: 11, color: t.textFaint }}>{item.siteName}</div>
+                <div style={{ fontSize: 11, color: t.textFaint, marginBottom: 2 }}>{item.siteName}</div>
+                {item.reportCode && <div style={{ fontSize: 10, color: t.accent, fontFamily: "monospace" }}>{item.reportCode}</div>}
                 {/* Footer */}
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 10, paddingTop: 8, borderTop: `1px solid ${t.border}` }}>
                   <div style={{ fontSize: 10, color: t.textFaint }}>
                     {item.date ? new Date(item.date).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" }) : "--"}
                   </div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                    {item.type === "draft" && (
+                    {item.type === "draft" && confirmDeleteId === item.id ? (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11 }}>
+                        <span style={{ color: t.textMuted }}>Delete?</span>
+                        <button
+                          onClick={e => { e.stopPropagation(); confirmDeleteDraft(item.id); }}
+                          style={{ ...actionBtnStyle, color: t.red, borderColor: t.red + "66" }}
+                        >
+                          Delete
+                        </button>
+                        <button
+                          onClick={e => { e.stopPropagation(); setConfirmDeleteId(null); }}
+                          style={{ ...actionBtnStyle, color: t.textMuted }}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    ) : item.type === "draft" && (
                       <>
                         <span style={{ fontSize: 10, color: t.textDim }}>Step {(item.step || 0) + 1}/5</span>
                         <button

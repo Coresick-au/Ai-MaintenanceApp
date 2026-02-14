@@ -1,23 +1,21 @@
 import { Document, Page, View, Text, Image, StyleSheet, Font } from "@react-pdf/renderer";
 import { calcDiff, fmtDate } from "../utils/reportUtils.js";
 import { generateReportCode } from "../utils/dataMapper.js";
-import DMSansRegular from "../fonts/DMSans-Regular.ttf?url";
-import DMSansMedium from "../fonts/DMSans-Medium.ttf?url";
-import DMSansBold from "../fonts/DMSans-Bold.ttf?url";
+import CarlitoRegular from "../fonts/Carlito-Regular.ttf?url";
+import CarlitoBold from "../fonts/Carlito-Bold.ttf?url";
 
 Font.register({
-  family: "DM Sans",
+  family: "Carlito",
   fonts: [
-    { src: DMSansRegular, fontWeight: 400 },
-    { src: DMSansMedium, fontWeight: 500 },
-    { src: DMSansBold, fontWeight: 700 },
+    { src: CarlitoRegular, fontWeight: 400 },
+    { src: CarlitoBold, fontWeight: 700 },
   ],
 });
 
 const s = StyleSheet.create({
-  page: { fontFamily: "DM Sans", fontSize: 10, lineHeight: 1.4, color: "#1a1a1a", backgroundColor: "#fff", paddingTop: 40, paddingBottom: 60, paddingHorizontal: 50 },
+  page: { fontFamily: "Carlito", fontSize: 10, lineHeight: 1.4, color: "#1a1a1a", backgroundColor: "#fff", paddingTop: 40, paddingBottom: 60, paddingHorizontal: 50 },
   hdr: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16, paddingBottom: 12, borderBottomWidth: 3, borderBottomColor: "#1a1816" },
-  logo: { width: 60, height: 60 },
+  logo: { height: 50, objectFit: "contain" },
   hdrRight: { textAlign: "right", fontSize: 8, color: "#777", lineHeight: 1.6 },
   title: { textAlign: "center", fontSize: 18, fontWeight: 700, marginBottom: 12 },
   infoBar: { flexDirection: "row", justifyContent: "space-between", backgroundColor: "#f5f4f0", padding: "7 12", borderRadius: 4, marginBottom: 12, fontSize: 10 },
@@ -25,14 +23,14 @@ const s = StyleSheet.create({
   secHdr: { backgroundColor: "#1a1816", padding: "5 10", marginTop: 10 },
   secHdrText: { color: "#fff", fontSize: 9, fontWeight: 700, letterSpacing: 0.6 },
   tRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#eee" },
-  tLabel: { padding: "3 10", color: "#888", fontSize: 10, fontWeight: 500, width: 100 },
-  tValue: { padding: "3 10", fontSize: 10, fontWeight: 500, flex: 1 },
+  tLabel: { padding: "3 10", color: "#888", fontSize: 10, fontWeight: 400, width: 100 },
+  tValue: { padding: "3 10", fontSize: 10, fontWeight: 400, flex: 1 },
   t4Row: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#eee" },
-  t4Label: { padding: "3 10", color: "#888", fontSize: 10, fontWeight: 500, width: 80 },
-  t4Value: { padding: "3 10", fontSize: 10, fontWeight: 500, flex: 1 },
+  t4Label: { padding: "3 10", color: "#888", fontSize: 10, fontWeight: 400, width: 80 },
+  t4Value: { padding: "3 10", fontSize: 10, fontWeight: 400, flex: 1 },
   calRow: { flexDirection: "row", justifyContent: "space-between", paddingVertical: 2, fontSize: 10 },
   calLabel: { color: "#666" },
-  calValue: { fontWeight: 700, fontFamily: "Courier", fontSize: 10 },
+  calValue: { fontWeight: 700, fontFamily: "Carlito", fontSize: 10 },
   grid2: { flexDirection: "row", paddingVertical: 8, paddingHorizontal: 10 },
   gridCol: { flex: 1, paddingRight: 10 },
   commentsBox: { padding: "10 12", fontSize: 10, lineHeight: 1.7, borderTopWidth: 1, borderBottomWidth: 1, borderLeftWidth: 1, borderRightWidth: 1, borderTopColor: "#eee", borderBottomColor: "#eee", borderLeftColor: "#eee", borderRightColor: "#eee", minHeight: 50 },
@@ -40,13 +38,13 @@ const s = StyleSheet.create({
   intHdrCell: { padding: "4 8", fontSize: 8, fontWeight: 700 },
   intRow: { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#f0f0f0" },
   intCell: { padding: "3 8", fontSize: 9 },
-  intCellMono: { padding: "3 8", fontSize: 9, fontFamily: "Courier" },
+  intCellMono: { padding: "3 8", fontSize: 9, fontFamily: "Carlito" },
 });
 
 // Header - only on page 1 (no fixed prop)
 const Header = () => (
   <View style={s.hdr}>
-    <Image src="/logos/ai-logo.png" style={s.logo} />
+    <Image src="/logos/ai-logo2.png" style={s.logo} />
     <View style={s.hdrRight}>
       <Text>ABN 99 657 158 524</Text>
       <Text>6/23 Ashtan Pl, Banyo QLD 4014</Text>
@@ -209,7 +207,7 @@ export default function ReportPdfDocument({ cust, svc, cal, comments, ast, intD,
           const showPct = intD[p.id]?.incPct;
           return (
             <View key={p.id} style={s.intRow}>
-              <Text style={{ ...s.intCell, flex: 2, color: "#666", fontWeight: 500 }}>{p.name}</Text>
+              <Text style={{ ...s.intCell, flex: 2, color: "#666", fontWeight: 400 }}>{p.name}</Text>
               <Text style={{ ...s.intCellMono, flex: 1.5 }}>{af}{af !== "-" && p.unit ? ` ${p.unit}` : ""}</Text>
               <Text style={{ ...s.intCellMono, flex: 1.5 }}>{al}{al !== "-" && p.unit ? ` ${p.unit}` : ""}</Text>
               <Text style={{ ...s.intCellMono, flex: 1, color: "#888" }}>{d.diff !== "-" ? `${d.diff} ${p.unit}` : "-"}</Text>
@@ -222,7 +220,7 @@ export default function ReportPdfDocument({ cust, svc, cal, comments, ast, intD,
           );
         })}
 
-        {/* Footer - fixed on every page */}
+        {/* Footer - static content in a fixed View */}
         <View
           fixed
           style={{
@@ -235,12 +233,23 @@ export default function ReportPdfDocument({ cust, svc, cal, comments, ast, intD,
             paddingTop: 8,
           }}
         >
-          <View style={{ borderTopWidth: 1, borderTopColor: "#ccc", paddingTop: 5, flexDirection: "row", justifyContent: "space-between" }}>
+          <View style={{ borderTopWidth: 1, borderTopColor: "#ccc", paddingTop: 5 }}>
             <Text style={{ fontSize: 8, color: "#888" }}>{reportCode}</Text>
-            <Text style={{ fontSize: 8, color: "#888" }}>{fmtDate(svc.date)}</Text>
-            <Text style={{ fontSize: 8, color: "#888" }} render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`} />
           </View>
         </View>
+
+        {/* Page number - separate fixed Text element (NOT inside the fixed View, to avoid render prop bug) */}
+        <Text
+          fixed
+          render={({ pageNumber, totalPages }) => `Page ${pageNumber} of ${totalPages}`}
+          style={{
+            position: "absolute",
+            bottom: 13,
+            right: 50,
+            fontSize: 8,
+            color: "#888",
+          }}
+        />
       </Page>
     </Document>
   );

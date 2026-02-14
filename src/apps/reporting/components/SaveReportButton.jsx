@@ -12,7 +12,7 @@ import { mapToFirestoreFormat, generateFileName } from "../utils/dataMapper";
 
 export const SaveReportButton = () => {
   const reportState = useReporting();
-  const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, selectedCustomerId, selectedSiteId, selectedAssetId, showToast, currentDraftId, saveDraft, setShowPrint } = reportState;
+  const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, selectedCustomerId, selectedSiteId, selectedAssetId, showToast, currentDraftId, deleteDraft, setShowPrint } = reportState;
   const { condColors } = useReportingSettings();
   const S = useTheme();
   const t = S.t;
@@ -70,12 +70,12 @@ export const SaveReportButton = () => {
         console.log("[SaveReport] Report saved to Firestore");
       }
 
-      // Mark draft as completed if one exists
+      // Delete the draft now that it's finalized (prevents auto-save from re-creating it)
       if (currentDraftId) {
         try {
-          await saveDraft(true);
+          await deleteDraft(currentDraftId);
         } catch (draftErr) {
-          console.warn("[SaveReport] Failed to mark draft completed:", draftErr.message);
+          console.warn("[SaveReport] Failed to delete draft:", draftErr.message);
         }
       }
 

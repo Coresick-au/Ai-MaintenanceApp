@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useGlobalData } from '../../context/GlobalDataContext';
 import { useAuth } from '../../context/AuthContext';
 import { Icons } from '../../constants/icons';
@@ -158,6 +158,27 @@ export const CustomerApp = ({ onBack }) => {
         // Fallback to legacy sites (old system)
         return getSitesByCustomer(customerId).length;
     };
+
+    // Aggregate compliance status across all customers' managed sites
+    const complianceStatus = useMemo(() => {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const thirtyDays = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+        let hasExpired = false;
+        let hasWarning = false;
+        customers.forEach(c => {
+            (c.managedSites || []).forEach(site => {
+                (site.compliance || []).forEach(item => {
+                    const d = item.dueDate ? new Date(item.dueDate) : null;
+                    if (d && d < today) hasExpired = true;
+                    else if (d && d <= thirtyDays) hasWarning = true;
+                });
+            });
+        });
+        if (hasExpired) return 'expired';
+        if (hasWarning) return 'warning';
+        return 'healthy';
+    }, [customers]);
 
     const handleGenerateSample = async () => {
         if (!selectedCustId) {
@@ -489,9 +510,10 @@ export const CustomerApp = ({ onBack }) => {
                 <div className="flex items-center gap-4">
                     {/* Unified Back Button */}
                     <BackButton label="Back to Portal" onClick={onBack} />
-                    <div className="border-l border-slate-600 pl-4">
-                        <h1 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Customer Portal</h1>
-                        <p className="text-xs text-slate-500 uppercase tracking-wider">Master Data Management</p>
+                    <img src="/logos/ai-logo.png" alt="Accurate Industries" className="h-9 w-auto cursor-pointer" onClick={() => { setSelectedCustId(null); setViewMode('customers'); }} />
+                    <div>
+                        <div className="text-sm font-bold tracking-widest uppercase text-slate-200 cursor-pointer" onClick={() => { setSelectedCustId(null); setViewMode('customers'); }}>Accurate Industries</div>
+                        <div className="text-[11px] text-slate-500">Customer Portal</div>
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -513,6 +535,80 @@ export const CustomerApp = ({ onBack }) => {
                 </div>
             </header>
 
+            {!selectedCustId && viewMode === 'customers' ? (
+                /* ===== FRONT PAGE: Customer Card Grid ===== */
+                <div className="flex-1 overflow-y-auto p-8">
+                    <div className="max-w-6xl mx-auto">
+                        <div className="flex items-center justify-between mb-8">
+                            <div>
+                                <h2 className="text-2xl font-bold text-white">Customers</h2>
+                                <p className="text-sm text-slate-500 mt-1">{customers.filter(c => c.active !== false).length} active customer{customers.filter(c => c.active !== false).length !== 1 ? 's' : ''}</p>
+                            </div>
+                            <button
+                                onClick={() => { setViewMode('compliance'); }}
+                                className="px-4 py-2 rounded-lg flex items-center gap-2 font-bold text-sm bg-purple-900/30 text-purple-400 hover:bg-purple-900/50 border border-purple-800 transition-colors"
+                            >
+                                <span className="relative">
+                                    <Icons.AlertTriangle size={16} />
+                                    <span className={`absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full border-2 border-purple-900/30 ${
+                                        complianceStatus === 'expired' ? 'bg-red-500'
+                                        : complianceStatus === 'warning' ? 'bg-amber-500'
+                                        : 'bg-green-500'
+                                    }`} />
+                                </span>
+                                Compliance Overview
+                            </button>
+                        </div>
+                        <div className="relative max-w-md mb-6">
+                            <Icons.Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search customers & sites..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="w-full bg-slate-800 border border-slate-700 rounded-lg pl-10 pr-3 py-2.5 text-sm focus:ring-1 focus:ring-cyan-500 outline-none placeholder-slate-500"
+                            />
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-5">
+                            {filteredCustomers.filter(c => c.active !== false).map(cust => (
+                                <div
+                                    key={cust.id}
+                                    onClick={() => { setSelectedCustId(cust.id); setViewMode('customers'); }}
+                                    className="relative bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 flex flex-col items-center gap-3 cursor-pointer hover:border-cyan-500/50 hover:shadow-lg hover:shadow-cyan-900/10 hover:-translate-y-0.5 transition-all duration-200 group"
+                                >
+                                    {/* Site count badge */}
+                                    <span className="absolute top-2 right-2 min-w-[22px] h-[22px] flex items-center justify-center rounded-full bg-cyan-600 text-white text-[11px] font-bold px-1.5">
+                                        {getSiteCountForCustomer(cust.id)}
+                                    </span>
+                                    {/* Logo or initial */}
+                                    <div className="w-20 h-20 rounded-lg bg-slate-700/50 flex items-center justify-center overflow-hidden">
+                                        {cust.logo ? (
+                                            <img src={cust.logo} alt={cust.name} className="w-full h-full object-contain p-1" />
+                                        ) : (
+                                            <span className="text-3xl font-bold text-slate-500 group-hover:text-cyan-400 transition-colors">{cust.name.charAt(0)}</span>
+                                        )}
+                                    </div>
+                                    <span className="text-sm font-bold text-slate-300 text-center truncate w-full group-hover:text-white transition-colors">{cust.name}</span>
+                                    {/* Show matching site names when search matches a site */}
+                                    {searchQuery && !cust.customerMatches && cust.matchingSites?.length > 0 && (
+                                        <div className="text-[11px] text-emerald-400 text-center truncate w-full">
+                                            <Icons.MapPin size={10} className="inline mr-0.5" />
+                                            {cust.matchingSites.map(s => s.name).join(', ')}
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                            {filteredCustomers.filter(c => c.active !== false).length === 0 && (
+                                <div className="col-span-full text-center py-12 text-slate-500">
+                                    <Icons.Search size={32} className="mx-auto mb-2 opacity-30" />
+                                    <p className="font-medium">No customers or sites found</p>
+                                    <p className="text-sm mt-1">Try a different search term</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            ) : (
             <div className="flex flex-1 overflow-hidden">
                 {/* Sidebar: Customer List */}
                 <aside className={`${sidebarWidth} bg-slate-900/50 border-r border-slate-800 flex flex-col transition-all duration-300 relative overflow-visible`}>
@@ -534,7 +630,14 @@ export const CustomerApp = ({ onBack }) => {
                                 : 'bg-purple-900/30 text-purple-400 hover:bg-purple-900/50 border border-purple-800'
                                 }`}
                         >
-                            <Icons.AlertTriangle size={16} />
+                            <span className="relative">
+                                <Icons.AlertTriangle size={16} />
+                                <span className={`absolute -top-1 -right-1.5 w-2.5 h-2.5 rounded-full border-2 ${viewMode === 'compliance' ? 'border-purple-600' : 'border-slate-900'} ${
+                                    complianceStatus === 'expired' ? 'bg-red-500'
+                                    : complianceStatus === 'warning' ? 'bg-amber-500'
+                                    : 'bg-green-500'
+                                }`} />
+                            </span>
                             {!isSidebarCollapsed && 'Compliance Overview'}
                         </button>
 
@@ -1139,7 +1242,8 @@ export const CustomerApp = ({ onBack }) => {
                         </div>
                     )}
                 </main>
-            </div >
+            </div>
+            )}
 
             {/* --- MODALS --- */}
 

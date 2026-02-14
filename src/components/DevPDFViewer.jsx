@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PDFViewer } from '@react-pdf/renderer';
+import { PDFViewer, Document, Page, View, Text, StyleSheet } from '@react-pdf/renderer';
 
 // Import all PDF Components
 import { ServiceReportFixed } from './ServiceReportFixed';
@@ -8,6 +8,7 @@ import { JobSheetPDF } from '../apps/quoting/components/JobSheetPDF';
 import { AssetSpecsPDF } from './AssetSpecsPDF';
 import { FullDashboardPDF } from './FullDashboardPDF';
 import { TimesheetPDF } from '../apps/TimesheetApp/components/TimesheetPDF';
+import ReportPdfDocument from '../apps/reporting/pdf/ReportPdfDocument';
 import { generateSampleSite } from '../data/mockData';
 
 // --- MOCK DATA SETUP ---
@@ -152,11 +153,74 @@ const mockTimesheetSummary = {
     utilizationPercent: 49.3
 };
 
+// --- Render Prop Test PDF ---
+const rpStyles = StyleSheet.create({
+    page: { fontSize: 12, paddingTop: 40, paddingBottom: 60, paddingHorizontal: 50 },
+});
+
+const RenderPropTestPDF = () => (
+    <Document title="Render Prop Test">
+        <Page size="A4" style={rpStyles.page}>
+            <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 20 }}>Render Prop Test - Page Number Approaches</Text>
+
+            {/* Fill page with content to force a second page */}
+            {Array.from({ length: 40 }, (_, i) => (
+                <Text key={i} style={{ marginBottom: 8 }}>Line {i + 1} - Lorem ipsum dolor sit amet, consectetur adipiscing elit.</Text>
+            ))}
+
+            {/* Test 1: Standalone fixed Text with render (our current approach) */}
+            <Text
+                fixed
+                render={({ pageNumber, totalPages }) => `[Test 1 - absolute] Page ${pageNumber} of ${totalPages}`}
+                style={{ position: "absolute", bottom: 45, right: 50, fontSize: 9, color: "red" }}
+            />
+
+            {/* Test 2: Fixed Text with render, NO absolute positioning */}
+            <Text
+                fixed
+                render={({ pageNumber, totalPages }) => `[Test 2 - flow] Page ${pageNumber} of ${totalPages}`}
+                style={{ fontSize: 9, color: "blue" }}
+            />
+
+            {/* Test 3: Inside a fixed View (known broken approach) */}
+            <View fixed style={{ position: "absolute", bottom: 25, left: 50, right: 50 }}>
+                <Text
+                    render={({ pageNumber, totalPages }) => `[Test 3 - inside fixed View] Page ${pageNumber} of ${totalPages}`}
+                    style={{ fontSize: 9, color: "green" }}
+                />
+            </View>
+
+            {/* Test 4: Fixed View with static text (control - should always work) */}
+            <View fixed style={{ position: "absolute", bottom: 10, left: 50, right: 50, flexDirection: "row", justifyContent: "space-between" }}>
+                <Text style={{ fontSize: 9, color: "#888" }}>Static footer left</Text>
+                <Text style={{ fontSize: 9, color: "#888" }}>Static footer right</Text>
+            </View>
+        </Page>
+    </Document>
+);
+
+// --- Mock data for Belt Weigher Report ---
+const mockBWReport = {
+    cust: { name: "Test Mining Co", location: "Mount Isa QLD", contact1: "John Smith", email1: "john@test.com", phone1: "0400 000 000", contact2: "", email2: "", phone2: "" },
+    svc: { date: new Date().toISOString(), asset: "BW-001", cv: "CV-12", type: "Calibration", interval: 6, techs: ["Brad Jones - 0411111111 - brad@test.com"], jobNo: "25100" },
+    cal: { oz: "0.00", nz: "0.01", os: "1000", ns: "1002", zr: "0.02", sr: "0.15", ol: "12.5", nl: "12.48", osp: "2.50", nsp: "2.51" },
+    comments: "Routine calibration completed. All parameters within tolerance. Belt tracking good. Recommend roller replacement at next service.",
+    ast: { scaleType: "Multi-Idler", speedIn: "Digital Encoder", scaleCond: "Good", billetType: "Chain", integrator: "Rice Lake 920i", nw: "4", nlc: "2", bs: "25", lcCap: "100kg", billetCond: "Good", lcSpecs: "2.0", nmi: "Yes", nmiCls: "0.5", rCond: "Fair", rType: "Standard", rDate: new Date(Date.now() + 180 * 86400000).toISOString(), rSize: "133x380" },
+    intD: { p1: { af: "10000", al: "10050", incPct: true }, p2: { af: "5000", al: "5025", incPct: true }, p3: { af: "2.50", al: "2.51", incPct: false } },
+    selTpl: { name: "Rice Lake 920i", params: [{ id: "p1", name: "Grand Total", unit: "t" }, { id: "p2", name: "Rate", unit: "t/h" }, { id: "p3", name: "Speed", unit: "m/s" }] },
+    nsd: new Date(Date.now() + 180 * 86400000).toISOString(),
+    zD: { diff: "0.01", pct: "0.01" }, sD: { diff: "2", pct: "0.20" },
+    lD: { diff: "-0.02", pct: "0.16" }, spD: { diff: "0.01", pct: "0.40" },
+    condColors: { Good: "#16a34a", Fair: "#d97706", Poor: "#dc2626" },
+};
+
 const DevPDFViewer = () => {
-    const [selectedReport, setSelectedReport] = useState('job-sheet');
+    const [selectedReport, setSelectedReport] = useState('render-test');
     const [debugMode, setDebugMode] = useState(false);
 
     const reportOptions = [
+        { id: 'render-test', label: 'Render Prop Test (Page Numbers)' },
+        { id: 'belt-weigher', label: 'Belt Weigher Report' },
         { id: 'job-sheet', label: 'Technician Job Sheet' },
         { id: 'timesheet', label: 'Weekly Timesheet' },
         { id: 'maintenance-report', label: 'Maintenance Report' },
@@ -167,6 +231,12 @@ const DevPDFViewer = () => {
 
     const renderSelectedPDF = () => {
         switch (selectedReport) {
+            case 'render-test':
+                return <RenderPropTestPDF />;
+
+            case 'belt-weigher':
+                return <ReportPdfDocument {...mockBWReport} />;
+
             case 'job-sheet':
                 return <JobSheetPDF quote={mockQuote} debug={debugMode} />;
 

@@ -105,7 +105,7 @@ export const ReportingApp = ({ onBack }) => {
           <img src="./logos/ai-logo.png" alt="Accurate Industries" style={{ height: 36, width: "auto" }} />
           <div>
             <div style={{ fontSize: 14, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase" }}>Accurate Industries</div>
-            <div style={{ fontSize: 11, color: t.textFaint }}>Belt Weigher Report Generator</div>
+            <div style={{ fontSize: 11, color: t.textFaint }}>Customer Report Generator</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
