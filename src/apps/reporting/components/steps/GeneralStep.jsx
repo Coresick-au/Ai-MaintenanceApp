@@ -41,13 +41,18 @@ export const GeneralStep = () => {
   const selectedCustomer = customers.find(c => c.id === selectedCustomerId);
   const siteOptions = useMemo(() => {
     if (!selectedCustomer) return [];
-    return (selectedCustomer.managedSites || []).map(s => ({ value: s.id, label: s.name }));
+    // Only show AIMM-enabled sites so reports land in the same data AIMM reads
+    return (selectedCustomer.managedSites || [])
+      .filter(s => s.hasAIMMProfile === true)
+      .map(s => ({ value: s.id, label: s.name }));
   }, [selectedCustomer]);
 
   const selectedSite = selectedCustomer?.managedSites?.find(s => s.id === selectedSiteId);
   const assetOptions = useMemo(() => {
     if (!selectedSite) return [];
-    return (selectedSite.serviceData || []).map(a => ({ value: a.id, label: `${a.name} (${a.code || "?"})` }));
+    return (selectedSite.serviceData || [])
+      .filter(a => a.active !== false)
+      .map(a => ({ value: a.id, label: `${a.code || a.weigher || "?"} - ${a.name}` }));
   }, [selectedSite]);
 
   const handleCustomerChange = (custId) => {

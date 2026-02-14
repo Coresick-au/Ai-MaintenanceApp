@@ -4,7 +4,7 @@ import { DEFAULT_SITE_FORM, DEFAULT_NOTE_INPUT, DEFAULT_NEW_ASSET, DEFAULT_SPEC_
 const UIContext = createContext();
 
 export { UIContext };
-export const UIProvider = ({ children }) => {
+export const UIProvider = ({ children, onNavigateTo }) => {
     // --- MODALS ---
     const [isEditSiteModalOpen, setIsEditSiteModalOpen] = useState(false);
     const [isAssetModalOpen, setIsAssetModalOpen] = useState(false);
@@ -77,7 +77,7 @@ export const UIProvider = ({ children }) => {
             expandedSection, setExpandedSection,
             closeFullscreen,
             handleLightModeClick: () => { }, isCooked, setIsCooked,
-
+            onNavigateTo,
         }}>
             {children}
         </UIContext.Provider>

@@ -10,7 +10,7 @@ import { getEquipmentType } from "../data/equipmentTypes";
 export const ReportHub = () => {
   const { drafts, draftsLoaded, loadDraft, deleteDraft, setPage, resetForm, showToast, loadCompletedReport } = useReporting();
   const { customers, updateManagedSite } = useGlobalData();
-  const { userRole } = useAuth();
+  const { userRole, currentUser } = useAuth();
   const { t, ...S } = useTheme();
 
   // Filter state
@@ -18,15 +18,19 @@ export const ReportHub = () => {
   const [customerFilter, setCustomerFilter] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [confirmRestoreId, setConfirmRestoreId] = useState(null);
+  const canManage = userRole === "manager" || userRole === "admin";
 
   // Aggregate completed reports from all customer assets
-  const allCompletedReports = useMemo(() => {
-    const reports = [];
+  const { allCompletedReports, deletedReports } = useMemo(() => {
+    const active = [];
+    const deleted = [];
     customers.forEach(customer => {
       (customer.managedSites || []).forEach(site => {
         (site.serviceData || []).forEach(asset => {
           (asset.reports || []).forEach(report => {
-            reports.push({
+            const entry = {
               id: `${asset.id}-${report.id}`,
               type: "completed",
               customerName: customer.name,
@@ -43,12 +47,18 @@ export const ReportHub = () => {
               siteId: site.id,
               assetId: asset.id,
               raw: report,
-            });
+            };
+            if (report.deleted) {
+              deleted.push(entry);
+            } else {
+              active.push(entry);
+            }
           });
         });
       });
     });
-    return reports;
+    deleted.sort((a, b) => new Date(b.raw.deletedAt || 0) - new Date(a.raw.deletedAt || 0));
+    return { allCompletedReports: active, deletedReports: deleted };
   }, [customers]);
 
   // Build unified list
@@ -153,18 +163,53 @@ export const ReportHub = () => {
       if (site) {
         const updatedServiceData = (site.serviceData || []).map(asset => {
           if (asset.id === item.assetId) {
-            return { ...asset, reports: (asset.reports || []).filter(r => r.id !== item.raw.id) };
+            return {
+              ...asset,
+              reports: (asset.reports || []).map(r =>
+                r.id === item.raw.id
+                  ? { ...r, deleted: true, deletedAt: new Date().toISOString(), deletedBy: currentUser?.email || "unknown" }
+                  : r
+              ),
+            };
           }
           return asset;
         });
         await updateManagedSite(item.customerId, item.siteId, { serviceData: updatedServiceData });
-        showToast("Report deleted", "success");
+        showToast("Report moved to deleted", "success");
       }
     } catch (err) {
       console.error("[ReportHub] Delete report failed:", err);
       showToast("Failed to delete report", "error");
     }
     setConfirmDeleteId(null);
+  };
+
+  const restoreReport = async (item) => {
+    try {
+      const customer = customers.find(c => c.id === item.customerId);
+      const site = customer?.managedSites?.find(s => s.id === item.siteId);
+      if (site) {
+        const updatedServiceData = (site.serviceData || []).map(asset => {
+          if (asset.id === item.assetId) {
+            return {
+              ...asset,
+              reports: (asset.reports || []).map(r =>
+                r.id === item.raw.id
+                  ? { ...r, deleted: false, deletedAt: null, deletedBy: null }
+                  : r
+              ),
+            };
+          }
+          return asset;
+        });
+        await updateManagedSite(item.customerId, item.siteId, { serviceData: updatedServiceData });
+        showToast("Report restored", "success");
+      }
+    } catch (err) {
+      console.error("[ReportHub] Restore report failed:", err);
+      showToast("Failed to restore report", "error");
+    }
+    setConfirmRestoreId(null);
   };
 
   const handleNewReport = () => {
@@ -391,6 +436,88 @@ export const ReportHub = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Deleted Reports Section - Management+ only */}
+      {canManage && deletedReports.length > 0 && (
+        <div style={{ marginTop: 24 }}>
+          <button
+            onClick={() => setShowDeleted(v => !v)}
+            style={{
+              fontFamily: "inherit", fontSize: 12, fontWeight: 600, padding: "8px 14px",
+              borderRadius: 6, border: `1px solid ${t.red}33`,
+              background: showDeleted ? t.red + "18" : "transparent",
+              color: t.red, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 8,
+            }}
+          >
+            <Ic d={ICONS.trash} s={14} c={t.red} />
+            Deleted Reports ({deletedReports.length})
+            <span style={{ fontSize: 10, transform: showDeleted ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>▼</span>
+          </button>
+
+          {showDeleted && (
+            <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ fontSize: 10, color: t.textFaint, padding: "0 2px" }}>
+                These reports have been soft-deleted and can be restored. Only managers and admins can see this section.
+              </div>
+              {deletedReports.map(item => (
+                <div
+                  key={item.id}
+                  style={{
+                    ...S.card,
+                    opacity: 0.7,
+                    borderColor: t.red + "33",
+                  }}
+                >
+                  <div style={{ padding: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: t.textMuted, fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {item.reportCode || item.raw.fileName || "Unknown Report"}
+                      </div>
+                      <div style={{ fontSize: 11, color: t.textFaint, marginTop: 2 }}>
+                        {item.customerName} — {item.assetName}
+                        {item.raw.deletedAt && (
+                          <span style={{ marginLeft: 8, fontSize: 10, color: t.red }}>
+                            Deleted {new Date(item.raw.deletedAt).toLocaleDateString("en-AU", { day: "2-digit", month: "short", year: "numeric" })}
+                            {item.raw.deletedBy && ` by ${item.raw.deletedBy}`}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 6, flexShrink: 0, marginLeft: 12 }}>
+                      {confirmRestoreId === item.id ? (
+                        <>
+                          <span style={{ fontSize: 11, color: t.textMuted, alignSelf: "center" }}>Restore?</span>
+                          <button
+                            onClick={() => restoreReport(item)}
+                            style={{ ...actionBtnStyle, color: t.green, borderColor: t.green + "66" }}
+                          >
+                            Restore
+                          </button>
+                          <button
+                            onClick={() => setConfirmRestoreId(null)}
+                            style={{ ...actionBtnStyle, color: t.textMuted }}
+                          >
+                            Cancel
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => setConfirmRestoreId(item.id)}
+                          style={{ ...actionBtnStyle, color: t.green, borderColor: t.green + "44" }}
+                          title="Restore this report"
+                        >
+                          <Ic d={ICONS.plus} s={11} c={t.green} /> Restore
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

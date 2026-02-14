@@ -71,7 +71,7 @@ export function App() {
     handleAddSpecNote, handleDeleteSpecNote, saveEditedNote,
     handleAddSiteNote, handleUpdateSiteNote, handleDeleteSiteNote, handleArchiveSiteNote,
 
-    handleFileChange, uploadServiceReport, deleteServiceReport,
+    handleFileChange, uploadServiceReport,
     dbPath, isDbReady, handleDatabaseSelected,
     todos, handleAddTodo, handleUpdateTodo, handleDeleteTodo
   } = useSiteContext();
@@ -273,16 +273,6 @@ export function App() {
           reports: updatedReports
         };
       });
-    }
-  };
-
-  const handleDeleteReportWrapper = (assetId, reportId) => {
-    // 1. Call Context Method
-    deleteServiceReport(assetId, reportId);
-
-    // 2. Update Local State
-    if (viewAnalyticsAsset && viewAnalyticsAsset.id === assetId) {
-      setViewAnalyticsAsset(prev => ({ ...prev, reports: (prev.reports || []).filter(r => r.id !== reportId) }));
     }
   };
 
@@ -1866,7 +1856,6 @@ export function App() {
         asset={viewAnalyticsAsset}
         siteLocation={selectedSite?.fullLocation || selectedSite?.location}
         onSaveReport={handleSaveReport}
-        onDeleteReport={handleDeleteReportWrapper}
       />
 
       <ContextWizardModal

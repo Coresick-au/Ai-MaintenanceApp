@@ -40,7 +40,7 @@ const Portal = () => {
             description: 'Asset tracking, calibration schedules, and service reporting.',
             icon: '🛠️',
             color: 'cyan',
-            component: <MaintenanceWrapper onBack={() => setActiveApp(null)} />,
+            component: <MaintenanceWrapper onBack={() => setActiveApp(null)} onNavigateTo={(appId) => setActiveApp(appId)} />,
             // PERMISSION: Everyone can access
             restricted: false
         },

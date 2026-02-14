@@ -7,12 +7,12 @@ import { UndoProvider } from '../context/UndoContext';
 import { ErrorBoundary } from '../components/UIComponents';
 import BackButton from '../components/ui/BackButton';
 
-export const MaintenanceWrapper = ({ onBack }) => {
+export const MaintenanceWrapper = ({ onBack, onNavigateTo }) => {
     return (
         <ErrorBoundary>
             <UndoProvider>
                 <SiteProvider>
-                    <UIProvider>
+                    <UIProvider onNavigateTo={onNavigateTo}>
                         <FilterProvider>
                             <div className="relative">
                                 {/* Unified Back Button - Top Left */}

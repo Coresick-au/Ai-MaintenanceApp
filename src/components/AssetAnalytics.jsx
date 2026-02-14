@@ -1,12 +1,9 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { Button, Modal, UniversalDatePicker } from './UIComponents';
+import React, { useState } from 'react';
+import { Button, Modal } from './UIComponents';
 import { Icons } from '../constants/icons.jsx';
 import { formatDate } from '../utils/helpers';
 import { useFilterContext } from '../hooks/useFilterContext';
-
-import { ManualCalibrationModal } from './ManualCalibrationModal';
-import { EditCalibrationModal } from './EditCalibrationModal';
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from 'docx';
+import { useUIContext } from '../hooks/useUIContext';
 
 // HELPER: Normalize Report Data (The "Cross Fix")
 // This makes sure both Old PDF Uploads and New Digital Reports look the same to the charts
@@ -63,8 +60,15 @@ const getNormalizedReportData = (report) => {
     };
 };
 
+// HELPER: Extract display code from any report format
+const getReportDisplayCode = (report) => {
+    if (report.data?.general?.reportId) return report.data.general.reportId;
+    if (report.fileName) return report.fileName.replace(/\.pdf$/i, '');
+    return report.date ? `Report-${report.date}` : 'Unknown Report';
+};
+
 // --- REPORT DETAILS MODAL ---
-const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
+const ReportDetailsModal = ({ report, siteLocation, onClose }) => {
 
     if (!report) {
         return (
@@ -182,17 +186,6 @@ const ReportDetailsModal = ({ report, siteLocation, onClose, onDelete }) => {
                     {/* Actions */}
                     <div className="flex gap-3 pt-4 border-t border-slate-700">
                         <Button onClick={onClose} className="flex-1">Close</Button>
-                        <button
-                            onClick={() => {
-                                if (confirm(`Are you sure you want to delete this calibration report?\n\nDate: ${reportDate}\nTechnician: ${technician}\nFile: ${fileName}\n\nThis action cannot be undone.`)) {
-                                    onDelete();
-                                    onClose();
-                                }
-                            }}
-                            className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 rounded border border-red-700/50 transition-colors"
-                        >
-                            <Icons.Trash /> Delete
-                        </button>
                     </div>
                 </div>
             </div>
@@ -495,94 +488,33 @@ const MiniBarChart = ({ data, dataKey, color, isExpanded = false }) => {
     );
 };
 
+// --- COMING SOON CHART PLACEHOLDER ---
+const ComingSoonChart = ({ title, description }) => (
+    <div className="bg-slate-900 border border-slate-700 rounded-xl p-4">
+        <div className="mb-2">
+            <h4 className="text-sm font-bold text-slate-200">{title}</h4>
+            <p className="text-xs text-slate-400">{description}</p>
+        </div>
+        <div className="h-32 flex flex-col items-center justify-center text-slate-500">
+            <Icons.Activity size={28} className="mb-2 opacity-30" />
+            <span className="text-sm font-medium">Coming Soon</span>
+            <span className="text-[10px] text-slate-600 mt-1">Analytics will be available in a future update</span>
+        </div>
+    </div>
+);
+
 // --- MAIN COMPONENT ---
-export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, onDeleteReport, siteLocation }) => {
-    const [showAddReport, setShowAddReport] = useState(false);
+export const AssetAnalyticsModal = ({ asset, isOpen, onClose, onSaveReport, siteLocation }) => {
     const [expandedChart, setExpandedChart] = useState(null);
     const [selectedReport, setSelectedReport] = useState(null);
 
-    const [manualCalibrationModalOpen, setManualCalibrationModalOpen] = useState(false);
-    const [editCalibrationModalOpen, setEditCalibrationModalOpen] = useState(false);
-    const [editingReport, setEditingReport] = useState(null);
-    const [isAddMenuOpen, setIsAddMenuOpen] = useState(false); // Add state for dropdown
     const { selectedReportIds, toggleReportSelection, clearReportSelections } = useFilterContext();
-
-    const mountedRef = useRef(true); // NEW: To track if component is mounted
-
-    useEffect(() => {
-        mountedRef.current = true;
-        return () => {
-            mountedRef.current = false; // Set to false on unmount
-        };
-    }, []);
-
-    const [formData, setFormData] = useState(() => ({
-        date: new Date().toISOString().split('T')[0],
-        technician: '',
-        fileName: '', // Added fileName to formData initialization
-        tareChange: '',
-        spanChange: '',
-        zeroMV: '',
-        spanMV: '',
-        speed: '',
-        throughput: '',
-        comments: ''
-    }));
-
-    const [sortColumn, setSortColumn] = useState('date');
-    const [sortDirection, setSortDirection] = useState('desc');
+    const { onNavigateTo } = useUIContext();
 
     if (!isOpen || !asset) return null;
 
-    const reports = [...(asset.reports || [])].sort((a, b) => new Date(a.date) - new Date(b.date));
-
-    const handleSave = () => {
-        const newReport = {
-            // eslint-disable-next-line react-hooks/purity
-            id: `rep-${Date.now()}`,
-            date: formData.date,
-            technician: formData.technician || 'Unknown',
-            fileName: formData.fileName || `Report-${formData.date}.pdf`, // Use a default if fileName is not provided
-            tareChange: parseFloat(formData.tareChange) || 0,
-            spanChange: parseFloat(formData.spanChange) || 0,
-            zeroMV: parseFloat(formData.zeroMV) || 0,
-            spanMV: parseFloat(formData.spanMV) || 0,
-            speed: parseFloat(formData.speed) || 0,
-            throughput: parseFloat(formData.throughput) || 0,
-            comments: formData.comments ? [{ id: 1, text: formData.comments, status: 'Open' }] : []
-        };
-
-        if (reports.some(r => r.fileName === newReport.fileName)) {
-            alert('A report with this file name already exists. Please use a unique file name.');
-            return;
-        }
-
-        onSaveReport(asset.id, newReport);
-        if (mountedRef.current) setShowAddReport(false); // Only update if mounted
-        if (mountedRef.current) setFormData({ date: new Date().toISOString().split('T')[0], technician: '', fileName: '', tareChange: '', spanChange: '', zeroMV: '', spanMV: '', speed: '', throughput: '', comments: '' }); // Only update if mounted
-    };
-
-    const handleSort = (column) => {
-        if (sortColumn === column) {
-            setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
-        } else {
-            setSortColumn(column);
-            setSortDirection('asc');
-        }
-    };
-
-    const sortedReports = [...reports].sort((a, b) => {
-        const aValue = a[sortColumn];
-        const bValue = b[sortColumn];
-
-        if (sortColumn === 'date') {
-            return sortDirection === 'asc' ? new Date(aValue) - new Date(bValue) : new Date(bValue) - new Date(aValue);
-        } else if (sortColumn === 'fileName') {
-            return sortDirection === 'asc' ? aValue.localeCompare(bValue) : bValue.localeCompare(aValue);
-        }
-        // Add more sorting logic for other columns if needed
-        return 0;
-    });
+    const reports = [...(asset.reports || [])].filter(r => !r.deleted).sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sortedReports = [...reports].sort((a, b) => new Date(b.date) - new Date(a.date));
 
     // --- NEW: Function to generate the AI Context Dump ---
     const handleExportAIContext = async (format = 'txt') => {
@@ -799,232 +731,53 @@ ${JSON.stringify(cleanReports, null, 2)}
         }
     };
 
-    // Handle manual calibration data from form
-    const handleImportCalibrationData = (calibrationData) => {
-        console.log('Manual calibration data:', calibrationData);
-
-        try {
-            // Transform form data to report format (already handled in ManualCalibrationModal)
-            const newReport = {
-                ...calibrationData,
-                // Ensure all required fields are present
-                id: calibrationData.id || `rep-${Date.now()}`,
-                date: calibrationData.date || new Date().toISOString().split('T')[0],
-                technician: calibrationData.technician || 'Unknown',
-                fileName: calibrationData.fileName || `Report-${calibrationData.date || new Date().toISOString().split('T')[0]}.pdf`,
-                tareChange: typeof calibrationData.tareChange === 'number' ? calibrationData.tareChange : 0,
-                spanChange: typeof calibrationData.spanChange === 'number' ? calibrationData.spanChange : 0,
-                zeroMV: calibrationData.zeroMV || 'N/A',
-                spanMV: calibrationData.spanMV || 'N/A',
-                speed: typeof calibrationData.speed === 'number' ? calibrationData.speed : 'N/A',
-                totaliser: typeof calibrationData.totaliser === 'number' ? calibrationData.totaliser : 'N/A',
-                comments: calibrationData.comments || []
-            };
-
-            // Save the new report
-            onSaveReport(asset.id, newReport);
-            setManualCalibrationModalOpen(false);
-
-            // Show success message
-            alert(`Successfully saved calibration report: ${newReport.fileName}`);
-
-        } catch (error) {
-            console.error('Error saving calibration report:', error);
-            alert(`Error saving report: ${error.message}\n\nPlease check the data and try again.`);
-        }
-    };
-
-    // Handle updating existing calibration data
-    const handleUpdateCalibrationData = (updatedData) => {
-        console.log('Updating calibration data:', updatedData);
-
-        try {
-            // Update the existing report
-            onSaveReport(asset.id, updatedData);
-            setEditCalibrationModalOpen(false);
-            setEditingReport(null);
-
-            // Show success message
-            alert(`Successfully updated calibration report: ${updatedData.fileName}`);
-
-        } catch (error) {
-            console.error('Error updating calibration report:', error);
-            alert(`Error updating report: ${error.message}\n\nPlease check the data and try again.`);
-        }
-    };
-
     return (
         <>
-            {!showAddReport && <Modal title={`Analytics / Reports: ${asset.name}`} onClose={onClose} size="max">
+            <Modal title={`Analytics / Reports: ${asset.name}`} onClose={onClose} size="max">
 
                 <div className="space-y-6">
                     {/* Action Bar */}
-                    {/* Action Bar */}
                     <div className="flex gap-3 items-center">
-                        <div className="relative flex-1">
-                            {/* YOUR CUSTOM BUTTON */}
-                            <button
-                                type="button"
-                                onClick={() => setIsAddMenuOpen(!isAddMenuOpen)}
-                                className="px-4 py-2 w-full md:w-auto rounded-lg text-sm font-bold shadow-sm transition-all flex items-center justify-center gap-2 backdrop-blur-sm bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] hover:border-cyan-400"
-                            >
-                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-file-text"><path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"></path><path d="M14 2v5a1 1 0 0 0 1 1h5"></path><path d="M10 9H8"></path><path d="M16 13H8"></path><path d="M16 17H8"></path></svg>
-                                New Service Report
-                            </button>
-
-                            {/* DROPDOWN MENU */}
-                            {isAddMenuOpen && (
-                                <div className="absolute left-0 top-full mt-2 w-56 bg-slate-800 border border-slate-700 rounded-lg shadow-xl z-50 overflow-hidden">
-
-                                    {/* Option 1: Digital Report */}
-                                    <button
-                                        onClick={() => {
-                                            setIsAddMenuOpen(false);
-                                            setManualCalibrationModalOpen(true); // Using existing modal for now or new form? User said "onOpenDigitalForm". Assuming manual calibration is the closest match or new form needed? 
-                                            // Wait, the user logic in Step 3 adds "Report Form". 
-                                            // Here inside AssetAnalytics, "Create Digital Report" probably means "Manual Calibration" (which is the form) OR the new "ServiceReportForm".
-                                            // Given I am inside AssetAnalytics, maybe I should use ManualCalibrationModal as the "Digital Form"? 
-                                            // OR should I trigger the NEW ServiceReportForm?
-                                            // The user instruction for APP.JSX adds ServiceReportForm.
-                                            // This button is inside AssetAnalytics. 
-                                            // Let's stick to setManualCalibrationModalOpen(true) as "Digital Report" context within this modal for now, or assume user handles the wiring later.
-                                            // actually, "ManualCalibrationModal" seems to be effectively a digital form.
-                                            setManualCalibrationModalOpen(true);
-                                        }}
-                                        className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-cyan-900/30 hover:text-cyan-400 flex items-center gap-2"
-                                    >
-                                        <span>⚡</span> Create Digital Report
-                                    </button>
-
-                                    {/* Option 2: Upload PDF */}
-                                    <label className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-slate-700 flex items-center gap-2 cursor-pointer border-t border-slate-700">
-                                        <span>Pg</span> Upload PDF Scan
-                                        <input
-                                            type="file"
-                                            accept=".pdf"
-                                            className="hidden"
-                                            onChange={(e) => {
-                                                setIsAddMenuOpen(false);
-                                                setShowAddReport(true); // Re-using existing Upload handling via existing "Log Service Report" modal which has PDF logic
-                                                // Or should I extract the handleFileUpload?
-                                                // Existing "showAddReport" shows the modal with PDF dropzone. That works.
-                                            }}
-                                        />
-                                    </label>
-                                </div>
-                            )}
-                        </div>
-                        {/* AI Export Buttons */}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                onClose();
+                                if (onNavigateTo) onNavigateTo('reporting');
+                            }}
+                            className="px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-all flex items-center gap-2 backdrop-blur-sm bg-cyan-500/10 text-cyan-400 border border-cyan-500/50 hover:bg-cyan-500/20 hover:shadow-[0_0_15px_rgba(6,182,212,0.5)] hover:border-cyan-400"
+                        >
+                            <Icons.FileText size={16} />
+                            New Service Report
+                        </button>
+                        <div className="flex-1" />
+                        {/* AI Export Buttons - Coming Soon */}
                         <div className="flex gap-2">
                             <button
-                                onClick={() => handleExportAIContext('ai-ready')}
-                                className="flex items-center justify-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white rounded font-medium shadow-lg shadow-purple-900/20 transition-all border border-purple-400/30"
-                                title="Create AI-ready JSON file for drag-and-drop to ChatGPT/Gemini"
+                                disabled
+                                className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 text-slate-500 rounded font-medium border border-slate-700 cursor-not-allowed opacity-60"
+                                title="Coming soon"
                             >
-                                <span>🤖</span> AI Insight (.json)
+                                AI Insight - Coming Soon
                             </button>
                             <button
-                                onClick={() => handleExportAIContext('txt')}
-                                className="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded font-medium shadow-lg shadow-blue-900/20 transition-all border border-blue-400/30"
-                                title="Download as text file for copying"
+                                disabled
+                                className="flex items-center justify-center gap-2 px-3 py-2 bg-slate-800 text-slate-500 rounded font-medium border border-slate-700 cursor-not-allowed opacity-60"
+                                title="Coming soon"
                             >
-                                <Icons.FileText size={16} /> Prompt (.txt)
+                                <Icons.FileText size={16} /> Prompt - Coming Soon
                             </button>
                         </div>
                     </div>
 
-                    {/* TOP ROW: DRIFT - Tare Change */}
+                    {/* TOP ROW: Analytics Coming Soon */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div
-                            className="bg-slate-900 border border-slate-700 rounded-xl p-4 cursor-pointer hover:border-blue-500 hover:shadow-lg transition-all"
-                            onClick={() => setExpandedChart('tareChange')}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <h4 className="text-sm font-bold text-slate-200">Tare Change Analysis</h4>
-                                    <p className="text-xs text-slate-400">Tracking percentage change in Tare over time.</p>
-                                </div>
-                                <span className="text-blue-400 text-xl">🔍</span>
-                            </div>
-                            <MiniLineChart
-                                data={reports}
-                                dataKeys={['tareChange']}
-                                colors={['#60a5fa']}
-                                unit="%"
-                                showTrendLine={true}
-                            />
-                            <div className="flex justify-center gap-4 mt-3 text-[10px] text-slate-400">
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-blue-400"></span> Tare %</span>
-                            </div>
-                        </div>
-
-                        {/* TOP ROW: DRIFT - Span Change */}
-                        <div
-                            className="bg-slate-900 border border-slate-700 rounded-xl p-4 cursor-pointer hover:border-orange-500 hover:shadow-lg transition-all"
-                            onClick={() => setExpandedChart('spanChange')}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <h4 className="text-sm font-bold text-slate-200">Span Change Analysis</h4>
-                                    <p className="text-xs text-slate-400">Tracking percentage change in Span over time.</p>
-                                </div>
-                                <span className="text-orange-500 text-xl">🔍</span>
-                            </div>
-                            <MiniLineChart
-                                data={reports}
-                                dataKeys={['spanChange']}
-                                colors={['#f97316']}
-                                unit="%"
-                                showTrendLine={true}
-                            />
-                            <div className="flex justify-center gap-4 mt-3 text-[10px] text-slate-400">
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-orange-500"></span> Span %</span>
-                            </div>
-                        </div>
+                        <ComingSoonChart title="Tare Change Analysis" description="Tracking percentage change in Tare over time." />
+                        <ComingSoonChart title="Span Change Analysis" description="Tracking percentage change in Span over time." />
                     </div>
-                    {/* MIDDLE ROW: SIGNAL & BELT SPEED */}
+                    {/* BOTTOM ROW: Analytics Coming Soon */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div
-                            className="bg-slate-900 border border-slate-700 rounded-xl p-4 cursor-pointer hover:border-purple-500 hover:shadow-lg transition-all"
-                            onClick={() => setExpandedChart('signal')}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <h4 className="text-sm font-bold text-slate-200">Load Cell Signal Health (mV/V)</h4>
-                                    <p className="text-xs text-slate-400">Raw signal voltage drift indicates load cell degradation.</p>
-                                </div>
-                                <span className="text-purple-400 text-xl">🔍</span>
-                            </div>
-                            <MiniLineChart
-                                data={reports}
-                                dataKeys={['zeroMV', 'spanMV']}
-                                colors={['#a78bfa', '#f472b6']}
-                                unit="mV"
-                            />
-                            <div className="flex justify-center gap-4 mt-3 text-[10px] text-slate-400">
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-400"></span> Zero mV</span>
-                                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-pink-400"></span> Span mV</span>
-                            </div>
-                        </div>
-                        {/* Belt Speed Stability chart */}
-                        <div
-                            className="bg-slate-900 border border-slate-700 rounded-xl p-4 cursor-pointer hover:border-green-500 hover:shadow-lg transition-all"
-                            onClick={() => setExpandedChart('speed')}
-                        >
-                            <div className="flex items-center justify-between mb-2">
-                                <div>
-                                    <h4 className="text-sm font-bold text-slate-200">Belt Speed Stability</h4>
-                                    <p className="text-xs text-slate-400">Tracking belt speed consistency over service intervals.</p>
-                                </div>
-                                <span className="text-green-400 text-xl">🔍</span>
-                            </div>
-                            <MiniLineChart
-                                data={reports}
-                                dataKeys={['speed']}
-                                colors={['#34d399']}
-                                unit=" m/s"
-                            />
-                        </div>
+                        <ComingSoonChart title="Load Cell Signal Health (mV/V)" description="Raw signal voltage drift indicates load cell degradation." />
+                        <ComingSoonChart title="Belt Speed Stability" description="Tracking belt speed consistency over service intervals." />
                     </div>
 
                     {/* REPORTS TABLE */}
@@ -1038,9 +791,10 @@ ${JSON.stringify(cleanReports, null, 2)}
                         </div>
 
                         <div className="space-y-2">
-                            {/* List Rendering Loop */}
                             {sortedReports.map((report) => {
-                                const norm = getNormalizedReportData(report); // Normalize it first!
+                                const norm = getNormalizedReportData(report);
+                                const reportCode = getReportDisplayCode(report);
+                                const hasPdf = !!report.storageUrl;
                                 const isSelected = selectedReportIds.has(report.id);
 
                                 return (
@@ -1052,8 +806,8 @@ ${JSON.stringify(cleanReports, null, 2)}
                                             }`}
                                         onClick={() => toggleReportSelection(report.id)}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            {/* Checkbox */}
+                                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                                            {/* Checkbox for AI export */}
                                             <div onClick={(e) => e.stopPropagation()}>
                                                 <input
                                                     type="checkbox"
@@ -1063,16 +817,18 @@ ${JSON.stringify(cleanReports, null, 2)}
                                                 />
                                             </div>
 
-                                            {/* ICON BASED ON TYPE */}
-                                            <div className={`p-2 rounded-lg ${norm.type === 'Digital' ? 'bg-cyan-900/30 text-cyan-400' : 'bg-slate-700 text-slate-400'}`}>
+                                            {/* Icon */}
+                                            <div className={`p-2 rounded-lg flex-shrink-0 ${norm.type === 'Digital' ? 'bg-cyan-900/30 text-cyan-400' : 'bg-slate-700 text-slate-400'}`}>
                                                 {norm.type === 'Digital' ? <Icons.Zap size={16} /> : <Icons.FileText size={16} />}
                                             </div>
 
-                                            <div>
-                                                <div className="font-bold text-slate-200">{formatDate(norm.date)}</div>
-                                                <div className="text-xs text-slate-500 flex gap-2 items-center">
-                                                    <span>{norm.technician || 'Unknown'}</span>
-                                                    {/* TYPE BADGE */}
+                                            {/* Report Info */}
+                                            <div className="min-w-0">
+                                                <div className="font-bold text-slate-100 font-mono text-sm truncate">{reportCode}</div>
+                                                <div className="text-xs text-slate-500 flex gap-2 items-center mt-0.5">
+                                                    <span>{formatDate(norm.date)}</span>
+                                                    <span className="text-slate-700">|</span>
+                                                    <span>{norm.technician}</span>
                                                     <span className={`px-1.5 rounded text-[10px] uppercase font-bold border ${norm.type === 'Digital' ? 'border-cyan-800 text-cyan-500' : 'border-slate-600 text-slate-500'}`}>
                                                         {norm.type}
                                                     </span>
@@ -1081,118 +837,46 @@ ${JSON.stringify(cleanReports, null, 2)}
                                         </div>
 
                                         {/* Action Buttons */}
-                                        <div className="flex items-center gap-3">
-                                            {/* METRICS PILL */}
-                                            <div className="hidden md:flex gap-4 text-xs font-mono text-slate-400 mr-4">
-                                                <div>Zero: <span className="text-slate-200">{norm.zero}</span></div>
-                                                <div>Span: <span className="text-slate-200">{norm.span}</span></div>
-                                            </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0 ml-3">
+                                            {/* View PDF */}
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (hasPdf) window.open(report.storageUrl, '_blank');
+                                                }}
+                                                disabled={!hasPdf}
+                                                className={`flex items-center gap-1 px-2.5 py-1.5 rounded text-xs font-medium transition-all ${hasPdf
+                                                    ? 'bg-green-900/30 text-green-400 border border-green-700/50 hover:bg-green-900/50 hover:border-green-500'
+                                                    : 'bg-slate-800/50 text-slate-600 border border-slate-700/30 cursor-not-allowed'
+                                                    }`}
+                                                title={hasPdf ? 'Open PDF in new tab' : 'No PDF available'}
+                                            >
+                                                <Icons.ExternalLink size={13} />
+                                                PDF
+                                            </button>
 
+                                            {/* View Details */}
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     setSelectedReport(report);
                                                 }}
-                                                className="text-blue-400 hover:text-blue-300"
+                                                className="text-blue-400 hover:text-blue-300 p-1"
                                                 title="View Details"
                                             >
-                                                <Icons.ExternalLink size={16} />
+                                                <Icons.Eye size={16} />
                                             </button>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    if (confirm(`Delete report from ${formatDate(norm.date)}?`)) {
-                                                        onDeleteReport(asset.id, report.id);
-                                                    }
-                                                }}
-                                                className="text-slate-500 hover:text-red-400"
-                                                title="Delete"
-                                            >
-                                                <Icons.Trash size={16} />
-                                            </button>
+
                                         </div>
                                     </div>
                                 );
                             })}
-                            {sortedReports.length === 0 && <div className="p-8 text-center text-slate-500 italic">No service reports found. Add one above.</div>}
+                            {sortedReports.length === 0 && <div className="p-8 text-center text-slate-500 italic">No service reports found. Create one in the Reporting app.</div>}
                         </div>
                     </div>
 
                 </div>
-            </Modal>}
-
-            {showAddReport && (
-                <Modal title="Log Service Report" onClose={() => setShowAddReport(false)}>
-                    <div className="space-y-4">
-                        {/* PDF UPLOAD SECTION */}
-
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1">Service Date</label>
-                                <UniversalDatePicker
-                                    selected={formData.date ? new Date(formData.date) : new Date()}
-                                    onChange={(date) => setFormData({ ...formData, date: date ? date.toISOString().split('T')[0] : '' })}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm"
-                                />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1">Technician Name</label>
-                                <input className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="e.g. J. Smith" value={formData.technician} onChange={e => setFormData({ ...formData, technician: e.target.value })} />
-                            </div>
-                        </div>
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1">File Name</label>
-                            <input className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="e.g. Report-2023-01-01.pdf" value={formData.fileName} onChange={e => setFormData({ ...formData, fileName: e.target.value })} />
-                        </div>
-
-                        <div className="p-4 bg-slate-900/50 rounded border border-slate-700">
-                            <h4 className="text-xs font-bold text-blue-400 uppercase mb-3">Calibration Data</h4>
-                            <div className="grid grid-cols-2 gap-4 mb-4">
-                                <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Tare Change (%)</label>
-                                    <input type="number" step="0.01" className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm" placeholder="0.00" value={formData.tareChange} onChange={e => setFormData({ ...formData, tareChange: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Span Change (%)</label>
-                                    <input type="number" step="0.01" className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm" placeholder="0.00" value={formData.spanChange} onChange={e => setFormData({ ...formData, spanChange: e.target.value })} />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Zero (mV/V)</label>
-                                    <input type="number" step="0.001" className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm" placeholder="8.00" value={formData.zeroMV} onChange={e => setFormData({ ...formData, zeroMV: e.target.value })} />
-                                </div>
-                                <div>
-                                    <label className="block text-xs text-slate-400 mb-1">Span (mV/V)</label>
-                                    <input type="number" step="0.001" className="w-full bg-slate-800 border border-slate-600 rounded p-2 text-white text-sm" placeholder="12.00" value={formData.spanMV} onChange={e => setFormData({ ...formData, spanMV: e.target.value })} />
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1">Belt Speed (m/s)</label>
-                                <input type="number" step="0.01" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="0.00" value={formData.speed} onChange={e => setFormData({ ...formData, speed: e.target.value })} />
-                            </div>
-                            <div>
-                                <label className="block text-xs font-bold text-slate-400 mb-1">Throughput (Tonnes)</label>
-                                <input type="number" className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" placeholder="0" value={formData.throughput} onChange={e => setFormData({ ...formData, throughput: e.target.value })} />
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-xs font-bold text-slate-400 mb-1">Comments & Action Items</label>
-                            <textarea className="w-full bg-slate-900 border border-slate-700 rounded p-2 text-white text-sm" rows="3" placeholder="Notes on condition..." value={formData.comments} onChange={e => setFormData({ ...formData, comments: e.target.value })} />
-                        </div>
-
-                        <div className="flex gap-2 pt-2">
-                            <Button onClick={handleSave} className="flex-1">Save Report</Button>
-                            <Button onClick={() => setShowAddReport(false)} variant="secondary">Cancel</Button>
-                        </div>
-                    </div>
-                </Modal>
-            )}
+            </Modal>
 
             {/* Report Details Modal */}
             {selectedReport && (
@@ -1200,33 +884,9 @@ ${JSON.stringify(cleanReports, null, 2)}
                     report={selectedReport}
                     siteLocation={siteLocation}
                     onClose={() => setSelectedReport(null)}
-                    onDelete={() => onDeleteReport(asset.id, selectedReport.id)}
                 />
             )}
 
-            {/* Manual Calibration Modal */}
-            {manualCalibrationModalOpen && (
-                <ManualCalibrationModal
-                    isOpen={manualCalibrationModalOpen}
-                    onClose={() => setManualCalibrationModalOpen(false)}
-                    onSaveCalibrationData={handleImportCalibrationData}
-                    asset={asset}
-                />
-            )}
-
-            {/* Edit Calibration Modal */}
-            {editCalibrationModalOpen && (
-                <EditCalibrationModal
-                    isOpen={editCalibrationModalOpen}
-                    onClose={() => {
-                        setEditCalibrationModalOpen(false);
-                        setEditingReport(null);
-                    }}
-                    onUpdateCalibrationData={handleUpdateCalibrationData}
-                    asset={asset}
-                    report={editingReport}
-                />
-            )}
 
             {/* EXPANDED CHART MODALS */}
             {expandedChart === 'tareChange' && (
