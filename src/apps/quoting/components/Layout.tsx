@@ -17,10 +17,10 @@ export default function Layout({ children, activeTab, setActiveTab, status, tota
 
     const getStatusBadge = () => {
         switch (status) {
-            case 'draft': return <span className="bg-warning/20 text-warning text-xs px-2 py-1 rounded-full font-bold">DRAFT QUOTE</span>;
-            case 'quoted': return <span className="bg-success/20 text-success text-xs px-2 py-1 rounded-full font-bold">QUOTE IN SYSTEM</span>;
-            case 'invoice': return <span className="bg-purple-900/20 text-purple-300 text-xs px-2 py-1 rounded-full font-bold">DRAFT INVOICE</span>;
-            case 'closed': return <span className="bg-emerald-900/20 text-emerald-300 text-xs px-2 py-1 rounded-full font-bold">INVOICE CLOSED</span>;
+            case 'draft': return <span className="bg-slate-700/50 text-slate-300 text-xs px-2 py-1 rounded-full font-bold">DRAFT QUOTE</span>;
+            case 'quoted': return <span className="bg-amber-900/30 text-amber-300 text-xs px-2 py-1 rounded-full font-bold">QUOTE IN SYSTEM</span>;
+            case 'invoice': return <span className="bg-primary-900/30 text-primary-300 text-xs px-2 py-1 rounded-full font-bold">DRAFT INVOICE</span>;
+            case 'closed': return <span className="bg-emerald-900/30 text-emerald-300 text-xs px-2 py-1 rounded-full font-bold">INVOICE CLOSED</span>;
             case 'archived': return <span className="bg-slate-700/50 text-slate-400 text-xs px-2 py-1 rounded-full font-bold">ARCHIVED</span>;
             default: return null;
         }

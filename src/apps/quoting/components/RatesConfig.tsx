@@ -1,7 +1,8 @@
 
-import type { Rates } from '../types';
+import type { Rates, CopyTemplateSettings } from '../types';
 import { Lock, Unlock, Calculator, PlusCircle, Save, RotateCcw, TrendingUp, Check } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useToast } from './Toast';
 
 interface RatesConfigProps {
     rates: Rates;
@@ -24,6 +25,7 @@ interface RatesConfigProps {
 }
 
 export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDefaults, isLocked: propIsLocked = false, lockedAt, onLockChange, compact = false, onSaveCustomer, hasUnsavedChanges = false, saveSuccess = false, title, description }: RatesConfigProps) {
+    const { showToast } = useToast();
     const [isLocked, setIsLocked] = useState(propIsLocked);
     const [calcKm, setCalcKm] = useState<number>(0);
     const [calcHours, setCalcHours] = useState<number>(0);
@@ -78,7 +80,7 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
     const handleSaveDefaults = () => {
         if (saveAsDefaults && confirm("Are you sure you want to set these rates as the new SYSTEM DEFAULTS? All new quotes will use these rates.")) {
             saveAsDefaults(rates);
-            alert("New default rates saved.");
+            showToast("New default rates saved.", "success");
         }
     };
 
@@ -132,7 +134,7 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                                 <button
                                     onClick={onSaveCustomer}
                                     className={`px-4 py-2 rounded flex items-center gap-1.5 font-medium text-sm text-white transition-all min-w-[100px] justify-center ${
-                                        saveSuccess ? 'bg-green-600 hover:bg-green-700' :
+                                        saveSuccess ? 'bg-emerald-600 hover:bg-emerald-700' :
                                         hasUnsavedChanges ? 'bg-amber-600 hover:bg-amber-500 animate-pulse' :
                                         'bg-primary-600 hover:bg-primary-500'
                                     }`}
@@ -146,14 +148,14 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                             {isLocked ? (
                                 <button
                                     onClick={handleUnlock}
-                                    className="bg-amber-600 text-white px-4 py-2 rounded flex items-center gap-1.5 hover:bg-amber-700 font-medium text-sm min-w-[100px] justify-center"
+                                    className="bg-slate-600 text-white px-4 py-2 rounded flex items-center gap-1.5 hover:bg-slate-500 font-medium text-sm min-w-[100px] justify-center"
                                 >
                                     <Unlock size={16} /> Unlock
                                 </button>
                             ) : (
                                 <button
                                     onClick={handleLock}
-                                    className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-1.5 hover:bg-green-700 font-medium text-sm min-w-[100px] justify-center"
+                                    className="bg-emerald-600 text-white px-4 py-2 rounded flex items-center gap-1.5 hover:bg-emerald-700 font-medium text-sm min-w-[100px] justify-center"
                                 >
                                     <Lock size={16} /> Lock
                                 </button>
@@ -572,6 +574,172 @@ export default function RatesConfig({ rates, setRates, saveAsDefaults, resetToDe
                         >
                             + Add Standard Expense
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            {/* Copy Template Settings */}
+            <CopyTemplateSettingsSection
+                settings={rates.copyTemplateSettings}
+                onChange={(updated) => setRates({ ...rates, copyTemplateSettings: updated })}
+                isLocked={isLocked}
+            />
+        </div>
+    );
+}
+
+const DEFAULT_COPY_TEMPLATE: CopyTemplateSettings = {
+    quoteIntro: '',
+    quoteIncludeSchedule: true,
+    quoteIncludeLineItems: true,
+    quoteIncludeTechNotes: false,
+    quoteOutro: '',
+    invoiceGreeting: 'Hi Admin,',
+    invoiceIncludeSchedule: true,
+    invoiceIncludeBreakdown: true,
+    invoiceIncludeVariance: true,
+};
+
+function CopyTemplateSettingsSection({ settings, onChange, isLocked }: {
+    settings?: CopyTemplateSettings;
+    onChange: (settings: CopyTemplateSettings) => void;
+    isLocked: boolean;
+}) {
+    const [expanded, setExpanded] = useState(false);
+    const s = { ...DEFAULT_COPY_TEMPLATE, ...settings };
+
+    const update = (field: keyof CopyTemplateSettings, value: any) => {
+        onChange({ ...s, [field]: value });
+    };
+
+    const toggleClass = "w-4 h-4 rounded border-gray-500 bg-gray-700 text-primary-600 focus:ring-primary-500 focus:ring-offset-gray-800";
+    const inputClass = `w-full p-2 border border-gray-600 rounded bg-gray-700 text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none ${isLocked ? 'bg-gray-600 opacity-50' : ''}`;
+
+    return (
+        <div className="bg-gray-700/50 p-4 rounded-lg border border-gray-600 mt-6">
+            <button
+                onClick={() => setExpanded(!expanded)}
+                className="w-full flex items-center justify-between text-left"
+            >
+                <h3 className="font-semibold text-slate-200 text-sm uppercase tracking-wide flex items-center gap-2">
+                    Copy Template Settings
+                </h3>
+                <span className="text-slate-400 text-xs">{expanded ? '▲' : '▼'}</span>
+            </button>
+            <p className="text-xs text-slate-400 mt-1 mb-2">
+                Customize what gets included when copying quote or invoice text.
+            </p>
+
+            <div className={expanded ? '' : 'hidden'}>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+                    {/* Quote Copy Settings */}
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-semibold text-slate-300 border-b border-gray-600 pb-1">Quote Copy</h4>
+
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Intro Text (before scope)</label>
+                            <textarea
+                                disabled={isLocked}
+                                value={s.quoteIntro}
+                                onChange={(e) => update('quoteIntro', e.target.value)}
+                                className={`${inputClass} h-20`}
+                                placeholder='e.g. "Hi Jo, See the below quotation..."'
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    disabled={isLocked}
+                                    checked={s.quoteIncludeSchedule}
+                                    onChange={(e) => update('quoteIncludeSchedule', e.target.checked)}
+                                    className={toggleClass}
+                                />
+                                <span className="text-sm text-slate-300">Include day schedule</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    disabled={isLocked}
+                                    checked={s.quoteIncludeLineItems}
+                                    onChange={(e) => update('quoteIncludeLineItems', e.target.checked)}
+                                    className={toggleClass}
+                                />
+                                <span className="text-sm text-slate-300">Include line items breakdown</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    disabled={isLocked}
+                                    checked={s.quoteIncludeTechNotes}
+                                    onChange={(e) => update('quoteIncludeTechNotes', e.target.checked)}
+                                    className={toggleClass}
+                                />
+                                <span className="text-sm text-slate-300">Include tech notes</span>
+                            </label>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Closing Text (after content)</label>
+                            <textarea
+                                disabled={isLocked}
+                                value={s.quoteOutro}
+                                onChange={(e) => update('quoteOutro', e.target.value)}
+                                className={`${inputClass} h-20`}
+                                placeholder='e.g. "If you have any questions, please do not hesitate to contact me."'
+                            />
+                        </div>
+                    </div>
+
+                    {/* Invoice Copy Settings */}
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-semibold text-slate-300 border-b border-gray-600 pb-1">Invoice Copy</h4>
+
+                        <div>
+                            <label className="block text-xs text-slate-400 mb-1">Greeting</label>
+                            <input
+                                type="text"
+                                disabled={isLocked}
+                                value={s.invoiceGreeting}
+                                onChange={(e) => update('invoiceGreeting', e.target.value)}
+                                className={inputClass}
+                                placeholder="Hi Admin,"
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    disabled={isLocked}
+                                    checked={s.invoiceIncludeSchedule}
+                                    onChange={(e) => update('invoiceIncludeSchedule', e.target.checked)}
+                                    className={toggleClass}
+                                />
+                                <span className="text-sm text-slate-300">Include day schedule</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    disabled={isLocked}
+                                    checked={s.invoiceIncludeBreakdown}
+                                    onChange={(e) => update('invoiceIncludeBreakdown', e.target.checked)}
+                                    className={toggleClass}
+                                />
+                                <span className="text-sm text-slate-300">Include financial breakdown</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    disabled={isLocked}
+                                    checked={s.invoiceIncludeVariance}
+                                    onChange={(e) => update('invoiceIncludeVariance', e.target.checked)}
+                                    className={toggleClass}
+                                />
+                                <span className="text-sm text-slate-300">Include variance notes</span>
+                            </label>
+                        </div>
                     </div>
                 </div>
             </div>

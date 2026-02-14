@@ -6,25 +6,22 @@ import type { Quote, Customer, Rates } from '../types';
 import CustomerDashboard from './CustomerDashboard';
 import TechnicianDashboard from './TechnicianDashboard';
 import QuoteValueChart from './QuoteValueChart';
+import { useToast } from './Toast';
 
 const STATUS_OPTIONS = ['draft', 'quoted', 'invoice', 'closed', 'archived'] as const;
 type StatusType = typeof STATUS_OPTIONS[number];
 
-// Load saved filters from localStorage
-const loadSavedFilters = (): Set<StatusType> => {
+// Load saved filter from localStorage
+const loadSavedFilter = (): StatusType | null => {
     try {
-        const saved = localStorage.getItem('quoteStatusFilters');
-        if (saved) {
-            const parsed = JSON.parse(saved);
-            if (Array.isArray(parsed) && parsed.length > 0) {
-                return new Set(parsed as StatusType[]);
-            }
+        const saved = localStorage.getItem('quoteStatusFilter');
+        if (saved && STATUS_OPTIONS.includes(saved as StatusType)) {
+            return saved as StatusType;
         }
     } catch (e) {
-        console.error('Failed to load saved filters:', e);
+        console.error('Failed to load saved filter:', e);
     }
-    // Default: all statuses selected
-    return new Set(STATUS_OPTIONS);
+    return null; // null = show all
 };
 
 interface DashboardProps {
@@ -51,45 +48,21 @@ export default function Dashboard({
     savedTechnicians, saveTechnician, deleteTechnician,
     saveAsDefaults, resetToDefaults, savedDefaultRates, exportState, importState
 }: DashboardProps) {
+    const { showToast } = useToast();
     const [view, setView] = useState<'quotes' | 'customers' | 'technicians' | 'backup'>('quotes');
-    const [selectedStatuses, setSelectedStatuses] = useState<Set<StatusType>>(loadSavedFilters);
+    const [activeFilter, setActiveFilter] = useState<StatusType | null>(loadSavedFilter);
     const [searchQuery, setSearchQuery] = useState('');
     const [backupSuccess, setBackupSuccess] = useState(false);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     // Persist filter selection to localStorage
     useEffect(() => {
-        localStorage.setItem('quoteStatusFilters', JSON.stringify([...selectedStatuses]));
-    }, [selectedStatuses]);
+        localStorage.setItem('quoteStatusFilter', activeFilter || '');
+    }, [activeFilter]);
 
-    // Check if all statuses are selected
-    const allSelected = selectedStatuses.size === STATUS_OPTIONS.length;
-
-    // Toggle a single status
-    const toggleStatus = (status: StatusType) => {
-        setSelectedStatuses(prev => {
-            const newSet = new Set(prev);
-            if (newSet.has(status)) {
-                // Don't allow deselecting the last one - at least one must be selected
-                if (newSet.size > 1) {
-                    newSet.delete(status);
-                }
-            } else {
-                newSet.add(status);
-            }
-            return newSet;
-        });
-    };
-
-    // Toggle all statuses
-    const toggleAll = () => {
-        if (allSelected) {
-            // If all selected, select only 'draft' (or first option)
-            setSelectedStatuses(new Set([STATUS_OPTIONS[0]]));
-        } else {
-            // Select all
-            setSelectedStatuses(new Set(STATUS_OPTIONS));
-        }
+    // Click a status: select it. Click again: back to all.
+    const selectFilter = (status: StatusType) => {
+        setActiveFilter(prev => prev === status ? null : status);
     };
 
     const handleBackup = () => {
@@ -107,13 +80,13 @@ export default function Dashboard({
                 try {
                     const success = await importState(content);
                     if (success) {
-                        alert('State imported successfully! Quotes have been saved to the cloud.');
+                        showToast('State imported successfully!', 'success');
                     } else {
-                        alert('Failed to import state. Please check the file format.');
+                        showToast('Failed to import state. Check the file format.', 'error');
                     }
                 } catch (error) {
                     console.error('Import error:', error);
-                    alert('Failed to import state. Error: ' + error);
+                    showToast('Failed to import state.', 'error');
                 }
             };
             reader.readAsText(file);
@@ -195,8 +168,8 @@ export default function Dashboard({
                                             {savedQuotes.filter(q => q.status === 'draft').length}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-slate-600 rounded-lg flex items-center justify-center">
-                                        <FileText size={20} className="text-slate-200" />
+                                    <div className="w-12 h-12 bg-slate-700 rounded-lg flex items-center justify-center">
+                                        <FileText size={20} className="text-slate-300" />
                                     </div>
                                 </div>
                             </div>
@@ -212,8 +185,8 @@ export default function Dashboard({
                                             )}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-amber-700 rounded-lg flex items-center justify-center">
-                                        <FileText size={20} className="text-amber-200" />
+                                    <div className="w-12 h-12 bg-amber-900/50 rounded-lg flex items-center justify-center">
+                                        <FileText size={20} className="text-amber-400" />
                                     </div>
                                 </div>
                             </div>
@@ -223,14 +196,14 @@ export default function Dashboard({
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-slate-400 mb-1">Invoiced Revenue</p>
-                                        <p className="text-2xl font-bold text-purple-400">
+                                        <p className="text-2xl font-bold text-emerald-400">
                                             {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(
                                                 savedQuotes.filter(q => q.status === 'invoice' || q.status === 'closed').reduce((acc, q) => acc + calculateQuoteTotal(q), 0)
                                             )}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center">
-                                        <FileText size={20} className="text-purple-200" />
+                                    <div className="w-12 h-12 bg-emerald-900/50 rounded-lg flex items-center justify-center">
+                                        <FileText size={20} className="text-emerald-400" />
                                     </div>
                                 </div>
                             </div>
@@ -240,12 +213,12 @@ export default function Dashboard({
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-sm text-slate-400 mb-1">Total Quotes</p>
-                                        <p className="text-2xl font-bold text-teal-400">
+                                        <p className="text-2xl font-bold text-primary-400">
                                             {savedQuotes.length}
                                         </p>
                                     </div>
-                                    <div className="w-12 h-12 bg-teal-600 rounded-lg flex items-center justify-center">
-                                        <FileText size={20} className="text-teal-200" />
+                                    <div className="w-12 h-12 bg-primary-900/50 rounded-lg flex items-center justify-center">
+                                        <FileText size={20} className="text-primary-400" />
                                     </div>
                                 </div>
                             </div>
@@ -282,24 +255,22 @@ export default function Dashboard({
                                     )}
                                 </div>
 
-                                {/* Status Filter Pills - Multi-select */}
-                                <div className="flex gap-2 flex-wrap">
-                                    {/* All button */}
+                                {/* Status Filter Pills */}
+                                <div className="flex gap-1.5 flex-wrap">
                                     <button
-                                        onClick={toggleAll}
-                                        className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${allSelected
+                                        onClick={() => setActiveFilter(null)}
+                                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${activeFilter === null
                                             ? 'bg-primary-600 text-white'
                                             : 'bg-gray-800 text-slate-400 border border-gray-700 hover:bg-gray-700'
                                             }`}
                                     >
                                         All
                                     </button>
-                                    {/* Individual status buttons */}
                                     {STATUS_OPTIONS.map((status) => (
                                         <button
                                             key={status}
-                                            onClick={() => toggleStatus(status)}
-                                            className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${selectedStatuses.has(status)
+                                            onClick={() => selectFilter(status)}
+                                            className={`px-3 py-1.5 rounded-full text-sm font-medium capitalize transition-colors ${activeFilter === status
                                                 ? 'bg-primary-600 text-white'
                                                 : 'bg-gray-800 text-slate-400 border border-gray-700 hover:bg-gray-700'
                                                 }`}
@@ -326,8 +297,8 @@ export default function Dashboard({
                                 {/* Filtered Quotes */}
                                 {savedQuotes
                                     .filter(q => {
-                                        // Status filter - check if quote status is in selected set
-                                        const matchesStatus = selectedStatuses.has(q.status as StatusType);
+                                        // Status filter - null means show all
+                                        const matchesStatus = activeFilter === null || q.status === activeFilter;
 
                                         // Search filter (case-insensitive)
                                         if (!searchQuery.trim()) return matchesStatus;
@@ -361,10 +332,10 @@ export default function Dashboard({
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-2xl font-black text-slate-100">#{quote.quoteNumber}</span>
                                                         <div className={`px-2 py-0.5 rounded text-xs font-bold uppercase ${quote.status === 'draft' ? 'bg-slate-700 text-slate-300' :
-                                                            quote.status === 'quoted' ? 'bg-amber-600 text-amber-50' :
-                                                                quote.status === 'invoice' ? 'bg-purple-600 text-purple-50' :
+                                                            quote.status === 'quoted' ? 'bg-amber-900/60 text-amber-300' :
+                                                                quote.status === 'invoice' ? 'bg-primary-900/60 text-primary-300' :
                                                                     quote.status === 'archived' ? 'bg-slate-800 text-slate-500' :
-                                                                        'bg-emerald-600 text-emerald-50'
+                                                                        'bg-emerald-900/60 text-emerald-300'
                                                             }`}>
                                                             {quote.status}
                                                         </div>
@@ -407,8 +378,9 @@ export default function Dashboard({
                                                         <div className="text-xs text-slate-500 uppercase tracking-wider">Value</div>
                                                         <div className={`text-sm font-bold ${quote.status === 'archived' ? 'text-slate-500' :
                                                             quote.status === 'quoted' ? 'text-amber-400' :
-                                                                quote.status === 'invoice' || quote.status === 'closed' ? 'text-emerald-400' :
-                                                                    'text-slate-400'
+                                                                quote.status === 'closed' ? 'text-emerald-400' :
+                                                                    quote.status === 'invoice' ? 'text-primary-400' :
+                                                                        'text-slate-300'
                                                             }`}>
                                                             {new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD', minimumFractionDigits: 0 }).format(quoteTotal)}
                                                         </div>

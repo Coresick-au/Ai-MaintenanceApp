@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Trash2, User, UserPlus, Save, Check, MapPin, Building2, Layout, Plus, Search, X } from 'lucide-react';
+import { Trash2, User, UserPlus, Save, Check, MapPin, Building2, Layout, Search, X } from 'lucide-react';
 import RatesConfig from './RatesConfig';
 import type { Customer, Rates, Contact, ManagedSite } from '../types';
 // @ts-ignore
@@ -88,7 +88,6 @@ export default function CustomerDashboard({
         addCustomer,
         updateCustomer: globalUpdateCustomer,
         // deleteCustomer removed - customers managed in Customer Portal app
-        addManagedSite,
         deleteManagedSite,
         updateManagedSite: globalUpdateManagedSite
     } = useGlobalData();
@@ -114,11 +113,6 @@ export default function CustomerDashboard({
 
     // Tab State
     const [activeTab, setActiveTab] = useState<'details' | 'sites'>('details');
-
-    // New Managed Site State
-    const [isAddingSite, setIsAddingSite] = useState(false);
-    const [newSiteName, setNewSiteName] = useState('');
-    const [newSiteLocation, setNewSiteLocation] = useState('');
 
     // Site Rates Editing State
     const [editingSiteId, setEditingSiteId] = useState<string | null>(null);
@@ -172,7 +166,6 @@ export default function CustomerDashboard({
         setEditLockedAt(customer.lockedAt);
         setSaveSuccess(false);
         setActiveTab('details'); // Reset to details on select
-        setIsAddingSite(false);
         setHasUnsavedChanges(false);
     };
 
@@ -216,22 +209,6 @@ export default function CustomerDashboard({
 
         setSaveSuccess(true);
         setTimeout(() => setSaveSuccess(false), 3000);
-    };
-
-    const handleAddNewSite = async () => {
-        if (!selectedId || !newSiteName.trim()) return;
-
-        const siteData: Partial<ManagedSite> = {
-            name: newSiteName.trim(),
-            location: newSiteLocation.trim(),
-            contacts: [], // Can inherit or be empty
-            isLocked: false,
-        };
-
-        await addManagedSite(selectedId, siteData);
-        setNewSiteName('');
-        setNewSiteLocation('');
-        setIsAddingSite(false);
     };
 
     const handleTabChange = (newTab: 'details' | 'sites') => {
@@ -403,10 +380,18 @@ export default function CustomerDashboard({
                                                     <p className="text-sm text-slate-500 text-center italic mt-4">No contacts added.</p>
                                                 ) : (
                                                     <ul className="space-y-2">
-                                                        {editContacts.map((c, i) => (
-                                                            <li key={i} className="text-sm text-slate-300 bg-gray-800 p-2 rounded flex justify-between">
-                                                                <span>{c.name}</span>
-                                                                <span className="text-slate-500">{c.phone}</span>
+                                                        {editContacts.map((c: any, i: number) => (
+                                                            <li key={i} className="text-sm text-slate-300 bg-gray-800 p-3 rounded">
+                                                                <div className="flex justify-between items-start">
+                                                                    <div>
+                                                                        <span className="font-medium">{c.name}</span>
+                                                                        {c.role && <span className="ml-2 text-xs text-slate-500">({c.role})</span>}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="flex gap-4 mt-1 text-xs text-slate-500">
+                                                                    {c.phone && <span>📞 {c.phone}</span>}
+                                                                    {c.email && <span>✉️ {c.email}</span>}
+                                                                </div>
                                                             </li>
                                                         ))}
                                                     </ul>
@@ -458,56 +443,8 @@ export default function CustomerDashboard({
                                 <div className="animate-fade-in">
                                     <div className="flex justify-between items-center mb-4">
                                         <h3 className="text-lg font-semibold text-slate-200">Managed Sites</h3>
-                                        <button
-                                            onClick={() => setIsAddingSite(!isAddingSite)}
-                                            className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded text-sm flex items-center gap-2"
-                                        >
-                                            <Plus size={16} /> Add Site
-                                        </button>
+                                        <span className="text-xs text-slate-500">Manage sites in Customer Portal</span>
                                     </div>
-
-                                    {isAddingSite && (
-                                        <div className="bg-gray-700 p-4 rounded-lg border border-gray-600 mb-4 animate-slide-down">
-                                            <h4 className="text-sm font-bold text-cyan-400 mb-3 uppercase">New Site Details</h4>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                                <div>
-                                                    <label className="text-xs text-slate-400 block mb-1">Site Name</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white"
-                                                        placeholder="e.g. Banyo Processing Plant"
-                                                        value={newSiteName}
-                                                        onChange={e => setNewSiteName(e.target.value)}
-                                                    />
-                                                </div>
-                                                <div>
-                                                    <label className="text-xs text-slate-400 block mb-1">Location / Address</label>
-                                                    <input
-                                                        type="text"
-                                                        className="w-full bg-gray-800 border border-gray-600 rounded p-2 text-white"
-                                                        placeholder="e.g. 192 Granite St, Geebung"
-                                                        value={newSiteLocation}
-                                                        onChange={e => setNewSiteLocation(e.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-end gap-2">
-                                                <button
-                                                    onClick={() => setIsAddingSite(false)}
-                                                    className="px-3 py-1.5 text-slate-400 hover:text-white"
-                                                >
-                                                    Cancel
-                                                </button>
-                                                <button
-                                                    onClick={handleAddNewSite}
-                                                    disabled={!newSiteName.trim()}
-                                                    className="bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 text-white px-4 py-1.5 rounded font-medium"
-                                                >
-                                                    Create Site
-                                                </button>
-                                            </div>
-                                        </div>
-                                    )}
 
                                     <div className="space-y-3">
                                         {(selectedCustomer?.managedSites || []).length === 0 ? (
@@ -541,7 +478,7 @@ export default function CustomerDashboard({
                                                                         setEditingSiteRates(site.rates || editRates);
                                                                     }
                                                                 }}
-                                                                className={`px-3 py-1.5 text-sm rounded transition-colors ${editingSiteId === site.id ? 'bg-cyan-600 text-white' : 'text-slate-400 hover:text-cyan-400 hover:bg-gray-600'}`}
+                                                                className={`px-3 py-1.5 text-sm rounded transition-colors ${editingSiteId === site.id ? 'bg-primary-600 text-white' : 'text-slate-400 hover:text-primary-400 hover:bg-gray-600'}`}
                                                             >
                                                                 {editingSiteId === site.id ? 'Close' : 'Edit Rates'}
                                                             </button>
@@ -563,7 +500,7 @@ export default function CustomerDashboard({
                                                     {editingSiteId === site.id && editingSiteRates && (
                                                         <div className="border-t border-gray-600 pt-4 mt-4 animate-slide-down">
                                                             <div className="flex justify-between items-center mb-3">
-                                                                <h5 className="text-sm font-bold text-cyan-400 uppercase">Site-Specific Rates</h5>
+                                                                <h5 className="text-sm font-bold text-primary-400 uppercase">Site-Specific Rates</h5>
                                                                 <button
                                                                     onClick={() => setEditingSiteRates(editRates)}
                                                                     className="text-xs text-slate-400 hover:text-slate-200"
@@ -589,7 +526,7 @@ export default function CustomerDashboard({
                                                                         setEditingSiteId(null);
                                                                         setEditingSiteRates(null);
                                                                     }}
-                                                                    className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded font-medium flex items-center gap-2"
+                                                                    className="bg-primary-600 hover:bg-primary-500 text-white px-4 py-2 rounded font-medium flex items-center gap-2"
                                                                 >
                                                                     <Save size={16} /> Save Site Rates
                                                                 </button>

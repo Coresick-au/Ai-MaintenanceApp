@@ -151,7 +151,7 @@ export default function JobDetails({
                     )}
                     {/* Customer Notes Display */}
                     {selectedCustomer?.customerNotes && (
-                        <div className="mt-2 text-xs text-cyan-400">
+                        <div className="mt-2 text-xs text-slate-400">
                             <div className="flex items-start gap-1">
                                 <span className="flex-shrink-0">📝</span>
                                 <div className="flex-1">
@@ -175,14 +175,15 @@ export default function JobDetails({
                     )}
                     {/* Site-Specific Contacts */}
                     {selectedCustomer?.contacts && selectedCustomer.contacts.length > 0 && (
-                        <div className="mt-2 text-xs text-emerald-400">
+                        <div className="mt-2 text-xs text-slate-400">
                             <div className="flex items-start gap-1">
                                 <span className="flex-shrink-0">👤</span>
                                 <div className="flex-1">
-                                    <div className="font-semibold mb-1">Site Contacts:</div>
-                                    {selectedCustomer.contacts.map((contact, idx) => (
-                                        <div key={idx} className="ml-2">
-                                            <span className="font-medium">{contact.name}</span>
+                                    <div className="font-semibold mb-1 text-slate-300">Site Contacts:</div>
+                                    {selectedCustomer.contacts.map((contact: any, idx: number) => (
+                                        <div key={idx} className="ml-2 mb-1">
+                                            <span className="font-medium text-slate-300">{contact.name}</span>
+                                            {contact.role && <span className="ml-1 text-slate-500">({contact.role})</span>}
                                             {contact.phone && <span className="ml-2">📞 {contact.phone}</span>}
                                             {contact.email && <span className="ml-2">✉️ {contact.email}</span>}
                                         </div>
