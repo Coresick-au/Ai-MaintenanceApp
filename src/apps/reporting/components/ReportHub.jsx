@@ -5,6 +5,7 @@ import { useGlobalData } from "../../../context/GlobalDataContext";
 import { useAuth } from "../../../context/AuthContext";
 import { Ic, ICONS } from "./shared";
 import { generateReportCode } from "../utils/dataMapper";
+import { getEquipmentType } from "../data/equipmentTypes";
 
 export const ReportHub = () => {
   const { drafts, draftsLoaded, loadDraft, deleteDraft, setPage, resetForm, showToast, loadCompletedReport } = useReporting();
@@ -34,6 +35,7 @@ export const ReportHub = () => {
               reportCode: report.data?.general?.reportId || "",
               conveyorNumber: report.data?.general?.conveyorNumber || "",
               date: report.date || "",
+              equipmentType: report.data?.equipmentType || "belt_weigher",
               storageUrl: report.storageUrl,
               fileName: report.fileName,
               source: "asset",
@@ -55,16 +57,18 @@ export const ReportHub = () => {
 
     // Drafts
     drafts.filter(d => d.status !== "completed").forEach(d => {
+      const draftEqType = d.equipmentType || "belt_weigher";
       items.push({
         id: d.id,
         type: "draft",
         customerName: d.customerName || "Untitled",
         siteName: d.siteName || "",
         assetName: d.assetName || "",
-        reportCode: d.svc ? generateReportCode(d.svc) : "",
+        reportCode: d.svc ? generateReportCode(d.svc, draftEqType) : "",
         conveyorNumber: d.svc?.cv || "",
         date: d.updatedAt || d.createdAt || "",
         step: d.step || 0,
+        equipmentType: draftEqType,
         source: "draft",
         raw: d,
       });
@@ -285,13 +289,21 @@ export const ReportHub = () => {
                     {item.assetName || "Untitled Report"}
                     {item.conveyorNumber && <span style={{ fontWeight: 400, color: t.textMuted, marginLeft: 6 }}>({item.conveyorNumber})</span>}
                   </div>
-                  <span style={{
-                    fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.04em",
-                    background: item.type === "draft" ? t.amber + "22" : t.green + "22",
-                    color: item.type === "draft" ? t.amber : t.green,
-                  }}>
-                    {item.type}
-                  </span>
+                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 4, letterSpacing: "0.04em",
+                      background: t.surfaceDeep, color: t.textDim,
+                    }}>
+                      {getEquipmentType(item.equipmentType).shortLabel}
+                    </span>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, padding: "2px 8px", borderRadius: 4, textTransform: "uppercase", letterSpacing: "0.04em",
+                      background: item.type === "draft" ? t.amber + "22" : t.green + "22",
+                      color: item.type === "draft" ? t.amber : t.green,
+                    }}>
+                      {item.type}
+                    </span>
+                  </div>
                 </div>
                 {/* Details */}
                 <div style={{ fontSize: 12, color: t.textMuted, marginBottom: 4 }}>{item.customerName}</div>
@@ -321,7 +333,7 @@ export const ReportHub = () => {
                       </div>
                     ) : item.type === "draft" && (
                       <>
-                        <span style={{ fontSize: 10, color: t.textDim }}>Step {(item.step || 0) + 1}/5</span>
+                        <span style={{ fontSize: 10, color: t.textDim }}>Step {(item.step || 0) + 1}/{getEquipmentType(item.equipmentType).steps.length}</span>
                         <button
                           onClick={e => handleDeleteDraft(e, item.id)}
                           style={{ ...S.btnIc, padding: 4, borderRadius: 4, background: "transparent", border: "none", cursor: "pointer" }}

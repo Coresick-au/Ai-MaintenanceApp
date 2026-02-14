@@ -7,9 +7,10 @@ import { F_, FS_, FC_, Ic, ICONS } from "../shared";
 import { fmtDate } from "../../utils/reportUtils";
 import { TECHS } from "../../data/initialData";
 import { mapFromFirestoreFormat, generateReportCode } from "../../utils/dataMapper";
+import { getAllEquipmentTypes } from "../../data/equipmentTypes";
 
 export const GeneralStep = () => {
-  const { cust, setCust, svc, setSvc, cal, setCal, comments, setComments, ast, setAst, intD, setIntD, selTpl, setSelTpl, nsd, selectedCustomerId, setSelectedCustomerId, selectedSiteId, setSelectedSiteId, selectedAssetId, setSelectedAssetId, loadFromAsset, showToast } = useReporting();
+  const { cust, setCust, svc, setSvc, cal, setCal, comments, setComments, ast, setAst, intD, setIntD, selTpl, setSelTpl, nsd, selectedCustomerId, setSelectedCustomerId, selectedSiteId, setSelectedSiteId, selectedAssetId, setSelectedAssetId, loadFromAsset, showToast, eqType, handleEqTypeChange } = useReporting();
   const { tpls, dd } = useReportingSettings();
   const S = useTheme();
   const t = S.t;
@@ -105,6 +106,12 @@ export const GeneralStep = () => {
     const lastReport = sorted[0];
     const mapped = mapFromFirestoreFormat(lastReport);
 
+    // Switch equipment type if the copied report has a different type
+    const reportEqType = mapped.equipmentType || "belt_weigher";
+    if (reportEqType !== eqType) {
+      handleEqTypeChange(reportEqType);
+    }
+
     setCust(prev => ({ ...prev, ...mapped.cust }));
     setSvc(prev => ({ ...prev, ...mapped.svc, date: prev.date || "" }));
     setCal(mapped.cal);
@@ -121,17 +128,33 @@ export const GeneralStep = () => {
     showToast("Data copied from last report", "success");
   };
 
+  const filteredTpls = tpls.filter(tp => (tp.equipmentType || "belt_weigher") === eqType);
+
   return (
     <>
-      {/* Template Selector */}
+      {/* Equipment Type Selector */}
+      <div style={S.card}>
+        <div style={S.cH}><span style={S.cHT}>Equipment Type</span></div>
+        <div style={{ padding: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {getAllEquipmentTypes().map(et => (
+            <button key={et.id} style={{ fontFamily: "inherit", fontSize: 12, fontWeight: 600, padding: "8px 16px", border: eqType === et.id ? `1px solid ${t.accent}` : `1px solid ${t.border}`, borderRadius: 6, background: eqType === et.id ? t.accentBg : t.surfaceAlt, color: eqType === et.id ? t.accent : t.textMuted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => handleEqTypeChange(et.id)}>
+              {et.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Template Selector (filtered by equipment type) */}
       <div style={S.card}>
         <div style={S.cH}><span style={S.cHT}>Report Template</span></div>
         <div style={{ padding: 12, display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {tpls.map(tp => (
+          {filteredTpls.length > 0 ? filteredTpls.map(tp => (
             <button key={tp.id} style={{ fontFamily: "inherit", fontSize: 12, fontWeight: 500, padding: "8px 14px", border: selTpl?.id === tp.id ? `1px solid ${t.accent}` : `1px solid ${t.border}`, borderRadius: 6, background: selTpl?.id === tp.id ? t.accentBg : t.surfaceAlt, color: selTpl?.id === tp.id ? t.accent : t.textMuted, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }} onClick={() => setSelTpl(tp)}>
               <Ic d={ICONS.file} s={13} c={selTpl?.id === tp.id ? t.accent : t.textDim} />{tp.name}<span style={{ fontSize: 10, color: t.textFaint }}>({tp.params.length})</span>
             </button>
-          ))}
+          )) : (
+            <span style={{ fontSize: 12, color: t.textFaint, fontStyle: "italic" }}>No templates for this equipment type. Add one in Settings.</span>
+          )}
         </div>
       </div>
 
@@ -235,7 +258,7 @@ export const GeneralStep = () => {
             <div style={{ ...S.label, marginBottom: 8, fontSize: 10, letterSpacing: "0.06em" }}>REPORT NAME</div>
             <div style={S.g2}>
               <F_ label="Job Number" value={svc.jobNumber} onChange={v => setSvc({ ...svc, jobNumber: v })} placeholder="e.g. 12345" />
-              <FC_ label="Report Code" value={generateReportCode(svc)} />
+              <FC_ label="Report Code" value={generateReportCode(svc, eqType)} />
             </div>
           </div>
 

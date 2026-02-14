@@ -9,10 +9,12 @@ import { CalibrationStep } from "./components/steps/CalibrationStep";
 import { CommentsStep } from "./components/steps/CommentsStep";
 import { AssetInfoStep } from "./components/steps/AssetInfoStep";
 import { IntegratorDataStep } from "./components/steps/IntegratorDataStep";
+import { TmdDataStep } from "./components/steps/TmdDataStep";
 
 import { SettingsComments } from "./components/settings/SettingsComments";
 import { SettingsDropdowns } from "./components/settings/SettingsDropdowns";
 import { SettingsTemplates } from "./components/settings/SettingsTemplates";
+import { SettingsEquipmentTypes } from "./components/settings/SettingsEquipmentTypes";
 import { TemplateEditorModal } from "./components/settings/TemplateEditorModal";
 import { PrintPreview } from "./components/PrintPreview";
 import { SaveReportButton } from "./components/SaveReportButton";
@@ -20,7 +22,7 @@ import { ReportHub } from "./components/ReportHub";
 import { Toast } from "./components/shared/Toast";
 
 export const ReportingApp = ({ onBack }) => {
-  const { page, setPage, sTab, setSTab, step, setStep, steps, setShowPrint, showPrint, showTplEd, resetForm, toast, dismissToast, saveDraft, selectedCustomerId, selectedSiteId, selectedAssetId, svc, showToast } = useReporting();
+  const { page, setPage, sTab, setSTab, step, setStep, steps, stepKeys, setShowPrint, showPrint, showTplEd, resetForm, toast, dismissToast, saveDraft, selectedCustomerId, selectedSiteId, selectedAssetId, svc, showToast } = useReporting();
   const { isDark, setIsDark, ...S } = useTheme();
   const t = S.t;
   const { loading } = useGlobalData();
@@ -62,8 +64,17 @@ export const ReportingApp = ({ onBack }) => {
     setStep(step + 1);
   };
 
-  const stepComponents = [GeneralStep, CalibrationStep, CommentsStep, AssetInfoStep, IntegratorDataStep];
-  const RenderStep = stepComponents[step] || GeneralStep;
+  // Step component registry: maps step keys to components
+  const STEP_COMPONENTS = {
+    general: GeneralStep,
+    calibration: CalibrationStep,
+    comments: CommentsStep,
+    assetInfo: AssetInfoStep,
+    intData: IntegratorDataStep,
+    tmdData: TmdDataStep,
+    templateData: TmdDataStep,
+  };
+  const RenderStep = STEP_COMPONENTS[stepKeys[step]] || GeneralStep;
 
   // Dynamic CSS for the reporting app's own theme
   const dynCSS = `
@@ -172,13 +183,14 @@ export const ReportingApp = ({ onBack }) => {
           <>
             {/* Settings tabs */}
             <div style={S.tabs}>
-              {[["comments", "Comment Library"], ["dropdowns", "Equipment Dropdowns"], ["templates", "Report Templates"]].map(([k, l]) => (
+              {[["comments", "Comment Library"], ["dropdowns", "Equipment Dropdowns"], ["templates", "Report Templates"], ["eqTypes", "Equipment Types"]].map(([k, l]) => (
                 <button key={k} onClick={() => setSTab(k)} style={{ ...S.tab, ...(sTab === k ? S.tabA : {}) }}>{l}</button>
               ))}
             </div>
             {sTab === "comments" && <SettingsComments />}
             {sTab === "dropdowns" && <SettingsDropdowns />}
             {sTab === "templates" && <SettingsTemplates />}
+            {sTab === "eqTypes" && <SettingsEquipmentTypes />}
           </>
         )}
       </div>

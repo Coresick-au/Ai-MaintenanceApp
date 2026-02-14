@@ -16,6 +16,10 @@ export const INIT_DD = {
   billetWeightTypes: ["Store in Place", "SIP", "Hang On"],
   rollerTypes: ["HDPE - Cams", "HDPE - Screws", "Steel - Cams", "Steel - Screws"],
   conditions: ["Good", "Fair", "Poor", "N/A"],
+  // TMD dropdowns
+  tmdFrameTypes: ["Thermo", "Standard", "Heavy Duty"],
+  tmdControllers: ["Oretronic 6", "Eriez", "Bunting"],
+  tmdSpeedInputs: ["Fixed", "Variable", "Encoder"],
 };
 
 export const INIT_COMMENTS = [
@@ -45,7 +49,7 @@ export const INIT_COMMENTS = [
 
 export const INIT_TEMPLATES = [
   {
-    id: "tpl_mt9101", name: "Microtech 9101", desc: "Standard Microtech 9101 integrator", isDefault: true, params: [
+    id: "tpl_mt9101", name: "Microtech 9101", desc: "Standard Microtech 9101 integrator", equipmentType: "belt_weigher", isDefault: true, params: [
       { id: "p1", name: "Scale Capacity", unit: "t/h" }, { id: "p2", name: "Totaliser", unit: "t" }, { id: "p3", name: "Scale Code", unit: "" },
       { id: "p4", name: "Revolution Time", unit: "s" }, { id: "p5", name: "Test Revolutions", unit: "revs" }, { id: "p6", name: "Test Duration Pulses", unit: "" },
       { id: "p7", name: "Speed Input Hz", unit: "Hz" }, { id: "p8", name: "Incline Angle", unit: "\u00b0" }, { id: "p9", name: "LC mV @ Zero", unit: "mV" },
@@ -56,13 +60,30 @@ export const INIT_TEMPLATES = [
     ]
   },
   {
-    id: "tpl_schenck", name: "Schenck Tersus", desc: "Schenck Tersus with extended block data", isDefault: true, params: [
+    id: "tpl_schenck", name: "Schenck Tersus", desc: "Schenck Tersus with extended block data", equipmentType: "belt_weigher", isDefault: true, params: [
       { id: "s1", name: "Scale Capacity", unit: "t/h" }, { id: "s2", name: "Totaliser", unit: "t" }, { id: "s3", name: "Revolution Time", unit: "s" },
       { id: "s4", name: "Test Revolutions", unit: "revs" }, { id: "s5", name: "Impulses/Belt", unit: "" }, { id: "s6", name: "Speed Input Hz", unit: "Hz" },
       { id: "s7", name: "Incline Angle", unit: "\u00b0" }, { id: "s8", name: "LC mV/V @ Zero", unit: "mV" }, { id: "s9", name: "LC mV/V @ Span", unit: "mV" },
       { id: "s10", name: "Idler Spacing", unit: "mm" }, { id: "s11", name: "Weigh Span", unit: "m" }, { id: "s12", name: "Belt Speed", unit: "m/s" },
       { id: "s13", name: "Belt Length", unit: "m" }, { id: "s14", name: "Test Length", unit: "m" }, { id: "s15", name: "Test Time", unit: "s" },
       { id: "s16", name: "Kg/m", unit: "kg/m" }, { id: "s17", name: "Target Weight", unit: "t" }, { id: "s18", name: "Simulated Rate", unit: "t/h" },
+    ]
+  },
+  // TMD Templates
+  {
+    id: "tpl_tmd_standard", name: "TMD Standard", desc: "Standard Tramp Metal Detector template", equipmentType: "tmd", isDefault: true, params: [
+      { id: "t1", name: "Coarse", unit: "", type: "cal" },
+      { id: "t2", name: "Fine", unit: "", type: "cal" },
+      { id: "t3", name: "Test Piece Pass", unit: "", type: "val" },
+      { id: "t4", name: "Test Piece Detect", unit: "", type: "val" },
+      { id: "t5", name: "Coil Balance", unit: "", type: "val" },
+      { id: "t6", name: "Belt Speed", unit: "m/s", type: "val" },
+      { id: "t7", name: "Bar Detection", unit: "", type: "val" },
+      { id: "t8", name: "Mat Code", unit: "", type: "val" },
+      { id: "t9", name: "Bar Sensitivity", unit: "", type: "val" },
+      { id: "t10", name: "Time Delay", unit: "m", type: "val" },
+      { id: "t11", name: "Bar Length", unit: "m", type: "val" },
+      { id: "t12", name: "OP FRQ", unit: "", type: "val" },
     ]
   },
 ];

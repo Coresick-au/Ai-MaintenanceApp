@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef, useCallback } f
 import { INIT_DD, INIT_COMMENTS, INIT_TEMPLATES, INIT_UNITS, INIT_CATEGORIES } from "../data/initialData";
 import { uid } from "../utils/reportUtils";
 import { reportingSettingsRepository } from "../../../repositories";
+import { registerCustomTypes } from "../data/equipmentTypes";
 
 const SettingsCtx = createContext();
 export const useReportingSettings = () => useContext(SettingsCtx);
@@ -13,6 +14,7 @@ export const ReportingSettingsProvider = ({ children }) => {
   const [units, setUnits] = useState(INIT_UNITS);
   const [cats, setCats] = useState(INIT_CATEGORIES);
   const [condColors, setCondColors] = useState({});
+  const [customEqTypes, setCustomEqTypes] = useState([]);
   const [loaded, setLoaded] = useState(false);
   const saveTimer = useRef(null);
 
@@ -23,12 +25,16 @@ export const ReportingSettingsProvider = ({ children }) => {
       try {
         const settings = await reportingSettingsRepository.getById("reporting");
         if (settings && !cancelled) {
-          if (settings.dropdownOptions) setDd(settings.dropdownOptions);
+          if (settings.dropdownOptions) setDd({ ...INIT_DD, ...settings.dropdownOptions });
           if (settings.commentLibrary) setCLib(settings.commentLibrary);
           if (settings.templates) setTpls(settings.templates);
           if (settings.units) setUnits(settings.units);
           if (settings.categories) setCats(settings.categories);
           if (settings.conditionColors) setCondColors(settings.conditionColors);
+          if (settings.customEquipmentTypes) {
+            setCustomEqTypes(settings.customEquipmentTypes);
+            registerCustomTypes(settings.customEquipmentTypes);
+          }
         }
       } catch (e) {
         console.warn("[ReportingSettings] Failed to load from Firestore, using defaults:", e.message);
@@ -38,6 +44,11 @@ export const ReportingSettingsProvider = ({ children }) => {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  // Keep runtime registry in sync when customEqTypes changes
+  useEffect(() => {
+    registerCustomTypes(customEqTypes);
+  }, [customEqTypes]);
 
   // Debounced auto-save to Firestore
   const saveToFirestore = useCallback(() => {
@@ -52,6 +63,7 @@ export const ReportingSettingsProvider = ({ children }) => {
           units,
           categories: cats,
           conditionColors: condColors,
+          customEquipmentTypes: customEqTypes,
           updatedAt: new Date().toISOString(),
         });
         console.log("[ReportingSettings] Saved to Firestore");
@@ -59,9 +71,9 @@ export const ReportingSettingsProvider = ({ children }) => {
         console.warn("[ReportingSettings] Failed to save:", e.message);
       }
     }, 2000);
-  }, [dd, cLib, tpls, units, cats, condColors, loaded]);
+  }, [dd, cLib, tpls, units, cats, condColors, customEqTypes, loaded]);
 
-  useEffect(() => { saveToFirestore(); }, [dd, cLib, tpls, units, cats, condColors, saveToFirestore]);
+  useEffect(() => { saveToFirestore(); }, [dd, cLib, tpls, units, cats, condColors, customEqTypes, saveToFirestore]);
 
   // Category CRUD
   const addCategory = (name) => {
@@ -71,7 +83,6 @@ export const ReportingSettingsProvider = ({ children }) => {
   };
   const removeCategory = (name) => {
     setCats(prev => prev.filter(c => c !== name));
-    // Also remove any comments in that category
     setCLib(prev => prev.filter(c => c.cat !== name));
   };
   const renameCategory = (oldName, newName) => {
@@ -84,7 +95,6 @@ export const ReportingSettingsProvider = ({ children }) => {
   // Comment CRUD
   const addComment = (cat, text) => {
     if (!cat || !text) return;
-    // Auto-register new category
     if (!cats.includes(cat)) setCats(prev => [...prev, cat]);
     setCLib(prev => [...prev, { id: uid(), cat, text, on: true }]);
   };
@@ -107,10 +117,10 @@ export const ReportingSettingsProvider = ({ children }) => {
   // Dropdown CRUD
   const addDropdownItem = (key, item) => {
     if (!item.trim()) return;
-    setDd(prev => ({ ...prev, [key]: [...prev[key], item.trim()] }));
+    setDd(prev => ({ ...prev, [key]: [...(prev[key] || []), item.trim()] }));
   };
   const removeDropdownItem = (key, index) => {
-    setDd(prev => ({ ...prev, [key]: prev[key].filter((_, i) => i !== index) }));
+    setDd(prev => ({ ...prev, [key]: (prev[key] || []).filter((_, i) => i !== index) }));
   };
 
   // Template CRUD
@@ -128,9 +138,43 @@ export const ReportingSettingsProvider = ({ children }) => {
   };
   const removeUnit = (u) => setUnits(prev => prev.filter(x => x !== u));
 
+  // Custom Equipment Type CRUD
+  const addCustomEqType = (eqType) => {
+    // Compute defaultAst from assetFields
+    const defaultAst = {};
+    (eqType.assetFields || []).forEach(f => { defaultAst[f.key] = f.type === "condition" ? "Good" : ""; });
+    const newType = { ...eqType, id: "eq_" + uid(), isBuiltIn: false, defaultAst, defaultCal: {}, hasFixedCal: false };
+    setCustomEqTypes(prev => [...prev, newType]);
+    // Auto-create any new dropdown keys referenced by asset fields
+    (eqType.assetFields || []).forEach(f => {
+      if (f.type === "dropdown" && f.dropdownKey && !dd[f.dropdownKey]) {
+        setDd(prev => ({ ...prev, [f.dropdownKey]: [] }));
+      }
+    });
+  };
+  const updateCustomEqType = (id, data) => {
+    // Recompute defaultAst if assetFields changed
+    if (data.assetFields) {
+      const defaultAst = {};
+      data.assetFields.forEach(f => { defaultAst[f.key] = f.type === "condition" ? "Good" : ""; });
+      data.defaultAst = defaultAst;
+    }
+    setCustomEqTypes(prev => prev.map(t => t.id === id ? { ...t, ...data } : t));
+    // Auto-create any new dropdown keys
+    (data.assetFields || []).forEach(f => {
+      if (f.type === "dropdown" && f.dropdownKey && !dd[f.dropdownKey]) {
+        setDd(prev => ({ ...prev, [f.dropdownKey]: [] }));
+      }
+    });
+  };
+  const deleteCustomEqType = (id) => {
+    setCustomEqTypes(prev => prev.filter(t => t.id !== id));
+  };
+
   return (
     <SettingsCtx.Provider value={{
       dd, setDd, cLib, setCLib, tpls, setTpls, units, setUnits, cats, loaded, condColors, setConditionColor,
+      customEqTypes, addCustomEqType, updateCustomEqType, deleteCustomEqType,
       addComment, updateComment, deleteComment, toggleComment,
       addCategory, removeCategory, renameCategory,
       addDropdownItem, removeDropdownItem,

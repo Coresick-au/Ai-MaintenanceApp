@@ -8,11 +8,13 @@ import { useReportingSettings } from "../context/ReportingSettingsContext";
 import { useGlobalData } from "../../../context/GlobalDataContext";
 import { Ic, ICONS } from "./shared";
 import ReportPdfDocument from "../pdf/ReportPdfDocument";
+import TmdPdfDocument from "../pdf/TmdPdfDocument";
+import GenericPdfDocument from "../pdf/GenericPdfDocument";
 import { mapToFirestoreFormat, generateFileName } from "../utils/dataMapper";
 
 export const SaveReportButton = () => {
   const reportState = useReporting();
-  const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, selectedCustomerId, selectedSiteId, selectedAssetId, showToast, currentDraftId, deleteDraft, setShowPrint } = reportState;
+  const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, selectedCustomerId, selectedSiteId, selectedAssetId, showToast, currentDraftId, deleteDraft, setShowPrint, eqType } = reportState;
   const { condColors } = useReportingSettings();
   const S = useTheme();
   const t = S.t;
@@ -28,15 +30,16 @@ export const SaveReportButton = () => {
 
     try {
       // 1. Generate PDF blob
-      const pdfDoc = (
-        <ReportPdfDocument
-          cust={cust} svc={svc} cal={cal} comments={comments} ast={ast}
-          intD={intD} selTpl={selTpl} nsd={nsd}
-          zD={zD} sD={sD_} lD={lD} spD={spD} condColors={condColors}
-        />
-      );
+      let pdfDoc;
+      if (eqType === "tmd") {
+        pdfDoc = <TmdPdfDocument cust={cust} svc={svc} comments={comments} ast={ast} intD={intD} selTpl={selTpl} nsd={nsd} eqType={eqType} condColors={condColors} />;
+      } else if (eqType === "belt_weigher") {
+        pdfDoc = <ReportPdfDocument cust={cust} svc={svc} cal={cal} comments={comments} ast={ast} intD={intD} selTpl={selTpl} nsd={nsd} zD={zD} sD={sD_} lD={lD} spD={spD} condColors={condColors} />;
+      } else {
+        pdfDoc = <GenericPdfDocument cust={cust} svc={svc} comments={comments} ast={ast} intD={intD} selTpl={selTpl} nsd={nsd} eqType={eqType} condColors={condColors} />;
+      }
       const blob = await pdf(pdfDoc).toBlob();
-      const fileName = generateFileName(svc);
+      const fileName = generateFileName(svc, eqType);
 
       // 2. Upload to Firebase Storage
       let downloadURL = null;
@@ -51,7 +54,7 @@ export const SaveReportButton = () => {
 
       // 3. Build report entry in backward-compatible format
       const reportEntry = mapToFirestoreFormat(
-        { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD },
+        { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, eqType },
         downloadURL,
         fileName
       );

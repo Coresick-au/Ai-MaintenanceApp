@@ -4,28 +4,31 @@ import { useReportingSettings } from "../context/ReportingSettingsContext";
 import { useTheme } from "../context/ReportingThemeContext";
 import { Ic, ICONS } from "./shared";
 import ReportPdfDocument from "../pdf/ReportPdfDocument";
+import TmdPdfDocument from "../pdf/TmdPdfDocument";
+import GenericPdfDocument from "../pdf/GenericPdfDocument";
 import { generateReportCode } from "../utils/dataMapper";
 
 export const PrintPreview = () => {
-  const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, showPrint, setShowPrint } = useReporting();
+  const { cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, showPrint, setShowPrint, eqType } = useReporting();
   const { condColors } = useReportingSettings();
   const S = useTheme();
   const t = S.t;
 
   if (!showPrint) return null;
 
-  const pdfDoc = (
-    <ReportPdfDocument
-      cust={cust} svc={svc} cal={cal} comments={comments} ast={ast}
-      intD={intD} selTpl={selTpl} nsd={nsd}
-      zD={zD} sD={sD_} lD={lD} spD={spD} condColors={condColors}
-    />
-  );
+  let pdfDoc;
+  if (eqType === "tmd") {
+    pdfDoc = <TmdPdfDocument cust={cust} svc={svc} comments={comments} ast={ast} intD={intD} selTpl={selTpl} nsd={nsd} eqType={eqType} condColors={condColors} />;
+  } else if (eqType === "belt_weigher") {
+    pdfDoc = <ReportPdfDocument cust={cust} svc={svc} cal={cal} comments={comments} ast={ast} intD={intD} selTpl={selTpl} nsd={nsd} zD={zD} sD={sD_} lD={lD} spD={spD} condColors={condColors} />;
+  } else {
+    pdfDoc = <GenericPdfDocument cust={cust} svc={svc} comments={comments} ast={ast} intD={intD} selTpl={selTpl} nsd={nsd} eqType={eqType} condColors={condColors} />;
+  }
 
   const handleDownload = (url) => {
     const a = document.createElement("a");
     a.href = url;
-    a.download = `${generateReportCode(svc)}.pdf`;
+    a.download = `${generateReportCode(svc, eqType)}.pdf`;
     a.click();
   };
 

@@ -4,14 +4,13 @@ import { mapFromFirestoreFormat } from "../utils/dataMapper";
 import { useReportingSettings } from "./ReportingSettingsContext";
 import { reportDraftRepository } from "../../../repositories";
 import { useAuth } from "../../../context/AuthContext";
+import { DEFAULT_EQUIPMENT_TYPE, getEquipmentType } from "../data/equipmentTypes";
 
 const ReportingCtx = createContext();
 export const useReporting = () => useContext(ReportingCtx);
 
 const INIT_CUST = { name: "", location: "", contact1: "", email1: "", phone1: "", contact2: "", email2: "", phone2: "" };
 const INIT_SVC = { asset: "", cv: "", type: "12 Weekly", interval: "3", date: "", techs: [], jobNumber: "" };
-const INIT_CAL = { oz: "", nz: "", os: "", ns: "", zr: "", sr: "", ol: "", nl: "", osp: "", nsp: "" };
-const INIT_AST = { scaleType: "", speedIn: "", scaleCond: "Good", billetType: "", integrator: "", nw: "", nlc: "", bs: "", lcCap: "", billetCond: "Good", lcSpecs: "", nmi: "No", nmiCls: "N/A", rCond: "Good", rType: "", rDate: "", rSize: "" };
 
 export const ReportingProvider = ({ children }) => {
   const { tpls } = useReportingSettings();
@@ -29,14 +28,18 @@ export const ReportingProvider = ({ children }) => {
   }, []);
   const dismissToast = useCallback(() => setToast(null), []);
 
-  // Form state
+  // Equipment type
+  const [eqType, setEqType] = useState(DEFAULT_EQUIPMENT_TYPE);
+  const eqConfig = getEquipmentType(eqType);
+
+  // Form state (intD = template-driven data: integrator params for BW, calibration params for TMD)
   const [cust, setCust] = useState(INIT_CUST);
   const [svc, setSvc] = useState(INIT_SVC);
-  const [cal, setCal] = useState(INIT_CAL);
+  const [cal, setCal] = useState(eqConfig.defaultCal);
   const [comments, setComments] = useState("");
-  const [ast, setAst] = useState(INIT_AST);
+  const [ast, setAst] = useState(eqConfig.defaultAst);
   const [intD, setIntD] = useState({});
-  const [selTpl, setSelTpl] = useState(tpls[0] || null);
+  const [selTpl, setSelTpl] = useState(tpls.find(t => (t.equipmentType || "belt_weigher") === DEFAULT_EQUIPMENT_TYPE) || tpls[0] || null);
 
   // UI state
   const [showPrint, setShowPrint] = useState(false);
@@ -81,6 +84,7 @@ export const ReportingProvider = ({ children }) => {
       ...(activeId ? { id: activeId } : {}),
       status: markCompleted ? "completed" : "draft",
       createdBy: currentUser?.uid || "unknown",
+      equipmentType: eqType,
       customerId: selectedCustomerId,
       customerName: cust.name,
       siteId: selectedSiteId,
@@ -88,7 +92,7 @@ export const ReportingProvider = ({ children }) => {
       assetId: selectedAssetId,
       assetName: svc.asset,
       cust, svc, cal, comments, ast, intD,
-      selTpl: selTpl ? { id: selTpl.id, name: selTpl.name, desc: selTpl.desc, params: selTpl.params } : null,
+      selTpl: selTpl ? { id: selTpl.id, name: selTpl.name, desc: selTpl.desc, equipmentType: selTpl.equipmentType, params: selTpl.params } : null,
       step,
     };
 
@@ -108,12 +112,17 @@ export const ReportingProvider = ({ children }) => {
     });
 
     return saved;
-  }, [currentUser, selectedCustomerId, selectedSiteId, selectedAssetId, cust, svc, cal, comments, ast, intD, selTpl, step]);
+  }, [currentUser, selectedCustomerId, selectedSiteId, selectedAssetId, cust, svc, cal, comments, ast, intD, selTpl, step, eqType]);
 
   // Load draft into form
   const loadDraft = useCallback((draft) => {
     draftIdRef.current = draft.id;
     setCurrentDraftId(draft.id);
+
+    const draftEqType = draft.equipmentType || "belt_weigher";
+    const config = getEquipmentType(draftEqType);
+    setEqType(draftEqType);
+
     setCust(draft.cust || INIT_CUST);
     // Migrate old tech1/tech2 format to techs array
     const draftSvc = draft.svc || INIT_SVC;
@@ -123,13 +132,17 @@ export const ReportingProvider = ({ children }) => {
       delete draftSvc.tech2;
     }
     setSvc(draftSvc);
-    setCal(draft.cal || INIT_CAL);
+    setCal(draft.cal || config.defaultCal);
     setComments(draft.comments || "");
-    setAst(draft.ast || INIT_AST);
+    setAst(draft.ast || config.defaultAst);
     setIntD(draft.intD || {});
     if (draft.selTpl) {
       const matchedTpl = tpls.find(t => t.id === draft.selTpl.id) || draft.selTpl;
       setSelTpl(matchedTpl);
+    } else {
+      // Auto-select first template for this equipment type
+      const matchingTpl = tpls.find(t => (t.equipmentType || "belt_weigher") === draftEqType);
+      setSelTpl(matchingTpl || null);
     }
     setSelectedCustomerId(draft.customerId || "");
     setSelectedSiteId(draft.siteId || "");
@@ -155,15 +168,35 @@ export const ReportingProvider = ({ children }) => {
     }, 5000);
 
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [cust, svc, cal, comments, ast, intD, selTpl?.id, step, selectedCustomerId, selectedSiteId, selectedAssetId, draftsLoaded]);
+  }, [cust, svc, cal, comments, ast, intD, selTpl?.id, step, selectedCustomerId, selectedSiteId, selectedAssetId, draftsLoaded, eqType]);
 
-  // Sync integrator data when template changes
+  // Sync template-driven data when template changes
   useEffect(() => {
     if (!selTpl) return;
     const nd = {};
-    selTpl.params.forEach(p => { nd[p.id] = intD[p.id] || { af: "", al: "", incPct: false }; });
+    selTpl.params.forEach(p => {
+      if ((p.type || "cal") === "val") {
+        nd[p.id] = intD[p.id] || { val: "" };
+      } else {
+        nd[p.id] = intD[p.id] || { af: "", al: "", incPct: false };
+      }
+    });
     setIntD(nd);
   }, [selTpl?.id]);
+
+  // Handle equipment type change
+  const handleEqTypeChange = useCallback((newType) => {
+    if (newType === eqType) return;
+    const config = getEquipmentType(newType);
+    setEqType(newType);
+    setAst(config.defaultAst);
+    setCal(config.defaultCal);
+    setIntD({});
+    setStep(0);
+    // Auto-select first matching template
+    const matchingTpl = tpls.find(t => (t.equipmentType || "belt_weigher") === newType);
+    setSelTpl(matchingTpl || null);
+  }, [eqType, tpls]);
 
   // Computed values
   const nsd = addMonths(svc.date, svc.interval);
@@ -172,15 +205,19 @@ export const ReportingProvider = ({ children }) => {
   const lD = calcDiff(cal.ol, cal.nl);
   const spD = calcDiff(cal.osp, cal.nsp);
 
-  const steps = ["General", "Calibration", "Comments", "Asset Info", "Integrator Data"];
+  // Steps derived from equipment type
+  const steps = eqConfig.steps.map(s => s.label);
+  const stepKeys = eqConfig.steps.map(s => s.key);
 
   // Reset form
   const resetForm = () => {
+    const defConfig = getEquipmentType(DEFAULT_EQUIPMENT_TYPE);
+    setEqType(DEFAULT_EQUIPMENT_TYPE);
     setCust(INIT_CUST);
     setSvc(INIT_SVC);
-    setCal(INIT_CAL);
+    setCal(defConfig.defaultCal);
     setComments("");
-    setAst(INIT_AST);
+    setAst(defConfig.defaultAst);
     setIntD({});
     setStep(0);
     setSelectedCustomerId("");
@@ -188,6 +225,9 @@ export const ReportingProvider = ({ children }) => {
     setSelectedAssetId("");
     draftIdRef.current = null;
     setCurrentDraftId(null);
+    // Reset to first BW template
+    const matchingTpl = tpls.find(t => (t.equipmentType || "belt_weigher") === DEFAULT_EQUIPMENT_TYPE);
+    setSelTpl(matchingTpl || tpls[0] || null);
   };
 
   // Load from asset (auto-populate from Firebase data)
@@ -216,15 +256,18 @@ export const ReportingProvider = ({ children }) => {
   // Load a completed report into the editor (read-only view of data)
   const loadCompletedReport = useCallback((report, customerId, siteId, assetId) => {
     const mapped = mapFromFirestoreFormat(report);
+    const reportEqType = mapped.equipmentType || "belt_weigher";
+    const config = getEquipmentType(reportEqType);
+
     draftIdRef.current = null;
-    setCurrentDraftId(null); // Not a draft — prevent auto-save overwriting
+    setCurrentDraftId(null);
+    setEqType(reportEqType);
     setCust(mapped.cust);
-    // Restore the original date for completed reports (unlike Copy which blanks it)
     const svcWithDate = { ...mapped.svc, date: report.data?.general?.serviceDate || "" };
     setSvc(svcWithDate);
-    setCal(mapped.cal);
+    setCal(mapped.cal || config.defaultCal);
     setComments(mapped.comments);
-    setAst(mapped.ast);
+    setAst(mapped.ast || config.defaultAst);
     setIntD(mapped.intD);
     if (mapped.templateName) {
       const matchedTpl = tpls.find(tp => tp.name === mapped.templateName);
@@ -240,7 +283,9 @@ export const ReportingProvider = ({ children }) => {
   return (
     <ReportingCtx.Provider value={{
       // Navigation
-      page, setPage, sTab, setSTab, step, setStep, steps,
+      page, setPage, sTab, setSTab, step, setStep, steps, stepKeys,
+      // Equipment type
+      eqType, setEqType, handleEqTypeChange,
       // Form state
       cust, setCust, svc, setSvc, cal, setCal, comments, setComments, ast, setAst, intD, setIntD,
       selTpl, setSelTpl,

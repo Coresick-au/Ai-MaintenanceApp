@@ -1,10 +1,13 @@
 import { calcDiff, addMonths } from "./reportUtils";
+import { getEquipmentType } from "../data/equipmentTypes";
 
 /**
- * Maps the new reporting app's state to the Firestore report format
+ * Maps the reporting app's state to the Firestore report format
  * that AssetAnalytics.jsx expects for backward compatibility.
  */
-export function mapToFirestoreFormat({ cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD }, downloadURL, fileName) {
+export function mapToFirestoreFormat({ cust, svc, cal, comments, ast, intD, selTpl, nsd, zD, sD_, lD, spD, eqType }, downloadURL, fileName) {
+  const equipmentType = eqType || "belt_weigher";
+
   return {
     id: Date.now(),
     date: new Date().toISOString(),
@@ -13,8 +16,9 @@ export function mapToFirestoreFormat({ cust, svc, cal, comments, ast, intD, selT
     storageUrl: downloadURL || null,
     jobNumber: svc.jobNumber || svc.cv || "",
     data: {
+      equipmentType,
       general: {
-        reportId: generateReportCode(svc),
+        reportId: generateReportCode(svc, equipmentType),
         customerName: cust.name,
         siteLocation: cust.location,
         contactName: cust.contact1,
@@ -33,38 +37,50 @@ export function mapToFirestoreFormat({ cust, svc, cal, comments, ast, intD, selT
         techsFull: svc.techs || [],
         comments: comments,
       },
-      calibration: {
-        oldTare: cal.oz,
-        newTare: cal.nz,
-        tareChange: zD.pct,
-        tareRepeatability: cal.zr,
-        oldSpan: cal.os,
-        newSpan: cal.ns,
-        spanChange: sD_.pct,
-        spanRepeatability: cal.sr,
-        oldLength: cal.ol,
-        newLength: cal.nl,
-        lengthDiff: lD.diff,
-        lengthChange: lD.pct,
-        oldSpeed: cal.osp,
-        newSpeed: cal.nsp,
-        speedDiff: spD.diff,
-        speedChange: spD.pct,
-      },
+      // BW fixed calibration fields (only when applicable)
+      ...(getEquipmentType(equipmentType).hasFixedCal ? {
+        calibration: {
+          oldTare: cal.oz,
+          newTare: cal.nz,
+          tareChange: zD?.pct,
+          tareRepeatability: cal.zr,
+          oldSpan: cal.os,
+          newSpan: cal.ns,
+          spanChange: sD_?.pct,
+          spanRepeatability: cal.sr,
+          oldLength: cal.ol,
+          newLength: cal.nl,
+          lengthDiff: lD?.diff,
+          lengthChange: lD?.pct,
+          oldSpeed: cal.osp,
+          newSpeed: cal.nsp,
+          speedDiff: spD?.diff,
+          speedChange: spD?.pct,
+        },
+      } : {}),
+      // Template-driven params (integrator data for BW, calibration data for TMD)
       integrator: (selTpl?.params || []).map(p => {
+        if ((p.type || "cal") === "val") {
+          return {
+            id: p.id,
+            label: p.name,
+            type: "val",
+            value: intD[p.id]?.val || "",
+          };
+        }
         const af = intD[p.id]?.af || "";
         const al = intD[p.id]?.al || "";
         const d = calcDiff(af, al);
         return {
           id: p.id,
           label: `${p.name}${p.unit ? ` (${p.unit})` : ""}`,
+          type: "cal",
           asFound: af,
           asLeft: al,
           diff: d.diff,
           percentChange: d.pct,
         };
       }),
-      // New fields (safe to add - old code ignores them)
       assetInfo: { ...ast },
       templateName: selTpl?.name || "",
       appVersion: "v2",
@@ -77,6 +93,8 @@ export function mapToFirestoreFormat({ cust, svc, cal, comments, ast, intD, selT
  * Service date is intentionally left empty so the user sets a new date.
  */
 export function mapFromFirestoreFormat(report) {
+  const eqType = report.data?.equipmentType || "belt_weigher";
+  const config = getEquipmentType(eqType);
   const g = report.data?.general || {};
   const c = report.data?.calibration || {};
   const ai = report.data?.assetInfo || {};
@@ -86,7 +104,22 @@ export function mapFromFirestoreFormat(report) {
   // Prefer full tech data, fall back to name-only parsing
   const techsFull = g.techsFull || (g.technicians || "").split(", ").filter(Boolean);
 
+  // BW fixed calibration fields
+  const calData = config.hasFixedCal ? {
+    oz: c.oldTare || "",
+    nz: c.newTare || "",
+    os: c.oldSpan || "",
+    ns: c.newSpan || "",
+    zr: c.tareRepeatability || "",
+    sr: c.spanRepeatability || "",
+    ol: c.oldLength || "",
+    nl: c.newLength || "",
+    osp: c.oldSpeed || "",
+    nsp: c.newSpeed || "",
+  } : config.defaultCal;
+
   return {
+    equipmentType: eqType,
     cust: {
       name: g.customerName || "",
       location: g.siteLocation || "",
@@ -106,40 +139,15 @@ export function mapFromFirestoreFormat(report) {
       techs: techsFull,
       jobNumber: "",
     },
-    cal: {
-      oz: c.oldTare || "",
-      nz: c.newTare || "",
-      os: c.oldSpan || "",
-      ns: c.newSpan || "",
-      zr: c.tareRepeatability || "",
-      sr: c.spanRepeatability || "",
-      ol: c.oldLength || "",
-      nl: c.newLength || "",
-      osp: c.oldSpeed || "",
-      nsp: c.newSpeed || "",
-    },
+    cal: calData,
     comments: g.comments || "",
-    ast: {
-      scaleType: ai.scaleType || "",
-      speedIn: ai.speedIn || "",
-      scaleCond: ai.scaleCond || "Good",
-      billetType: ai.billetType || "",
-      integrator: ai.integrator || "",
-      nw: ai.nw || "",
-      nlc: ai.nlc || "",
-      bs: ai.bs || "",
-      lcCap: ai.lcCap || "",
-      billetCond: ai.billetCond || "Good",
-      lcSpecs: ai.lcSpecs || "",
-      nmi: ai.nmi || "No",
-      nmiCls: ai.nmiCls || "N/A",
-      rCond: ai.rCond || "Good",
-      rType: ai.rType || "",
-      rDate: ai.rDate || "",
-      rSize: ai.rSize || "",
-    },
+    ast: Object.keys(ai).length > 0 ? { ...ai } : config.defaultAst,
     intD: intParams.reduce((acc, p) => {
-      acc[p.id] = { af: p.asFound || "", al: p.asLeft || "" };
+      if (p.type === "val") {
+        acc[p.id] = { val: p.value || "" };
+      } else {
+        acc[p.id] = { af: p.asFound || "", al: p.asLeft || "" };
+      }
       return acc;
     }, {}),
     templateName,
@@ -147,19 +155,20 @@ export function mapFromFirestoreFormat(report) {
 }
 
 /**
- * Generates the report code in the standard format: YYYY.MM.DD-CALR{jobNumber}-{CV}
+ * Generates the report code in the format: YYYY.MM.DD-{PREFIX}{jobNumber}-{CV}
  */
-export function generateReportCode(svc) {
+export function generateReportCode(svc, eqType) {
+  const config = getEquipmentType(eqType || "belt_weigher");
   const date = svc.date ? new Date(svc.date) : new Date();
   const dateStr = `${date.getFullYear()}.${String(date.getMonth() + 1).padStart(2, "0")}.${String(date.getDate()).padStart(2, "0")}`;
   const jobNum = svc.jobNumber || "00000";
   const cv = svc.cv || "CV00";
-  return `${dateStr}-CALR${jobNum}-${cv}`;
+  return `${dateStr}-${config.reportCodePrefix}${jobNum}-${cv}`;
 }
 
 /**
  * Generates the PDF filename in the standard format.
  */
-export function generateFileName(svc) {
-  return `${generateReportCode(svc)}.pdf`;
+export function generateFileName(svc, eqType) {
+  return `${generateReportCode(svc, eqType)}.pdf`;
 }

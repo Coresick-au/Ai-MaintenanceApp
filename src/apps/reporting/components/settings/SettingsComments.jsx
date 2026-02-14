@@ -1,9 +1,11 @@
 import { useState } from "react";
+import { useReporting } from "../../context/ReportingContext";
 import { useReportingSettings } from "../../context/ReportingSettingsContext";
 import { useTheme } from "../../context/ReportingThemeContext";
 import { Ic, ICONS, SuggestInput } from "../shared";
 
 export const SettingsComments = () => {
+  const { showToast } = useReporting();
   const { cLib, setCLib, addComment, cats, addCategory, removeCategory, renameCategory } = useReportingSettings();
   const S = useTheme();
   const t = S.t;
@@ -12,11 +14,14 @@ export const SettingsComments = () => {
   const [newCatName, setNewCatName] = useState("");
   const [editCatName, setEditCatName] = useState(null);
   const [editCatValue, setEditCatValue] = useState("");
+  const [confirmDeleteCat, setConfirmDeleteCat] = useState(null);
+  const [confirmDeleteCmtId, setConfirmDeleteCmtId] = useState(null);
 
   const handleAddCategory = () => {
     if (!newCatName.trim()) return;
     addCategory(newCatName.trim());
     setNewCatName("");
+    showToast("Category added", "success");
   };
 
   const handleStartRename = (cat) => {
@@ -30,6 +35,26 @@ export const SettingsComments = () => {
     }
     setEditCatName(null);
     setEditCatValue("");
+  };
+
+  const handleAddComment = () => {
+    if (newCmt.cat && newCmt.text) {
+      addComment(newCmt.cat, newCmt.text);
+      setNewCmt({ cat: "", text: "" });
+      showToast("Comment added", "success");
+    }
+  };
+
+  const handleDeleteCategory = (cat) => {
+    removeCategory(cat);
+    setConfirmDeleteCat(null);
+    showToast("Category deleted", "success");
+  };
+
+  const handleDeleteComment = (id) => {
+    setCLib(cLib.filter(x => x.id !== id));
+    setConfirmDeleteCmtId(null);
+    showToast("Comment deleted", "success");
   };
 
   return (
@@ -71,7 +96,7 @@ export const SettingsComments = () => {
             <label style={S.label}>Comment Text</label>
             <input style={S.input} value={newCmt.text} onChange={e => setNewCmt({ ...newCmt, text: e.target.value })} placeholder="Enter comment text..." />
           </div>
-          <button style={S.btnCyan} onClick={() => { if (newCmt.cat && newCmt.text) { addComment(newCmt.cat, newCmt.text); setNewCmt({ cat: "", text: "" }); } }}>
+          <button style={S.btnCyan} onClick={handleAddComment}>
             <Ic d={ICONS.plus} s={14} /> Add
           </button>
         </div>
@@ -82,6 +107,7 @@ export const SettingsComments = () => {
         const catComments = cLib.filter(c => c.cat === cat);
         const isEmpty = catComments.length === 0;
         const isEditing = editCatName === cat;
+        const isCatConfirming = confirmDeleteCat === cat;
 
         return (
           <div key={cat} style={{ ...S.card, marginBottom: 12 }}>
@@ -107,9 +133,16 @@ export const SettingsComments = () => {
                     <Ic d={ICONS.edit} s={13} c={t.textDim} />
                   </button>
                 )}
-                <button style={S.btnIc} onClick={() => removeCategory(cat)} title={isEmpty ? "Delete category" : "Delete category and all comments"}>
-                  <Ic d={ICONS.trash} s={13} c={t.red} />
-                </button>
+                {isCatConfirming ? (
+                  <>
+                    <button style={{ ...S.btnSm, color: t.red, padding: "2px 8px", fontSize: 10 }} onClick={() => handleDeleteCategory(cat)}>Confirm</button>
+                    <button style={{ ...S.btnSm, padding: "2px 8px", fontSize: 10 }} onClick={() => setConfirmDeleteCat(null)}>Cancel</button>
+                  </>
+                ) : (
+                  <button style={S.btnIc} onClick={() => setConfirmDeleteCat(cat)} title={isEmpty ? "Delete category" : "Delete category and all comments"}>
+                    <Ic d={ICONS.trash} s={13} c={t.red} />
+                  </button>
+                )}
               </div>
             </div>
             {isEmpty ? (
@@ -134,7 +167,14 @@ export const SettingsComments = () => {
                           </div>
                         </button>
                         <button style={S.btnIc} onClick={() => setEditCmtId(c.id)}><Ic d={ICONS.edit} s={13} c={t.textDim} /></button>
-                        <button style={S.btnIc} onClick={() => setCLib(cLib.filter(x => x.id !== c.id))}><Ic d={ICONS.trash} s={13} c={t.red} /></button>
+                        {confirmDeleteCmtId === c.id ? (
+                          <>
+                            <button style={{ ...S.btnSm, color: t.red, padding: "2px 8px", fontSize: 10 }} onClick={() => handleDeleteComment(c.id)}>Confirm</button>
+                            <button style={{ ...S.btnSm, padding: "2px 8px", fontSize: 10 }} onClick={() => setConfirmDeleteCmtId(null)}>Cancel</button>
+                          </>
+                        ) : (
+                          <button style={S.btnIc} onClick={() => setConfirmDeleteCmtId(c.id)}><Ic d={ICONS.trash} s={13} c={t.red} /></button>
+                        )}
                       </div>
                     </>
                   )}
