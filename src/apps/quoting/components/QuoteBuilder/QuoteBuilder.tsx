@@ -7,6 +7,7 @@ import Extras from './Extras';
 import HoursVisualizer from '../HoursVisualizer';
 import { JobSheetPDF } from '../JobSheetPDF';
 import type { useQuote } from '../../hooks/useQuote';
+import { useToast } from '../Toast';
 
 interface QuoteBuilderProps {
     quote: ReturnType<typeof useQuote>;
@@ -23,6 +24,7 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
         totalHours, totalNTHrs, totalOTHrs
     } = quote;
 
+    const { showToast } = useToast();
     const [highlightMissingFields, setHighlightMissingFields] = useState(false);
 
     const saveQuoteToSystem = () => {
@@ -30,11 +32,11 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
             setHighlightMissingFields(true);
             // Clear highlight after 3 seconds
             setTimeout(() => setHighlightMissingFields(false), 3000);
-            alert("Please enter Customer Name before saving.");
+            showToast("Please enter Customer Name before saving.", "warning");
             return;
         }
         setStatus('quoted');
-        alert("Quote saved to system! It is now locked. Convert to Invoice to edit actuals.");
+        showToast("Quote saved to system! It is now locked.", "success");
     };
 
     const convertToDraftInvoice = () => {
@@ -51,7 +53,7 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
         console.log('[Job Sheet] Button clicked');
 
         if (!jobDetails.customer) {
-            alert("Please select a customer first.");
+            showToast("Please select a customer first.", "warning");
             return;
         }
 
@@ -105,7 +107,7 @@ export default function QuoteBuilder({ quote }: QuoteBuilderProps) {
             console.log('[Job Sheet] Download triggered successfully');
         } catch (error) {
             console.error('[Job Sheet] Error generating PDF:', error);
-            alert(`Failed to generate Job Sheet: ${(error as Error).message}`);
+            showToast(`Failed to generate Job Sheet: ${(error as Error).message}`, "error");
         }
     };
 

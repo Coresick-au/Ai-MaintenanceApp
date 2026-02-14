@@ -1,4 +1,5 @@
 import { Download, Upload } from 'lucide-react';
+import { useToast } from './Toast';
 
 interface BackupRestoreProps {
     exportState: () => void;
@@ -6,6 +7,7 @@ interface BackupRestoreProps {
 }
 
 export default function BackupRestore({ exportState, importState }: BackupRestoreProps) {
+    const { showToast } = useToast();
     const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (!file) return;
@@ -16,13 +18,13 @@ export default function BackupRestore({ exportState, importState }: BackupRestor
             try {
                 const success = await importState(content);
                 if (success) {
-                    alert('Data imported successfully! Quotes have been saved to the cloud.');
+                    showToast('Data imported successfully!', 'success');
                 } else {
-                    alert('Failed to import data. Please check the file format.');
+                    showToast('Failed to import data. Check the file format.', 'error');
                 }
             } catch (error) {
                 console.error('Import error:', error);
-                alert('Failed to import data. Error: ' + error);
+                showToast('Failed to import data.', 'error');
             }
         };
         reader.readAsText(file);

@@ -231,7 +231,9 @@ export function useQuote() {
     }, [status, rates, jobDetails, shifts, extras, internalExpenses, activeQuoteId, isLoaded]);
 
     const createNewQuote = async () => {
-        const newId = crypto.randomUUID();
+        const newId = typeof crypto.randomUUID === 'function'
+            ? crypto.randomUUID()
+            : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
 
         // Auto-increment Quote Number
         const maxQuoteNum = savedQuotes.reduce((max, q) => {

@@ -19,6 +19,21 @@ export interface Rates {
     rateNotes: string; // Notes specific to the rate setup (e.g., Charge Origin)
     overtimeThreshold: number; // hours before overtime kicks in (default 7.5)
     standardExpenses?: ExpenseTemplate[]; // standard recurring expenses for this customer
+    copyTemplateSettings?: CopyTemplateSettings; // per-customer copy template configuration
+}
+
+export interface CopyTemplateSettings {
+    // Quote Copy settings
+    quoteIntro: string;
+    quoteIncludeSchedule: boolean;
+    quoteIncludeLineItems: boolean;
+    quoteIncludeTechNotes: boolean;
+    quoteOutro: string;
+    // Invoice Copy settings
+    invoiceGreeting: string;
+    invoiceIncludeSchedule: boolean;
+    invoiceIncludeBreakdown: boolean;
+    invoiceIncludeVariance: boolean;
 }
 
 export interface ExpenseTemplate {
